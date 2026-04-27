@@ -251,19 +251,297 @@ Available named presets (from `grade.py:PRESETS`):
 
 ## Transcript schema
 
-TBD — recorded in Task 3 smoke test.
+The Scribe API response is a JSON object whose top-level key is `"words"`. Each
+element in the array is one of three typed entries:
 
-For reference, the Scribe JSON structure is accessed in `pack_transcripts.py` as:
+| `type`        | Fields present                                          | Notes |
+|---------------|---------------------------------------------------------|-------|
+| `"word"`      | `type`, `text`, `start` (float s), `end` (float s), `speaker_id` (string) | Actual spoken word. `speaker_id` is `"speaker_0"`, `"speaker_1"`, etc. |
+| `"spacing"`   | `type`, `start` (float s), `end` (float s)             | Gap between words; gap duration = `end - start`. Used by `pack_transcripts.py` to break phrases on silences ≥ threshold. No `text` key. |
+| `"audio_event"` | `type`, `text` (e.g. `"(laughter)"`), `start` (float s), `end` (float s) | Non-speech sound event. `speaker_id` may be absent. |
+
+Minimal representative snippet (10 lines):
+
 ```json
 {
   "words": [
-    { "type": "word", "text": "Hello", "start": 1.23, "end": 1.56, "speaker_id": "speaker_0" },
-    { "type": "spacing", "start": 1.56, "end": 1.80 },
-    { "type": "audio_event", "text": "(laughter)", "start": 2.10, "end": 2.40 }
+    { "type": "word",        "text": "Ninety",    "start": 2.52, "end": 2.88, "speaker_id": "speaker_0" },
+    { "type": "word",        "text": "percent",   "start": 2.92, "end": 3.28, "speaker_id": "speaker_0" },
+    { "type": "spacing",     "start": 3.28, "end": 3.42 },
+    { "type": "word",        "text": "of",        "start": 3.42, "end": 3.56, "speaker_id": "speaker_0" },
+    { "type": "word",        "text": "what",      "start": 3.60, "end": 3.78, "speaker_id": "speaker_0" },
+    { "type": "spacing",     "start": 5.36, "end": 6.08 },
+    { "type": "audio_event", "text": "(laughs)",  "start": 6.08, "end": 6.50 },
+    { "type": "word",        "text": "We",        "start": 6.74, "end": 6.90, "speaker_id": "speaker_0" },
+    { "type": "word",        "text": "fixed",     "start": 6.92, "end": 7.20, "speaker_id": "speaker_0" },
+    { "type": "word",        "text": "this.",     "start": 7.22, "end": 7.50, "speaker_id": "speaker_0" }
   ]
 }
 ```
-Full schema will be confirmed in Task 3 with a real Scribe response.
+
+Key parsing notes (from `pack_transcripts.py` and `render.py`):
+- Only `"word"` entries are used for subtitle generation (`render.py:_words_in_range`).
+- `"spacing"` entries are used only for phrase-break detection; they have no `text`.
+- `"audio_event"` entries are included in `takes_packed.md` text but skipped for subtitle chunks.
+- All timestamps are **floating-point seconds** from the start of the source audio.
+- The full response from ElevenLabs Scribe is written verbatim to
+  `edit/transcripts/<stem>.json` — no transformation before caching.
+
+## EDL schema
+
+`edl.json` is hand-authored by the LLM agent and consumed by `render.py`. The schema
+is inferred definitively from `render.py` source (lines 218–243, 310–320, 619–625).
+
+### Top-level keys
+
+| Key              | Type          | Required | Description |
+|------------------|---------------|----------|-------------|
+| `"sources"`      | object        | YES      | Map of logical source name → path string. |
+| `"ranges"`       | array         | YES      | Ordered list of cut segments. |
+| `"grade"`        | string        | NO       | Grade spec: preset name, `"auto"`, `"none"`, or raw ffmpeg filter string. Defaults to no-op if absent. |
+| `"overlays"`     | array         | NO       | List of overlay objects. Omit or use `[]` for no overlays. |
+| `"subtitles"`    | string        | NO       | Path to SRT file. Omit or `null` for no subtitles. |
+| `"version"`      | integer       | NO       | Schema version sentinel (value `1`). Present in SKILL.md example; not read by `render.py`. |
+| `"total_duration_s"` | number   | NO       | Documentation field only; not read by `render.py`. |
+
+### `"sources"` object
+
+Keys are arbitrary logical names (used as `r["source"]` references in ranges and as
+the segment filename stem). Values are path strings — either absolute or relative
+to the **directory containing `edl.json`** (i.e. the `edit/` dir). Resolution:
+
+```python
+# render.py:resolve_path
+p = Path(maybe_path)
+if p.is_absolute():
+    return p
+return (base / p).resolve()   # base = edl_path.parent (the edit/ dir)
+```
+
+Example:
+```json
+"sources": {
+  "raw": "/abs/path/to/raw.mp4",
+  "b_roll": "../footage/broll.mp4"
+}
+```
+
+### Per-range (clip) fields
+
+Each element of `"ranges"` is an object:
+
+| Field      | Type    | Required | Units   | Description |
+|------------|---------|----------|---------|-------------|
+| `"source"` | string  | YES      | —       | Must match a key in `"sources"`. |
+| `"start"`  | number  | YES      | seconds (float) | Inclusive start time in source file. Cast via `float()`. |
+| `"end"`    | number  | YES      | seconds (float) | Exclusive end time in source file. `duration = end - start`. |
+| `"beat"`   | string  | NO       | —       | Narrative label (e.g. `"HOOK"`). Logged to console; not used in render. |
+| `"quote"`  | string  | NO       | —       | Representative quote. Logged to console; not used in render. |
+| `"note"`   | string  | NO       | —       | Alternative to `"beat"` for log label. |
+| `"reason"` | string  | NO       | —       | Editorial note. Not read by `render.py`. |
+
+Time format: **decimal seconds as a JSON number** (or numeric string — `render.py`
+wraps in `float()`). Not milliseconds, not frames. E.g. `2.42`, `28.900`.
+
+### `"overlays"` array
+
+Each overlay object:
+
+| Field               | Type   | Required | Units   | Description |
+|---------------------|--------|----------|---------|-------------|
+| `"file"`            | string | YES      | —       | Path to overlay video. Resolved relative to `edit/` dir (same rules as sources). |
+| `"start_in_output"` | number | YES      | seconds | Output-timeline position where overlay frame 0 lands. |
+| `"duration"`        | number | YES      | seconds | How long overlay is visible. `end = start_in_output + duration`. |
+
+To express "no overlays": omit the key entirely, or set `"overlays": []`.
+`render.py` does `overlays = edl.get("overlays") or []`.
+
+### `"subtitles"` field
+
+String path to an SRT file (absolute or relative to `edit/` dir). If the file does
+not exist at render time, `render.py` logs a warning and skips subtitles silently.
+To suppress: omit the key, set to `null`, or pass `--no-subtitles` at the CLI.
+
+### `"grade"` field
+
+| Value               | Behaviour |
+|---------------------|-----------|
+| omitted / `null`    | No filter applied (empty string passed to ffmpeg `-vf`). |
+| `"auto"`            | Per-segment data-driven analysis via `auto_grade_for_clip()`. Each segment analyzed separately. |
+| `"subtle"`          | `eq=contrast=1.03:saturation=0.98` |
+| `"neutral_punch"`   | Contrast + gentle S-curve, no color shift. |
+| `"warm_cinematic"`  | +12% contrast, crushed blacks, teal/orange colorbalance, filmic curve. |
+| `"none"`            | Explicit no-op (empty filter, copy pass). |
+| Any other string    | Treated as raw ffmpeg `-vf` filter string. |
+
+To express "do not grade" in the JSON: use `"grade": "none"` or omit the key.
+The `--no-loudnorm` CLI flag is audio-only and unrelated to the grade field.
+
+### Output resolution / fps
+
+**NOT controlled by `edl.json`.** Hardcoded in `render.py:extract_segment`:
+
+- Final mode: `scale=1920:-2`, `-r 24`, `-c:v libx264 -preset fast -crf 20`
+- Preview mode: `scale=1920:-2`, `-r 24`, `-c:v libx264 -preset medium -crf 22`
+- Draft mode: `scale=1280:-2`, `-r 24`, `-c:v libx264 -preset ultrafast -crf 28`
+
+**Target mismatch with our spec (1440×2560 @ 60fps Rec.709 SDR):** `render.py`
+hardcodes `scale=1920:-2` (landscape 1080p), `-r 24` fps, and `yuv420p` (SDR). For
+our 1440×2560 vertical 60fps target:
+- The `scale` filter would need to be changed to `scale=1440:2560` (or `scale=-2:2560`).
+- The `-r 24` would need to be `-r 60`.
+- Rec.709 SDR is naturally produced (yuv420p + HDR→SDR tonemap chain). No extra flag needed.
+- These parameters are hardcoded constants, not EDL fields. The `edl.json` cannot
+  override them. **Either patch `render.py` or pass a custom `"grade"` filter that
+  includes a scale override** (the grade field is injected into the `-vf` chain,
+  so `"grade": "scale=1440:2560,eq=contrast=1.03"` would override resolution).
+  UNCLEAR — see `render.py:extract_segment` lines 158–193 for the exact vf assembly
+  order; a `scale` baked into the grade field would conflict with the hardcoded scale.
+  Recommend patching `extract_segment` directly for our pipeline.
+
+### Minimal valid `edl.json` example
+
+Concatenates two segments from `raw.mp4` (0–2s and 3–5s), no overlays, no
+subtitles, no grading:
+
+```json
+{
+  "version": 1,
+  "sources": {
+    "raw": "/abs/path/to/edit/../raw.mp4"
+  },
+  "ranges": [
+    {
+      "source": "raw",
+      "start": 0.0,
+      "end": 2.0,
+      "beat": "seg1",
+      "reason": "first two seconds"
+    },
+    {
+      "source": "raw",
+      "start": 3.0,
+      "end": 5.0,
+      "beat": "seg2",
+      "reason": "seconds 3-5"
+    }
+  ],
+  "grade": "none",
+  "overlays": [],
+  "subtitles": null
+}
+```
+
+Invocation (CWD = `tools/video-use/`, edl.json lives in the `edit/` dir):
+
+```bash
+uv run python helpers/render.py /abs/path/to/edit/edl.json \
+  -o /abs/path/to/edit/stage1.mp4 \
+  --no-subtitles \
+  --no-loudnorm
+```
+
+Notes on the minimal example:
+- `"sources"` value must be an absolute path or a path relative to the **`edit/` dir**
+  (the directory containing `edl.json`), NOT relative to `tools/video-use/` and NOT
+  relative to the caller's CWD.
+- `"grade": "none"` and `"overlays": []` are both safe explicit no-ops. Omitting
+  `"grade"` also works (resolves to empty filter).
+- `"subtitles": null` is equivalent to omitting the key; `--no-subtitles` CLI flag
+  provides a belt-and-suspenders override.
+- `"version"` and `"reason"` fields are not read by `render.py`; they are
+  documentation-only conventions from SKILL.md.
+
+## grade.py behavior
+
+### CLI invocation
+
+```bash
+# CWD = tools/video-use/
+uv run python helpers/grade.py <input> -o <output>                     # auto mode (default)
+uv run python helpers/grade.py <input> -o <output> --preset warm_cinematic
+uv run python helpers/grade.py <input> -o <output> --filter 'eq=contrast=1.1:saturation=0.95'
+uv run python helpers/grade.py --analyze <input>                       # print auto-grade filter, no output
+uv run python helpers/grade.py --print-preset warm_cinematic           # print filter string and exit
+uv run python helpers/grade.py --list-presets                          # list all presets and exit
+```
+
+### What it does
+
+`grade.py` is a thin CLI wrapper around an ffmpeg `-vf` filter chain. It has two
+operating modes:
+
+**1. Auto mode (default when neither `--preset` nor `--filter` is passed):**
+Calls `auto_grade_for_clip()`, which samples N frames from the clip using
+`ffmpeg signalstats` to measure mean luma (`YAVG`), luma range (`YMIN`/`YMAX`),
+and mean saturation (`SATAVG`). It then emits an `eq=contrast=X:gamma=Y:saturation=Z`
+filter string bounded to ±8% on every axis. Goals: correct underexposure, flatness,
+mild desaturation. Explicitly avoids color shifts, LUTs, and creative grade.
+
+**2. Preset mode (`--preset`) / raw filter mode (`--filter`):**
+Applies a fixed filter string. Presets are:
+
+| Preset           | Filter string |
+|------------------|---------------|
+| `subtle`         | `eq=contrast=1.03:saturation=0.98` |
+| `neutral_punch`  | `eq=contrast=1.06:brightness=0.0:saturation=1.0,curves=master='0/0 0.25/0.23 0.75/0.77 1/1'` |
+| `warm_cinematic` | `eq=contrast=1.12:brightness=-0.02:saturation=0.88,colorbalance=rs=0.02:gs=0.0:bs=-0.03:rm=0.04:gm=0.01:bm=-0.02:rh=0.08:gh=0.02:bh=-0.05,curves=master='0/0 0.25/0.22 0.75/0.78 1/1'` |
+| `none`           | (empty — copy pass) |
+
+### Configurability
+
+No config file. Grade is controlled only by CLI flags (`--preset`, `--filter`) or
+by the `"grade"` field in `edl.json` (which `render.py` resolves to a filter string
+before calling the same internal functions). No persistent state between invocations.
+
+### Resolution, fps, color metadata
+
+`grade.py` always re-encodes video when a filter is applied:
+```
+ffmpeg -vf <filter> -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p -c:a copy
+```
+- **Resolution**: preserved (no scale filter added).
+- **FPS**: preserved (no `-r` flag in `apply_grade`).
+- **Color metadata**: output is `yuv420p` 8-bit. No `-colorspace`, `-color_primaries`,
+  or `-color_trc` flags are set. If the input carries Rec.709 metadata, it is
+  **preserved passively** by libx264 (it copies stream metadata unless overridden).
+  If the input is HDR, `grade.py` alone does NOT tonemap — that is only done inside
+  `render.py:extract_segment` (the `TONEMAP_CHAIN`). `grade.py` is not HDR-aware.
+
+When the filter is empty (`"none"` preset), `grade.py` uses `-c copy` (no re-encode,
+all metadata preserved exactly).
+
+### Verdict: does grade.py replace our planned `tools/compositor/grade.json` + ffmpeg pass?
+
+**Partial replacement — different concerns, complementary.**
+
+`grade.py` / the `"grade"` field in `edl.json` handles **corrective and
+stylistic video grade** (contrast, gamma, saturation, S-curve, color balance).
+It does this at segment-extract time, baked into each `clips_graded/seg_NN.mp4`.
+
+Our planned `tools/compositor/grade.json` + ffmpeg pass was intended to apply
+**post-composite corrections** (eq + vignette) after concat and overlay compositing.
+That use-case is NOT covered by `grade.py`, which operates per-segment before concat.
+
+Specifically:
+- **Vignette**: no vignette filter in any `grade.py` preset or auto-grade path.
+  If we want a vignette, we must add it ourselves (either by injecting it into the
+  `"grade"` field as a raw filter, e.g. `"grade": "eq=contrast=1.03,vignette"`, or
+  as a post-composite ffmpeg pass).
+- **Post-composite eq**: `grade.py` does not run on the concatenated output. Any
+  whole-video correction must be a separate step.
+- **Color metadata tagging** (explicit Rec.709 primaries/transfer): neither
+  `grade.py` nor `render.py` explicitly tag `-colorspace bt709 -color_primaries bt709
+  -color_trc bt709` on the output. If strict Rec.709 container metadata is required
+  for delivery, a post-processing ffmpeg pass with those flags is still needed.
+
+**Conclusion:** for stage-1 (cut assembly only, no creative grade, no vignette):
+- Set `"grade": "none"` in `edl.json` and pass `--no-loudnorm` to render.py to get
+  a clean ungraded cut.
+- The `tools/compositor/grade.json` + ffmpeg pass is still needed for vignette,
+  post-composite eq, and explicit Rec.709 metadata tagging.
+- If we want `grade.py`-style auto-correction without a separate pass, use
+  `"grade": "auto"` in the EDL — this is the simplest integration point.
 
 ## Notes & gotchas
 
