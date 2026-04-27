@@ -1,0 +1,40 @@
+<!-- caption-karaoke: per-word karaoke captions, max 3 visible, baseline raised. -->
+<!-- data: words: [{ text, start_ms, end_ms }] -->
+<div class="caption-layer" data-component="caption-karaoke">
+  <style>
+    .caption-layer {
+      position: absolute;
+      left: 0; right: 0;
+      bottom: var(--safezone-bottom);
+      display: flex;
+      justify-content: center;
+      gap: var(--spacing-sm);
+      font-family: var(--type-family-caption);
+      font-size: var(--type-size-caption);
+      font-weight: var(--type-weight-bold);
+      text-align: center;
+      pointer-events: none;
+    }
+    .caption-word { color: var(--color-caption-inactive); transition: color 80ms linear; }
+    .caption-word.active { color: var(--color-caption-active); }
+  </style>
+  <div class="caption-window"></div>
+  <script type="application/json" id="caption-data">{{WORDS_JSON}}</script>
+  <script>
+    (function () {
+      const data = JSON.parse(document.getElementById('caption-data').textContent);
+      const win = document.querySelector('.caption-window');
+      function render(t) {
+        const i = data.findIndex(w => t >= w.start_ms && t < w.end_ms);
+        if (i < 0) { win.innerHTML = ''; return; }
+        const start = Math.max(0, i - 1);
+        const slice = data.slice(start, start + 3);
+        win.innerHTML = slice.map((w, k) =>
+          `<span class="caption-word${start + k === i ? ' active' : ''}">${w.text}</span>`
+        ).join('');
+      }
+      window.__seekTo = render;
+      render(0);
+    })();
+  </script>
+</div>

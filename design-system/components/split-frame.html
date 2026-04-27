@@ -1,0 +1,11 @@
+<!-- split-frame: places talking-head video on one side and a glass plate on the other. -->
+<!-- data: side: 'left'|'right', child_html: string -->
+<div class="split-frame" data-component="split-frame" data-side="{{SIDE}}">
+  <style>
+    .split-frame { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; }
+    .split-head { background: transparent; }
+    .split-graphic { display: flex; align-items: center; justify-content: center; padding: var(--spacing-lg); }
+  </style>
+  <div class="split-head"></div>
+  <div class="split-graphic">{{CHILD_HTML}}</div>
+</div>
