@@ -28,7 +28,7 @@ describe("buildCompositionHtml", () => {
           index: 0,
           at_ms: 0,
           ends_at_ms: 1500,
-          scene: "full",
+          scene: "broll",
           graphic: { component: "title-card", data: { title: "Demo", subtitle: "Test" } },
         },
       ],

@@ -1,8 +1,9 @@
-import type { Seam, SeamPlan, SceneMode } from "./types.js";
+import type { Seam, SeamPlan } from "./types.js";
+import { parseSceneMode } from "./sceneMode.js";
 
 const HEADER_RE = /^#\s*Seam plan:\s*(\S+)\s*\(duration=(\d+)ms\)\s*$/;
 const SEAM_RE =
-  /^SEAM\s+(\d+)\s+at_ms=(\d+)\s+scene:\s*(head|split|full|overlay)\s+ends_at_ms=(\d+)\s*$/;
+  /^SEAM\s+(\d+)\s+at_ms=(\d+)\s+scene:\s*(\S+)\s+ends_at_ms=(\d+)\s*$/;
 const GRAPHIC_RE = /^\s+graphic:\s*(\S+)\s*$/;
 const DATA_RE = /^\s+data:\s*(.+)$/;
 
@@ -43,7 +44,7 @@ export function readSeamPlan(md: string): SeamPlan {
       current = {
         index: Number(seamMatch[1]),
         at_ms: Number(seamMatch[2]),
-        scene: seamMatch[3] as SceneMode,
+        scene: parseSceneMode(seamMatch[3]),
         ends_at_ms: Number(seamMatch[4]),
       };
       continue;

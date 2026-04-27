@@ -7,7 +7,7 @@ describe("seam plan markdown round-trip", () => {
     episode_slug: "ep-001",
     master_duration_ms: 12000,
     seams: [
-      { index: 0, at_ms: 0, scene: "full", ends_at_ms: 4000 },
+      { index: 0, at_ms: 0, scene: "broll", ends_at_ms: 4000 },
       {
         index: 1,
         at_ms: 4000,
@@ -21,7 +21,7 @@ describe("seam plan markdown round-trip", () => {
 
   it("contains scene labels in markdown output", () => {
     const md = writeSeamPlan(plan);
-    expect(md).toContain("scene: full");
+    expect(md).toContain("scene: broll");
     expect(md).toContain("scene: split");
     expect(md).toContain("scene: head");
     expect(md).toContain("ep-001");
@@ -34,7 +34,7 @@ describe("seam plan markdown round-trip", () => {
     expect(parsed.episode_slug).toBe(plan.episode_slug);
     expect(parsed.master_duration_ms).toBe(plan.master_duration_ms);
     expect(parsed.seams).toHaveLength(plan.seams.length);
-    expect(parsed.seams[0].scene).toBe("full");
+    expect(parsed.seams[0].scene).toBe("broll");
     expect(parsed.seams[1].scene).toBe("split");
     expect(parsed.seams[1].graphic?.component).toBe("TitleCard");
     expect(parsed.seams[1].graphic?.data).toEqual({ title: "Hello" });

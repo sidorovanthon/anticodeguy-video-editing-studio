@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import { planSeams } from "../src/seamPlanner.js";
 
 describe("planSeams", () => {
-  it("starts with full scene at seam 0", () => {
+  it("starts with broll scene at seam 0", () => {
     const seams = planSeams([0, 5000, 10000], 15000);
-    expect(seams[0].scene).toBe("full");
+    expect(seams[0].scene).toBe("broll");
     expect(seams[0].at_ms).toBe(0);
   });
 
@@ -17,7 +17,7 @@ describe("planSeams", () => {
       "overlay>head",
       "overlay>overlay",
       "split>split",
-      "full>full",
+      "broll>broll",
     ]);
     for (let i = 1; i < seams.length; i++) {
       const key = `${seams[i - 1].scene}>${seams[i].scene}`;
