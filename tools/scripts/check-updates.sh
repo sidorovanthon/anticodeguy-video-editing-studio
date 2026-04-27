@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+# Non-blocking pre-flight: warn if fast-moving dependencies have newer upstream
+# versions than what we have locally. Run from new-episode.sh so each new
+# episode starts with current tooling. Never fails the build — surfaces
+# notices for the operator to act on.
+
+REPO_ROOT="$(pwd)"
+NOTICES=0
+
+note() { echo "  - $*"; NOTICES=$((NOTICES + 1)); }
+
+echo "[check-updates] scanning fast-moving deps…"
+
+# 1. HyperFrames (npm, 0.x — published frequently per docs/notes/hyperframes-cli.md)
+LOCAL_HF="$(node -e "console.log(require('./tools/compositor/package.json').dependencies?.hyperframes || '')" 2>/dev/null | sed 's/^[~^>=]*//')"
+if [ -n "$LOCAL_HF" ]; then
+  LATEST_HF="$(npm view hyperframes version 2>/dev/null || true)"
+  if [ -n "$LATEST_HF" ] && [ "$LOCAL_HF" != "$LATEST_HF" ]; then
+    note "hyperframes: pinned $LOCAL_HF, latest $LATEST_HF — review CHANGELOG before upgrade (CLI surface still moving in 0.x)."
+  fi
+fi
+
+# 2. video-use (vendored at a SHA in vendor/video-use)
+if [ -d "$REPO_ROOT/vendor/video-use/.git" ] || [ -f "$REPO_ROOT/vendor/video-use/.git" ]; then
+  LOCAL_VU="$(git -C "$REPO_ROOT/vendor/video-use" rev-parse --short HEAD 2>/dev/null || true)"
+  REMOTE_VU="$(git -C "$REPO_ROOT/vendor/video-use" ls-remote origin HEAD 2>/dev/null | awk '{print substr($1,1,7)}')"
+  if [ -n "$LOCAL_VU" ] && [ -n "$REMOTE_VU" ] && [ "$LOCAL_VU" != "$REMOTE_VU" ]; then
+    note "vendor/video-use: at $LOCAL_VU, upstream HEAD $REMOTE_VU — re-vendor if upstream changes affect transcribe/pack."
+  fi
+fi
+
+if [ "$NOTICES" -eq 0 ]; then
+  echo "[check-updates] all dependencies current."
+else
+  echo "[check-updates] $NOTICES notice(s) above. Non-blocking — continuing."
+fi
+
+exit 0

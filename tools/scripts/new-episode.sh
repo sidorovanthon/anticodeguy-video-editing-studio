@@ -25,6 +25,11 @@ if [ ! -f "$RAW" ]; then
   exit 1
 fi
 
+# Pre-flight: surface upstream updates for fast-moving deps. Non-blocking.
+if [ -x "$REPO_ROOT/tools/scripts/check-updates.sh" ]; then
+  "$REPO_ROOT/tools/scripts/check-updates.sh" || true
+fi
+
 # Reject HDR/HLG sources. Probe color transfer characteristics with ffprobe.
 TRC="$(ffprobe -v error -select_streams v:0 -show_entries stream=color_transfer \
        -of default=nw=1:nk=1 "$RAW" 2>/dev/null || true)"
