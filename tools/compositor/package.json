@@ -1,0 +1,27 @@
+{
+  "name": "compositor",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev":   "tsx src/index.ts",
+    "test":  "vitest run",
+    "compose": "tsx src/index.ts compose",
+    "seam-plan": "tsx src/index.ts seam-plan",
+    "render": "tsx src/index.ts render"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
+  },
+  "dependencies": {
+    "hyperframes": "^0.4.31"
+  }
+}
