@@ -66,6 +66,7 @@ fi
 # Stage raw.mp4 inside stage-1-cut/ as a relative copy/symlink so video-use
 # helpers produce their `edit/` workspace under stage-1-cut/edit/.
 STAGED_RAW="$STAGE1/raw.mp4"
+RAW_ABS="$STAGED_RAW"
 if [ ! -e "$STAGED_RAW" ]; then
   # Use ln -s when supported; fall back to copy on Windows where symlinks need privileges.
   ln -sf "$SOURCE_RAW" "$STAGED_RAW" 2>/dev/null || cp "$SOURCE_RAW" "$STAGED_RAW"
@@ -187,6 +188,16 @@ for i,r in enumerate(edl["ranges"]):
 print(f"edl.json valid: {len(edl['ranges'])} ranges")
 PY
 
+# 6. Optional: script-fidelity check.
+DIFF_NOTE=""
+if [ -f "$EPISODE/source/script.txt" ]; then
+  if python "$SCRIPT_DIR/script-diff.py" --episode "$EPISODE"; then
+    DIFF_NOTE=" (+ script-diff.md)"
+  else
+    echo "WARN: script-diff.py failed; CP1 still valid"
+  fi
+fi
+
 echo
-echo "CP1 ready: $EDL. Awaiting review."
+echo "CP1 ready: $EDL${DIFF_NOTE}. Awaiting review."
 echo "After approval, run: tools/scripts/run-stage1.sh $SLUG render"

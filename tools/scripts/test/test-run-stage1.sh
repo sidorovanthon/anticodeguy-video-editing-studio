@@ -20,6 +20,8 @@ cp "$REPO_ROOT/tools/compositor/grade.json" "$WORK/tools/compositor/"
 cp "$REPO_ROOT/tools/scripts/new-episode.sh" "$WORK/tools/scripts/"
 cp "$REPO_ROOT/tools/scripts/run-stage1.sh" "$WORK/tools/scripts/"
 cp "$REPO_ROOT/tools/scripts/_render_edl.py" "$WORK/tools/scripts/"
+cp "$REPO_ROOT/tools/scripts/script-diff.py" "$WORK/tools/scripts/"
+cp -r "$REPO_ROOT/tools/scripts/script_diff" "$WORK/tools/scripts/script_diff"
 chmod +x "$WORK/tools/scripts/new-episode.sh" "$WORK/tools/scripts/run-stage1.sh" "$WORK/tools/scripts/_render_edl.py"
 
 # Use the smoke clip as our raw input
@@ -30,9 +32,74 @@ cp "$SMOKE/raw.mp4" "$WORK/incoming/raw.mp4"
 EPISODE="$(ls -d "$WORK"/episodes/*-smoke | head -n1)"
 SLUG="$(basename "$EPISODE")"
 
-# Pre-place a hand-crafted edl.json so the test exercises the render path only.
-# raw.mp4 is ~4.2s long; pick two ranges that fit.
+# ============== CP1 MODE TEST ==============
+# Pre-seed all cached artifacts so no network calls are made.
+EP="$EPISODE"
 RAW_ABS="$EPISODE/source/raw.mp4"
+mkdir -p "$EP/source" "$EP/stage-1-cut/edit/transcripts"
+
+# Scribe-shaped raw.json (type: "word" entries required by script-diff.py)
+cat > "$EP/stage-1-cut/edit/transcripts/raw.json" <<'JSON'
+{
+  "language_code": "en",
+  "words": [
+    {"type": "word", "text": "hello",    "start": 0.00, "end": 0.30},
+    {"type": "word", "text": "world",    "start": 0.35, "end": 0.70},
+    {"type": "word", "text": "today",    "start": 0.75, "end": 1.10},
+    {"type": "word", "text": "we",       "start": 1.15, "end": 1.30},
+    {"type": "word", "text": "are",      "start": 1.32, "end": 1.50},
+    {"type": "word", "text": "talking",  "start": 1.55, "end": 2.00},
+    {"type": "word", "text": "about",    "start": 2.05, "end": 2.30},
+    {"type": "word", "text": "script",   "start": 2.35, "end": 2.80},
+    {"type": "word", "text": "fidelity", "start": 2.85, "end": 3.40}
+  ]
+}
+JSON
+
+# EDL covering the full word range
+cat > "$EP/stage-1-cut/edl.json" <<'JSON'
+{
+  "version": 1,
+  "sources": {"raw": "/fake/raw.mp4"},
+  "ranges": [{"source": "raw", "start": 0.00, "end": 3.50, "beat": "all"}],
+  "grade": "none",
+  "overlays": [],
+  "subtitles": null
+}
+JSON
+
+# Minimal takes_packed.md to satisfy the cached-check guard
+cat > "$EP/stage-1-cut/edit/takes_packed.md" <<'MD'
+[0.00-3.50] hello world today we are talking about script fidelity
+MD
+# Promise-named symlinks the script also creates (pre-create to avoid ln errors)
+ln -sf "$EP/stage-1-cut/edit/transcripts/raw.json" "$EP/stage-1-cut/transcript.json" 2>/dev/null || true
+ln -sf "$EP/stage-1-cut/edit/takes_packed.md" "$EP/stage-1-cut/cut-list.md" 2>/dev/null || true
+
+# Drop a verbatim script that matches the seeded raw.json content
+echo "hello world today we are talking about script fidelity" \
+  > "$EP/source/script.txt"
+
+# Run CP1 mode; capture output for annotation check
+CP1_OUT="$(cd "$WORK" && ./tools/scripts/run-stage1.sh "$SLUG" 2>&1)" \
+  || { echo "FAIL: run-stage1.sh CP1 exited non-zero"; echo "$CP1_OUT"; exit 1; }
+echo "$CP1_OUT"
+
+# Assert script-diff.md was produced
+if [ ! -f "$EP/stage-1-cut/script-diff.md" ]; then
+  echo "FAIL: script-diff.md not produced when script.txt present"
+  exit 1
+fi
+
+# Assert the CP1 ready line includes the diff annotation
+echo "$CP1_OUT" | grep -q "script-diff.md" \
+  || { echo "FAIL: CP1 ready line missing script-diff.md annotation"; echo "$CP1_OUT"; exit 1; }
+
+echo "OK: run-stage1.sh CP1 produced script-diff.md and annotated ready line"
+
+# ============== RENDER MODE TEST ==============
+# Overwrite edl.json with real source paths for ffmpeg render.
+# raw.mp4 is ~4.2s long; pick two ranges that fit.
 mkdir -p "$EPISODE/stage-1-cut"
 cat > "$EPISODE/stage-1-cut/edl.json" <<EOF
 {
@@ -47,6 +114,8 @@ cat > "$EPISODE/stage-1-cut/edl.json" <<EOF
   "subtitles": null
 }
 EOF
+# Remove master.mp4 if it somehow exists from a prior run
+rm -f "$EPISODE/stage-1-cut/master.mp4"
 
 # Run stage 1 in render mode
 ( cd "$WORK" && ./tools/scripts/run-stage1.sh "$SLUG" render ) \
