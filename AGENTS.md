@@ -9,6 +9,8 @@ stop and wait for explicit user approval.
 ## Inputs you can expect
 - `incoming/raw.mp4` — talking-head footage, English, scripted, with mistakes and pauses.
 - `incoming/notes.md` (optional) — episode topic, do-not-cut spans, special instructions.
+- `incoming/script.txt` (optional) — verbatim plain-text script of what was read on camera.
+  Enables the script-fidelity report at CP1.
 - A music file already present in `library/music/`. Episode `meta.yaml` will reference it.
 
 ## Pipeline (read in order)
@@ -17,6 +19,8 @@ stop and wait for explicit user approval.
 2. **Stage 1 — video-use** — produces post-production-ready talking-head master.
    - 1.1 ElevenLabs Scribe transcription → `stage-1-cut/transcript.json`
    - 1.2 Cut analysis → `stage-1-cut/cut-list.md` → **⏸ CP1**
+   - 1.2a (optional, if `source/script.txt` present) Script fidelity check
+     → `stage-1-cut/script-diff.md` and `script-diff.json`
    - 1.3 Apply cuts + audio fades + grade + vignette → `stage-1-cut/master.mp4` → **⏸ CP2**
 3. **Stage 2 — compositor** — overlays captions, motion graphics, music.
    - 2.1 Generate `stage-2-composite/seam-plan.md` → **⏸ CP2.5**
@@ -70,6 +74,7 @@ changed, why if known. Each delta yields at most one proposed rule change tagged
 - Stage 1 (added in Phase 2): `tools/scripts/run-stage1.sh <slug>`
 - Stage 2 (added in Phase 3): `tools/scripts/run-stage2.sh <slug>`
 - Final render (added in Phase 3): `tools/scripts/render-final.sh <slug>`
+- Script fidelity check (added in Phase 3.5): `tools/scripts/script-diff.py --episode <path>`
 - Retro promotion (added in Phase 4): `tools/scripts/retro-promote.sh <slug>`
 
 ## File-location quick map
