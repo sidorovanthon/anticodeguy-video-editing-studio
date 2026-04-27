@@ -1,0 +1,15 @@
+{
+  "eq": {
+    "saturation": 1.08,
+    "contrast":   1.12,
+    "gamma":      1.0,
+    "brightness": 0.0
+  },
+  "vignette": {
+    "angle": "PI/4",
+    "x0":    "w/2",
+    "y0":    "h/2"
+  },
+  "vignette_scale": 0.25,
+  "ffmpeg_filter_chain": "eq=saturation=1.08:contrast=1.12,vignette=PI/4:eval=init"
+}
