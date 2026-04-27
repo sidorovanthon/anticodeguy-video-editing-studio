@@ -251,41 +251,80 @@ Available named presets (from `grade.py:PRESETS`):
 
 ## Transcript schema
 
-The Scribe API response is a JSON object whose top-level key is `"words"`. Each
-element in the array is one of three typed entries:
+The Scribe API response is a JSON object. Top-level keys (observed 2026-04-27):
+
+| Key                    | Type    | Description |
+|------------------------|---------|-------------|
+| `"language_code"`      | string  | ISO 639-3 code, e.g. `"eng"` |
+| `"language_probability"` | float | Detection confidence, 0–1 |
+| `"text"`               | string  | Full flat transcript text |
+| `"words"`              | array   | Per-token entries (words, spacing, audio events) |
+| `"transcription_id"`   | string  | Unique Scribe job ID |
+| `"audio_duration_secs"` | float  | Length of the audio submitted (seconds) |
+
+Each element of `"words"` is one of three typed entries:
 
 | `type`        | Fields present                                          | Notes |
 |---------------|---------------------------------------------------------|-------|
-| `"word"`      | `type`, `text`, `start` (float s), `end` (float s), `speaker_id` (string) | Actual spoken word. `speaker_id` is `"speaker_0"`, `"speaker_1"`, etc. |
-| `"spacing"`   | `type`, `start` (float s), `end` (float s)             | Gap between words; gap duration = `end - start`. Used by `pack_transcripts.py` to break phrases on silences ≥ threshold. No `text` key. |
+| `"word"`      | `type`, `text`, `start` (float s), `end` (float s), `speaker_id` (string), `logprob` (float) | Actual spoken word. `speaker_id` is `"speaker_0"`, `"speaker_1"`, etc. |
+| `"spacing"`   | `type`, `text` (space char), `start` (float s), `end` (float s), `speaker_id`, `logprob` | Gap between words; gap duration = `end - start`. Used by `pack_transcripts.py` to break phrases on silences >= threshold. |
 | `"audio_event"` | `type`, `text` (e.g. `"(laughter)"`), `start` (float s), `end` (float s) | Non-speech sound event. `speaker_id` may be absent. |
 
-Minimal representative snippet (10 lines):
+Real snippet from smoke test (2026-04-27, first 4 entries of `raw.json`):
 
 ```json
 {
+  "language_code": "eng",
+  "language_probability": 0.9712164402008057,
+  "text": "Hello, this is a smoke test for video use. Let's see what happens.",
+  "transcription_id": "xuesod2C5O2VuxKe2h6T",
+  "audio_duration_secs": 4.2260625,
   "words": [
-    { "type": "word",        "text": "Ninety",    "start": 2.52, "end": 2.88, "speaker_id": "speaker_0" },
-    { "type": "word",        "text": "percent",   "start": 2.92, "end": 3.28, "speaker_id": "speaker_0" },
-    { "type": "spacing",     "start": 3.28, "end": 3.42 },
-    { "type": "word",        "text": "of",        "start": 3.42, "end": 3.56, "speaker_id": "speaker_0" },
-    { "type": "word",        "text": "what",      "start": 3.60, "end": 3.78, "speaker_id": "speaker_0" },
-    { "type": "spacing",     "start": 5.36, "end": 6.08 },
-    { "type": "audio_event", "text": "(laughs)",  "start": 6.08, "end": 6.50 },
-    { "type": "word",        "text": "We",        "start": 6.74, "end": 6.90, "speaker_id": "speaker_0" },
-    { "type": "word",        "text": "fixed",     "start": 6.92, "end": 7.20, "speaker_id": "speaker_0" },
-    { "type": "word",        "text": "this.",     "start": 7.22, "end": 7.50, "speaker_id": "speaker_0" }
+    { "text": "Hello,", "start": 0.099, "end": 0.439, "type": "word",    "speaker_id": "speaker_0", "logprob": -0.0805 },
+    { "text": " ",      "start": 0.439, "end": 0.560, "type": "spacing", "speaker_id": "speaker_0", "logprob": -0.0039 },
+    { "text": "this",   "start": 0.560, "end": 0.659, "type": "word",    "speaker_id": "speaker_0", "logprob": -0.0039 },
+    { "text": " ",      "start": 0.659, "end": 0.699, "type": "spacing", "speaker_id": "speaker_0", "logprob": -0.0007 }
   ]
 }
 ```
 
 Key parsing notes (from `pack_transcripts.py` and `render.py`):
 - Only `"word"` entries are used for subtitle generation (`render.py:_words_in_range`).
-- `"spacing"` entries are used only for phrase-break detection; they have no `text`.
+- `"spacing"` entries are used only for phrase-break detection (gap = `end - start`).
 - `"audio_event"` entries are included in `takes_packed.md` text but skipped for subtitle chunks.
 - All timestamps are **floating-point seconds** from the start of the source audio.
 - The full response from ElevenLabs Scribe is written verbatim to
   `edit/transcripts/<stem>.json` — no transformation before caching.
+- Note: `"spacing"` entries DO have a `text` field (a space character) and `speaker_id`
+  in practice — the schema docs previously said they had no `text`, but observed output
+  shows they carry `" "` and `speaker_id` alongside `logprob`.
+
+## Packed transcript shape (takes_packed.md)
+
+`pack_transcripts.py` groups word-level entries into phrase-level lines, breaking on
+any silence >= 0.5s OR speaker change. Each phrase gets a `[start-end]` prefix, a
+speaker tag (`SN`), and the phrase text.
+
+Real output from smoke test (2026-04-27, 6s input, 1 speaker):
+
+```markdown
+# Packed transcripts
+
+Phrase-level, grouped on silences >= 0.5s or speaker change.
+Use `[start-end]` ranges to address cuts in the EDL.
+
+## raw  (duration: 3.8s, 1 phrases)
+  [000.10-003.90] S0 Hello, this is a smoke test for video use. Let's see what happens.
+```
+
+Format details:
+- `[NNN.NN-NNN.NN]` — start/end in seconds, 2 decimal places, zero-padded to 6 chars.
+- `SN` — speaker suffix; `"speaker_0"` → `S0`, `"speaker_1"` → `S1`, etc.
+- One phrase per line; phrases separated by blank lines between takes (video files).
+- File header: `## <stem>  (duration: Xs, N phrases)`.
+- Windows encoding note: the `>=` in the header is a Unicode `>=` (U+2265); on Windows
+  with a non-UTF-8 locale, `PYTHONUTF8=1` must be set or `write_text(encoding='utf-8')`
+  used, otherwise `pack_transcripts.py` raises `UnicodeEncodeError` for `cp1251`.
 
 ## EDL schema
 
@@ -593,3 +632,19 @@ Specifically:
     does not create it. The EDL is an artifact of the agent's editing session.
     For automated pipelines (`run-stage1.sh`), the EDL must be produced by a
     separate LLM invocation before `render.py` is called.
+
+13. **Windows UTF-8 encoding required for pack_transcripts.py.** The packed markdown
+    contains Unicode characters (>=, U+2265). On Windows with a cp1251 locale, running
+    without `PYTHONUTF8=1` raises `UnicodeEncodeError`. Always set `PYTHONUTF8=1` (or
+    `PYTHONIOENCODING=utf-8`) before invoking `pack_transcripts.py` on Windows.
+
+## Observed smoke test (2026-04-27)
+
+- Working dir: /tmp/video-use-smoke
+- Inputs: raw.mp4 (6s nominal / 4.2s actual audio, 1440x2560 60fps, blue background, ElevenLabs TTS Rachel voice)
+- speech.mp3: 68,589 bytes (ElevenLabs TTS, eleven_turbo_v2, Rachel voice ID 21m00Tcm4TlvDq8ikWAM)
+- raw.mp4: 129,996 bytes (h264 High, yuv420p, 1440x2560, 60fps, bt709, aac 44.1kHz mono)
+- transcribe.py produced: /tmp/video-use-smoke/edit/transcripts/raw.json, 4,741 bytes, 25 word-tokens, completed in 1.4s
+- pack_transcripts.py produced: /tmp/video-use-smoke/edit/takes_packed.md, 269 bytes, 1 phrase
+- API spend: ~150 TTS credits (eleven_turbo_v2, ~70 chars) + ~6 Scribe credits (4.2s audio)
+- PYTHONUTF8=1 required on Windows to avoid UnicodeEncodeError in pack_transcripts.py (cp1251 locale)
