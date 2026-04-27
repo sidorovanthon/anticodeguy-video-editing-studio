@@ -23,6 +23,10 @@ episodes/*/stage-1-cut/transcript.json
 episodes/*/stage-1-cut/edit/
 episodes/*/stage-2-composite/preview.mp4
 episodes/*/stage-2-composite/final.mp4
+episodes/*/stage-2-composite/hf-project/
+
+# HyperFrames render scratch dirs at repo root
+work-*/
 
 # OS / editor
 .DS_Store

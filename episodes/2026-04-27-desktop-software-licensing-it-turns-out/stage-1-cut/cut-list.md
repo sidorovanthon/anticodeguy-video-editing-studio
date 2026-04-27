@@ -10,3 +10,14 @@ Use `[start-end]` ranges to address cuts in the EDL.
   [043.00-049.78] S0 This is, of course, simplified for understanding and a lot needs to be added for everything to work reliably and securely.
   [051.66-063.76] S0 However, there are also offline activation and licensing schemes that are based on cryptography, hardware production keys, and time-based licenses, whose validity is checked locally without connecting to the internet.
   [064.38-068.62] S0 The script for this video was written by a human being. For more stuff like this, subscribe.
+
+## seams (master-timeline, derived from edl.json + meaning-based sub-splits)
+
+at_ms=0       # HOOK
+at_ms=7040    # SETUP
+at_ms=17480   # WORKER-A
+at_ms=25109   # WORKER-B (Cloudflare Workers reveal)
+at_ms=29420   # CAVEAT
+at_ms=36200   # OFFLINE-A
+at_ms=40090   # OFFLINE-B (crypto/HW/time list)
+at_ms=48300   # OUTRO
