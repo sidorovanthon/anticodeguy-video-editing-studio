@@ -1,0 +1,29 @@
+# Secrets
+.env
+
+# Tool installs
+tools/video-use/
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+
+# Heavy media — kept out of repo
+incoming/*
+!incoming/.gitkeep
+
+library/music/*
+!library/music/.gitkeep
+
+episodes/*/source/*
+!episodes/*/source/.gitkeep
+episodes/*/stage-1-cut/master.mp4
+episodes/*/stage-1-cut/transcript.json
+episodes/*/stage-2-composite/preview.mp4
+episodes/*/stage-2-composite/final.mp4
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
