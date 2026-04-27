@@ -2,14 +2,58 @@
 set -euo pipefail
 
 # Create a new episode directory from incoming/raw.mp4.
-# Usage: tools/scripts/new-episode.sh <slug>
+# Usage: tools/scripts/new-episode.sh [<slug>]
+# With no slug, derives one from the first sentence of incoming/script.txt.
 
-if [ "$#" -ne 1 ]; then
-  echo "Usage: $0 <slug>"
+if [ "$#" -gt 1 ]; then
+  echo "Usage: $0 [<slug>]"
   exit 1
 fi
 
-SLUG="$1"
+derive_slug_from_script() {
+  local script_file="$1"
+  # First non-empty line, BOM stripped, CR stripped.
+  local line
+  line="$(sed -e '1s/^\xEF\xBB\xBF//' -e 's/\r$//' "$script_file" \
+          | awk 'NF { print; exit }')"
+  # First sentence: cut at . ! ? when not preceded by a digit (avoid 1.5 splits).
+  # If no terminator matches, keep the whole line.
+  local sentence
+  sentence="$(printf '%s' "$line" \
+              | sed -E 's/^(([^.!?]|[0-9][.!?])*[^.!?0-9]?)[.!?].*$/\1/')"
+  # Lowercase, non [a-z0-9] -> '-', collapse runs, strip edges.
+  local slug
+  slug="$(printf '%s' "$sentence" \
+          | tr '[:upper:]' '[:lower:]' \
+          | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
+  # Truncate to <=40 chars on a '-' boundary, strip trailing '-'.
+  if [ "${#slug}" -gt 40 ]; then
+    local head="${slug:0:40}"
+    if [[ "$head" == *-* ]]; then
+      head="${head%-*}"
+    fi
+    slug="$head"
+  fi
+  slug="${slug%-}"
+  printf '%s' "$slug"
+}
+
+if [ "$#" -eq 1 ]; then
+  SLUG="$1"
+else
+  SCRIPT_TXT="$(pwd)/incoming/script.txt"
+  if [ ! -f "$SCRIPT_TXT" ]; then
+    echo "ERROR: no slug given and incoming/script.txt not found." >&2
+    exit 1
+  fi
+  SLUG="$(derive_slug_from_script "$SCRIPT_TXT")"
+  if [ -z "$SLUG" ]; then
+    echo "ERROR: could not derive slug from incoming/script.txt (empty after slugification)." >&2
+    exit 1
+  fi
+  echo "Auto-derived slug: $SLUG" >&2
+fi
+
 if ! [[ "$SLUG" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
   echo "ERROR: slug must be lowercase alphanumeric with dashes (got: $SLUG)"
   exit 1
