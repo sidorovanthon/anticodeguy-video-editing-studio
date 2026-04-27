@@ -1,4 +1,4 @@
-export type SceneMode = "head" | "split" | "full" | "overlay";
+export type SceneMode = "head" | "split" | "broll" | "overlay";
 
 /**
  * Raw transcript word as it may appear on disk. Stage 1 currently writes the
