@@ -1,17 +1,15 @@
 import { writeFileSync } from "node:fs";
 import path from "node:path";
-import type { SeamPlan, Seam, Transcript } from "./types.js";
+import type { SeamPlan, Seam, MasterBundle } from "./types.js";
 import { loadTokensCss } from "./tokens.js";
 import { loadBaseCss, loadComponentTemplate, fillTemplate } from "./components.js";
-import { remapWordsToMaster, type Edl } from "./edl.js";
 
 export interface ComposeArgs {
   repoRoot: string;
   episodeDir: string;
   plan: SeamPlan;
-  transcript: Transcript;
+  bundle: MasterBundle;
   masterRelPath: string;
-  edl: Edl;
 }
 
 const ROOT_WIDTH = 1440;
@@ -36,20 +34,24 @@ export function buildCompositionHtml(args: ComposeArgs): string {
   );
 
   const captionTpl = loadComponentTemplate("caption-karaoke");
-  const remappedWords = remapWordsToMaster(args.transcript.words, args.edl);
+  // Words are already master-aligned in the bundle. Caption components
+  // consume start_ms/end_ms (snake_case); convert from camelCase here at
+  // the component boundary.
+  const wordsForComponent = args.bundle.transcript.words.map((w) => ({
+    text: w.text,
+    start_ms: w.startMs,
+    end_ms: w.endMs,
+  }));
   const captionInner = fillTemplate(captionTpl, {
-    words_json: JSON.stringify(remappedWords),
+    words_json: JSON.stringify(wordsForComponent),
   });
 
-  const masterDurationSec = msToSeconds(args.plan.master_duration_ms);
+  const masterDurationSec = msToSeconds(args.bundle.master.durationMs);
 
   const captionLayer = `<div class="clip" data-start="0" data-duration="${masterDurationSec}" data-track-index="${CAPTION_TRACK_INDEX}">
 ${captionInner}
 </div>`;
 
-  // GSAP timeline adapter: paused, registered on window.__timelines["main"].
-  // HyperFrames runtime drives time via timeline.time(); onUpdate pulses
-  // window.__seekTo (defined by caption-karaoke) with ms.
   const timelineScript = `<script>
 (function () {
   if (typeof gsap === "undefined") return;

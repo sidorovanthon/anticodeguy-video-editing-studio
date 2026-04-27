@@ -18,8 +18,7 @@ COMPOSITE_DIR="$EPISODE/stage-2-composite"
 
 [ -d "$EPISODE" ]                              || { echo "ERROR: $EPISODE not found"; exit 1; }
 [ -f "$EPISODE/stage-1-cut/master.mp4" ]       || { echo "ERROR: master.mp4 missing"; exit 1; }
-[ -f "$EPISODE/stage-1-cut/transcript.json" ]  || { echo "ERROR: transcript.json missing"; exit 1; }
-[ -f "$EPISODE/stage-1-cut/cut-list.md" ]      || { echo "ERROR: cut-list.md missing"; exit 1; }
+[ -f "$EPISODE/master/bundle.json" ]           || { echo "ERROR: master/bundle.json missing (run write-bundle first)"; exit 1; }
 
 mkdir -p "$COMPOSITE_DIR"
 
