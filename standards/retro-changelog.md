@@ -68,3 +68,10 @@ Never edit existing entries. To revoke a rule, append a new entry that removes i
 - motion-graphics.md: outro-scene=overlay-with-subscribe (reason: OUTRO must end on subscribe CTA; if previous scene is overlay, demote to split)
 - captions.md: timing-source=master-aligned-via-edl (reason: raw-timeline word timings drift by accumulated EDL gaps; fixed by remapWordsToMaster)
 - captions.md: field-contract=start_ms-end_ms-only (reason: caption components consume ms-fields; compositor normalizes; component must not assume other naming)
+
+## 2026-04-28 — Phase 5 close: pipeline contracts hardened
+- Scene mode `full` renamed to `broll` in compositor source, fixtures, and tests. parseSceneMode() rejects the legacy name explicitly.
+- New master/bundle.json contract enforced at the Stage 1 -> Stage 2 boundary; Stage 2 reads it through a typed loader; raw-timeline reads of transcript.json and cut-list.md removed from Stage 2.
+- Phase 6 brief written at docs/superpowers/specs/2026-04-28-agentic-graphics-planner-brief.md.
+- Source: docs/superpowers/plans/2026-04-28-phase-5-pipeline-contracts.md.
+- Reason: pilot of Phase 4 surfaced 5 Stage 1 -> Stage 2 contract drifts; this phase closes the class of bugs at the source.

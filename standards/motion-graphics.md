@@ -6,30 +6,30 @@ The four-scene system, transition matrix at seams, and visual language for motio
 ## Scenes
 - **(a) `head` — plain talking-head** — head fills frame, no overlay.
 - **(b) `split` — split-screen** — head reduced to one half, frosted-glass graphic on the other.
-- **(c) `full` — full-screen B-roll** — head **HIDDEN behind broll**, motion graphics fills the frame.
+- **(c) `broll` — full-screen B-roll** — head **HIDDEN behind broll**, motion graphics fills the frame. (was: `full`)
 - **(d) `overlay` — talking-head + overlay** — head fills frame, frosted-glass info plate floats over it.
 
-**Naming note.** The compositor identifiers `head` / `split` / `full` / `overlay`
+**Naming note.** The compositor identifiers `head` / `split` / `broll` / `overlay`
 are the canonical machine names; `(a)/(b)/(c)/(d)` are documentation aliases.
-Read `full` as "head HIDDEN, broll covers the frame" — **not** "talking-head
-fullscreen" (that case is `head`). Misreading `full` is the easiest way to
-ship a wrong seam plan.
+Read `broll` as "head HIDDEN, broll covers the frame" — **not** "talking-head
+fullscreen" (that case is `head`). The legacy name `full` is rejected by the
+compositor's `parseSceneMode()` — use `broll` in all new plans.
 
 ## Core rule
 Across each seam, the talking-head must visibly **shrink, disappear, or return from a smaller/hidden state**. If the head stays full-frame on both sides of the seam, the cut is exposed regardless of overlay content.
 
 ## Transition matrix
 
-|  from \ to    | (a) head | (b) split | (c) full | (d) head+overlay |
+|  from \ to    | (a) head | (b) split | (c) broll | (d) head+overlay |
 |---|---|---|---|---|
 | (a) head             | ✗ | ✓ | ✓ | ✗ |
 | (b) split            | ✓ | ✓ if different graphic | ✓ | ✓ |
-| (c) full             | ✓ | ✓ | ✓ if different graphic | ✓ |
+| (c) broll            | ✓ | ✓ | ✓ if different graphic | ✓ |
 | (d) head+overlay     | ✗ | ✓ | ✓ | ✗ |
 
 Forbidden transitions (canonical names):
 `head↔head`, `head↔overlay`, `overlay↔overlay`,
-same-graphic `split→split`, same-graphic `full→full`.
+same-graphic `split→split`, same-graphic `broll→broll`.
 
 (Equivalent in alias form: `a↔a`, `a↔d`, `d↔d`, same-graphic `b→b`/`c→c`.)
 
@@ -46,11 +46,11 @@ Bounded by phrase boundaries, not arbitrary timers. A scene runs from one seam t
 A scene mode is only a label until a seam carries a `graphic:` (component +
 data) spec. The compositor's `renderSeamFragment` emits visible content
 **only** when the seam supplies `{component, data}`; without it, `split` /
-`full` / `overlay` render as plain talking-head and the scene-mode decision is
+`broll` / `overlay` render as plain talking-head and the scene-mode decision is
 silently lost.
 
 Therefore:
-- A `split`, `full`, or `overlay` seam without a `graphic:` line is a
+- A `split`, `broll`, or `overlay` seam without a `graphic:` line is a
   planner error, not a valid editorial choice.
 - A `head` seam may legitimately have no graphic.
 - Whatever produces `seam-plan.md` (today: hand-edited; Phase 5: agentic
@@ -65,17 +65,17 @@ it does.
 |---|---|
 | `head`     | (none — talking-head only)                        |
 | `split`    | `side-figure`, `code-block`, `chart`, `quote-card`|
-| `full`     | `title-card`, `full-bleed-figure`, `b-roll-clip`  |
+| `broll`    | `title-card`, `full-bleed-figure`, `b-roll-clip`  |
 | `overlay`  | `lower-third`, `subscribe-cta`, `name-plate`      |
 
-A compositor lint that warns when a `split` / `overlay` / `full` seam has no
+A compositor lint that warns when a `split` / `overlay` / `broll` seam has no
 graphic, and rejects components outside the allowed set, is the next step
 once the planner lands.
 
 ## Hard rules
 - Every seam must produce a scene transition that satisfies the matrix.
 - Scene-mode metadata travels in `seam-plan.md`, one entry per seam.
-- A `split` / `full` / `overlay` seam without a `graphic:` spec is invalid.
+- A `split` / `broll` / `overlay` seam without a `graphic:` spec is invalid.
 - Components live in `design-system/components/`. Never inline raw HTML in `composition.html` — always reference a component template.
 - All component styling reads from `design-system/tokens/tokens.json` via CSS variables. No hardcoded color/size/blur values.
 

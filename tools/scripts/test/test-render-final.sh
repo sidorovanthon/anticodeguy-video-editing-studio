@@ -8,13 +8,30 @@ trap 'rm -rf "$WORK"' EXIT
 cp -r "$REPO_ROOT" "$WORK/repo"
 cd "$WORK/repo"
 EP="$WORK/repo/episodes/2026-04-27-demo"
-mkdir -p "$EP/stage-1-cut" "$EP/stage-2-composite" "$WORK/repo/library/music"
+mkdir -p "$EP/stage-1-cut" "$EP/stage-2-composite" "$EP/master" "$WORK/repo/library/music"
 
-cp tools/compositor/test/fixtures/transcript.sample.json "$EP/stage-1-cut/transcript.json"
-printf "at_ms=0\nat_ms=750\n" > "$EP/stage-1-cut/cut-list.md"
-cat > "$EP/stage-1-cut/edl.json" <<EOF
-{"version":1,"sources":{"raw":"raw.mp4"},"ranges":[{"source":"raw","start":0,"end":2}]}
-EOF
+# Stage 2 reads ONLY the bundle (Phase 5 contract). No transcript.json or cut-list.md needed.
+cat > "$EP/master/bundle.json" <<'JSON'
+{
+  "schemaVersion": 1,
+  "slug": "2026-04-27-demo",
+  "master": { "durationMs": 2000, "width": 1440, "height": 2560, "fps": 60 },
+  "boundaries": [
+    { "atMs": 0, "kind": "start" },
+    { "atMs": 1000, "kind": "seam" },
+    { "atMs": 2000, "kind": "end" }
+  ],
+  "transcript": {
+    "language": "en",
+    "words": [
+      { "text": "Hello", "startMs": 0,    "endMs": 350 },
+      { "text": "world", "startMs": 380,  "endMs": 720 },
+      { "text": "today", "startMs": 1100, "endMs": 1480 }
+    ]
+  }
+}
+JSON
+
 ffmpeg -y -f lavfi -i "color=c=red:s=1440x2560:r=60:d=2" -f lavfi -i "anullsrc=r=48000:cl=stereo:d=2" \
   -c:v libx264 -pix_fmt yuv420p -c:a aac -b:a 128k -shortest \
   "$EP/stage-1-cut/master.mp4" >/dev/null 2>&1
