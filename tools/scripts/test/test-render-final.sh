@@ -12,6 +12,9 @@ mkdir -p "$EP/stage-1-cut" "$EP/stage-2-composite" "$WORK/repo/library/music"
 
 cp tools/compositor/test/fixtures/transcript.sample.json "$EP/stage-1-cut/transcript.json"
 printf "at_ms=0\nat_ms=750\n" > "$EP/stage-1-cut/cut-list.md"
+cat > "$EP/stage-1-cut/edl.json" <<EOF
+{"version":1,"sources":{"raw":"raw.mp4"},"ranges":[{"source":"raw","start":0,"end":2}]}
+EOF
 ffmpeg -y -f lavfi -i "color=c=red:s=1440x2560:r=60:d=2" -f lavfi -i "anullsrc=r=48000:cl=stereo:d=2" \
   -c:v libx264 -pix_fmt yuv420p -c:a aac -b:a 128k -shortest \
   "$EP/stage-1-cut/master.mp4" >/dev/null 2>&1
