@@ -51,3 +51,13 @@ Never edit existing entries. To revoke a rule, append a new entry that removes i
 - Fix: `weights=1 1`. Music sits at -20 LUFS post-loudnorm; voice arrives at -14 LUFS from upstream master. `test-render-final.sh` re-run, passes.
 - Audit also confirmed: standards files do NOT conflict with HyperFrames CLI reality. They describe outputs and rules, not tool choice; no edit needed.
 - Outstanding gap (defer to Phase 4): voice -14 LUFS target in `standards/audio.md` is asserted but never enforced in our pipeline — we trust video-use's master.mp4 to already be at -14 LUFS. If the first real episode's master deviates, add a voice loudnorm pass to `render-final.sh`.
+
+## 2026-04-27 — promoted from 2026-04-27-desktop-software-licensing-it-turns-out
+- color.md: ffmpeg-range-remap=explicit-scale-in-out-range (reason: metadata-only setparams left pixel data full-range; players crushed shadows)
+- color.md: grade-chain=colorbalance+eq.brightness+curves+vignette (reason: layered chain converged in 3 iterations on real footage)
+- color.md: encoder-defaults=-g60-tune-fastdecode (reason: seekability+decoder-load improvements; harmless when audio sync is correct)
+- audio.md: loudnorm-mode=two-pass-with-measured (reason: single-pass introduces 2-3s PTS desync at start)
+- audio.md: no-fades=hard-cuts (reason: host preference; video-use fade injection bypassed by direct ffmpeg render anyway)
+- motion-graphics.md: outro-scene=overlay-with-subscribe (reason: OUTRO must end on subscribe CTA; if previous scene is overlay, demote to split)
+- captions.md: timing-source=master-aligned-via-edl (reason: raw-timeline word timings drift by accumulated EDL gaps; fixed by remapWordsToMaster)
+- captions.md: field-contract=start_ms-end_ms-only (reason: caption components consume ms-fields; compositor normalizes; component must not assume other naming)

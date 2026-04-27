@@ -24,3 +24,9 @@ Typography and timing rules for per-word karaoke captions burned into the final 
 - Never wrap to two lines.
 - Never go below the safe-zone baseline.
 - Never display more than 3 words simultaneously.
+
+## Promoted 2026-04-27
+- timing-source master-aligned-via-edl (episode 2026-04-27-desktop-software-licensing-it-turns-out; raw-timeline word timings drift by accumulated EDL gaps; fixed by remapWordsToMaster)
+
+## Promoted 2026-04-27
+- field-contract start_ms-end_ms-only (episode 2026-04-27-desktop-software-licensing-it-turns-out; caption components consume ms-fields; compositor normalizes; component must not assume other naming)

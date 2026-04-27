@@ -37,3 +37,6 @@ Bounded by phrase boundaries, not arbitrary timers. A scene runs from one seam t
 - Scene-mode metadata travels in `seam-plan.md`, one entry per seam.
 - Components live in `design-system/components/`. Never inline raw HTML in `composition.html` — always reference a component template.
 - All component styling reads from `design-system/tokens/tokens.json` via CSS variables. No hardcoded color/size/blur values.
+
+## Promoted 2026-04-27
+- outro-scene overlay-with-subscribe (episode 2026-04-27-desktop-software-licensing-it-turns-out; OUTRO must end on subscribe CTA; if previous scene is overlay, demote to split)

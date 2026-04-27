@@ -67,3 +67,51 @@ CP2 approved by host: grade, exposure, color temperature, audio loudness and cle
 - **Captions invisible: word timing field-name drift.** `caption-karaoke.html` filtered on `start_ms`/`end_ms`; ElevenLabs transcript uses `start`/`end` (seconds). `findIndex` always returned -1 → the caption layer rendered empty for the whole episode. Phase 3 caption fixture must have used `_ms` fields, masking this. Fixed in compositor: words normalized to `{text, start_ms, end_ms}` before serialization into `composition.html`; the component contract stays narrow. Tag `PROMOTE` — candidate `standards/captions.md` (or wherever caption rules live): "caption components consume `start_ms`/`end_ms`; compositor normalizes; component must not assume any other field naming." Plus follow-up: a Stage 1→Stage 2 transcript schema check (CP1.5) would have caught this and the earlier `duration_ms` and `at_ms=` drifts on the same run — three contract drifts on one episode is a strong signal that the gate is overdue.
 - **Scene modes are label-only without `graphic:` specs.** `composer.ts:renderSeamFragment` only emits a clip when a seam carries `{component, data}`. Hand-written editorial seam-plans (CP2.5) naturally omit `graphic:` lines → no overlay/split/head visible content; `scene` becomes a decorative label. Pilot ran with no graphics; preview shows talking head + captions only. Tag `PROMOTE` (large) — Phase 5 work: define a `standards/motion-graphics.md` catalog `scene_mode → allowed_components` (e.g. `overlay → [lower-third, subscribe-cta]`, `split → [side-figure, code-block]`, `head → [name-plate]`, `full → [title-card, full-bleed-figure]`); extend the seam-plan format to allow per-mode default graphics OR require an editorial graphic spec on every non-`full` seam; add a compositor lint that warns when a `split`/`overlay`/`head` seam has no graphic. This is the single biggest gap surfaced by the pilot — without it, scene-mode editorial decisions don't survive to the screen.
 - **Preview strategy reversal: workers+fps instead of resolution.** Original `--quality=low` shrunk root `data-width`/`data-height` to 720×1280, but inner `<video>` and absolute-positioned children stayed at 1440×2560 → the captured frame showed only the top-left corner of the layout (black + speaker bottom-right of crop). Replaced with `--workers N --fps N` (default 1 worker, 30 fps) at native 1440×2560. hyperframes' `-w/--workers` flag launches a separate Chrome process per worker (~256 MB RAM each per `--help`); 1 worker keeps RAM bounded at the cost of wall time. Tag `WATCH` — confirm on next episode that 1 worker + 30 fps preview is fast-enough-and-safe; promote to default if so. Long-term: the right way to "low-quality preview" is hyperframes-side downscale (DPR < 1) or a coordinated CSS `transform: scale` with paired layout adjustments — not data-attribute patching.
+
+## Macro-retro
+
+### Headline finding
+
+The missing agentic graphics planner is THE core gap. The compositor is a renderer; the system was designed to have something — a coding agent dispatched in-pipeline — generate per-seam graphic specs (component + data) from spoken text + scene mode + standards catalog. That something does not exist. Without it, scene modes are decorative labels; preview/final shows talking head + captions only. Phase 5 must build it (decision: agentic, not LLM-API).
+
+### Pattern: Stage 1 → Stage 2 contract drift (×5 in one episode)
+
+Five drifts caught on this run:
+1. transcript `audio_duration_secs` (sec) vs compositor `duration_ms` (ms).
+2. `cut-list.md` `at_ms=` markers absent (Stage 1 emits human phrase ranges only).
+3. `transcript.duration_ms` (~raw recording) vs `master.mp4` actual duration (post-EDL).
+4. transcript word `start`/`end` (sec) vs caption-karaoke `start_ms`/`end_ms`.
+5. transcript words in raw timeline vs master timeline after EDL gaps.
+
+Root pattern: Stage 2 assumes master-aligned input; Stage 1 emits raw-aligned. Phase 3 fixtures masked all five because they were minimal and pre-aligned.
+
+Recommended structural fix (Phase 5 candidate, not promoted today): either (a) Stage 1 normalizer step that emits a single `master/` directory with master-aligned transcript + `at_ms` boundaries derived from EDL, OR (b) explicit CP1.5 contract validator that asserts the shape Stage 2 expects, runnable as part of `run-stage1.sh`. Lean (a) — cheaper at runtime, single source of truth.
+
+### Other architectural findings
+
+- **Scene-mode naming confusion.** Compositor uses `head/split/full/overlay`; `standards/motion-graphics.md` uses (a)/(b)/(c)/(d) where `full` means head HIDDEN behind broll. Easy to misread `full` as "talking-head full frame" (which is actually `head`). Phase 5 candidate: rename modes in compositor to match standard's intent (e.g. `head/split/broll/overlay`) and lock with a typed enum so misuses fail at compose time.
+- **Preview render strategy reversal.** Resolution shrinking (data-width/height patching) clipped content because inner absolute layout didn't scale. Replaced with `--workers N --fps N` at native 1440×2560. 1 worker + 30 fps preview = ~6 minutes wall on a dev box; survives without killing the system. Final-quality render not yet attempted on a real episode.
+- **Per-iteration grade preview frames.** Captured at CP2 — extracting 2–3 PNGs after each Stage 1 render gave the agent a tight visual feedback loop for grade tuning. Worth automating into Stage 1.
+
+### What did NOT ship for this episode
+
+- No `final.mp4` render (skipped — no graphics → not publishable; render-final postponed to next episode after planner exists).
+- No motion graphics in `composition.html` (no `graphic:` specs in seam-plan → `renderSeamFragment` emits nothing).
+- No automated audio post-processing (manual chain applied for this pilot; pipeline integration is a known TODO).
+
+### What worked
+
+- Stage 1 grade chain (commit 67c1a66): converged in 3 iterations with the per-iteration frame extraction pattern.
+- EDL editorial decision (CP1): clean — host took the aborted-restart-then-retake cut without protest.
+- Subagent-driven development as orchestration model: nine subagents dispatched across this session, each fresh context, each committed when done.
+- Test-first contract fixes: each Stage 1 ↔ Stage 2 drift was caught + fixed + locked with a unit test in the same subagent turn.
+
+### Phase 5 candidate scope (not committed; for next planning session)
+
+1. Build agentic graphics planner: dispatch a coding subagent per seam (or batched), input = spoken text + scene mode + standards excerpt + component catalog with data shapes; output = `graphic:` and `data:` lines patched into seam-plan.md. Validation layer: enforce transition matrix and per-component data shape at write time.
+2. Stage 1 → Stage 2 contract normalization. Emit a single master-aligned bundle from Stage 1 (transcript + boundaries + duration). Stage 2 reads that one source instead of cross-referencing `edl.json` + `transcript.json` + `cut-list.md`.
+3. Scene-mode rename + typed enum.
+4. Pipeline-integrated audio post-processing (ElevenLabs Audio Isolation + 2-pass loudnorm).
+5. Final-quality render survival (workers/fps tuning at 1440×2560 @ 60 fps).
+6. Captions: ground-truth rewrite from `source/script.txt` when present (already noted at CP1 as WATCH).
+7. Per-iteration grade preview frames automation (CP2 finding).

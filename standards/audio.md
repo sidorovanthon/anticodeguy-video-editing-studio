@@ -23,3 +23,9 @@ Voice levels, music handling, and final audio specification for shorts.
 - Music level is constant across the full video unless ducking is explicitly requested.
 - Voice never exceeds −1 dBTP true peak.
 - No music file ever lives outside `library/music/`.
+
+## Promoted 2026-04-27
+- loudnorm-mode two-pass-with-measured (episode 2026-04-27-desktop-software-licensing-it-turns-out; single-pass introduces 2-3s PTS desync at start)
+
+## Promoted 2026-04-27
+- no-fades hard-cuts (episode 2026-04-27-desktop-software-licensing-it-turns-out; host preference; video-use fade injection bypassed by direct ffmpeg render anyway)

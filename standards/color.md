@@ -32,3 +32,12 @@ If video-use's auto grade does not yield the above, an additional `stage-1.5` ff
 ## Hard rules
 - No HDR/HLG source accepted. Reject at `new-episode.sh` with clear error.
 - Final `final.mp4` must validate as 1440×2560, 60 fps, Rec.709, AAC 320k 48kHz before declaring CP3 done.
+
+## Promoted 2026-04-27
+- ffmpeg-range-remap explicit-scale-in-out-range (episode 2026-04-27-desktop-software-licensing-it-turns-out; metadata-only setparams left pixel data full-range; players crushed shadows)
+
+## Promoted 2026-04-27
+- grade-chain colorbalance+eq.brightness+curves+vignette (episode 2026-04-27-desktop-software-licensing-it-turns-out; layered chain converged in 3 iterations on real footage)
+
+## Promoted 2026-04-27
+- encoder-defaults -g60-tune-fastdecode (episode 2026-04-27-desktop-software-licensing-it-turns-out; seekability+decoder-load improvements; harmless when audio sync is correct)
