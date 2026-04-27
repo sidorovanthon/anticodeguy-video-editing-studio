@@ -12,4 +12,21 @@ describe("loadTranscript", () => {
   it("rejects empty words array", () => {
     expect(() => loadTranscript("")).toThrow();
   });
+  it("accepts ElevenLabs-style audio_duration_secs and normalizes to duration_ms", () => {
+    const t = loadTranscript(
+      path.resolve(__dirname, "fixtures/transcript.audio_duration_secs.json"),
+    );
+    expect(t.duration_ms).toBe(Math.round(1.2345 * 1000));
+  });
+  it("throws when neither duration_ms nor audio_duration_secs is present", () => {
+    expect(() =>
+      loadTranscript(path.resolve(__dirname, "fixtures/transcript.no_duration.json")),
+    ).toThrow(/duration/);
+  });
+  it("prefers duration_ms when both fields are present", () => {
+    const t = loadTranscript(
+      path.resolve(__dirname, "fixtures/transcript.both_durations.json"),
+    );
+    expect(t.duration_ms).toBe(1500);
+  });
 });

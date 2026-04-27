@@ -11,6 +11,19 @@ export interface Transcript {
   duration_ms: number;
 }
 
+/**
+ * Raw transcript shape as it may appear on disk. Stage 1 currently writes the
+ * ElevenLabs-native response which carries `audio_duration_secs` (seconds) and
+ * no `duration_ms`. `loadTranscript` normalizes either form into the canonical
+ * `Transcript` (with `duration_ms`). Until Stage 1 is updated to emit the
+ * canonical schema directly, both fields are accepted on input.
+ */
+export interface RawTranscript {
+  words?: TranscriptWord[];
+  duration_ms?: number;
+  audio_duration_secs?: number;
+}
+
 export interface CutSpan {
   start_ms: number;
   end_ms: number;

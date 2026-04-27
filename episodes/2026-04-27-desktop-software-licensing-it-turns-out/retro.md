@@ -55,3 +55,8 @@ For this pilot episode the audio chain was applied **manually** post-render: ext
 ### Approval
 
 CP2 approved by host: grade, exposure, color temperature, audio loudness and cleanliness all acceptable.
+
+## CP2.5
+
+- **Stage 1 → Stage 2 transcript contract mismatch.** Stage 1 writer emits ElevenLabs-native `audio_duration_secs` (sec); compositor required `duration_ms` (ms). Phase 3 fixtures masked this. Patched compositor to accept both with `duration_ms` canonical. Follow-up: normalize at Stage 1 writer so the contract is one-way. Candidate `PROMOTE` line for `standards/transcript.md` (or wherever transcript schema lives — check) once confirmed.
+- **Propose CP1.5 contract validation.** A lightweight check after Stage 1 that asserts the transcript shape Stage 2 expects (words[] non-empty, a duration field present in either form). Catches schema drift at Stage 1 instead of crashing Stage 2. Tag `WATCH` for now — promote after a second episode confirms it's worth the gate.
