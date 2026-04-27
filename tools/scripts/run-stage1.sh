@@ -55,6 +55,10 @@ if [ "$MODE" = "render" ]; then
     --grade "$GRADE_JSON" \
     --output "$MASTER"
 
+  # Generate the master-aligned bundle that Stage 2 consumes.
+  ( cd "$REPO_ROOT/tools/compositor" && \
+    REPO_ROOT="$REPO_ROOT" npx tsx src/index.ts write-bundle --episode "$EPISODE" )
+
   echo
   echo "CP2 ready: $MASTER. Awaiting review."
   exit 0

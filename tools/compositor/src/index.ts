@@ -10,7 +10,7 @@ import { loadEdl } from "./edl.js";
 const [, , cmd, ...rest] = process.argv;
 
 function usage(): never {
-  console.error("Usage: compositor <seam-plan|compose|render> --episode <path> [...]");
+  console.error("Usage: compositor <write-bundle|seam-plan|compose|render> --episode <path> [...]");
   process.exit(1);
 }
 
@@ -36,7 +36,22 @@ function deriveSeamTimestamps(cutListMd: string): number[] {
   return [...new Set(out)].sort((a, b) => a - b);
 }
 
-if (cmd === "seam-plan") {
+if (cmd === "write-bundle") {
+  const { buildBundle, writeBundleFile } = await import("./stage1/writeBundle.js");
+  const fs = await import("node:fs");
+  const slug = path.basename(path.resolve(episodeDir));
+  const masterDir = path.join(episodeDir, "master");
+  fs.mkdirSync(masterDir, { recursive: true });
+  const bundle = buildBundle({
+    slug,
+    transcriptPath: path.join(episodeDir, "stage-1-cut/transcript.json"),
+    edlPath: path.join(episodeDir, "stage-1-cut/edl.json"),
+    masterPath: path.join(episodeDir, "stage-1-cut/master.mp4"),
+  });
+  const bundlePath = path.join(masterDir, "bundle.json");
+  writeBundleFile(bundle, bundlePath);
+  console.log(`Wrote ${bundlePath}`);
+} else if (cmd === "seam-plan") {
   const transcript = loadTranscript(transcriptPath);
   const cutList = readFileSync(cutListPath, "utf8");
   const seamTimestamps = deriveSeamTimestamps(cutList);

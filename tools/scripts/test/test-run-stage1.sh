@@ -16,7 +16,8 @@ mkdir -p "$WORK/incoming" "$WORK/episodes" "$WORK/library/music" "$WORK/standard
 # Copy what the script needs from the real repo
 cp "$REPO_ROOT/.env" "$WORK/.env"
 cp -r "$REPO_ROOT/standards/." "$WORK/standards/"
-cp "$REPO_ROOT/tools/compositor/grade.json" "$WORK/tools/compositor/"
+# Copy compositor source so the bundle-write step can run via tsx.
+cp -r "$REPO_ROOT/tools/compositor/." "$WORK/tools/compositor/"
 cp "$REPO_ROOT/tools/scripts/new-episode.sh" "$WORK/tools/scripts/"
 cp "$REPO_ROOT/tools/scripts/run-stage1.sh" "$WORK/tools/scripts/"
 cp "$REPO_ROOT/tools/scripts/_render_edl.py" "$WORK/tools/scripts/"
@@ -42,6 +43,7 @@ mkdir -p "$EP/source" "$EP/stage-1-cut/edit/transcripts"
 cat > "$EP/stage-1-cut/edit/transcripts/raw.json" <<'JSON'
 {
   "language_code": "en",
+  "audio_duration_secs": 3.5,
   "words": [
     {"type": "word", "text": "hello",    "start": 0.00, "end": 0.30},
     {"type": "word", "text": "world",    "start": 0.35, "end": 0.70},
@@ -148,3 +150,17 @@ python -c "import sys; d=float('$DUR'); sys.exit(0 if 2.4 <= d <= 3.4 else 1)" \
   || { echo "FAIL: duration $DUR out of expected 2.4..3.4 range"; exit 1; }
 
 echo "OK: run-stage1.sh render produced spec-compliant master.mp4 from edl.json"
+
+# Bundle assertions
+BUNDLE_PATH="$EPISODE/master/bundle.json"
+[ -f "$BUNDLE_PATH" ] || { echo "FAIL: master/bundle.json missing"; exit 1; }
+# Convert to a Windows-native path so Node.js (win32) can open it.
+BUNDLE_PATH_WIN="$(cygpath -w "$BUNDLE_PATH" 2>/dev/null || echo "$BUNDLE_PATH")"
+node -e "
+const b = JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
+if (b.schemaVersion !== 1) throw new Error('schemaVersion');
+if (typeof b.master.durationMs !== 'number') throw new Error('master.durationMs');
+if (!Array.isArray(b.boundaries) || b.boundaries.length < 2) throw new Error('boundaries');
+if (!Array.isArray(b.transcript.words)) throw new Error('transcript.words');
+" -- "$BUNDLE_PATH_WIN" || { echo "FAIL: bundle.json shape invalid"; exit 1; }
+echo "OK: master/bundle.json produced and valid"
