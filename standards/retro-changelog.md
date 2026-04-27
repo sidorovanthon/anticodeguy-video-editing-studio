@@ -52,6 +52,13 @@ Never edit existing entries. To revoke a rule, append a new entry that removes i
 - Audit also confirmed: standards files do NOT conflict with HyperFrames CLI reality. They describe outputs and rules, not tool choice; no edit needed.
 - Outstanding gap (defer to Phase 4): voice -14 LUFS target in `standards/audio.md` is asserted but never enforced in our pipeline — we trust video-use's master.mp4 to already be at -14 LUFS. If the first real episode's master deviates, add a voice loudnorm pass to `render-final.sh`.
 
+## 2026-04-27 — Phase 5 prep: pipeline-contracts.md + scene-mode rename + AGENTS.md sync
+- New file `standards/pipeline-contracts.md`: codifies the Stage 1 → Stage 2 master-aligned rule, lists canonical sources (ffprobe / `edl.json` / remapped transcript), the five drifts observed in pilot, hard rules ("no raw-timeline crosses the seam", "`cut-list.md` is human-only"), and the planned CP1.5 contract gate.
+- `standards/motion-graphics.md`: scene-mode names made canonical (`head/split/full/overlay`) with `(a)/(b)/(c)/(d)` retained as aliases. Explicit "`full` = head HIDDEN" disambiguation. New section "Graphic specs are mandatory for non-`head` seams" — a `split/full/overlay` seam without a `graphic:` spec is a planner error. Working scene-mode → component catalog added as WATCH (will harden once the agentic planner lands). Forbidden-transition list now in canonical names with alias parenthetical.
+- `AGENTS.md`: standards-load list now includes `pipeline-contracts.md`. Forbidden-transition hard rule restated in canonical names. New hard rule: "Never let raw-timeline data cross the Stage 1 → Stage 2 seam."
+- Source: macro-retro of 2026-04-27-desktop-software-licensing-it-turns-out (Phase 5 candidates 1, 3, and the "scene modes are label-only without `graphic:` specs" PROMOTE).
+- Reason: pilot surfaced (a) the Stage 1 → Stage 2 contract drift pattern as the dominant source of bugs (5 drifts in one episode), (b) scene-mode naming confusion between docs and code, (c) the gap that scene-modes without graphic specs are silently decorative. These are documentation-only fixes that lock the lessons in before Phase 5 implementation begins; no runtime behavior changes.
+
 ## 2026-04-27 — promoted from 2026-04-27-desktop-software-licensing-it-turns-out
 - color.md: ffmpeg-range-remap=explicit-scale-in-out-range (reason: metadata-only setparams left pixel data full-range; players crushed shadows)
 - color.md: grade-chain=colorbalance+eq.brightness+curves+vignette (reason: layered chain converged in 3 iterations on real footage)

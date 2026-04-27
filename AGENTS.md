@@ -35,6 +35,7 @@ stop and wait for explicit user approval.
 - `standards/audio.md`           — voice levels, music flat-background, no duck by default
 - `standards/captions.md`        — typography, position, karaoke timing
 - `standards/motion-graphics.md` — 4-scene system, transition matrix
+- `standards/pipeline-contracts.md` — Stage 1 → Stage 2 contract (master-aligned rule)
 - `standards/retro-changelog.md` — append-only history; never edit existing entries
 
 ## Checkpoint protocol
@@ -56,7 +57,10 @@ changed, why if known. Each delta yields at most one proposed rule change tagged
 - Never duplicate `music.mp3` into episode folders — always reference `library/music/`.
 - Never skip a checkpoint. A checkpoint without stop is a bug.
 - Never produce a seam transition forbidden by the matrix in `standards/motion-graphics.md`
-  (`a↔a`, `a↔d`, `d↔d`, same-graphic `b→b` or `c→c`).
+  (`head↔head`, `head↔overlay`, `overlay↔overlay`, same-graphic `split→split` or `full→full`;
+  alias form: `a↔a`, `a↔d`, `d↔d`, `b→b`, `c→c`).
+- Never let raw-timeline data cross the Stage 1 → Stage 2 seam. See
+  `standards/pipeline-contracts.md` for the master-aligned rule.
 - Never accept HDR/HLG source. Reject at `new-episode.sh` with a clear error.
 - All repo content (code, docs, file names, commit messages, retros) is **English**.
 - All chat communication with the user is **Russian**, including checkpoint summaries.
