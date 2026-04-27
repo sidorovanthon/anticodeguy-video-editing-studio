@@ -1,0 +1,28 @@
+{
+  "language_code": "en",
+  "words": [
+    {"type": "word", "text": "the",        "start": 1.00, "end": 1.20},
+    {"type": "word", "text": "key",        "start": 1.22, "end": 1.40},
+    {"type": "word", "text": "insight",    "start": 1.42, "end": 1.70},
+    {"type": "word", "text": "here",       "start": 1.72, "end": 1.90},
+    {"type": "word", "text": "is",         "start": 1.92, "end": 2.00},
+    {"type": "word", "text": "repetition", "start": 2.05, "end": 2.55},
+
+    {"type": "word", "text": "the",        "start": 5.00, "end": 5.20},
+    {"type": "word", "text": "key",        "start": 5.22, "end": 5.40},
+    {"type": "word", "text": "insight",    "start": 5.42, "end": 5.70},
+    {"type": "word", "text": "here",       "start": 5.72, "end": 5.90},
+    {"type": "word", "text": "is",         "start": 5.92, "end": 6.00},
+    {"type": "word", "text": "repetition", "start": 6.05, "end": 6.55},
+
+    {"type": "word", "text": "by",         "start": 6.60, "end": 6.75},
+    {"type": "word", "text": "the",        "start": 6.77, "end": 6.85},
+    {"type": "word", "text": "way",        "start": 6.87, "end": 7.05},
+    {"type": "word", "text": "please",     "start": 7.10, "end": 7.40},
+
+    {"type": "word", "text": "matters",    "start": 7.50, "end": 7.85},
+    {"type": "word", "text": "always",     "start": 7.90, "end": 8.20},
+    {"type": "word", "text": "remember",   "start": 8.25, "end": 8.70},
+    {"type": "word", "text": "that",       "start": 8.75, "end": 8.95}
+  ]
+}

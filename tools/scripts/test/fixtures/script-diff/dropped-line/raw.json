@@ -1,0 +1,23 @@
+{
+  "language_code": "en",
+  "words": [
+    {"type": "word", "text": "Welcome",   "start": 0.00, "end": 0.40},
+    {"type": "word", "text": "back",      "start": 0.45, "end": 0.80},
+    {"type": "word", "text": "the",       "start": 1.50, "end": 1.65},
+    {"type": "word", "text": "first",     "start": 1.70, "end": 2.00},
+    {"type": "word", "text": "thing",     "start": 2.05, "end": 2.30},
+    {"type": "word", "text": "to",        "start": 2.32, "end": 2.45},
+    {"type": "word", "text": "know",      "start": 2.50, "end": 2.80},
+    {"type": "word", "text": "is",        "start": 2.82, "end": 2.95},
+    {"type": "word", "text": "that",      "start": 3.00, "end": 3.20},
+    {"type": "word", "text": "compilers", "start": 3.25, "end": 3.85},
+    {"type": "word", "text": "are",       "start": 3.90, "end": 4.05},
+    {"type": "word", "text": "pattern",   "start": 4.10, "end": 4.50},
+    {"type": "word", "text": "matchers",  "start": 4.55, "end": 5.00},
+    {"type": "word", "text": "in",        "start": 5.05, "end": 5.15},
+    {"type": "word", "text": "disguise",  "start": 5.20, "end": 5.80},
+    {"type": "word", "text": "subscribe", "start": 7.00, "end": 7.60},
+    {"type": "word", "text": "for",       "start": 7.65, "end": 7.80},
+    {"type": "word", "text": "more",      "start": 7.85, "end": 8.20}
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "sources": {"raw": "/fake/raw.mp4"},
+  "ranges": [{"source": "raw", "start": 0.00, "end": 4.60, "beat": "all"}],
+  "grade": "none",
+  "overlays": [],
+  "subtitles": null
+}

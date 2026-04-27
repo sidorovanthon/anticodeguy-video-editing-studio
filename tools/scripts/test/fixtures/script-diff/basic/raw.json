@@ -1,0 +1,17 @@
+{
+  "language_code": "en",
+  "words": [
+    {"type": "word", "text": "Hello",     "start": 0.00, "end": 0.30},
+    {"type": "word", "text": "world",     "start": 0.35, "end": 0.70},
+    {"type": "word", "text": "today",     "start": 0.75, "end": 1.10},
+    {"type": "word", "text": "we",        "start": 1.15, "end": 1.30},
+    {"type": "word", "text": "are",       "start": 1.32, "end": 1.50},
+    {"type": "word", "text": "talking",   "start": 1.55, "end": 2.00},
+    {"type": "word", "text": "about",     "start": 2.05, "end": 2.30},
+    {"type": "word", "text": "script",    "start": 2.35, "end": 2.80},
+    {"type": "word", "text": "fidelity",  "start": 2.85, "end": 3.40},
+    {"type": "word", "text": "in",        "start": 3.45, "end": 3.55},
+    {"type": "word", "text": "our",       "start": 3.60, "end": 3.80},
+    {"type": "word", "text": "pipeline",  "start": 3.85, "end": 4.50}
+  ]
+}
