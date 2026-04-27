@@ -15,6 +15,7 @@ ffmpeg -y -f lavfi -i "color=c=blue:s=1440x2560:r=60:d=1" \
   -color_primaries bt709 -color_trc bt709 \
   "$WORK/incoming/raw.mp4" >/dev/null 2>&1
 echo "" > "$WORK/library/music/test-track.mp3"
+echo "hello world this is the verbatim script" > "$WORK/incoming/script.txt"
 
 # Run the script in the fake repo
 ( cd "$WORK" && "$NEW_EPISODE" my-test-slug ) || { echo "FAIL: script exited non-zero"; exit 1; }
@@ -37,6 +38,16 @@ done
 # raw.mp4 should have moved out of incoming/
 if [ -e "$WORK/incoming/raw.mp4" ]; then
   echo "FAIL: raw.mp4 still in incoming/, should have been moved"
+  exit 1
+fi
+
+# script.txt should have been moved to source/script.txt
+if [ ! -f "$EPISODE_DIR/source/script.txt" ]; then
+  echo "FAIL: source/script.txt not produced from incoming/script.txt"
+  exit 1
+fi
+if [ -e "$WORK/incoming/script.txt" ]; then
+  echo "FAIL: incoming/script.txt should have been moved out"
   exit 1
 fi
 

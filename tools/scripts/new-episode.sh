@@ -57,6 +57,11 @@ if [ -f "$INCOMING/notes.md" ]; then
   mv "$INCOMING/notes.md" "$DIR/notes.md"
 fi
 
+# Optional verbatim script (consumed by tools/scripts/script-diff.py at CP1)
+if [ -f "$INCOMING/script.txt" ]; then
+  mv "$INCOMING/script.txt" "$DIR/source/script.txt"
+fi
+
 # Probe basic metadata for meta.yaml
 DURATION="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 \
             "$DIR/source/raw.mp4" 2>/dev/null || echo "0")"
@@ -80,3 +85,6 @@ echo "Created $DIR"
 echo "Next steps:"
 echo "  1. Edit $DIR/meta.yaml (title, music, tags)."
 echo "  2. Run: tools/scripts/run-stage1.sh ${DATE}-${SLUG}"
+if [ -f "$DIR/source/script.txt" ]; then
+  echo "Detected verbatim script — script-diff will run automatically at CP1."
+fi
