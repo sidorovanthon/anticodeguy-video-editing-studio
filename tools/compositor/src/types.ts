@@ -56,3 +56,36 @@ export interface SeamPlan {
   master_duration_ms: number;
   seams: Seam[];
 }
+
+export interface BundleMaster {
+  durationMs: number;
+  width: number;
+  height: number;
+  fps: number;
+}
+
+export type BoundaryKind = "start" | "seam" | "end";
+
+export interface BundleBoundary {
+  atMs: number;
+  kind: BoundaryKind;
+}
+
+export interface BundleWord {
+  text: string;
+  startMs: number;
+  endMs: number;
+}
+
+export interface BundleTranscript {
+  language: string;
+  words: BundleWord[];
+}
+
+export interface MasterBundle {
+  schemaVersion: 1;
+  slug: string;
+  master: BundleMaster;
+  boundaries: BundleBoundary[];
+  transcript: BundleTranscript;
+}
