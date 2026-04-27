@@ -34,8 +34,9 @@ export function buildCompositionHtml(args: ComposeArgs): string {
   );
 
   const captionTpl = loadComponentTemplate("caption-karaoke");
+  const normalizedWords = normalizeWords(args.transcript.words);
   const captionInner = fillTemplate(captionTpl, {
-    words_json: JSON.stringify(args.transcript.words),
+    words_json: JSON.stringify(normalizedWords),
   });
 
   const masterDurationSec = msToSeconds(args.plan.master_duration_ms);
@@ -90,6 +91,43 @@ ${timelineScript}
 </div>
 </body>
 </html>`;
+}
+
+/**
+ * Normalize transcript words to the canonical `{text, start_ms, end_ms}` shape
+ * the caption component expects. Accepts either `start_ms`/`end_ms` (ms) or
+ * `start`/`end` (seconds, ElevenLabs-native). Throws if neither is present.
+ */
+function normalizeWords(
+  words: ReadonlyArray<Record<string, unknown>>,
+): Array<{ text: string; start_ms: number; end_ms: number }> {
+  return words.map((w) => {
+    const startMsRaw = w.start_ms;
+    const endMsRaw = w.end_ms;
+    const startSecRaw = w.start;
+    const endSecRaw = w.end;
+
+    let start_ms: number | undefined;
+    let end_ms: number | undefined;
+
+    if (typeof startMsRaw === "number" && Number.isFinite(startMsRaw)) {
+      start_ms = startMsRaw;
+    } else if (typeof startSecRaw === "number" && Number.isFinite(startSecRaw)) {
+      start_ms = Math.round(startSecRaw * 1000);
+    }
+
+    if (typeof endMsRaw === "number" && Number.isFinite(endMsRaw)) {
+      end_ms = endMsRaw;
+    } else if (typeof endSecRaw === "number" && Number.isFinite(endSecRaw)) {
+      end_ms = Math.round(endSecRaw * 1000);
+    }
+
+    if (start_ms === undefined || end_ms === undefined) {
+      throw new Error(`Word missing timing: ${JSON.stringify(w)}`);
+    }
+
+    return { text: String(w.text ?? ""), start_ms, end_ms };
+  });
 }
 
 function renderSeamFragment(seam: Seam, trackIndex: number): string {

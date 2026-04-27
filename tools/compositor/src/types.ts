@@ -1,9 +1,19 @@
 export type SceneMode = "head" | "split" | "full" | "overlay";
 
+/**
+ * Raw transcript word as it may appear on disk. Stage 1 currently writes the
+ * ElevenLabs-native `start`/`end` (seconds); the canonical caption component
+ * contract is `start_ms`/`end_ms` (ms). The compositor normalizes — both
+ * field-name pairs are accepted on input. Other fields (speaker_id, type, …)
+ * are preserved (loose typing) so we don't lose data on round-trips.
+ */
 export interface TranscriptWord {
   text: string;
-  start_ms: number;
-  end_ms: number;
+  start_ms?: number;
+  end_ms?: number;
+  start?: number;
+  end?: number;
+  [key: string]: unknown;
 }
 
 export interface Transcript {
