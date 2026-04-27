@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "slug": "demo",
+  "master": { "durationMs": 2500, "width": 1440, "height": 2560, "fps": 60 },
+  "boundaries": [
+    { "atMs": 0, "kind": "start" },
+    { "atMs": 1500, "kind": "seam" },
+    { "atMs": 2500, "kind": "end" }
+  ],
+  "transcript": {
+    "language": "en",
+    "words": [
+      { "text": "Hello", "startMs": 0, "endMs": 350 }
+    ]
+  }
+}
