@@ -59,15 +59,17 @@ if [ ! -f "$OVERLAYS" ]; then
 fi
 [ -f "$OVERLAYS" ] || { echo "ERROR: overlays.mov not produced"; exit 1; }
 
-# ffmpeg merge: master video + overlays alpha + music sidecar (loudnorm to -20 LUFS).
-# Audio: keep voice from master; music ducked 6 dB lower per standards/audio.md.
+# ffmpeg merge: master video + overlays alpha + music sidecar.
+# Audio per standards/audio.md: voice arrives from master at -14 LUFS (mastered
+# upstream by video-use); music is loudnorm'd to -20 LUFS, which already bakes in
+# the 6 dB gap below voice. amix weights are both 1 — no extra attenuation.
 ffmpeg -y \
   -i "$MASTER" \
   -i "$OVERLAYS" \
   -i "$MUSIC" \
   -filter_complex "[0:v][1:v]overlay=0:0:format=auto[vout]; \
                    [2:a]loudnorm=I=-20:TP=-1:LRA=11[mloud]; \
-                   [0:a][mloud]amix=inputs=2:duration=first:weights=1 0.5:normalize=0[aout]" \
+                   [0:a][mloud]amix=inputs=2:duration=first:weights=1 1:normalize=0[aout]" \
   -map "[vout]" -map "[aout]" \
   -c:v libx264 -profile:v high -level 5.1 -pix_fmt yuv420p \
   -b:v 35M -maxrate 40M -bufsize 70M \

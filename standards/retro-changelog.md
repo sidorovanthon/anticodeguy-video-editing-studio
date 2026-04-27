@@ -45,3 +45,9 @@ Never edit existing entries. To revoke a rule, append a new entry that removes i
 - New requirement (user): before working on a new episode, the pipeline must check for updates to fast-moving dependencies (HyperFrames in particular — published version 0.4.31 the day this phase started).
 - Action: add a `tools/scripts/check-updates.sh` invoked by `new-episode.sh` as a non-blocking warning. Checks `npm view hyperframes version` against installed version (and vendored `video-use` SHA against upstream). Surfaces a notice; does not auto-upgrade.
 - Reason: HyperFrames is brand-new (0.x) and shipping rapidly; running a stale version risks API drift between episodes. Same risk pattern likely applies to other vendored AI tooling.
+
+## 2026-04-27 — Phase 3 audio mix bug fix in render-final.sh (no standards change)
+- Bug: `tools/scripts/render-final.sh` mixed music with `amix weights=1 0.5` after `loudnorm=I=-20`, double-attenuating the music to ~-26 LUFS in the final mix instead of the -20 LUFS demanded by `standards/audio.md`. Originated from incorrect interpretation in the Task 12 brief — the standard already bakes the 6 dB voice/music gap into the absolute LUFS targets (voice -14, music -20), so no additional weight reduction is required.
+- Fix: `weights=1 1`. Music sits at -20 LUFS post-loudnorm; voice arrives at -14 LUFS from upstream master. `test-render-final.sh` re-run, passes.
+- Audit also confirmed: standards files do NOT conflict with HyperFrames CLI reality. They describe outputs and rules, not tool choice; no edit needed.
+- Outstanding gap (defer to Phase 4): voice -14 LUFS target in `standards/audio.md` is asserted but never enforced in our pipeline — we trust video-use's master.mp4 to already be at -14 LUFS. If the first real episode's master deviates, add a voice loudnorm pass to `render-final.sh`.
