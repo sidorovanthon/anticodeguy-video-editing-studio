@@ -67,6 +67,7 @@ ${captionInner}
 ${css}
 ${base}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
 </head>
 <body>
 <div id="root"
@@ -75,7 +76,8 @@ ${base}
      data-duration="${masterDurationSec}"
      data-width="${ROOT_WIDTH}"
      data-height="${ROOT_HEIGHT}">
-<video class="clip"
+<video id="master-video"
+       class="clip"
        data-start="0"
        data-duration="${masterDurationSec}"
        data-track-index="0"
