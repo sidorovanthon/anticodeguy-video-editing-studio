@@ -64,6 +64,7 @@ echo "$RES" | grep -q "height=2560"         || { echo "FAIL: height != 2560";  e
 echo "$RES" | grep -qE "r_frame_rate=60(/1)?" || { echo "FAIL: fps != 60";      echo "$RES"; exit 1; }
 echo "$RES" | grep -q "codec_name=h264"     || { echo "FAIL: codec != h264";   echo "$RES"; exit 1; }
 echo "$RES" | grep -q "color_transfer=bt709" || { echo "FAIL: trc != bt709";    echo "$RES"; exit 1; }
+echo "$RES" | grep -q "pix_fmt=yuv420p"       || { echo "FAIL: pix_fmt != yuv420p (must be studio-range, not yuvj420p)"; echo "$RES"; exit 1; }
 
 # Audio must be AAC 48kHz stereo
 ARES="$(ffprobe -v error -select_streams a:0 \

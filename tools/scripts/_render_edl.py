@@ -48,13 +48,24 @@ def build_ffmpeg_cmd(edl: dict, grade: dict, output: Path) -> list[str]:
 
     n = len(ranges)
     # filter_complex: concat all (video+audio), then apply grade chain + scale + fps to video.
+    # The trailing `format=yuv420p` and `setparams=range=tv` clamp the output to
+    # studio-range yuv420p; without them, the eq filter inside grade_chain emits
+    # `yuvj420p` (full-range PC), which violates the Rec.709 broadcast-range spec.
     concat_inputs = "".join(f"[{i}:v:0][{i}:a:0]" for i in range(n))
-    COLOR_PARAMS = "setparams=colorspace=bt709:color_trc=bt709:color_primaries=bt709"
+    COLOR_PARAMS = (
+        "setparams=range=tv:colorspace=bt709:color_trc=bt709:color_primaries=bt709"
+    )
     grade_chain = grade.get("ffmpeg_filter_chain", "")
     if grade_chain:
-        video_chain = f"[vc]{grade_chain},scale=1440:2560:flags=lanczos,fps=60,{COLOR_PARAMS}[v]"
+        video_chain = (
+            f"[vc]{grade_chain},scale=1440:2560:flags=lanczos,fps=60,"
+            f"format=yuv420p,{COLOR_PARAMS}[v]"
+        )
     else:
-        video_chain = f"[vc]scale=1440:2560:flags=lanczos,fps=60,{COLOR_PARAMS}[v]"
+        video_chain = (
+            f"[vc]scale=1440:2560:flags=lanczos,fps=60,"
+            f"format=yuv420p,{COLOR_PARAMS}[v]"
+        )
 
     filter_complex = (
         f"{concat_inputs}concat=n={n}:v=1:a=1[vc][a];"

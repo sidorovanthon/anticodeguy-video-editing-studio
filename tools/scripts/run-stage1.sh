@@ -151,8 +151,15 @@ EOF
   )
 
   # Invoke claude in non-interactive headless mode.
-  # --add-dir grants read/write under the repo root.
-  claude -p "$PROMPT" --add-dir "$REPO_ROOT" --output-format text || {
+  # --add-dir grants read access under the repo root; --allowedTools restricts
+  # the subagent to the minimum set it needs (Read/Write/Bash for json validation);
+  # --permission-mode acceptEdits skips per-file write prompts, which would otherwise
+  # block the headless run.
+  claude -p "$PROMPT" \
+    --add-dir "$REPO_ROOT" \
+    --allowedTools Read Write Bash \
+    --permission-mode acceptEdits \
+    --output-format text || {
     echo "ERROR: claude subagent failed. You can hand-author $EDL and re-run with the same command."
     exit 1
   }
