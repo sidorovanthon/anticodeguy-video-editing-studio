@@ -23,3 +23,25 @@ Never edit existing entries. To revoke a rule, append a new entry that removes i
 - `tools/compositor/grade.json` defaults (saturation +8%, contrast +12%, vignette PI/4 @ 0.25) carried into Phase 3 unchanged; first real episode will revisit.
 - Pipeline correctness end-to-end (CP1 + CP2) verified on the upscaled clip: Scribe transcription succeeded, claude subagent authored a valid edl.json, render produced 1440×2560 60 fps Rec.709 SDR studio-range master.mp4 at 34.7 Mbps with AAC 48 kHz stereo 320 kbps.
 - Render bug caught and fixed during verification: ffmpeg `eq` filter inside the grade chain was emitting `yuvj420p` (full-range PC) instead of studio-range `yuv420p`. Added explicit `format=yuv420p,setparams=range=tv` to the filter chain and a regression assertion in `test-run-stage1.sh`.
+
+## 2026-04-27 — Phase 3 HyperFrames CLI reality check (no standards change)
+- Phase 3 plan was written before HyperFrames was inspected. Smoke test against `hyperframes@0.4.31` (npm, published 2026-04-26) found significant divergences from the plan's assumed CLI surface. Plan is NOT being rewritten; downstream tasks (composer, run-stage2.sh, render-final.sh) adapt on the fly to the real tool.
+- Concrete divergences captured in `docs/notes/hyperframes-cli.md`:
+  - Config file is `hyperframes.json`, not `hyperframes.config.json`.
+  - `render` takes a positional `[DIR]` (with `index.html` as the root composition); no `--input`, `--width`, `--height`, or `--transparent` flags exist.
+  - Resolution is set on the root composition's `data-width` / `data-height` attributes, not via CLI.
+  - Transparency comes from `--format mov` or `--format webm`, not `--transparent`.
+  - Real render flags: `-o`, `-f {24,30,60}`, `-q {draft,standard,high}`, `--format`, `-w`, `--docker`, `--hdr`, `--crf`, `--video-bitrate`, `--gpu`, `--strict[-all]`.
+  - HyperFrames composition HTML requires `data-composition-id`, `data-start`, `data-duration`, `data-track-index`, and `class="clip"` on timed elements; videos must be `muted`; GSAP timelines must be paused and registered on `window.__timelines[id]` because the runtime drives time, not the page.
+  - `add <name>` installs a registry **block** (→ `compositions/`) or **component** (→ `compositions/components/`), not a single component dir; it does not modify `index.html` — wiring the include snippet is on us.
+- Determinism: `--docker` is the only bit-deterministic mode. Docker not installed on this machine; `npx hyperframes doctor` flags it. Local mode accepted for now; revisit if cross-machine reproducibility becomes a requirement.
+- HyperFrames installs its own `chrome-headless-shell` (~101 MB, one-off) into `~/.cache/hyperframes/chrome/` on first render. Telemetry is on by default; not disabled (no user requirement).
+- Adapted approach for Phase 3:
+  1. Composer writes `index.html` (not `composition.html`) directly into `episodes/<slug>/stage-2-composite/`, with `data-width=1440 data-height=2560` on the root and properly-attributed timed elements per HyperFrames conventions.
+  2. `run-stage2.sh` invokes `npx hyperframes lint --json` then `npx hyperframes render <stage-2-composite-dir> -f 60 --format mp4 -q high -o preview.mp4`.
+  3. `render-final.sh` renders overlays as `--format mov` (alpha) and ffmpeg overlays + master + music sidecar (mix stays our responsibility — HyperFrames only emits visual + composition-internal audio).
+
+## 2026-04-27 — pipeline pre-flight: tool update check (workflow change)
+- New requirement (user): before working on a new episode, the pipeline must check for updates to fast-moving dependencies (HyperFrames in particular — published version 0.4.31 the day this phase started).
+- Action: add a `tools/scripts/check-updates.sh` invoked by `new-episode.sh` as a non-blocking warning. Checks `npm view hyperframes version` against installed version (and vendored `video-use` SHA against upstream). Surfaces a notice; does not auto-upgrade.
+- Reason: HyperFrames is brand-new (0.x) and shipping rapidly; running a stale version risks API drift between episodes. Same risk pattern likely applies to other vendored AI tooling.
