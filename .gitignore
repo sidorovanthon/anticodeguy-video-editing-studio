@@ -18,7 +18,9 @@ library/music/*
 episodes/*/source/*
 !episodes/*/source/.gitkeep
 episodes/*/stage-1-cut/master.mp4
+episodes/*/stage-1-cut/raw.mp4
 episodes/*/stage-1-cut/transcript.json
+episodes/*/stage-1-cut/edit/
 episodes/*/stage-2-composite/preview.mp4
 episodes/*/stage-2-composite/final.mp4
 

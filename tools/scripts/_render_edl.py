@@ -56,29 +56,41 @@ def build_ffmpeg_cmd(edl: dict, grade: dict, output: Path) -> list[str]:
         "setparams=range=tv:colorspace=bt709:color_trc=bt709:color_primaries=bt709"
     )
     grade_chain = grade.get("ffmpeg_filter_chain", "")
+    # scale with explicit range conversion: full (yuvj420p, 0-255) → tv (yuv420p, 16-235).
+    # Without out_range=tv the data stays full-range but gets tagged as tv, so players
+    # crush shadows and highlights — picture goes dark.
+    SCALE = "scale=1440:2560:flags=lanczos:in_range=auto:out_range=tv"
     if grade_chain:
         video_chain = (
-            f"[vc]{grade_chain},scale=1440:2560:flags=lanczos,fps=60,"
+            f"[vc]{grade_chain},{SCALE},fps=60,"
             f"format=yuv420p,{COLOR_PARAMS}[v]"
         )
     else:
         video_chain = (
-            f"[vc]scale=1440:2560:flags=lanczos,fps=60,"
+            f"[vc]{SCALE},fps=60,"
             f"format=yuv420p,{COLOR_PARAMS}[v]"
         )
 
+    # dynaudnorm normalizes per-frame without lookahead, so no startup PTS desync.
+    # Two-pass loudnorm with measured values would hit -14 LUFS more precisely but
+    # is integrated post-Audio-Isolator (see retro.md PROMOTE for pipeline upgrade).
+    audio_chain = "[a]dynaudnorm=p=0.79:m=10:g=15:s=12[am]"
+
     filter_complex = (
         f"{concat_inputs}concat=n={n}:v=1:a=1[vc][a];"
-        f"{video_chain}"
+        f"{video_chain};"
+        f"{audio_chain}"
     )
 
     cmd = [
         "ffmpeg", "-y",
         *inputs,
         "-filter_complex", filter_complex,
-        "-map", "[v]", "-map", "[a]",
+        "-map", "[v]", "-map", "[am]",
         "-c:v", "libx264", "-profile:v", "high", "-level", "5.1",
         "-pix_fmt", "yuv420p",
+        "-g", "60",  # one I-frame per second
+        "-tune", "fastdecode",  # reduces decoder load (lighter B-pyramid, no CABAC quirks)
         "-b:v", "35M", "-maxrate", "40M", "-bufsize", "70M",
         "-c:a", "aac", "-b:a", "320k", "-ar", "48000", "-ac", "2",
         to_native_path(str(output)),

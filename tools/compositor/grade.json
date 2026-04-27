@@ -1,9 +1,18 @@
 {
+  "colorbalance": {
+    "rm": 0.05,
+    "gm": -0.01,
+    "bm": -0.03,
+    "_comment": "moderate warmth, halved from initial overshot to approximate Lumetri Temp +21.7 / Tint +8.3"
+  },
   "eq": {
-    "saturation": 1.08,
-    "contrast":   1.12,
-    "gamma":      1.0,
-    "brightness": 0.0
+    "saturation": 0.98,
+    "brightness": 0.05,
+    "_comment": "Lumetri Exposure +0.6 ≈ +0.05 lift; Saturation 95.4 ≈ 0.98"
+  },
+  "curves": {
+    "master": "0/0 0.25/0.20 0.5/0.55 0.75/0.78 1/0.95",
+    "_comment": "S-curve with soft highlight roll-off (Lumetri Highlights -26.5)"
   },
   "vignette": {
     "angle": "PI/4",
@@ -11,5 +20,5 @@
     "y0":    "h/2"
   },
   "vignette_scale": 0.25,
-  "ffmpeg_filter_chain": "eq=saturation=1.08:contrast=1.12,vignette=PI/4:eval=init"
+  "ffmpeg_filter_chain": "colorbalance=rm=0.05:gm=-0.01:bm=-0.03,eq=brightness=0.05:saturation=0.98,curves=master='0/0 0.25/0.20 0.5/0.55 0.75/0.78 1/0.95',vignette=PI/4:eval=init"
 }

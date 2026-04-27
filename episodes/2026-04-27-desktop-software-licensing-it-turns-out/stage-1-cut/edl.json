@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "sources": {
+    "raw": "/c/Users/sidor/repos/anticodeguy-video-editing-studio/episodes/2026-04-27-desktop-software-licensing-it-turns-out/stage-1-cut/raw.mp4"
+  },
+  "ranges": [
+    {
+      "source": "raw",
+      "start": 3.76,
+      "end": 10.80,
+      "beat": "HOOK",
+      "reason": "Topic opener: desktop software licensing has options."
+    },
+    {
+      "source": "raw",
+      "start": 13.78,
+      "end": 24.22,
+      "beat": "SETUP",
+      "reason": "Constraint: offline-capable app; obvious option is online activation."
+    },
+    {
+      "source": "raw",
+      "start": 24.76,
+      "end": 36.70,
+      "beat": "WORKER",
+      "reason": "Cloudflare Worker keystore approach. Trimmed before aborted restart 'This is, of course, simplified... and a lot of...'."
+    },
+    {
+      "source": "raw",
+      "start": 43.00,
+      "end": 49.78,
+      "beat": "CAVEAT",
+      "reason": "Successful take of the simplification disclaimer (replaces aborted restart in phrase 3)."
+    },
+    {
+      "source": "raw",
+      "start": 51.66,
+      "end": 63.76,
+      "beat": "OFFLINE",
+      "reason": "Alternative: offline cryptographic / hardware / time-based licensing."
+    },
+    {
+      "source": "raw",
+      "start": 64.38,
+      "end": 68.62,
+      "beat": "OUTRO",
+      "reason": "Human-written script tag and subscribe CTA."
+    }
+  ],
+  "grade": "none",
+  "overlays": [],
+  "subtitles": null
+}
