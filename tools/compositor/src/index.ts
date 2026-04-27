@@ -5,6 +5,7 @@ import { loadTranscript } from "./transcript.js";
 import { planSeams } from "./seamPlanner.js";
 import { writeSeamPlan, readSeamPlan } from "./seamPlanWriter.js";
 import { writeCompositionHtml } from "./composer.js";
+import { loadEdl } from "./edl.js";
 
 const [, , cmd, ...rest] = process.argv;
 
@@ -24,6 +25,7 @@ if (!episodeDir) usage();
 const repoRoot = process.env.REPO_ROOT ?? path.resolve(episodeDir, "../..");
 const transcriptPath  = path.join(episodeDir, "stage-1-cut/transcript.json");
 const cutListPath     = path.join(episodeDir, "stage-1-cut/cut-list.md");
+const edlPath         = path.join(episodeDir, "stage-1-cut/edl.json");
 const seamPlanPath    = path.join(episodeDir, "stage-2-composite/seam-plan.md");
 const compositionPath = path.join(episodeDir, "stage-2-composite/composition.html");
 const masterPath      = path.join(episodeDir, "stage-1-cut/master.mp4");
@@ -50,9 +52,10 @@ if (cmd === "seam-plan") {
 } else if (cmd === "compose") {
   const transcript = loadTranscript(transcriptPath);
   const plan = readSeamPlan(readFileSync(seamPlanPath, "utf8"));
+  const edl = loadEdl(edlPath);
   writeCompositionHtml(
     {
-      repoRoot, episodeDir, plan, transcript,
+      repoRoot, episodeDir, plan, transcript, edl,
       masterRelPath: path.relative(path.dirname(compositionPath), masterPath).replaceAll("\\", "/"),
     },
     compositionPath

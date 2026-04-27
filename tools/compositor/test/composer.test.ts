@@ -4,8 +4,16 @@ import { loadTranscript } from "../src/transcript.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { SeamPlan, Transcript } from "../src/types.js";
+import type { Edl } from "../src/edl.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Identity EDL: master == raw, 0..1.5s, so existing fixture timings pass through
+const identityEdl: Edl = {
+  version: 1,
+  sources: { raw: "raw.mp4" },
+  ranges: [{ source: "raw", start: 0, end: 1.5 }],
+};
 
 describe("buildCompositionHtml", () => {
   it("includes master video src, caption layer, seam fragment, and HyperFrames root attributes", () => {
@@ -31,15 +39,14 @@ describe("buildCompositionHtml", () => {
       plan,
       transcript,
       masterRelPath: "../master.mp4",
+      edl: identityEdl,
     });
 
-    // Original plan assertions
     expect(html).toContain('src="../master.mp4"');
     expect(html).toContain('data-component="title-card"');
     expect(html).toContain('data-component="caption-karaoke"');
     expect(html).toContain("--video-width: 1440");
 
-    // HyperFrames adaptation assertions
     expect(html).toContain('data-composition-id="main"');
     expect(html).toContain('data-width="1440"');
     expect(html).toContain('data-height="2560"');
@@ -47,17 +54,26 @@ describe("buildCompositionHtml", () => {
     expect(html).toContain('data-has-audio="true"');
   });
 
-  it("normalizes ElevenLabs-native start/end (seconds) to start_ms/end_ms (rounded ms) in the embedded caption JSON", () => {
+  it("remaps raw-timeline word timings to master timeline via EDL", () => {
+    // EDL: keep raw [2.0,5.0] → master [0,3.0]; and [10.0,12.0] → master [3.0,5.0]
+    const edl: Edl = {
+      version: 1,
+      sources: { raw: "raw.mp4" },
+      ranges: [
+        { source: "raw", start: 2.0, end: 5.0 },
+        { source: "raw", start: 10.0, end: 12.0 },
+      ],
+    };
     const transcript: Transcript = {
       words: [
-        { text: "Hello", start: 0, end: 0.3504 },
-        { text: "world", start: 0.381, end: 0.7201 },
+        { text: "alpha", start: 2.5, end: 3.0 },
+        { text: "charlie", start: 10.5, end: 11.0 },
       ],
-      duration_ms: 1500,
+      duration_ms: 5000,
     };
     const plan: SeamPlan = {
       episode_slug: "demo",
-      master_duration_ms: 1500,
+      master_duration_ms: 5000,
       seams: [],
     };
     const html = buildCompositionHtml({
@@ -66,26 +82,37 @@ describe("buildCompositionHtml", () => {
       plan,
       transcript,
       masterRelPath: "../master.mp4",
+      edl,
     });
 
     expect(html).toContain(
-      '[{"text":"Hello","start_ms":0,"end_ms":350},{"text":"world","start_ms":381,"end_ms":720}]',
+      '[{"text":"alpha","start_ms":500,"end_ms":1000},{"text":"charlie","start_ms":3500,"end_ms":4000}]',
     );
-    // Raw seconds-form fields must NOT leak into the embedded JSON.
-    expect(html).not.toMatch(/"start":0\.3504/);
+    // Raw timings must NOT leak into the embedded JSON
+    expect(html).not.toMatch(/"start_ms":2500/);
+    expect(html).not.toMatch(/"start_ms":10500/);
   });
 
-  it("passes start_ms/end_ms words through unchanged in the embedded caption JSON", () => {
+  it("excludes words whose raw start falls in a dropped EDL segment", () => {
+    const edl: Edl = {
+      version: 1,
+      sources: { raw: "raw.mp4" },
+      ranges: [
+        { source: "raw", start: 2.0, end: 5.0 },
+        { source: "raw", start: 10.0, end: 12.0 },
+      ],
+    };
     const transcript: Transcript = {
       words: [
-        { text: "Hello", start_ms: 0, end_ms: 350 },
-        { text: "world", start_ms: 380, end_ms: 720 },
+        { text: "alpha", start: 2.5, end: 3.0 },
+        { text: "gap", start: 7.0, end: 7.5 },
+        { text: "charlie", start: 10.5, end: 11.0 },
       ],
-      duration_ms: 1500,
+      duration_ms: 5000,
     };
     const plan: SeamPlan = {
       episode_slug: "demo",
-      master_duration_ms: 1500,
+      master_duration_ms: 5000,
       seams: [],
     };
     const html = buildCompositionHtml({
@@ -94,11 +121,12 @@ describe("buildCompositionHtml", () => {
       plan,
       transcript,
       masterRelPath: "../master.mp4",
+      edl,
     });
 
-    expect(html).toContain(
-      '[{"text":"Hello","start_ms":0,"end_ms":350},{"text":"world","start_ms":380,"end_ms":720}]',
-    );
+    expect(html).not.toContain('"text":"gap"');
+    expect(html).toContain('"text":"alpha"');
+    expect(html).toContain('"text":"charlie"');
   });
 
   it("throws a clear error when a word has neither start_ms/end_ms nor start/end", () => {
@@ -118,6 +146,7 @@ describe("buildCompositionHtml", () => {
         plan,
         transcript,
         masterRelPath: "../master.mp4",
+        edl: identityEdl,
       }),
     ).toThrow(/Word missing timing.*Hello/);
   });
