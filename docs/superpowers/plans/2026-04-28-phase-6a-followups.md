@@ -1040,8 +1040,8 @@ Open `standards/retro-changelog.md`. Append at the end (after the last existing 
 All 12 open follow-ups from the 2026-04-28 Phase 6a-aftermath close are resolved on branch `phase-6a-followups`.
 
 Resolved:
-- (#1) `@hyperframes/producer@0.4.31` exact-pinned in `tools/compositor/package.json`; `check-updates.sh` now flags drift on the producer pin and warns when it disagrees with the hyperframes pin.
-- (#3) `#smoke-plate` repainted with an opaque dark fill; smoke-fixture validate goes from 5 WCAG WARN to 0.
+- (#1) `@hyperframes/producer@0.4.31` exact-pinned in `tools/hyperframes-skills/package.json` (its actual consumer); `sync-hf-skills.sh` rewritten to preserve our local files; `check-updates.sh` reads the new pin and flags both pinned-vs-latest drift and pin-vs-CLI lockstep drift.
+- (#3) HF 0.4.31 contrast-audit OOB bug patched via `patch-package` (`tools/compositor/patches/hyperframes+0.4.31.patch`, applied via `postinstall`). Smoke fixture validate goes from 5 contrast WARN to 0. Upstream issue draft at `docs/hyperframes-patches/0.4.31-contrast-audit-oob.md`.
 - (#4) `sync-hf-skills.sh` dead `[ -n "$TARBALL_URL" ]` branch removed; `set -e` already covered the safety property.
 - (#5) `resolveToken` numeric-coercion JSDoc added; calls out that numeric tokens go through `readTransitionConfig`, not this path.
 - (#6) Captions self-lint O(N²) inline-flagged with the ~200-group threshold past which it should be hoisted.

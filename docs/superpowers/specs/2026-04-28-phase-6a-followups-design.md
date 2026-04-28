@@ -121,8 +121,8 @@ Append to `standards/retro-changelog.md`:
 All 12 open follow-ups from the 2026-04-28 Phase 6a-aftermath close are resolved. See branch `phase-6a-followups` (PR #N).
 
 Resolved:
-- (#1) `@hyperframes/producer@0.4.31` exact-pinned in `tools/compositor/package.json`; `check-updates.sh` extended.
-- (#3) `#smoke-plate` repainted; smoke-fixture validate 0/0.
+- (#1) `@hyperframes/producer@0.4.31` exact-pinned in `tools/hyperframes-skills/package.json` (consumer-local); `sync-hf-skills.sh` preserves local files on resync; `check-updates.sh` reads the new pin and warns on cross-pin lockstep drift.
+- (#3) HF 0.4.31 contrast-audit OOB bug patched via `patch-package` (`tools/compositor/patches/hyperframes+0.4.31.patch`); applies on every `npm install`. Smoke fixture validate 0/0. Upstream issue draft at `docs/hyperframes-patches/0.4.31-contrast-audit-oob.md`.
 - (#4) `sync-hf-skills.sh` dead 404 branch removed.
 - (#5) `resolveToken` numeric-coercion JSDoc added.
 - (#6) Captions self-lint O(N²) inline-flagged with N≈200 threshold.
