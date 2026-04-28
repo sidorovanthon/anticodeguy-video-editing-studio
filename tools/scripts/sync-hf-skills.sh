@@ -36,8 +36,10 @@ console.log(v);
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
+# `set -e` aborts at this `npm view` line if the version does not exist on npm,
+# so the previous `[ -n "$TARBALL_URL" ]` guard was unreachable. The npm-native
+# 404 already preserves the safety property (no silent fallback to `latest`).
 TARBALL_URL="$(npm view "hyperframes@$VERSION" dist.tarball --registry https://registry.npmjs.org)"
-[ -n "$TARBALL_URL" ] || { echo "ERROR: hyperframes@$VERSION has no tarball on npm"; exit 1; }
 
 echo "Syncing hyperframes@$VERSION skills from $TARBALL_URL"
 curl -fsSL "$TARBALL_URL" | tar xz -C "$TMP_DIR"

@@ -7,6 +7,10 @@ export interface EpisodeMetaArgs {
   createdAt?: string;
 }
 
+// $schema and registry URLs are pinned to the contract surface of the
+// hyperframes CLI version declared in tools/compositor/package.json.
+// They MUST be kept in lockstep with that pin; see
+// docs/hyperframes-integration.md for the contract registry.
 const HF_PROJECT_CONFIG = {
   $schema: "https://hyperframes.heygen.com/schema/hyperframes.json",
   registry: "https://raw.githubusercontent.com/heygen-com/hyperframes/main/registry",
