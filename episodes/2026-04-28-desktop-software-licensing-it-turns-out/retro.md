@@ -52,3 +52,62 @@ until Docker is available or alternative render path is established.
 
 **Next action:** Full brainstorm — Docker setup OR alternative render solution,
 combined with Phase 6b (agentic planner) planning.
+
+## Delta 4 — scene segmentation must be script-context-driven, not seam-driven
+
+**User observation:** Current architecture maps scenes 1:1 to EDL seams (6 seams →
+6 scenes). This is backwards. Seams define edit cut boundaries (where there is a
+hard cut that needs to be covered by animation or a transition). Scenes must be
+derived independently from script meaning and context, then mapped onto seam
+boundaries — not the other way around.
+
+**Correct mental model:**
+- EDL seams = where the footage cuts (structural, audio-driven)
+- Scenes = what the viewer should see (semantic, script-driven)
+- One scene can span multiple seams; one seam does not imply a new scene
+
+**Second anchor — max 5s per scene:** No scene should exceed 5 seconds regardless
+of script structure. If the script beat is 12s, it must be subdivided into 2-3
+sub-scenes to maintain visual dynamism. The planner must enforce this ceiling as a
+hard constraint, not a preference.
+
+**PROMOTE** — scene planning must use two independent inputs: (1) script context
+(semantic segmentation by the agentic planner), (2) 5s hard cap per scene. EDL
+seam boundaries inform transition placement, not scene count.
+
+## Delta 5 — render OOM is likely misconfiguration, not hardware limitation
+
+**User observation:** This host has 32 GB RAM + NVIDIA RTX GPU. Adobe Media Encoder
+renders multiple concurrent heavy videos without stressing the system. Our
+hyperframes render crashes the same machine. This is not a hardware problem — it is
+a configuration or tooling problem.
+
+**Hypothesis to investigate in brainstorm:**
+- HF local mode may not leverage GPU encode (--gpu flag unused, defaulting to CPU)
+- Worker count or memory allocation may be set incorrectly for this host spec
+- Something in the render pipeline (Chromium headless at 1440×2560) may have
+  pathological memory growth that --workers 1 does not fully contain
+- Docker may or may not be the right solution for a host that can already handle
+  heavy video workloads natively
+
+**WATCH** — before requiring Docker as mandatory, investigate: (a) GPU-accelerated
+local render via --gpu flag, (b) worker tuning for 32 GB host, (c) whether Chromium
+headless memory is the bottleneck or the ffmpeg encode step.
+
+## Delta 6 — HF pipeline methodology audit required
+
+**User observation:** HF has its own documented methodology and pipeline steps (skills,
+AGENTS.md inside HF projects, validation gates). We may be missing steps that HF
+considers mandatory or that would improve quality/stability.
+
+**Action for brainstorm:** Do a careful read of:
+- tools/hyperframes-skills/hyperframes/SKILL.md
+- tools/hyperframes-skills/hyperframes-cli/SKILL.md
+- The HF project's own AGENTS.md (in stage-2-composite/ after init)
+- hyperframes doctor output
+- hyperframes validate + inspect gates
+
+Map what HF recommends vs what our pipeline actually does. Surface gaps.
+
+`WATCH` — any HF-recommended step not in our pipeline is a candidate for promotion
+to a required gate.
