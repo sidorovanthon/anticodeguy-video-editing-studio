@@ -24,10 +24,12 @@ stop and wait for explicit user approval.
    - 1.3 Apply cuts + audio fades + grade + vignette → `stage-1-cut/master.mp4` → **⏸ CP2**
 3. **Stage 2 — compositor** — overlays captions, motion graphics, music.
    - 2.1 Generate `stage-2-composite/seam-plan.md` → **⏸ CP2.5**
-   - 2.2 Build `composition.html`, render `preview.mp4` → **⏸ CP3**
+   - 2.2 Build `index.html`, render `preview.mp4` → **⏸ CP3**
    - 2.3 Final render + ffmpeg merge with `library/music/<track>.mp3` → `final.mp4`
 4. **Retro** — fill `episodes/<slug>/retro.md`, run macro-retro, propose standards
    updates as `WATCH` / `CONFIRM` / `PROMOTE`. User selects which to promote.
+
+> **FROZEN pilot caveat.** `episodes/2026-04-27-desktop-software-licensing-it-turns-out/` predates Phase 6a and ships a non-canonical Stage 2 layout (`composition.html`, `hf-project/` staging dir, no `hyperframes.json`/`meta.json`). Do not use it as a reference for compositor output, lint settings, or directory structure. The smoke-test fixture `episodes/2026-04-28-phase-6a-smoke-test/` is the canonical example.
 
 ## Standards (load before working on the matching stage)
 - `standards/editing.md`         — cut philosophy, what to keep
@@ -94,3 +96,13 @@ changed, why if known. Each delta yields at most one proposed rule change tagged
 ## Environment
 - `ELEVENLABS_API_KEY` is required (Scribe API). Plan must be Creator tier or higher.
 - ffmpeg, node 20+, python 3.11+ with uv, git — all in PATH. Verify with `check-deps.sh`.
+
+## Render modes
+
+By default, Stage 2 preview/final rendering uses Docker (`hyperframes render --docker`) for memory-safe execution on Windows hosts. Contributors without Docker installed can opt out:
+
+```bash
+HF_RENDER_MODE=local tools/scripts/run-stage2-preview.sh <slug>
+```
+
+Local mode falls back to `--workers 1 --max-concurrent-renders 1 -q draft` to bound RAM. Do not change these knobs without re-running the smoke test on a memory-pressured host.
