@@ -61,3 +61,13 @@ A lightweight validator runnable as part of `run-stage1.sh` that asserts the
 shape Stage 2 expects (master-aligned words[], master duration, EDL-derived
 seam boundaries). Catches drift at Stage 1 instead of crashing Stage 2.
 Status: not yet implemented; tracked for Phase 5.
+
+### Stage 2 output (post Phase 6a)
+Stage 2 emits a HyperFrames-canonical project rooted at
+`episodes/<slug>/stage-2-composite/index.html`, with sub-compositions
+under `episodes/<slug>/stage-2-composite/compositions/`. The previous
+`hf-project/` staging directory is removed; `index.html` is the
+canonical entry consumed directly by `npx hyperframes lint /
+validate / inspect / render`. Captions live at
+`compositions/captions.html`; per-seam bespoke graphics (when present,
+Phase 6b onward) live at `compositions/seam-<id>.html`.

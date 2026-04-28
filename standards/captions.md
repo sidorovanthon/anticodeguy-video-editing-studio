@@ -30,3 +30,12 @@ Typography and timing rules for per-word karaoke captions burned into the final 
 
 ## Promoted 2026-04-27
 - field-contract start_ms-end_ms-only (episode 2026-04-27-desktop-software-licensing-it-turns-out; caption components consume ms-fields; compositor normalizes; component must not assume other naming)
+
+## Technical implementation
+This standard is the editorial layer (typography, position, karaoke
+timing rules, anti-patterns specific to this channel). The technical
+implementation pattern — per-word entrance/exit guarantees,
+tone-adaptive styling, overflow prevention — follows HyperFrames'
+`references/captions.md` (vendored at
+`tools/hyperframes-skills/hyperframes/references/captions.md`). When
+authoring or modifying captions, read both files together.

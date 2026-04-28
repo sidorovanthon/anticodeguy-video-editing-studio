@@ -84,8 +84,9 @@ changed, why if known. Each delta yields at most one proposed rule change tagged
 ## File-location quick map
 - Sources                → `incoming/`, then `episodes/<slug>/source/`
 - Music                  → `library/music/` only — never copied
-- Brand tokens           → `design-system/tokens/tokens.json`
-- Reusable HF components → `design-system/components/`
+- Visual contract         → `DESIGN.md` (repo root; fenced `hyperframes-tokens` JSON block is the only machine-parsed region)
+- HF skills (vendored)    → `tools/hyperframes-skills/` (refresh via `tools/scripts/sync-hf-skills.sh`)
+- Layout shells           → `design-system/components/` (currently empty in 6a; populated in 6b)
 - Per-episode artifacts  → `episodes/<slug>/`
 - Long-lived rules       → `standards/`
 - Scripts                → `tools/scripts/`

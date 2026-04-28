@@ -57,27 +57,34 @@ Therefore:
   planner) must satisfy this rule.
 
 ## Scene-mode → component catalog (WATCH)
-Working catalog of which components each scene mode admits. Treated as
-guidance until the agentic planner exists; will harden into a hard rule once
-it does.
+Working catalog of which graphic sources each scene mode admits as of
+2026-04-28. Will harden into a hard rule once the agentic planner
+exists (Phase 6b). The list is not frozen — Phase 6b refines it
+based on real seam-by-seam tests.
 
-| Scene mode | Allowed components (working set)                  |
+| Scene mode | Allowed sources                                                                                                       |
 |---|---|
-| `head`     | (none — talking-head only)                        |
-| `split`    | `side-figure`, `code-block`, `chart`, `quote-card`|
-| `broll`    | `title-card`, `full-bleed-figure`, `b-roll-clip`  |
-| `overlay`  | `lower-third`, `subscribe-cta`, `name-plate`      |
+| `head`     | (none — talking-head only)                                                                                             |
+| `split`    | `bespoke` via `split-frame` shell (shell ships in 6b; not available in 6a)                                            |
+| `broll`    | `bespoke` ∪ catalog: `data-chart`, `flowchart`, `logo-outro`, `app-showcase`, `ui-3d-reveal`                          |
+| `overlay`  | `bespoke` via `overlay-plate` shell (shell ships in 6b) ∪ catalog: `yt-lower-third`, `instagram-follow`, `tiktok-follow`, `x-post`, `reddit-post`, `spotify-card`, `macos-notification` |
 
-A compositor lint that warns when a `split` / `overlay` / `broll` seam has no
-graphic, and rejects components outside the allowed set, is the next step
-once the planner lands.
+`bespoke` means a per-seam HTML sub-composition written by a coding
+subagent into `episodes/<slug>/stage-2-composite/compositions/seam-<id>.html`,
+following the HyperFrames skill methodology vendored at
+`tools/hyperframes-skills/hyperframes/`. Catalog entries are HF
+registry blocks installed via `npx hyperframes add <name>`.
+
+A compositor lint that warns when a `split` / `overlay` / `broll`
+seam has no graphic, and rejects components outside the allowed set,
+is part of Phase 6b.
 
 ## Hard rules
 - Every seam must produce a scene transition that satisfies the matrix.
 - Scene-mode metadata travels in `seam-plan.md`, one entry per seam.
 - A `split` / `broll` / `overlay` seam without a `graphic:` spec is invalid.
-- Components live in `design-system/components/`. Never inline raw HTML in `composition.html` — always reference a component template.
-- All component styling reads from `design-system/tokens/tokens.json` via CSS variables. No hardcoded color/size/blur values.
+- Per-seam graphics live in `episodes/<slug>/stage-2-composite/compositions/seam-<id>.html` as HyperFrames sub-compositions. Layout shells (`split-frame`, `overlay-plate`) live in `design-system/components/` and are populated during Phase 6b. The compositor never inlines raw HTML in `index.html` — it references sub-compositions via `data-composition-src`.
+- All composition styling reads CSS variables emitted from the `hyperframes-tokens` JSON block in `DESIGN.md` at the repo root. No hardcoded color/size/blur values; no parallel token files.
 
 ## Promoted 2026-04-27
 - outro-scene overlay-with-subscribe (episode 2026-04-27-desktop-software-licensing-it-turns-out; OUTRO must end on subscribe CTA; if previous scene is overlay, demote to split)
