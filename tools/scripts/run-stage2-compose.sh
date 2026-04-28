@@ -35,14 +35,14 @@ META_FILE="$EPISODE/meta.yaml"
 ASSETS_DIR="$COMPOSITE_DIR/assets"
 mkdir -p "$ASSETS_DIR"
 if [ -f "$META_FILE" ]; then
-  MUSIC_REL="$(grep '^music:' "$META_FILE" | sed 's/^music:[[:space:]]*//;s/^"//;s/"$//' | head -n1)"
+  MUSIC_REL="$(grep '^music:' "$META_FILE" | sed "s/^music:[[:space:]]*//;s/^['\"]//;s/['\"]\$//" | head -n1)"
   if [ -n "$MUSIC_REL" ]; then
     MUSIC_SRC="$REPO_ROOT/$MUSIC_REL"
     if [ -f "$MUSIC_SRC" ]; then
       MUSIC_EXT="${MUSIC_SRC##*.}"
       MUSIC_DST="$ASSETS_DIR/music.$MUSIC_EXT"
-      # Skip copy if file is already up-to-date (mtime + size match).
-      if [ ! -f "$MUSIC_DST" ] || [ "$(stat -c %Y "$MUSIC_SRC" 2>/dev/null)" != "$(stat -c %Y "$MUSIC_DST" 2>/dev/null)" ]; then
+      # Skip copy if files are byte-identical (cmp -s is POSIX; avoids cross-platform mtime drift).
+      if [ ! -f "$MUSIC_DST" ] || ! cmp -s "$MUSIC_SRC" "$MUSIC_DST"; then
         cp -p "$MUSIC_SRC" "$MUSIC_DST"
         echo "Copied music asset: $MUSIC_DST"
       fi
