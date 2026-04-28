@@ -54,16 +54,35 @@ Changes:
 
 This narrows the rule strictly to the one historical path, so future episodes that accidentally regenerate `hf-project/` will surface (intentional regression detector).
 
-### Commit 3 — `fix(smoke-fixture): #smoke-plate WCAG-compliant colours`
+### Commit 3 — `fix(hf-patch): patch HF 0.4.31 contrast-audit OOB bug`
 
 **Closes follow-up #3.**
 
-The synthetic "6A WIRING OK" plate in `episodes/2026-04-28-phase-6a-smoke-test/.../seam-4.html` (or wherever `#smoke-plate` is authored) fails WCAG AA 3:1 contrast at 5 sample times during HF `validate`. This is fixture content, not architecture.
+Upon investigation, the 5 WCAG WARN against `#smoke-plate` are not a fixture-content issue. `hyperframes validate --json` returns `ratio: null, fg: rgb(NaN,NaN,NaN), bg: rgb(undefined,undefined,undefined)` regardless of plate colours (verified by trying class-rule literals, inline styles, GSAP tween removal, and backdrop-filter removal — all five attempts produced identical NaN/undefined output).
+
+Root cause is in HF 0.4.31's `src/commands/validate.ts` and inlined `src/commands/contrast-audit.browser.js`:
+
+1. `validate.ts` sets `page.setViewport({width:1920, height:1080})` unconditionally.
+2. The screenshot is taken at viewport size — 1920×1080.
+3. For our 1440×2560 vertical composition, text elements below y=1080 have `rect.y > h` (canvas height).
+4. `contrast-audit.browser.js` clamps `y0 = Math.max(0, Math.floor(rect.y) - 4)` only against zero, not against `h-1`. The ring-sampling loop then reads `px[(y0 * w + x) * 4]` where `idx` exceeds the screenshot's `Uint8ClampedArray` length → returns `undefined`.
+5. `median(rr)` over `undefined` values returns `undefined`. `compR = Math.round(fg[0]*fg[3] + undefined*0)` → `NaN`. Output has `fg: rgb(NaN,...)` and `bg: rgb(undefined,...)`.
+
+Fix: patch `node_modules/hyperframes/dist/cli.js` (the inlined audit script) via `patch-package`. Two changes:
+
+- Skip elements that fall fully outside the screenshot canvas (`continue` when `rect.x + rect.width <= 0 || rect.x >= w || rect.y + rect.height <= 0 || rect.y >= h`).
+- Double-clamp the ring-sampling bounds to keep indices inside `[0, w-1]` × `[0, h-1]` for partial overlaps.
 
 Changes:
-- Locate the plate's foreground/background colour pair. Compute current contrast ratio. Adjust foreground (likely darken text or pick a higher-luminance text colour) until it passes ≥3:1 against its background (large-text WCAG AA threshold). Keep within `DESIGN.md` palette where possible; if no palette pair works, document the override inline.
-- Re-run smoke compose; expect `validate` 0 WARN.
-- If the plate uses tokens that themselves are mid-grey on mid-grey, prefer tightening the fixture rather than rewriting palette tokens — the goal is a clean smoke-fixture, not a palette change.
+- `tools/compositor/package.json` `devDependencies`: add `"patch-package": "^8.0.1"`.
+- `tools/compositor/package.json` `scripts.postinstall`: `"patch-package"` (auto-applies on every `npm install`).
+- New file: `tools/compositor/patches/hyperframes+0.4.31.patch` (generated via `npx patch-package hyperframes`).
+- `docs/hyperframes-upgrade.md`: new "Local patches against `hyperframes`" section listing this patch and the procedure to evaluate it on every version bump.
+- New file: `docs/hyperframes-patches/0.4.31-contrast-audit-oob.md` — upstream issue draft (reproduction, root cause, suggested minimal + proper fixes). To be filed against the HF repo when publicly tracked.
+
+Acceptance: `hyperframes validate --json` against the smoke fixture returns `contrastFailures: 0`. Compose script tail shows `0 errors, 0 warnings` and no contrast-warning section. The patch reapplies on a clean `rm -rf node_modules/hyperframes && npm install`.
+
+The smoke fixture's `seam-4.html` is unchanged; the bug was upstream all along.
 
 ### Commit 4 — `fix: defensive guards (transitions clamp, preflight regex, render-final note)`
 

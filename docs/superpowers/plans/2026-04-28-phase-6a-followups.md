@@ -326,76 +326,122 @@ EOF
 
 ---
 
-## Task 3: smoke-fixture `#smoke-plate` WCAG-compliant colours (closes #3)
+## Task 3: patch HF 0.4.31 contrast-audit OOB bug (closes #3)
 
 **Files:**
-- Modify: `episodes/2026-04-28-phase-6a-smoke-test/stage-2-composite/compositions/seam-4.html`
+- Modify: `tools/compositor/package.json` (add `patch-package` devDep + `postinstall` script)
+- Create: `tools/compositor/patches/hyperframes+0.4.31.patch`
+- Modify: `docs/hyperframes-upgrade.md` (new section + bump-time procedure)
+- Create: `docs/hyperframes-patches/0.4.31-contrast-audit-oob.md` (upstream issue draft)
 
-**What and why:** HF `validate` reports 5 WCAG AA contrast WARNs against `#smoke-plate "6A WIRING OK"` at sample times. The plate currently uses white text (`var(--color-text-primary, #FFFFFF)`) on a translucent glass fill that, sampled headlessly, falls below the 3:1 large-text threshold against the underlying master video. This is fixture content; the architecture is fine.
+**What and why:** Investigation of the 5 WCAG `#smoke-plate` warnings revealed a HF 0.4.31 bug, not a fixture-content issue. `validate --json` returns `ratio: null, fg: rgb(NaN,NaN,NaN), bg: rgb(undefined,undefined,undefined)` — the validator literally cannot compute contrast for elements below the screenshot canvas. Root cause is a missing bounds clamp in HF's inlined `contrast-audit.browser.js` combined with `validate.ts` setting a fixed 1920×1080 viewport regardless of composition height.
 
-The fix: opaque-up the plate background so contrast no longer depends on whatever is underneath. The plate already has `border` and `box-shadow` styling for the glass aesthetic; making the fill itself solid and dark gives white text reliable contrast at every sample time.
+The fix patches `node_modules/hyperframes/dist/cli.js` via `patch-package`. The patch survives `npm install` because of the `postinstall: patch-package` script. The smoke-fixture `seam-4.html` is unchanged; the bug was upstream.
 
-- [ ] **Step 3.1: Read the current plate styling**
+- [ ] **Step 3.1: Install `patch-package` as a devDependency**
 
-Re-read `episodes/2026-04-28-phase-6a-smoke-test/stage-2-composite/compositions/seam-4.html` (already in context above). Confirm the `<div class="plate" id="smoke-plate">` and the rule under `[data-composition-id="seam-smoke"] .plate`.
+```bash
+cd tools/compositor && npm install --save-dev patch-package
+```
 
-- [ ] **Step 3.2: Replace the translucent background with an opaque dark fill**
+Expected: `package.json` `devDependencies` gains `"patch-package": "^8.0.1"` (or whatever current major); `package-lock.json` updated.
 
-Find:
-```html
-    [data-composition-id="seam-smoke"] .plate {
-      background: var(--color-glass-fill, rgba(255,255,255,0.18));
-      border: 1px solid var(--color-glass-stroke, rgba(255,255,255,0.32));
-      box-shadow: 0 8px 32px var(--color-glass-shadow, rgba(0,0,0,0.35));
-      backdrop-filter: blur(var(--blur-glass-md, 24px));
+- [ ] **Step 3.2: Add the `postinstall` hook**
+
+Edit `tools/compositor/package.json` `scripts` block. After `"render"`, add:
+
+```json
+"render": "tsx src/index.ts render",
+"postinstall": "patch-package"
+```
+
+- [ ] **Step 3.3: Edit the inline contrast-audit script in `node_modules/hyperframes/dist/cli.js`**
+
+Open `tools/compositor/node_modules/hyperframes/dist/cli.js`. The contrast-audit browser script is a single-quoted JS string assigned to `contrast_audit_browser_default` near line 41114. Find the substring (escapes are literal `\n` characters in the source):
+
+```
+    var x0 = Math.max(0, Math.floor(rect.x) - 4);\n    var x1 = Math.min(w - 1, Math.ceil(rect.x + rect.width) + 4);\n    var y0 = Math.max(0, Math.floor(rect.y) - 4);\n    var y1 = Math.min(h - 1, Math.ceil(rect.y + rect.height) + 4);
 ```
 
 Replace with:
-```html
-    [data-composition-id="seam-smoke"] .plate {
-      /* WCAG: opaque dark fill so white text passes 3:1 regardless of underlying frame. */
-      background: rgba(8, 12, 24, 0.92);
-      border: 1px solid var(--color-glass-stroke, rgba(255,255,255,0.32));
-      box-shadow: 0 8px 32px var(--color-glass-shadow, rgba(0,0,0,0.35));
+
+```
+    // PATCH: skip elements outside the screenshot canvas (HF validate sets viewport=1920x1080 but compositions can be 1440x2560 — DOM rect.y exceeds canvas bounds, OOB reads return undefined → NaN ratio).\n    if (rect.x + rect.width <= 0 || rect.x >= w || rect.y + rect.height <= 0 || rect.y >= h) continue;\n    var x0 = Math.max(0, Math.min(w - 1, Math.floor(rect.x) - 4));\n    var x1 = Math.max(0, Math.min(w - 1, Math.ceil(rect.x + rect.width) + 4));\n    var y0 = Math.max(0, Math.min(h - 1, Math.floor(rect.y) - 4));\n    var y1 = Math.max(0, Math.min(h - 1, Math.ceil(rect.y + rect.height) + 4));
 ```
 
-Notes:
-- `backdrop-filter` line is removed because once the fill is near-opaque the blur is invisible and only adds GPU cost.
-- The `var(--color-text-primary, #FFFFFF)` on text stays untouched.
-- `rgba(8, 12, 24, 0.92)` against `#FFFFFF` text is a contrast ratio >15:1, well above the 3:1 large-text bar.
+- [ ] **Step 3.4: Verify the patch eliminates `null:1` on the smoke fixture**
 
-- [ ] **Step 3.3: Re-compose smoke fixture**
-
-Run from repo root:
 ```bash
-bash tools/scripts/run-stage2-compose.sh 2026-04-28-phase-6a-smoke-test 2>&1 | tail -40
+tools/compositor/node_modules/.bin/hyperframes validate episodes/2026-04-28-phase-6a-smoke-test/stage-2-composite --json 2>&1 | grep -E "contrastFailures|ratio|fg|bg" | head -10
 ```
-Expected: `validate` passes with **0** WARN (previously 5). `lint`, `inspect ok=true`, `Compose ready:` final line.
 
-If new WARNs appear from another element, STOP — there is fixture cascade. Revert and pick a less invasive change (e.g. keep the background but raise its alpha to `>= 0.85`).
+Expected: `"contrastFailures": 0`. No `rgb(NaN` or `rgb(undefined` in output.
 
-- [ ] **Step 3.4: Re-run vitest**
+- [ ] **Step 3.5: Generate the patch file**
 
-Run:
+```bash
+cd tools/compositor && npx patch-package hyperframes
+```
+
+Expected: `✔ Created file patches/hyperframes+0.4.31.patch`. The diff should show only the lines touched in Step 3.3.
+
+- [ ] **Step 3.6: Verify the patch survives a clean reinstall**
+
+```bash
+rm -rf node_modules/hyperframes && npm install 2>&1 | tail -10
+grep -c "PATCH: skip elements outside" node_modules/hyperframes/dist/cli.js
+```
+
+Expected: `npm install` output contains `Applying patches... hyperframes@0.4.31 ✔`. The grep returns `1` (the patch's PATCH-comment is present).
+
+- [ ] **Step 3.7: Re-run smoke compose end-to-end**
+
+```bash
+cd ../.. && HF_RENDER_MODE=local bash tools/scripts/run-stage2-compose.sh 2026-04-28-phase-6a-smoke-test 2>&1 | grep -E "WCAG|warning|error|Compose ready" | head -10
+```
+
+Expected: `0 errors, 0 warnings`, no `WCAG AA contrast warnings (...)` block, `Compose ready:` final line.
+
+- [ ] **Step 3.8: Re-run vitest**
+
 ```bash
 cd tools/compositor && npm test 2>&1 | tail -5
 ```
-Expected: 75/75. (No tests reference seam-4.html content.)
+Expected: 75/75.
 
-- [ ] **Step 3.5: Commit**
+- [ ] **Step 3.9: Add the upgrade-procedure docs**
 
-Run:
+Append a new "## Local patches against `hyperframes`" section to `docs/hyperframes-upgrade.md` listing this patch (root cause, files affected, link to the upstream issue draft) and the bump-time procedure (run the smoke test; if the patch fails to apply, evaluate whether upstream fixed it or whether the diff needs regenerating).
+
+Create `docs/hyperframes-patches/0.4.31-contrast-audit-oob.md` containing the upstream issue draft (reproduction, root cause analysis, suggested minimal + proper fixes). This is the file we will paste when filing the issue against the HF repo.
+
+- [ ] **Step 3.10: Commit**
+
 ```bash
-cd ../.. && git add episodes/2026-04-28-phase-6a-smoke-test/stage-2-composite/compositions/seam-4.html
+cd ../.. && git add tools/compositor/package.json tools/compositor/package-lock.json tools/compositor/patches/hyperframes+0.4.31.patch docs/hyperframes-upgrade.md docs/hyperframes-patches/0.4.31-contrast-audit-oob.md
 git commit -m "$(cat <<'EOF'
-fix(smoke-fixture): #smoke-plate WCAG-compliant colours
+fix(hf-patch): patch HF 0.4.31 contrast-audit OOB bug
 
-The synthetic '6A WIRING OK' plate failed WCAG AA 3:1 contrast at
-five sample times because its translucent fill let underlying frame
-content dominate the headless contrast measurement. Switch the plate
-to an opaque dark fill (rgba(8,12,24,0.92)) so white text passes
-contrast regardless of what is below. Fixture-content change only;
-no architectural impact.
+hyperframes validate reports null:1 contrast warnings with
+fg=rgb(NaN,...) bg=rgb(undefined,...) for any text element below
+y=1080 in the headless viewport. Investigation showed it is not
+fixture-content: changing colours, removing var(), inlining styles,
+and stripping the entrance tween all produced identical NaN/undefined
+output.
+
+Root cause: validate.ts hard-codes page.setViewport(1920, 1080) and
+takes the screenshot at viewport size; for a 1440x2560 composition,
+elements below y=1080 produce rect.y > canvas.h. The audit script
+in contrast-audit.browser.js clamps x0/y0 only against zero, not
+against w-1/h-1, so the ring-sampling loop reads OOB on the
+Uint8ClampedArray (returns undefined). median() over undefineds
+returns undefined; the composite math degrades to NaN.
+
+Patch (via patch-package) adds a fully-out-of-canvas skip and
+double-clamps the ring bounds. The smoke fixture validate now
+reports 0 contrast failures. Upstream issue draft at
+docs/hyperframes-patches/0.4.31-contrast-audit-oob.md will be filed
+when publicly tracked.
 
 Closes 6a-aftermath follow-up #3.
 
