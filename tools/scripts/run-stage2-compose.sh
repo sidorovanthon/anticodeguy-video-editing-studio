@@ -21,12 +21,34 @@ REPO_ROOT="$(pwd)"
 EPISODE="$REPO_ROOT/episodes/$SLUG"
 COMPOSITE_DIR="$EPISODE/stage-2-composite"
 
-[ -d "$EPISODE" ]                              || { echo "ERROR: $EPISODE not found"; exit 1; }
-[ -f "$EPISODE/stage-1-cut/master.mp4" ]       || { echo "ERROR: master.mp4 missing"; exit 1; }
-[ -f "$EPISODE/master/bundle.json" ]           || { echo "ERROR: master/bundle.json missing"; exit 1; }
-[ -f "$REPO_ROOT/DESIGN.md" ]                  || { echo "ERROR: $REPO_ROOT/DESIGN.md missing"; exit 1; }
+[ -d "$EPISODE" ]                                          || { echo "ERROR: $EPISODE not found"; exit 1; }
+[ -f "$EPISODE/stage-2-composite/assets/master.mp4" ]      || { echo "ERROR: master.mp4 missing (expected at stage-2-composite/assets/master.mp4)"; exit 1; }
+[ -f "$EPISODE/master/bundle.json" ]                       || { echo "ERROR: master/bundle.json missing"; exit 1; }
+[ -f "$REPO_ROOT/DESIGN.md" ]                              || { echo "ERROR: $REPO_ROOT/DESIGN.md missing"; exit 1; }
 
-mkdir -p "$COMPOSITE_DIR"
+# Copy music asset into the HF project (per the HF-self-contained
+# architecture). Reads music: from meta.yaml; if absent, no music
+# asset is staged and the composer will omit the music audio clip.
+META_FILE="$EPISODE/meta.yaml"
+ASSETS_DIR="$COMPOSITE_DIR/assets"
+mkdir -p "$ASSETS_DIR"
+if [ -f "$META_FILE" ]; then
+  MUSIC_REL="$(grep '^music:' "$META_FILE" | sed 's/^music:[[:space:]]*//;s/^"//;s/"$//' | head -n1)"
+  if [ -n "$MUSIC_REL" ]; then
+    MUSIC_SRC="$REPO_ROOT/$MUSIC_REL"
+    if [ -f "$MUSIC_SRC" ]; then
+      MUSIC_EXT="${MUSIC_SRC##*.}"
+      MUSIC_DST="$ASSETS_DIR/music.$MUSIC_EXT"
+      # Skip copy if file is already up-to-date (mtime + size match).
+      if [ ! -f "$MUSIC_DST" ] || [ "$(stat -c %Y "$MUSIC_SRC" 2>/dev/null)" != "$(stat -c %Y "$MUSIC_DST" 2>/dev/null)" ]; then
+        cp -p "$MUSIC_SRC" "$MUSIC_DST"
+        echo "Copied music asset: $MUSIC_DST"
+      fi
+    else
+      echo "WARN: meta.yaml music: '$MUSIC_REL' but $MUSIC_SRC not found — composer will omit music clip"
+    fi
+  fi
+fi
 
 # Step 1: seam-plan (CP2.5)
 REPO_ROOT="$REPO_ROOT" npx -y tsx tools/compositor/src/index.ts seam-plan --episode "$EPISODE"
