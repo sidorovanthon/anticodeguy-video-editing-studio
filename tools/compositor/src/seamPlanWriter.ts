@@ -15,6 +15,9 @@ export function writeSeamPlan(plan: SeamPlan): string {
     lines.push(
       `SEAM ${seam.index} at_ms=${seam.at_ms} scene: ${seam.scene} ends_at_ms=${seam.ends_at_ms}`,
     );
+    // TODO(6b): consumed by the agentic graphics planner; currently round-trip
+    // only — the compositor selects per-seam HTML by file existence, not by
+    // reading this field. Do not delete as "unused".
     if (seam.graphic) {
       lines.push(`  graphic: ${seam.graphic.component}`);
       lines.push(`  data: ${JSON.stringify(seam.graphic.data)}`);
