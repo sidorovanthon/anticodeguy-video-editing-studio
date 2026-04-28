@@ -4,21 +4,28 @@ set -euo pipefail
 # Stage 2b: render preview.mp4 from the stage-2-composite/ project produced
 # by run-stage2-compose.sh (HF reads index.html directly under that dir).
 #
-# Usage: tools/scripts/run-stage2-preview.sh <slug> [--workers N] [--fps N]
+# Usage: tools/scripts/run-stage2-preview.sh <slug> [--workers N] [--fps N] [--quality Q] [--draft]
 #
 # Resolution is ALWAYS native 1440x2560 — stage-2-composite/index.html is
-# not mutated. RAM/CPU is throttled instead via
-# fewer Chromium workers and a lower fps for previews. Final renders should
-# be invoked separately (e.g. render-final.sh) without this throttling.
+# not mutated. RAM/CPU is throttled instead via fewer Chromium workers,
+# a lower fps, and a lower encoder quality for previews. Final renders
+# should be invoked separately (e.g. render-final.sh) without this
+# throttling.
 #
-# Defaults: --workers 1 --fps 30 (cheap-and-survivable on dev machines).
-# hyperframes' --workers flag launches a separate Chrome process per worker
-# (~256 MB RAM each); 1 worker keeps RAM bounded for the 1440x2560 layout.
+# Defaults: --workers 1 --fps 30 --quality standard (cheap-and-survivable
+# on dev machines). --draft is a shortcut for --quality draft and is
+# strongly recommended for smoke tests on memory-pressured hosts.
+# hyperframes' --workers flag launches a separate Chrome process per
+# worker (~256 MB RAM each); 1 worker keeps RAM bounded for 1440x2560.
+# We also pin --max-concurrent-renders to 1 so HF's producer server
+# does not double-spawn Chrome instances behind our back.
 
 usage() {
-  echo "Usage: $0 <slug> [--workers N] [--fps N]"
-  echo "  --workers N   Parallel Chromium render workers (default: 1)"
-  echo "  --fps N       Frame rate: 24, 30, or 60 (default: 30)"
+  echo "Usage: $0 <slug> [--workers N] [--fps N] [--quality Q] [--draft]"
+  echo "  --workers N    Parallel Chromium render workers (default: 1)"
+  echo "  --fps N        Frame rate: 24, 30, or 60 (default: 30)"
+  echo "  --quality Q    HF encoder quality: draft, standard, high (default: standard)"
+  echo "  --draft        Shortcut for --quality draft. Recommended for smoke tests."
 }
 
 if [ "$#" -lt 1 ]; then
@@ -29,6 +36,7 @@ fi
 SLUG=""
 WORKERS=1
 FPS=30
+QUALITY=standard
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -42,6 +50,13 @@ while [ "$#" -gt 0 ]; do
       FPS="$2"; shift 2 ;;
     --fps=*)
       FPS="${1#--fps=}"; shift ;;
+    --quality)
+      [ "$#" -ge 2 ] || { echo "ERROR: --quality requires a value"; exit 1; }
+      QUALITY="$2"; shift 2 ;;
+    --quality=*)
+      QUALITY="${1#--quality=}"; shift ;;
+    --draft)
+      QUALITY=draft; shift ;;
     -h|--help)
       usage; exit 0 ;;
     -*)
@@ -58,6 +73,7 @@ case "$WORKERS" in ''|*[!0-9]*) echo "ERROR: --workers must be a positive intege
 [ "$WORKERS" -ge 1 ] || { echo "ERROR: --workers must be >= 1"; exit 1; }
 case "$FPS" in ''|*[!0-9]*) echo "ERROR: --fps must be a positive integer"; exit 1 ;; esac
 [ "$FPS" -ge 1 ] || { echo "ERROR: --fps must be >= 1"; exit 1; }
+case "$QUALITY" in draft|standard|high) ;; *) echo "ERROR: --quality must be draft|standard|high"; exit 1 ;; esac
 
 REPO_ROOT="$(pwd)"
 EPISODE="$REPO_ROOT/episodes/$SLUG"
@@ -71,9 +87,10 @@ rm -f "$HF_OUT"
 npx -y hyperframes render "$COMPOSITE_DIR" \
   -o preview.mp4 \
   -f "$FPS" \
-  -q standard \
+  -q "$QUALITY" \
   --format mp4 \
-  --workers "$WORKERS" || { echo "ERROR: hyperframes render failed"; exit 1; }
+  --workers "$WORKERS" \
+  --max-concurrent-renders 1 || { echo "ERROR: hyperframes render failed"; exit 1; }
 
 # `-o` may be interpreted relative to the project dir or to cwd, or HF may
 # place it in the default renders/<name>_<ts>.mp4 location. Relocate to $HF_OUT.
