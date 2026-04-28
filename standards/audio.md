@@ -25,10 +25,10 @@ Voice levels, music handling, and final audio specification for shorts.
 - No music file is committed into episode folders. `run-stage2-compose.sh` copies from `library/music/` into `stage-2-composite/assets/` at compose time (gitignored). `library/music/` is the authoritative source.
 
 ## Promoted 2026-04-27
-- loudnorm-mode two-pass-with-measured (episode 2026-04-27-desktop-software-licensing-it-turns-out; single-pass introduces 2-3s PTS desync at start)
-
-## Promoted 2026-04-27
 - no-fades hard-cuts (episode 2026-04-27-desktop-software-licensing-it-turns-out; host preference; video-use fade injection bypassed by direct ffmpeg render anyway)
+
+## Retired 2026-04-28
+- loudnorm-mode two-pass-with-measured — moot after Phase 6a-aftermath X-amendment dropped the ffmpeg/loudnorm pipeline from `render-final.sh` in favour of HF native mixing (`data-volume`). Voice loudness is now an upstream-trust property of `master.mp4`. See **Mixing implementation** below and `retro-changelog.md` 2026-04-28 — pre-first-episode cleanup.
 
 ## Mixing implementation (post 6a-aftermath)
 

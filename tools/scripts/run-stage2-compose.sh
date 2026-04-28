@@ -15,7 +15,9 @@ fi
 SLUG="$1"
 REPO_ROOT="$(pwd)"
 HF_BIN="$REPO_ROOT/tools/compositor/node_modules/.bin/hyperframes"
+TSX_BIN="$REPO_ROOT/tools/compositor/node_modules/.bin/tsx"
 [ -x "$HF_BIN" ] || { echo "ERROR: pinned hyperframes binary not found at $HF_BIN — run 'cd tools/compositor && npm install'"; exit 1; }
+[ -x "$TSX_BIN" ] || { echo "ERROR: pinned tsx binary not found at $TSX_BIN — run 'cd tools/compositor && npm install'"; exit 1; }
 
 # shellcheck source=tools/scripts/lib/preflight.sh
 . "$(dirname "$0")/lib/preflight.sh"
@@ -53,11 +55,11 @@ if [ -f "$META_FILE" ]; then
 fi
 
 # Step 1: seam-plan (CP2.5)
-REPO_ROOT="$REPO_ROOT" npx -y tsx tools/compositor/src/index.ts seam-plan --episode "$EPISODE"
+REPO_ROOT="$REPO_ROOT" "$TSX_BIN" "$REPO_ROOT/tools/compositor/src/index.ts" seam-plan --episode "$EPISODE"
 echo "CP2.5 ready: $COMPOSITE_DIR/seam-plan.md. Awaiting review."
 
 # Step 2: emit root index.html + captions sub-composition + per-seam wires
-REPO_ROOT="$REPO_ROOT" npx tsx tools/compositor/src/index.ts compose --episode "$EPISODE"
+REPO_ROOT="$REPO_ROOT" "$TSX_BIN" "$REPO_ROOT/tools/compositor/src/index.ts" compose --episode "$EPISODE"
 
 # Step 3: HyperFrames lint + validate + inspect against the canonical
 # project (index.html lives directly under stage-2-composite/).

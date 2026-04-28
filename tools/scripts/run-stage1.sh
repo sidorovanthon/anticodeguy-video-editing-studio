@@ -22,6 +22,8 @@ esac
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(pwd)"
+TSX_BIN="$REPO_ROOT/tools/compositor/node_modules/.bin/tsx"
+[ -x "$TSX_BIN" ] || { echo "ERROR: pinned tsx binary not found at $TSX_BIN — run 'cd tools/compositor && npm install'"; exit 1; }
 EPISODE="$REPO_ROOT/episodes/$SLUG"
 STAGE1="$EPISODE/stage-1-cut"
 SOURCE_RAW="$EPISODE/source/raw.mp4"
@@ -58,8 +60,7 @@ if [ "$MODE" = "render" ]; then
     --output "$MASTER"
 
   # Generate the master-aligned bundle that Stage 2 consumes.
-  ( cd "$REPO_ROOT/tools/compositor" && \
-    REPO_ROOT="$REPO_ROOT" npx tsx src/index.ts write-bundle --episode "$EPISODE" )
+  REPO_ROOT="$REPO_ROOT" "$TSX_BIN" "$REPO_ROOT/tools/compositor/src/index.ts" write-bundle --episode "$EPISODE"
 
   echo
   echo "CP2 ready: $MASTER. Awaiting review."

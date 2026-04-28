@@ -193,3 +193,27 @@ Smoke fixture verified end-to-end: lint 0/0, validate 0/0 (was 5 contrast WARN),
 
 Spec: `docs/superpowers/specs/2026-04-28-phase-6a-followups-design.md`
 Plan: `docs/superpowers/plans/2026-04-28-phase-6a-followups.md`
+
+## 2026-04-28 — pre-first-episode cleanup
+
+Sanity-check pass before the first real episode runs. No code architecture changes; closes four open hangovers in `standards/` and the retro itself, plus a doc-onboarding fix and a tsx pin-discipline fix in three scripts. Single PR `pre-first-episode-cleanup` against `main`.
+
+Retired / closed standards rules and observations:
+
+- **Retired `loudnorm-mode two-pass-with-measured`** (formerly `standards/audio.md` "Promoted 2026-04-27"). The Phase 6a-aftermath X-amendment dropped the ffmpeg loudnorm/amix path from `render-final.sh` entirely in favour of HF native mixing via `<audio data-volume>` clips. The two-pass rule had no remaining call site. `standards/audio.md` now lists this entry under a `Retired 2026-04-28` block; the historical "Promoted" entry is removed from the standards file but preserved here.
+- **Retired `amix weights=1 1` lesson** (originally captured in retro 2026-04-27 — Phase 3 audio mix bug fix). Same X-amendment removed `amix` from the pipeline; HF takes the raw clips and mixes natively per `data-volume`. The lesson's failure mode (double-attenuation through `loudnorm + amix weights<1`) is no longer reachable.
+- **Closed observation `voice -14 LUFS asserted but never enforced`** (originally captured in retro 2026-04-27 — Phase 3, deferred to Phase 4). Decision: voice loudness remains an upstream-trust property of `master.mp4` from video-use. No `loudnorm` gate is added to `render-final.sh`. If the first real episode's master deviates audibly from `-14 LUFS`, revisit by adding a voice loudnorm pass to Stage 1 (NOT Stage 2 — Stage 2 is now thin wrapper around HF render). Recorded here so the open hangover does not re-surface as "still TODO".
+- **Closed planned `CP1.5 contract gate`** (originally captured in retro 2026-04-28 — Phase 5 prep, planned as a Stage 1 → Stage 2 boundary validator). Decision: the gate is satisfied by typed `loadBundle()` strict validation at the Stage 2 read site (Phase 6a). Adding a separate Stage 1 output validator would duplicate the same schema check on the same JSON; the bundle is read exactly once per episode. If Stage 2 ever grows multiple bundle consumers, revisit.
+
+Active standards/code fixes:
+
+- `README.md` Setup section now lists both `tools/compositor` and `tools/hyperframes-skills` `npm install` steps. Prior to this change a fresh checkout would hit a missing `@hyperframes/producer` at compose time.
+- `docs/superpowers/plans/2026-04-27-phase-1-foundation.md` updated to reference `run-stage2-compose.sh` + `run-stage2-preview.sh` (the canonical pair since 6a-aftermath) instead of the deleted `run-stage2.sh` wrapper. Other historical drift in the Phase 1 / Phase 3 plan docs is intentionally left alone — those plans are frozen historical artifacts.
+- `tools/scripts/run-stage1.sh` and `tools/scripts/run-stage2-compose.sh` now invoke `tsx` via the absolute pinned path at `tools/compositor/node_modules/.bin/tsx` (with `abort-if-missing` guard), matching the pin discipline already applied to the `hyperframes` CLI binary in Phase 6a-aftermath. Closes the loophole where `npx tsx` would silently fall back to a globally-installed (or absent) tsx.
+- `.gitignore` extended to silence the regenerated `.hyperframes/` per-episode artifact directory and the user-local `.claude/` plugin cache. `git status` is clean again.
+
+No code-behaviour changes. No tests added. Smoke fixture verified end-to-end after the tsx pin: lint 0/0, validate 0/0, inspect ok=true, vitest 76/76.
+
+Source: hand-off audit at the start of session 2026-04-28; three Explore agents (architecture / docs / retro) returned a 13-finding punch-list; triage retired 5 stale rules, fixed 4 active items, ignored 3 cosmetic plan-doc references.
+
+Reason: ensure the first real episode runs against a tree where `standards/` has no superseded rules masquerading as live, where the retro has no open hangovers without explicit closure, and where the README onboards a fresh checkout cleanly.
