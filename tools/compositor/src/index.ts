@@ -6,6 +6,7 @@ import { writeSeamPlan, readSeamPlan } from "./seamPlanWriter.js";
 import { writeCompositionFiles } from "./composer.js";
 import { loadBundle } from "./stage2/loadBundle.js";
 import { writeFileSync } from "node:fs";
+import { writeEpisodeMeta } from "./episodeMeta.js";
 
 const [, , cmd, ...rest] = process.argv;
 
@@ -74,6 +75,11 @@ if (cmd === "write-bundle") {
   });
   console.log(`Wrote ${indexPath}`);
   console.log(`Wrote ${captionsPath}`);
+  const compositeDir = path.join(episodeDir, "stage-2-composite");
+  const slug = path.basename(path.resolve(episodeDir));
+  const meta = writeEpisodeMeta({ episodeSlug: slug, outDir: compositeDir });
+  console.log(`Wrote ${meta.hyperframesJsonPath}`);
+  console.log(`Wrote ${meta.metaJsonPath}`);
   if (existingSeamFiles.size > 0) {
     console.log(`Wired ${existingSeamFiles.size} per-seam sub-composition(s): ${[...existingSeamFiles].join(", ")}`);
   }
