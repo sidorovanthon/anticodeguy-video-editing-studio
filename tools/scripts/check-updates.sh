@@ -22,6 +22,15 @@ if [ -n "$LOCAL_HF" ]; then
   fi
 fi
 
+# 1a. CLI/skills mismatch (exact-pin in package.json must equal vendored VERSION)
+SKILLS_VERSION_FILE="$REPO_ROOT/tools/hyperframes-skills/VERSION"
+if [ -n "$LOCAL_HF" ] && [ -f "$SKILLS_VERSION_FILE" ]; then
+  SKILLS_VER="$(tr -d '[:space:]' < "$SKILLS_VERSION_FILE")"
+  if [ "$LOCAL_HF" != "$SKILLS_VER" ]; then
+    note "hyperframes CLI pin ($LOCAL_HF) ≠ vendored skills version ($SKILLS_VER) — run tools/scripts/sync-hf-skills.sh"
+  fi
+fi
+
 # 2. video-use (vendored at a SHA in vendor/video-use)
 if [ -d "$REPO_ROOT/vendor/video-use/.git" ] || [ -f "$REPO_ROOT/vendor/video-use/.git" ]; then
   LOCAL_VU="$(git -C "$REPO_ROOT/vendor/video-use" rev-parse --short HEAD 2>/dev/null || true)"
