@@ -10,6 +10,19 @@ set -euo pipefail
 #
 # Usage: tools/scripts/render-final.sh <slug>
 
+# shellcheck source=tools/scripts/lib/preflight.sh
+. "$(dirname "$0")/lib/preflight.sh"
+hf_preflight || { echo "ERROR: doctor preflight failed; aborting final render"; exit 1; }
+
+HF_RENDER_MODE="${HF_RENDER_MODE:-docker}"
+RENDER_FLAGS=()
+if [ "$HF_RENDER_MODE" = "docker" ]; then
+  RENDER_FLAGS+=(--docker)
+elif [ "$HF_RENDER_MODE" != "local" ]; then
+  echo "ERROR: HF_RENDER_MODE must be 'docker' or 'local' (got '$HF_RENDER_MODE')"
+  exit 1
+fi
+
 if [ "$#" -ne 1 ]; then
   echo "Usage: $0 <slug>"
   exit 1
@@ -45,7 +58,8 @@ npx -y hyperframes render "$COMPOSITE_DIR" \
   -o "$OVERLAYS_NAME" \
   -f 60 \
   -q high \
-  --format mov || { echo "ERROR: hyperframes final render failed"; exit 1; }
+  --format mov \
+  "${RENDER_FLAGS[@]}" || { echo "ERROR: hyperframes final render failed"; exit 1; }
 
 # Relocate output if HF placed it elsewhere (mirror run-stage2.sh fallback chain).
 if [ ! -f "$OVERLAYS" ]; then
