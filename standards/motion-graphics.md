@@ -37,9 +37,9 @@ same-graphic `split→split`, same-graphic `broll→broll`.
 Bounded by phrase boundaries, not arbitrary timers. A scene runs from one seam to the next regardless of resulting duration.
 
 ## Visual language
-- Frosted glass surfaces use `tokens.color.glass.fill`, `tokens.blur.*`, `tokens.color.glass.stroke`, `tokens.color.glass.shadow`.
-- Corners use `tokens.radius.*`.
-- Padding inside glass surfaces: at least `tokens.spacing.md`.
+- Frosted glass surfaces use `color.glass.fill`, `blur.*`, `color.glass.stroke`, `color.glass.shadow` (resolved from `DESIGN.md` `hyperframes-tokens` JSON block).
+- Corners use `radius.*`.
+- Padding inside glass surfaces: at least `spacing.md`.
 - Captions never sit on these surfaces — see `standards/captions.md`.
 
 ## Graphic specs are mandatory for non-`head` seams
@@ -88,3 +88,15 @@ is part of Phase 6b.
 
 ## Promoted 2026-04-27
 - outro-scene overlay-with-subscribe (episode 2026-04-27-desktop-software-licensing-it-turns-out; OUTRO must end on subscribe CTA; if previous scene is overlay, demote to split)
+
+## Layout Before Animation
+
+Source: `tools/hyperframes-skills/hyperframes/SKILL.md#layout-before-animation`.
+
+Position elements at their hero-frame in static CSS first. Animate *toward* that position with `gsap.from()`. Never use `position: absolute; top: Npx` on a content container as a layout primitive. See `standards/bespoke-seams.md` for the canonical pattern.
+
+## Scene phases (build / breathe / resolve)
+
+Source: `tools/hyperframes-skills/hyperframes/references/motion-principles.md`.
+
+Every multi-second seam allocates ~0–30 % entrance, ~30–70 % ambient breathe, ~70–100 % resolve. The seam-to-seam transition (handled by `transitions.html`) is the exit; per-element fade-outs before a transition are a bug.
