@@ -37,4 +37,25 @@ describe("buildTransitionsHtml", () => {
     expect(html).not.toMatch(/window\.__timelines\["transitions"\]/);
     expect(html).toMatch(/<template/);
   });
+
+  it("clamps the second tl.to so it never extends past the timeline duration", () => {
+    // Degenerate: two seams ending exactly at totalDurationMs. The boundary
+    // sits at 9_800 ms, so half-window crosses into the last `duration/2`.
+    // Without the clamp, the second tl.to start would be at 9.800 + 0.200
+    // = 10.000s, leaving zero room for the duration-0.2s tween before
+    // timeline end. With the clamp it must be <= totalSec - duration = 9.6.
+    const degenerate: Seam[] = [
+      { index: 0, at_ms: 0,     ends_at_ms: 9800,  scene: "head" },
+      { index: 1, at_ms: 9800,  ends_at_ms: 10000, scene: "head" },
+    ];
+    const html = buildTransitionsHtml({
+      seams: degenerate,
+      totalDurationMs: 10000,
+      transition: { primary: "crossfade", duration: 0.4, easing: "power2.inOut" },
+    });
+    const m = html.match(/tl\.to\(maskEl,\s*\{ autoAlpha: 0[\s\S]*?\},\s*([0-9.]+)\)/);
+    expect(m, "second tl.to call must be present").toBeTruthy();
+    const start = Number(m![1]);
+    expect(start).toBeLessThanOrEqual(9.6 + 1e-3);
+  });
 });
