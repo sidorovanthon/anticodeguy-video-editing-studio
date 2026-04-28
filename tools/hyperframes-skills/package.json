@@ -1,0 +1,9 @@
+{
+  "name": "hyperframes-skills",
+  "version": "1.0.0",
+  "description": "Vendored HyperFrames skill scripts (markdown + helper .mjs). This package.json provides the runtime deps the skill scripts need; sync-hf-skills.sh preserves it on resync.",
+  "private": true,
+  "dependencies": {
+    "@hyperframes/producer": "0.4.31"
+  }
+}

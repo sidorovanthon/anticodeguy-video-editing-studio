@@ -22,6 +22,19 @@ if [ -n "$LOCAL_HF" ]; then
   fi
 fi
 
+# 1b. @hyperframes/producer — pinned in tools/hyperframes-skills/package.json (where its
+#     consumers live). Must move in lockstep with the hyperframes CLI pin.
+LOCAL_HFP="$(node -e "console.log(require('./tools/hyperframes-skills/package.json').dependencies?.['@hyperframes/producer'] || '')" 2>/dev/null | sed 's/^[~^>=]*//')"
+if [ -n "$LOCAL_HFP" ]; then
+  LATEST_HFP="$(npm view @hyperframes/producer version 2>/dev/null || true)"
+  if [ -n "$LATEST_HFP" ] && [ "$LOCAL_HFP" != "$LATEST_HFP" ]; then
+    note "@hyperframes/producer: pinned $LOCAL_HFP, latest $LATEST_HFP — must move in lockstep with hyperframes pin."
+  fi
+  if [ -n "$LOCAL_HF" ] && [ "$LOCAL_HF" != "$LOCAL_HFP" ]; then
+    note "hyperframes ($LOCAL_HF) and @hyperframes/producer ($LOCAL_HFP) pins disagree — must be identical."
+  fi
+fi
+
 # 1a. CLI/skills mismatch (exact-pin in package.json must equal vendored VERSION)
 SKILLS_VERSION_FILE="$REPO_ROOT/tools/hyperframes-skills/VERSION"
 if [ -n "$LOCAL_HF" ] && [ -f "$SKILLS_VERSION_FILE" ]; then
