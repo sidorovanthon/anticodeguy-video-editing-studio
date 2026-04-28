@@ -38,6 +38,8 @@ elif [ "$HF_RENDER_MODE" != "local" ]; then
   exit 1
 fi
 
+# Destructive on rerun: the previous final.mp4 is removed before render starts.
+# If hyperframes render fails mid-flight, the previous good output is gone.
 rm -f "$FINAL"
 "$HF_BIN" render "$COMPOSITE_DIR" \
   -o final.mp4 \

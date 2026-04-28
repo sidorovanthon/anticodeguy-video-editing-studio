@@ -164,3 +164,32 @@ Test count: **75/75 vitest** across 13 suites.
 Spec: `docs/superpowers/specs/2026-04-28-phase-6a-aftermath-design.md`
 Plan: `docs/superpowers/plans/2026-04-28-phase-6a-aftermath.md`
 Amendment: `docs/superpowers/specs/2026-04-28-phase-6a-aftermath-amendment-1-hf-self-contained.md`
+
+## 2026-04-28 — Phase 6a-aftermath follow-ups close
+
+All 12 open follow-ups resolved or deferred-with-reason on branch `phase-6a-followups`.
+
+Resolved:
+- (#1) `@hyperframes/producer@0.4.31` placed at its consumer — `tools/hyperframes-skills/` becomes a self-contained vendored subproject with its own `package.json`. ESM bare-specifier resolution from skill scripts now finds the dep on the parent walk; no flags, NODE_PATH, symlinks, or wrappers. `sync-hf-skills.sh` rewritten to remove only the upstream-managed subtrees (`gsap/`, `hyperframes/`, `hyperframes-cli/`) so our `package.json`/`package-lock.json`/`node_modules/` survive resync. `check-updates.sh` reads the producer pin from its actual home and flags both pinned-vs-latest drift and pin-vs-CLI lockstep drift. AGENTS.md documents the new install step.
+- (#3) Investigation of the 5 `#smoke-plate` WCAG warnings revealed they are not fixture content — HF 0.4.31 `validate` returns `ratio: null, fg: rgb(NaN,...), bg: rgb(undefined,...)` for any text element below the headless viewport (1080 px). Root cause: `validate.ts` hardcodes `page.setViewport(1920, 1080)` and the contrast-audit script clamps `x0/y0` only against zero, not against the canvas size, so ring-sampling reads OOB on the screenshot's `Uint8ClampedArray`. Patched via `patch-package` (`tools/compositor/patches/hyperframes+0.4.31.patch`); applies on every `npm install` via `postinstall` script. Smoke fixture validate now reports `contrastFailures: 0`. Upstream issue draft at `docs/hyperframes-patches/0.4.31-contrast-audit-oob.md` to be filed when publicly tracked.
+- (#4) `sync-hf-skills.sh` dead `[ -n "$TARBALL_URL" ]` branch removed; `set -e` already covered the safety property.
+- (#5) `resolveToken` numeric-coercion JSDoc added; calls out that numeric tokens go through `readTransitionConfig`, not this path.
+- (#6) Captions self-lint O(N²) inline-flagged with the ~200-group threshold past which it should be hoisted.
+- (#7) Track index ladder collapsed into `const TRACKS = { … } as const`.
+- (#8) `transitionsComposition` second-tween start clamped via `Math.min(b.startSec + duration/2, totalSec - duration)` with a unit test (76th vitest).
+- (#9) `episodeMeta` magic-URL comment points at `docs/hyperframes-integration.md`.
+- (#10) `preflight.sh` regex hardened with a label-word fallback so ANSI-coloured `✗` lines still trip critical-failure detection.
+- (#11) `render-final.sh` `rm -f $FINAL` annotated as destructive-on-rerun.
+- (#12) FROZEN pilot `hf-project/` re-narrowed in `.gitignore` to its exact path; future episodes that regenerate `hf-project/` still surface as untracked.
+
+Deferred-with-reason:
+- (#2) Docker render-mode verification: requires a host with Docker installed; tracked at `docs/operations/docker-render-verification.md`. Operator-driven, not blocking Phase 6b.
+
+Architectural deltas vs the original spec:
+- Task 1 was reframed during execution: an initial attempt placed `@hyperframes/producer` in `tools/compositor/package.json`, which does not satisfy ESM bare-specifier resolution from skill scripts (compositor is a sibling, not an ancestor, of `tools/hyperframes-skills/`). The dep now lives at its consumer.
+- Task 3 was reframed during execution: the WCAG WARNs are an HF 0.4.31 validator bug, not a fixture-content issue. Patched upstream code locally; smoke-fixture seam-4.html is unchanged.
+
+Smoke fixture verified end-to-end: lint 0/0, validate 0/0 (was 5 contrast WARN), inspect ok=true, vitest 76/76.
+
+Spec: `docs/superpowers/specs/2026-04-28-phase-6a-followups-design.md`
+Plan: `docs/superpowers/plans/2026-04-28-phase-6a-followups.md`

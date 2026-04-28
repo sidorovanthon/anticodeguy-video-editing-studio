@@ -36,8 +36,10 @@ console.log(v);
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
+# `set -e` aborts at this `npm view` line if the version does not exist on npm,
+# so the previous `[ -n "$TARBALL_URL" ]` guard was unreachable. The npm-native
+# 404 already preserves the safety property (no silent fallback to `latest`).
 TARBALL_URL="$(npm view "hyperframes@$VERSION" dist.tarball --registry https://registry.npmjs.org)"
-[ -n "$TARBALL_URL" ] || { echo "ERROR: hyperframes@$VERSION has no tarball on npm"; exit 1; }
 
 echo "Syncing hyperframes@$VERSION skills from $TARBALL_URL"
 curl -fsSL "$TARBALL_URL" | tar xz -C "$TMP_DIR"
@@ -47,8 +49,14 @@ curl -fsSL "$TARBALL_URL" | tar xz -C "$TMP_DIR"
   exit 1
 }
 
-rm -rf "$SKILLS_DIR"
+# Sync upstream-managed subtrees only. tools/hyperframes-skills/package.json,
+# package-lock.json, and node_modules/ are ours (they provide @hyperframes/producer
+# to the vendored skill scripts) and must survive resync.
+# If dist/skills/ adds a new top-level dir, append it to the loop below.
 mkdir -p "$SKILLS_DIR"
+for subtree in gsap hyperframes hyperframes-cli; do
+  rm -rf "$SKILLS_DIR/$subtree"
+done
 cp -r "$TMP_DIR/package/dist/skills/." "$SKILLS_DIR/"
 echo "$VERSION" > "$SKILLS_DIR/VERSION"
 

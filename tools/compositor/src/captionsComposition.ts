@@ -103,6 +103,10 @@ export function buildCaptionsCompositionHtml(args: CaptionsArgs): string {
       window.__timelines["captions"] = tl;
 
       // Self-lint: every group must have an entry tween and a hard-kill set.
+      // Cost: O(N²) — children.some(...) inside GROUPS.forEach. Fine up to
+      // ~200 caption groups (a long episode). If this profiles hot at runtime,
+      // hoist behind 'if (!window.__captionsLintRan)' and run once per page
+      // load. (6a-aftermath follow-up #6.)
       var children = tl.getChildren(false, true, true);
       GROUPS.forEach(function (g) {
         var hasEntry = children.some(function (c) { return Math.abs(c.startTime() - g.startSec) < 1e-3 && c.vars && c.vars.duration; });

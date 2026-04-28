@@ -20,16 +20,25 @@ hf_preflight() {
   local out
   out="$("$hf_bin" doctor 2>&1 || true)"
 
-  if echo "$out" | grep -E "^\s*✗\s+(Node\.js|FFmpeg|FFprobe|Chrome)\b" >/dev/null; then
+  # Match either the literal ✗ marker OR a line that mentions the critical label
+  # words AND a failure verb. Belt-and-suspenders: a future HF version that wraps
+  # ✗ in ANSI colour codes will still trip the second branch.
+  local crit_re_glyph='^\s*✗\s+(Node\.js|FFmpeg|FFprobe|Chrome)\b'
+  local crit_re_words='(Node\.js|FFmpeg|FFprobe|Chrome).*(missing|not found|FAIL|failed)'
+  if echo "$out" | grep -E "$crit_re_glyph" >/dev/null \
+     || echo "$out" | grep -E "$crit_re_words" >/dev/null; then
     echo "[preflight] Critical doctor check failed:"
-    echo "$out" | grep -E "^\s*✗\s+(Node\.js|FFmpeg|FFprobe|Chrome)\b"
+    echo "$out" | grep -E "$crit_re_glyph|$crit_re_words"
     return 1
   fi
 
   if [ "$mode" != "local" ]; then
-    if echo "$out" | grep -E "^\s*✗\s+Docker(\s+running)?\b" >/dev/null; then
+    local docker_re_glyph='^\s*✗\s+Docker(\s+running)?\b'
+    local docker_re_words='Docker.*(missing|not found|not running|FAIL|failed)'
+    if echo "$out" | grep -E "$docker_re_glyph" >/dev/null \
+       || echo "$out" | grep -E "$docker_re_words" >/dev/null; then
       echo "[preflight] Docker check failed (HF_RENDER_MODE=docker default):"
-      echo "$out" | grep -E "^\s*✗\s+Docker(\s+running)?\b"
+      echo "$out" | grep -E "$docker_re_glyph|$docker_re_words"
       echo "[preflight] To bypass: rerun with HF_RENDER_MODE=local"
       return 1
     fi

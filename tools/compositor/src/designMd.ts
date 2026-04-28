@@ -48,6 +48,19 @@ export function designMdToCss(tree: TokenTree): string {
   return lines.join("\n");
 }
 
+/**
+ * Resolve a dotted token path to its leaf value as a string.
+ *
+ * NOTE on numeric coercion: this function returns `String(cursor)` for any
+ * non-object leaf, which means numeric tokens (e.g. `transition.duration: 0.4`)
+ * become the string `"0.4"`. Today only string-typed CSS tokens route through
+ * this function; numeric tokens are read via the typed loader
+ * `readTransitionConfig` and never see this code path.
+ *
+ * If a future caller routes a numeric token through `resolveToken`, that caller
+ * MUST coerce back to number. Consider adding a `resolveTokenNumber` overload
+ * before introducing such a caller. (6a-aftermath follow-up #5.)
+ */
 export function resolveToken(tree: TokenTree, dottedPath: string): string {
   const parts = dottedPath.split(".");
   let cursor: TokenTree | string | number = tree;

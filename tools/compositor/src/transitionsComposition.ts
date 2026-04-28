@@ -19,6 +19,7 @@ export function buildTransitionsHtml(args: TransitionsArgs): string {
   }
 
   const halfMs = (args.transition.duration * 1000) / 2;
+  const totalSecNum = Math.round(args.totalDurationMs) / 1000;
   const boundaries = args.seams.slice(0, -1).map((s, i) => ({
     index: i,
     boundaryMs: s.ends_at_ms,
@@ -30,7 +31,12 @@ export function buildTransitionsHtml(args: TransitionsArgs): string {
     .join("\n");
 
   const tlCalls = boundaries
-    .map((b) => `      tl.fromTo(maskEl, { autoAlpha: 0 }, { autoAlpha: 1, duration: ${args.transition.duration / 2}, ease: "${args.transition.easing}" }, ${b.startSec.toFixed(3)});\n      tl.to(maskEl,   { autoAlpha: 0, duration: ${args.transition.duration / 2}, ease: "${args.transition.easing}" }, ${(b.startSec + args.transition.duration / 2).toFixed(3)});`)
+    .map((b) => {
+      // Defensive clamp: a degenerate seam ending at totalSec would push the second tween
+      // past timeline duration. planSeams should not produce that today; insurance is two chars.
+      const secondStart = Math.min(b.startSec + args.transition.duration / 2, totalSecNum - args.transition.duration);
+      return `      tl.fromTo(maskEl, { autoAlpha: 0 }, { autoAlpha: 1, duration: ${args.transition.duration / 2}, ease: "${args.transition.easing}" }, ${b.startSec.toFixed(3)});\n      tl.to(maskEl,   { autoAlpha: 0, duration: ${args.transition.duration / 2}, ease: "${args.transition.easing}" }, ${secondStart.toFixed(3)});`;
+    })
     .join("\n");
 
   return `<template id="transitions-template">

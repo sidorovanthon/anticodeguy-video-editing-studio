@@ -26,6 +26,12 @@ episodes/*/stage-2-composite/assets/music.*
 episodes/*/stage-2-composite/preview.mp4
 episodes/*/stage-2-composite/final.mp4
 
+# FROZEN pilot — pre-6a archive, never edited; ignored to keep git status clean.
+# See AGENTS.md and standards/pipeline-contracts.md for FROZEN status.
+# Strictly scoped to the one historical pilot path so future episodes that
+# accidentally regenerate hf-project/ still surface as untracked.
+episodes/2026-04-27-desktop-software-licensing-it-turns-out/stage-2-composite/hf-project/
+
 # HyperFrames render scratch dirs at repo root
 work-*/
 

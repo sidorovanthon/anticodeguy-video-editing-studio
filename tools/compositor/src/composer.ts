@@ -18,12 +18,17 @@ export interface ComposeArgs {
 
 const ROOT_WIDTH = 1440;
 const ROOT_HEIGHT = 2560;
-const TRACK_VIDEO = 0;
-const TRACK_CAPTIONS = 1;
-const TRACK_AUDIO = 2;
-const TRACK_SEAM_BASE = 3;
-const TRACK_TRANSITIONS = 4;
-const TRACK_MUSIC = 5;
+// Track-index ladder. HF treats track-index purely as an identifier
+// (it does NOT affect z-order); these are coordination IDs only.
+// Adding a new track? Pick the next unused integer and update this object.
+const TRACKS = {
+  VIDEO: 0,
+  CAPTIONS: 1,
+  AUDIO: 2,
+  SEAM_BASE: 3,
+  TRANSITIONS: 4,
+  MUSIC: 5,
+} as const;
 
 function msToSeconds(ms: number): string {
   return (Math.round(ms) / 1000).toFixed(3);
@@ -49,7 +54,7 @@ export function buildRootIndexHtml(args: ComposeArgs, tree?: TokenTree): string 
      data-duration="${durationSec}"
      data-width="${ROOT_WIDTH}"
      data-height="${ROOT_HEIGHT}"
-     data-track-index="${TRACK_SEAM_BASE}"></div>`;
+     data-track-index="${TRACKS.SEAM_BASE}"></div>`;
     });
 
   return `<!doctype html>
@@ -74,7 +79,7 @@ html, body { width: ${ROOT_WIDTH}px; height: ${ROOT_HEIGHT}px; background: ${bgT
        class="clip"
        data-start="0"
        data-duration="${masterDurationSec}"
-       data-track-index="${TRACK_VIDEO}"
+       data-track-index="${TRACKS.VIDEO}"
        data-has-audio="false"
        muted
        playsinline
@@ -83,14 +88,14 @@ html, body { width: ${ROOT_WIDTH}px; height: ${ROOT_HEIGHT}px; background: ${bgT
        class="clip"
        data-start="0"
        data-duration="${masterDurationSec}"
-       data-track-index="${TRACK_AUDIO}"
+       data-track-index="${TRACKS.AUDIO}"
        data-volume="1"
        src="${args.masterRelPath}"></audio>
 ${args.musicRelPath ? `<audio id="music"
        class="clip"
        data-start="0"
        data-duration="${masterDurationSec}"
-       data-track-index="${TRACK_MUSIC}"
+       data-track-index="${TRACKS.MUSIC}"
        data-volume="0.5"
        src="${args.musicRelPath}"></audio>` : ""}
 <div class="clip"
@@ -100,7 +105,7 @@ ${args.musicRelPath ? `<audio id="music"
      data-duration="${masterDurationSec}"
      data-width="${ROOT_WIDTH}"
      data-height="${ROOT_HEIGHT}"
-     data-track-index="${TRACK_CAPTIONS}"></div>
+     data-track-index="${TRACKS.CAPTIONS}"></div>
 <div class="clip"
      data-composition-src="compositions/transitions.html"
      data-composition-id="transitions"
@@ -108,7 +113,7 @@ ${args.musicRelPath ? `<audio id="music"
      data-duration="${masterDurationSec}"
      data-width="${ROOT_WIDTH}"
      data-height="${ROOT_HEIGHT}"
-     data-track-index="${TRACK_TRANSITIONS}"></div>
+     data-track-index="${TRACKS.TRANSITIONS}"></div>
 ${seamFragments.join("\n")}
 <script>
 (function () {
