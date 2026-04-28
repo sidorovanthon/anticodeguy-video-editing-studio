@@ -37,3 +37,22 @@ Single PR per upgrade. The version of `hyperframes` resolved at runtime, the ver
 ## Cadence
 
 Operator-driven. A `/schedule`-able background agent that opens upgrade PRs on a cadence is a follow-up after Phase 6a-aftermath; not in this phase.
+
+## Local patches against `hyperframes`
+
+We pin `hyperframes` exactly and may need to patch its source while waiting for an upstream fix. Patches live in `tools/compositor/patches/` and are applied automatically on `npm install` via the `patch-package` postinstall hook in `tools/compositor/package.json`.
+
+Active patches (as of 0.4.31):
+
+- **`hyperframes+0.4.31.patch`** — fixes `validate`'s WCAG contrast audit producing `null:1` ratios with `fg=NaN, bg=undefined` for elements outside the headless viewport. Root cause: HF sets `page.setViewport({width:1920, height:1080})` in `src/commands/validate.ts` regardless of composition dimensions; for compositions taller than 1080 (e.g. 1440×2560 vertical), `getBoundingClientRect()` returns `rect.y > h`, the audit script's pixel-ring sampling reads OOB on the screenshot's `Uint8ClampedArray`, and `median()` returns `undefined`. Patch: in `dist/cli.js` (the inlined `contrast-audit.browser.js`), skip elements that fall outside the screenshot canvas, and clamp ring-sampling indices on both ends instead of just one. Upstream fix would set viewport from the composition's `data-width`/`data-height` (or take a fullPage screenshot and scale rect coords). See `docs/hyperframes-patches/0.4.31-contrast-audit-oob.md` for the upstream issue draft.
+
+### Procedure on version bump
+
+When step 1 of the upgrade procedure changes the pinned version:
+
+1. After `npm install`, check whether `patch-package` succeeded. A failed apply prints `**ERROR** Failed to apply patch ...` and exits non-zero.
+2. If a patch failed, the upstream code in the new version probably changed enough to invalidate the diff. Three paths:
+   - Confirm the bug is fixed upstream → delete the patch file, drop the entry from this section, document in PR.
+   - Re-apply the conceptual fix manually in `node_modules/hyperframes/...`, regenerate the patch via `cd tools/compositor && npx patch-package hyperframes`, and commit the new patch file.
+   - Skip the upgrade if the regression is too risky.
+3. Re-run the smoke test (step 5 above). The patched behaviour is verified there.
