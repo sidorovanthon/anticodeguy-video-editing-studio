@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Stage 2b: render preview.mp4 from the staged hf-project/ produced by
-# run-stage2-compose.sh.
+# Stage 2b: render preview.mp4 from the stage-2-composite/ project produced
+# by run-stage2-compose.sh (HF reads index.html directly under that dir).
 #
 # Usage: tools/scripts/run-stage2-preview.sh <slug> [--workers N] [--fps N]
 #
-# Resolution is ALWAYS native 1440x2560 — composition.html and
-# hf-project/index.html are not mutated. RAM/CPU is throttled instead via
+# Resolution is ALWAYS native 1440x2560 — stage-2-composite/index.html is
+# not mutated. RAM/CPU is throttled instead via
 # fewer Chromium workers and a lower fps for previews. Final renders should
 # be invoked separately (e.g. render-final.sh) without this throttling.
 #
@@ -62,14 +62,13 @@ case "$FPS" in ''|*[!0-9]*) echo "ERROR: --fps must be a positive integer"; exit
 REPO_ROOT="$(pwd)"
 EPISODE="$REPO_ROOT/episodes/$SLUG"
 COMPOSITE_DIR="$EPISODE/stage-2-composite"
-HF_PROJ="$COMPOSITE_DIR/hf-project"
-HF_INDEX="$HF_PROJ/index.html"
+HF_INDEX="$COMPOSITE_DIR/index.html"
 
 [ -f "$HF_INDEX" ] || { echo "ERROR: $HF_INDEX missing — run run-stage2-compose.sh first"; exit 1; }
 
 HF_OUT="$COMPOSITE_DIR/preview.mp4"
 rm -f "$HF_OUT"
-npx -y hyperframes render "$HF_PROJ" \
+npx -y hyperframes render "$COMPOSITE_DIR" \
   -o preview.mp4 \
   -f "$FPS" \
   -q standard \
@@ -79,12 +78,10 @@ npx -y hyperframes render "$HF_PROJ" \
 # `-o` may be interpreted relative to the project dir or to cwd, or HF may
 # place it in the default renders/<name>_<ts>.mp4 location. Relocate to $HF_OUT.
 if [ ! -f "$HF_OUT" ]; then
-  if [ -f "$HF_PROJ/preview.mp4" ]; then
-    mv "$HF_PROJ/preview.mp4" "$HF_OUT"
-  elif [ -f "$REPO_ROOT/preview.mp4" ]; then
+  if [ -f "$REPO_ROOT/preview.mp4" ]; then
     mv "$REPO_ROOT/preview.mp4" "$HF_OUT"
-  elif ls "$HF_PROJ"/renders/*.mp4 >/dev/null 2>&1; then
-    mv "$(ls -t "$HF_PROJ"/renders/*.mp4 | head -n1)" "$HF_OUT"
+  elif ls "$COMPOSITE_DIR"/renders/*.mp4 >/dev/null 2>&1; then
+    mv "$(ls -t "$COMPOSITE_DIR"/renders/*.mp4 | head -n1)" "$HF_OUT"
   fi
 fi
 

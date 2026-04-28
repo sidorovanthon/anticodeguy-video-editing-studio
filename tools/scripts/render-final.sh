@@ -19,16 +19,14 @@ SLUG="$1"
 REPO_ROOT="$(pwd)"
 EP="$REPO_ROOT/episodes/$SLUG"
 COMPOSITE_DIR="$EP/stage-2-composite"
-COMPOSITION="$COMPOSITE_DIR/composition.html"
+HF_INDEX="$COMPOSITE_DIR/index.html"
 MASTER="$EP/stage-1-cut/master.mp4"
 META="$EP/meta.yaml"
 FINAL="$COMPOSITE_DIR/final.mp4"
-HF_PROJ="$COMPOSITE_DIR/hf-project"
 
-[ -f "$COMPOSITION" ] || { echo "ERROR: composition.html missing — run run-stage2.sh first"; exit 1; }
-[ -f "$MASTER" ]      || { echo "ERROR: master.mp4 missing"; exit 1; }
-[ -f "$META" ]        || { echo "ERROR: meta.yaml missing"; exit 1; }
-[ -d "$HF_PROJ" ]     || { echo "ERROR: hf-project/ missing — run run-stage2.sh first"; exit 1; }
+[ -f "$HF_INDEX" ] || { echo "ERROR: $HF_INDEX missing — run run-stage2-compose.sh first"; exit 1; }
+[ -f "$MASTER" ]   || { echo "ERROR: master.mp4 missing"; exit 1; }
+[ -f "$META" ]     || { echo "ERROR: meta.yaml missing"; exit 1; }
 
 # Extract music path from meta.yaml (supports quoted or unquoted).
 MUSIC_REL="$(grep '^music:' "$META" | sed 's/^music:[[:space:]]*//;s/^"//;s/"$//')"
@@ -43,7 +41,7 @@ MUSIC="$REPO_ROOT/$MUSIC_REL"
 OVERLAYS_NAME="overlays.mov"
 OVERLAYS="$COMPOSITE_DIR/$OVERLAYS_NAME"
 rm -f "$OVERLAYS"
-npx -y hyperframes render "$HF_PROJ" \
+npx -y hyperframes render "$COMPOSITE_DIR" \
   -o "$OVERLAYS_NAME" \
   -f 60 \
   -q high \
@@ -51,10 +49,9 @@ npx -y hyperframes render "$HF_PROJ" \
 
 # Relocate output if HF placed it elsewhere (mirror run-stage2.sh fallback chain).
 if [ ! -f "$OVERLAYS" ]; then
-  if   [ -f "$HF_PROJ/$OVERLAYS_NAME" ]; then mv "$HF_PROJ/$OVERLAYS_NAME" "$OVERLAYS"
-  elif [ -f "$REPO_ROOT/$OVERLAYS_NAME" ]; then mv "$REPO_ROOT/$OVERLAYS_NAME" "$OVERLAYS"
-  elif ls "$HF_PROJ"/renders/*.mov >/dev/null 2>&1; then
-    mv "$(ls -t "$HF_PROJ"/renders/*.mov | head -n1)" "$OVERLAYS"
+  if   [ -f "$REPO_ROOT/$OVERLAYS_NAME" ]; then mv "$REPO_ROOT/$OVERLAYS_NAME" "$OVERLAYS"
+  elif ls "$COMPOSITE_DIR"/renders/*.mov >/dev/null 2>&1; then
+    mv "$(ls -t "$COMPOSITE_DIR"/renders/*.mov | head -n1)" "$OVERLAYS"
   fi
 fi
 [ -f "$OVERLAYS" ] || { echo "ERROR: overlays.mov not produced"; exit 1; }
