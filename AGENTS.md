@@ -21,7 +21,7 @@ stop and wait for explicit user approval.
    - 1.2 Cut analysis → `stage-1-cut/cut-list.md` → **⏸ CP1**
    - 1.2a (optional, if `source/script.txt` present) Script fidelity check
      → `stage-1-cut/script-diff.md` and `script-diff.json`
-   - 1.3 Apply cuts + audio fades + grade + vignette → `stage-1-cut/master.mp4` → **⏸ CP2**
+   - 1.3 Apply cuts + audio fades + grade + vignette → `stage-2-composite/assets/master.mp4` → **⏸ CP2**
 3. **Stage 2 — compositor** — overlays captions, motion graphics, music.
    - 2.1 Generate `stage-2-composite/seam-plan.md` → **⏸ CP2.5**
    - 2.2 Build `index.html`, render `preview.mp4` → **⏸ CP3**
