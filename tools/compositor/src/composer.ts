@@ -1,6 +1,7 @@
 import { writeFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import type { SeamPlan, MasterBundle } from "./types.js";
+import type { TokenTree } from "./designMd.js";
 import { loadDesignMd, designMdToCss, resolveToken } from "./designMd.js";
 import { buildCaptionsCompositionHtml } from "./captionsComposition.js";
 
@@ -23,13 +24,13 @@ function msToSeconds(ms: number): string {
   return (Math.round(ms) / 1000).toFixed(3);
 }
 
-export function buildRootIndexHtml(args: ComposeArgs): string {
-  const tree = loadDesignMd(args.designMdPath);
-  const css = designMdToCss(tree);
+export function buildRootIndexHtml(args: ComposeArgs, tree?: TokenTree): string {
+  const t = tree ?? loadDesignMd(args.designMdPath);
+  const css = designMdToCss(t);
   const masterDurationSec = msToSeconds(args.bundle.master.durationMs);
-  const bgTransparent = resolveToken(tree, "color.bg.transparent");
-  const textPrimary  = resolveToken(tree, "color.text.primary");
-  const fontCaption  = resolveToken(tree, "type.family.caption");
+  const bgTransparent = resolveToken(t, "color.bg.transparent");
+  const textPrimary  = resolveToken(t, "color.text.primary");
+  const fontCaption  = resolveToken(t, "type.family.caption");
 
   const seamFragments = args.plan.seams
     .filter((s) => args.existingSeamFiles.has(s.index))
@@ -112,11 +113,12 @@ export function writeCompositionFiles(args: WriteCompositionArgs): { indexPath: 
   const compositionsDir = path.join(compositeDir, "compositions");
   mkdirSync(compositionsDir, { recursive: true });
 
+  const tree = loadDesignMd(args.designMdPath);
   const indexPath = path.join(compositeDir, "index.html");
   const captionsPath = path.join(compositionsDir, "captions.html");
 
-  writeFileSync(indexPath, buildRootIndexHtml(args));
-  writeFileSync(captionsPath, buildCaptionsCompositionHtml({ bundle: args.bundle }));
+  writeFileSync(indexPath, buildRootIndexHtml(args, tree));
+  writeFileSync(captionsPath, buildCaptionsCompositionHtml({ bundle: args.bundle, tree }));
 
   return { indexPath, captionsPath };
 }
