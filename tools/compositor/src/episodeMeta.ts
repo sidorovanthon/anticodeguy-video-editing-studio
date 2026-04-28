@@ -1,4 +1,4 @@
-import { writeFileSync, mkdirSync } from "node:fs";
+import { writeFileSync, mkdirSync, readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 
 export interface EpisodeMetaArgs {
@@ -25,7 +25,17 @@ export function writeEpisodeMeta(args: EpisodeMetaArgs): { hyperframesJsonPath: 
   mkdirSync(args.outDir, { recursive: true });
   const hyperframesJsonPath = path.join(args.outDir, "hyperframes.json");
   const metaJsonPath = path.join(args.outDir, "meta.json");
-  const createdAt = args.createdAt ?? new Date().toISOString();
+  // Preserve an existing createdAt so re-runs of `compose` against the
+  // same episode do not churn the field on every invocation. Fresh
+  // episodes stamp the current time once and keep it.
+  let preservedCreatedAt: string | undefined;
+  if (!args.createdAt && existsSync(metaJsonPath)) {
+    try {
+      const existing = JSON.parse(readFileSync(metaJsonPath, "utf8"));
+      if (typeof existing?.createdAt === "string") preservedCreatedAt = existing.createdAt;
+    } catch { /* ignore malformed file; will be overwritten */ }
+  }
+  const createdAt = args.createdAt ?? preservedCreatedAt ?? new Date().toISOString();
 
   writeFileSync(hyperframesJsonPath, JSON.stringify(HF_PROJECT_CONFIG, null, 2) + "\n");
   writeFileSync(metaJsonPath, JSON.stringify({ id: args.episodeSlug, name: args.episodeSlug, createdAt }, null, 2) + "\n");
