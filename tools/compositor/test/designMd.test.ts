@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseDesignMd, designMdToCss } from "../src/designMd.js";
+import { parseDesignMd, designMdToCss, resolveToken, readTransitionConfig } from "../src/designMd.js";
 import { readFileSync } from "node:fs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -12,8 +12,24 @@ describe("parseDesignMd", () => {
     const md = readFileSync(FIXTURE, "utf8");
     const tree = parseDesignMd(md);
     expect(tree).toEqual({
-      color: { text: { primary: "#FFFFFF" } },
+      color: {
+        text: { primary: "#FFFFFF" },
+        bg: { transparent: "rgba(0,0,0,0)" },
+        caption: {
+          active: "#FFFFFF",
+          inactive: "rgba(255,255,255,0.55)",
+        },
+      },
       spacing: { md: "24px" },
+      type: {
+        family: { caption: "Inter, sans-serif" },
+        size: { caption: "64px" },
+        weight: { bold: "700" },
+      },
+      safezone: {
+        side: "6%",
+        bottom: "22%",
+      },
     });
   });
 
@@ -34,5 +50,63 @@ describe("designMdToCss", () => {
     expect(css).toContain("--spacing-md: 24px;");
     expect(css.startsWith(":root {")).toBe(true);
     expect(css.trimEnd().endsWith("}")).toBe(true);
+  });
+});
+
+describe("resolveToken", () => {
+  const md = `\`\`\`json hyperframes-tokens
+{
+  "color": { "text": { "primary": "#FFFFFF" }, "glass": { "fill": "rgba(255,255,255,0.18)" } },
+  "type":  { "size": { "caption": "64px" } },
+  "video": { "fps": 60 }
+}
+\`\`\``;
+  const tree = parseDesignMd(md);
+
+  it("returns literal string values by dotted path", () => {
+    expect(resolveToken(tree, "color.text.primary")).toBe("#FFFFFF");
+    expect(resolveToken(tree, "color.glass.fill")).toBe("rgba(255,255,255,0.18)");
+    expect(resolveToken(tree, "type.size.caption")).toBe("64px");
+  });
+
+  it("returns numbers as strings", () => {
+    expect(resolveToken(tree, "video.fps")).toBe("60");
+  });
+
+  it("throws on missing path", () => {
+    expect(() => resolveToken(tree, "color.text.nonexistent")).toThrow(/color.text.nonexistent/);
+  });
+
+  it("throws when path resolves to a subtree, not a leaf", () => {
+    expect(() => resolveToken(tree, "color.text")).toThrow(/leaf/);
+  });
+});
+
+describe("readTransitionConfig", () => {
+  it("returns the transition block when present", () => {
+    const md = `\`\`\`json hyperframes-tokens
+{
+  "color": {},
+  "transition": { "primary": "blur-crossfade", "duration": 0.5, "easing": "sine.inOut" }
+}
+\`\`\``;
+    const tree = parseDesignMd(md);
+    expect(readTransitionConfig(tree)).toEqual({ primary: "blur-crossfade", duration: 0.5, easing: "sine.inOut" });
+  });
+
+  it("returns the safe default when the block is absent", () => {
+    const md = `\`\`\`json hyperframes-tokens
+{ "color": {} }
+\`\`\``;
+    const tree = parseDesignMd(md);
+    expect(readTransitionConfig(tree)).toEqual({ primary: "crossfade", duration: 0.4, easing: "power2.inOut" });
+  });
+
+  it("throws on unknown primary", () => {
+    const md = `\`\`\`json hyperframes-tokens
+{ "transition": { "primary": "warp-fold", "duration": 0.5, "easing": "sine.inOut" } }
+\`\`\``;
+    const tree = parseDesignMd(md);
+    expect(() => readTransitionConfig(tree)).toThrow(/warp-fold/);
   });
 });

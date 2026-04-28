@@ -6,13 +6,15 @@ Typography and timing rules for per-word karaoke captions burned into the final 
 ## Style
 - Pure typography. **No background plate, no glass surface, no drop shadow** — captions never sit on glass.
 - Single line on screen at any moment. **Maximum 3 words visible at once.**
-- Per-word karaoke: the active word renders in `tokens.color.caption.active`; surrounding (already-spoken or upcoming) words in `tokens.color.caption.inactive`.
+- Per-word karaoke: the active word renders in `color.caption.active` (DESIGN.md); surrounding (already-spoken or upcoming) words in `color.caption.inactive`.
 
 ## Layout
-- Baseline position: `tokens.safezone.bottom` (default 22% of frame height from bottom).
+- Baseline position: `safezone.bottom` (default 22% of frame height from bottom).
 - Horizontal centering, no left-aligned captions.
-- Font: `tokens.type.family.caption`. Weight: `tokens.type.weight.bold` for active, `regular` for inactive.
-- Size: `tokens.type.size.caption`.
+- Font: `type.family.caption`. Weight: `type.weight.bold` for active, `regular` for inactive.
+- Size: `type.size.caption`.
+
+For overflow, captions call `window.__hyperframes.fitTextFontSize` per group on first show — the project-wide primitive. See `standards/bespoke-seams.md` for the rationale and anti-patterns.
 
 ## Timing
 - Word visibility window starts at the word's `start_ms` from `transcript.json` and ends at `end_ms`.

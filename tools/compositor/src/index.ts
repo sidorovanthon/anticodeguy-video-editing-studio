@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { planSeams } from "./seamPlanner.js";
 import { writeSeamPlan, readSeamPlan } from "./seamPlanWriter.js";
 import { writeCompositionFiles } from "./composer.js";
 import { loadBundle } from "./stage2/loadBundle.js";
 import { writeFileSync } from "node:fs";
+import { writeEpisodeMeta } from "./episodeMeta.js";
 
 const [, , cmd, ...rest] = process.argv;
 
@@ -24,7 +25,7 @@ if (!episodeDir) usage();
 
 const repoRoot = process.env.REPO_ROOT ?? path.resolve(episodeDir, "../..");
 const seamPlanPath = path.join(episodeDir, "stage-2-composite/seam-plan.md");
-const masterPath = path.join(episodeDir, "stage-1-cut/master.mp4");
+const masterPath = path.join(episodeDir, "stage-2-composite/assets/master.mp4");
 const designMdPath = path.join(repoRoot, "DESIGN.md");
 
 if (cmd === "write-bundle") {
@@ -64,16 +65,33 @@ if (cmd === "write-bundle") {
     if (existsSync(candidate)) existingSeamFiles.add(seam.index);
   }
 
-  const { indexPath, captionsPath } = writeCompositionFiles({
+  const assetsDir = path.join(episodeDir, "stage-2-composite/assets");
+  let musicRelPath: string | undefined;
+  if (existsSync(assetsDir)) {
+    const entries = readdirSync(assetsDir);
+    const musicFile = entries.find((f) => /^music\.(mp3|wav|ogg|m4a)$/i.test(f));
+    if (musicFile) {
+      musicRelPath = `assets/${musicFile}`;
+    }
+  }
+
+  const { indexPath, captionsPath, transitionsPath } = writeCompositionFiles({
     designMdPath,
     plan,
     bundle,
-    masterRelPath: "../stage-1-cut/master.mp4",
+    masterRelPath: "assets/master.mp4",
+    musicRelPath,
     existingSeamFiles,
     episodeDir,
   });
   console.log(`Wrote ${indexPath}`);
   console.log(`Wrote ${captionsPath}`);
+  console.log(`Wrote ${transitionsPath}`);
+  const compositeDir = path.join(episodeDir, "stage-2-composite");
+  const slug = path.basename(path.resolve(episodeDir));
+  const meta = writeEpisodeMeta({ episodeSlug: slug, outDir: compositeDir });
+  console.log(`Wrote ${meta.hyperframesJsonPath}`);
+  console.log(`Wrote ${meta.metaJsonPath}`);
   if (existingSeamFiles.size > 0) {
     console.log(`Wired ${existingSeamFiles.size} per-seam sub-composition(s): ${[...existingSeamFiles].join(", ")}`);
   }

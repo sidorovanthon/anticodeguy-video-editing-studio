@@ -1,0 +1,39 @@
+<template id="transitions-template">
+<div data-composition-id="transitions" data-start="0" data-duration="52.700" data-width="1440" data-height="2560">
+  <style>
+    [data-composition-id="transitions"] { position: absolute; inset: 0; pointer-events: none; }
+    [data-composition-id="transitions"] .transition-mask {
+      position: absolute; inset: 0;
+      background-color: #000;
+      visibility: hidden;
+      opacity: 0;
+    }
+  </style>
+  <div class="transition-mask" id="transitions-mask"></div>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (function () {
+      var maskEl = document.getElementById("transitions-mask");
+      window.__timelines = window.__timelines || {};
+      var tl = gsap.timeline({ paused: true });
+      /* transition at boundary 0 (seam 0 -> seam 1) at 7040ms */
+      /* transition at boundary 1 (seam 1 -> seam 2) at 17480ms */
+      /* transition at boundary 2 (seam 2 -> seam 3) at 29420ms */
+      /* transition at boundary 3 (seam 3 -> seam 4) at 36200ms */
+      /* transition at boundary 4 (seam 4 -> seam 5) at 48300ms */
+      tl.fromTo(maskEl, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.2, ease: "power2.inOut" }, 6.840);
+      tl.to(maskEl,   { autoAlpha: 0, duration: 0.2, ease: "power2.inOut" }, 7.040);
+      tl.fromTo(maskEl, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.2, ease: "power2.inOut" }, 17.280);
+      tl.to(maskEl,   { autoAlpha: 0, duration: 0.2, ease: "power2.inOut" }, 17.480);
+      tl.fromTo(maskEl, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.2, ease: "power2.inOut" }, 29.220);
+      tl.to(maskEl,   { autoAlpha: 0, duration: 0.2, ease: "power2.inOut" }, 29.420);
+      tl.fromTo(maskEl, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.2, ease: "power2.inOut" }, 36.000);
+      tl.to(maskEl,   { autoAlpha: 0, duration: 0.2, ease: "power2.inOut" }, 36.200);
+      tl.fromTo(maskEl, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.2, ease: "power2.inOut" }, 48.100);
+      tl.to(maskEl,   { autoAlpha: 0, duration: 0.2, ease: "power2.inOut" }, 48.300);
+      tl.to({}, { duration: 52.700 }, 0);
+      window.__timelines["transitions"] = tl;
+    })();
+  </script>
+</div>
+</template>

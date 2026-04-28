@@ -71,3 +71,19 @@ canonical entry consumed directly by `npx hyperframes lint /
 validate / inspect / render`. Captions live at
 `compositions/captions.html`; per-seam bespoke graphics (when present,
 Phase 6b onward) live at `compositions/seam-<id>.html`.
+
+> **FROZEN pilot caveat.** `episodes/2026-04-27-desktop-software-licensing-it-turns-out/stage-2-composite/` is non-canonical (predates Phase 6a; uses `composition.html` + `hf-project/`). The canonical contract below is what `run-stage2-compose.sh` emits today: `index.html`, `compositions/captions.html`, `compositions/transitions.html`, `compositions/seam-<id>.html`, `hyperframes.json`, `meta.json`, `seam-plan.md`.
+
+### Asset locations (post 6a-aftermath)
+
+`stage-2-composite/` is a self-contained HF project. All assets HF needs to render the final video live inside it:
+
+- `assets/master.mp4` — Stage 1's final talking-head + voice artifact. Stage 1 writes here directly. Do NOT keep a copy under `stage-1-cut/master.mp4`.
+- `assets/music.<ext>` — staged at compose time by `run-stage2-compose.sh` from `library/music/<file>` per `meta.yaml`'s `music:` field. Skipped if the field is absent.
+- `compositions/*.html` — sub-compositions emitted by the compositor.
+
+`stage-1-cut/` retains the intermediate Stage 1 artifacts (`raw.mp4`, `transcript.json`, `edl.json`, `cut-list.md`, optional `script-diff.{md,json}`). Master.mp4 is no longer here.
+
+### Audio mixing (post 6a-aftermath)
+
+HF renders the final audio mix natively via `data-volume` attributes on `<audio>` clips. Voice (master) at `data-volume="1"` (full); music at `data-volume="0.5"` (~-6 dB ducked below voice). Music in `library/music/` is professionally pre-mastered — no `loudnorm` step is applied during render. The previous ffmpeg `loudnorm`/`amix` pipeline in `render-final.sh` is removed.

@@ -21,13 +21,15 @@ stop and wait for explicit user approval.
    - 1.2 Cut analysis → `stage-1-cut/cut-list.md` → **⏸ CP1**
    - 1.2a (optional, if `source/script.txt` present) Script fidelity check
      → `stage-1-cut/script-diff.md` and `script-diff.json`
-   - 1.3 Apply cuts + audio fades + grade + vignette → `stage-1-cut/master.mp4` → **⏸ CP2**
+   - 1.3 Apply cuts + audio fades + grade + vignette → `stage-2-composite/assets/master.mp4` → **⏸ CP2**
 3. **Stage 2 — compositor** — overlays captions, motion graphics, music.
    - 2.1 Generate `stage-2-composite/seam-plan.md` → **⏸ CP2.5**
-   - 2.2 Build `composition.html`, render `preview.mp4` → **⏸ CP3**
-   - 2.3 Final render + ffmpeg merge with `library/music/<track>.mp3` → `final.mp4`
+   - 2.2 Build `index.html`, render `preview.mp4` → **⏸ CP3**
+   - 2.3 Final render via hyperframes (HF mixes voice + music natively per data-volume) → `final.mp4`
 4. **Retro** — fill `episodes/<slug>/retro.md`, run macro-retro, propose standards
    updates as `WATCH` / `CONFIRM` / `PROMOTE`. User selects which to promote.
+
+> **FROZEN pilot caveat.** `episodes/2026-04-27-desktop-software-licensing-it-turns-out/` predates Phase 6a and ships a non-canonical Stage 2 layout (`composition.html`, `hf-project/` staging dir, no `hyperframes.json`/`meta.json`). Do not use it as a reference for compositor output, lint settings, or directory structure. The smoke-test fixture `episodes/2026-04-28-phase-6a-smoke-test/` is the canonical example.
 
 ## Standards (load before working on the matching stage)
 - `standards/editing.md`         — cut philosophy, what to keep
@@ -54,7 +56,7 @@ changed, why if known. Each delta yields at most one proposed rule change tagged
 ## Hard rules
 - Never edit `standards/*.md` outside macro-retro with explicit user `PROMOTE`.
 - Never edit `standards/retro-changelog.md` historically — append only.
-- Never duplicate `music.mp3` into episode folders — always reference `library/music/`.
+- Never commit music files into episode folders — `run-stage2-compose.sh` copies them into `stage-2-composite/assets/` at compose time (gitignored). The authoritative source is always `library/music/`.
 - Never skip a checkpoint. A checkpoint without stop is a bug.
 - Never produce a seam transition forbidden by the matrix in `standards/motion-graphics.md`
   (`head↔head`, `head↔overlay`, `overlay↔overlay`, same-graphic `split→split` or `full→full`;
@@ -76,7 +78,8 @@ changed, why if known. Each delta yields at most one proposed rule change tagged
 - Verify environment: `tools/scripts/check-deps.sh`
 - New episode: `tools/scripts/new-episode.sh <slug>`
 - Stage 1 (added in Phase 2): `tools/scripts/run-stage1.sh <slug>`
-- Stage 2 (added in Phase 3): `tools/scripts/run-stage2.sh <slug>`
+- Stage 2 compose (added in Phase 3): `tools/scripts/run-stage2-compose.sh <slug>`
+- Stage 2 preview (added in Phase 3): `tools/scripts/run-stage2-preview.sh <slug>`
 - Final render (added in Phase 3): `tools/scripts/render-final.sh <slug>`
 - Script fidelity check (added in Phase 3.5): `tools/scripts/script-diff.py --episode <path>`
 - Retro promotion (added in Phase 4): `tools/scripts/retro-promote.sh <slug>`
@@ -88,9 +91,26 @@ changed, why if known. Each delta yields at most one proposed rule change tagged
 - HF skills (vendored)    → `tools/hyperframes-skills/` (refresh via `tools/scripts/sync-hf-skills.sh`)
 - Layout shells           → `design-system/components/` (currently empty in 6a; populated in 6b)
 - Per-episode artifacts  → `episodes/<slug>/`
+  - `source/raw.mp4`           — incoming footage (from `incoming/`)
+  - `stage-1-cut/`             — Stage 1 intermediates (transcript.json, edl.json, raw.mp4 staging)
+  - `stage-2-composite/`       — HF project root (self-contained)
+    - `assets/master.mp4`      — Stage 1 final artifact (talking-head + voice); written here directly by `run-stage1.sh ... render`
+    - `assets/music.<ext>`     — staged at compose time from `library/music/`
+    - `index.html`             — HF project entry
+    - `compositions/`          — sub-compositions (captions, transitions, per-seam)
 - Long-lived rules       → `standards/`
 - Scripts                → `tools/scripts/`
 
 ## Environment
 - `ELEVENLABS_API_KEY` is required (Scribe API). Plan must be Creator tier or higher.
 - ffmpeg, node 20+, python 3.11+ with uv, git — all in PATH. Verify with `check-deps.sh`.
+
+## Render modes
+
+By default, Stage 2 preview/final rendering uses Docker (`hyperframes render --docker`) for memory-safe execution on Windows hosts. Contributors without Docker installed can opt out:
+
+```bash
+HF_RENDER_MODE=local tools/scripts/run-stage2-preview.sh <slug>
+```
+
+Local mode falls back to `--workers 1 --max-concurrent-renders 1 -q draft` to bound RAM. Do not change these knobs without re-running the smoke test on a memory-pressured host.

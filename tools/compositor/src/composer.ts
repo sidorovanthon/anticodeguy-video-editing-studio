@@ -1,14 +1,18 @@
 import { writeFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import type { SeamPlan, MasterBundle } from "./types.js";
-import { loadDesignMd, designMdToCss } from "./designMd.js";
+import type { TokenTree } from "./designMd.js";
+import { loadDesignMd, designMdToCss, resolveToken } from "./designMd.js";
 import { buildCaptionsCompositionHtml } from "./captionsComposition.js";
+import { buildTransitionsHtml } from "./transitionsComposition.js";
+import { readTransitionConfig } from "./designMd.js";
 
 export interface ComposeArgs {
   designMdPath: string;
   plan: SeamPlan;
   bundle: MasterBundle;
   masterRelPath: string;
+  musicRelPath?: string;
   existingSeamFiles: Set<number>;
 }
 
@@ -18,22 +22,26 @@ const TRACK_VIDEO = 0;
 const TRACK_CAPTIONS = 1;
 const TRACK_AUDIO = 2;
 const TRACK_SEAM_BASE = 3;
+const TRACK_TRANSITIONS = 4;
+const TRACK_MUSIC = 5;
 
 function msToSeconds(ms: number): string {
   return (Math.round(ms) / 1000).toFixed(3);
 }
 
-export function buildRootIndexHtml(args: ComposeArgs): string {
-  const tree = loadDesignMd(args.designMdPath);
-  const css = designMdToCss(tree);
+export function buildRootIndexHtml(args: ComposeArgs, tree?: TokenTree): string {
+  const t = tree ?? loadDesignMd(args.designMdPath);
+  const css = designMdToCss(t);
   const masterDurationSec = msToSeconds(args.bundle.master.durationMs);
+  const bgTransparent = resolveToken(t, "color.bg.transparent");
+  const textPrimary  = resolveToken(t, "color.text.primary");
+  const fontCaption  = resolveToken(t, "type.family.caption");
 
   const seamFragments = args.plan.seams
     .filter((s) => args.existingSeamFiles.has(s.index))
-    .map((s, i) => {
+    .map((s) => {
       const startSec = msToSeconds(s.at_ms);
       const durationSec = msToSeconds(s.ends_at_ms - s.at_ms);
-      const trackIndex = TRACK_SEAM_BASE + i;
       return `<div class="clip"
      data-composition-src="compositions/seam-${s.index}.html"
      data-composition-id="seam-${s.index}"
@@ -41,7 +49,7 @@ export function buildRootIndexHtml(args: ComposeArgs): string {
      data-duration="${durationSec}"
      data-width="${ROOT_WIDTH}"
      data-height="${ROOT_HEIGHT}"
-     data-track-index="${trackIndex}"></div>`;
+     data-track-index="${TRACK_SEAM_BASE}"></div>`;
     });
 
   return `<!doctype html>
@@ -51,7 +59,7 @@ export function buildRootIndexHtml(args: ComposeArgs): string {
 <style>
 ${css}
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { width: ${ROOT_WIDTH}px; height: ${ROOT_HEIGHT}px; background: var(--color-bg-transparent); color: var(--color-text-primary); font-family: var(--type-family-caption); overflow: hidden; }
+html, body { width: ${ROOT_WIDTH}px; height: ${ROOT_HEIGHT}px; background: ${bgTransparent}; color: ${textPrimary}; font-family: ${fontCaption}; overflow: hidden; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
 </head>
@@ -78,6 +86,13 @@ html, body { width: ${ROOT_WIDTH}px; height: ${ROOT_HEIGHT}px; background: var(-
        data-track-index="${TRACK_AUDIO}"
        data-volume="1"
        src="${args.masterRelPath}"></audio>
+${args.musicRelPath ? `<audio id="music"
+       class="clip"
+       data-start="0"
+       data-duration="${masterDurationSec}"
+       data-track-index="${TRACK_MUSIC}"
+       data-volume="0.5"
+       src="${args.musicRelPath}"></audio>` : ""}
 <div class="clip"
      data-composition-src="compositions/captions.html"
      data-composition-id="captions"
@@ -86,6 +101,14 @@ html, body { width: ${ROOT_WIDTH}px; height: ${ROOT_HEIGHT}px; background: var(-
      data-width="${ROOT_WIDTH}"
      data-height="${ROOT_HEIGHT}"
      data-track-index="${TRACK_CAPTIONS}"></div>
+<div class="clip"
+     data-composition-src="compositions/transitions.html"
+     data-composition-id="transitions"
+     data-start="0"
+     data-duration="${masterDurationSec}"
+     data-width="${ROOT_WIDTH}"
+     data-height="${ROOT_HEIGHT}"
+     data-track-index="${TRACK_TRANSITIONS}"></div>
 ${seamFragments.join("\n")}
 <script>
 (function () {
@@ -105,16 +128,25 @@ export interface WriteCompositionArgs extends ComposeArgs {
   episodeDir: string;
 }
 
-export function writeCompositionFiles(args: WriteCompositionArgs): { indexPath: string; captionsPath: string } {
+export function writeCompositionFiles(args: WriteCompositionArgs): { indexPath: string; captionsPath: string; transitionsPath: string } {
   const compositeDir = path.join(args.episodeDir, "stage-2-composite");
   const compositionsDir = path.join(compositeDir, "compositions");
   mkdirSync(compositionsDir, { recursive: true });
 
+  const tree = loadDesignMd(args.designMdPath);
   const indexPath = path.join(compositeDir, "index.html");
   const captionsPath = path.join(compositionsDir, "captions.html");
 
-  writeFileSync(indexPath, buildRootIndexHtml(args));
-  writeFileSync(captionsPath, buildCaptionsCompositionHtml({ bundle: args.bundle }));
+  writeFileSync(indexPath, buildRootIndexHtml(args, tree));
+  writeFileSync(captionsPath, buildCaptionsCompositionHtml({ bundle: args.bundle, tree }));
 
-  return { indexPath, captionsPath };
+  const transitionConfig = readTransitionConfig(tree);
+  const transitionsPath = path.join(compositionsDir, "transitions.html");
+  writeFileSync(transitionsPath, buildTransitionsHtml({
+    seams: args.plan.seams,
+    totalDurationMs: args.bundle.master.durationMs,
+    transition: transitionConfig,
+  }));
+
+  return { indexPath, captionsPath, transitionsPath };
 }

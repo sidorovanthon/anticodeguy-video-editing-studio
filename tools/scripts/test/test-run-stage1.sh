@@ -117,19 +117,20 @@ cat > "$EPISODE/stage-1-cut/edl.json" <<EOF
 }
 EOF
 # Remove master.mp4 if it somehow exists from a prior run
-rm -f "$EPISODE/stage-1-cut/master.mp4"
+mkdir -p "$EPISODE/stage-2-composite/assets"
+rm -f "$EPISODE/stage-2-composite/assets/master.mp4"
 
 # Run stage 1 in render mode
 ( cd "$WORK" && ./tools/scripts/run-stage1.sh "$SLUG" render ) \
   || { echo "FAIL: run-stage1.sh render exited non-zero"; exit 1; }
 
 # Required outputs
-[ -f "$EPISODE/stage-1-cut/master.mp4" ] || { echo "FAIL: master.mp4 not produced"; exit 1; }
+[ -f "$EPISODE/stage-2-composite/assets/master.mp4" ] || { echo "FAIL: master.mp4 not produced"; exit 1; }
 
 # master.mp4 must be 1440x2560 60fps Rec.709 SDR H.264
 RES="$(ffprobe -v error -select_streams v:0 \
        -show_entries stream=width,height,r_frame_rate,codec_name,profile,pix_fmt,color_space,color_transfer,color_primaries \
-       -of default=nw=1 "$EPISODE/stage-1-cut/master.mp4")"
+       -of default=nw=1 "$EPISODE/stage-2-composite/assets/master.mp4")"
 echo "$RES" | grep -q "width=1440"          || { echo "FAIL: width != 1440";   echo "$RES"; exit 1; }
 echo "$RES" | grep -q "height=2560"         || { echo "FAIL: height != 2560";  echo "$RES"; exit 1; }
 echo "$RES" | grep -qE "r_frame_rate=60(/1)?" || { echo "FAIL: fps != 60";      echo "$RES"; exit 1; }
@@ -140,12 +141,12 @@ echo "$RES" | grep -q "pix_fmt=yuv420p"       || { echo "FAIL: pix_fmt != yuv420
 # Audio must be AAC 48kHz stereo
 ARES="$(ffprobe -v error -select_streams a:0 \
        -show_entries stream=codec_name,sample_rate,channels,bit_rate \
-       -of default=nw=1 "$EPISODE/stage-1-cut/master.mp4")"
+       -of default=nw=1 "$EPISODE/stage-2-composite/assets/master.mp4")"
 echo "$ARES" | grep -q "codec_name=aac"     || { echo "FAIL: audio not AAC";   echo "$ARES"; exit 1; }
 echo "$ARES" | grep -q "sample_rate=48000"  || { echo "FAIL: sample_rate != 48000"; echo "$ARES"; exit 1; }
 
 # Duration should be ~2.9s (sum of (1.5-0.10) + (3.5-2.0) = 1.4 + 1.5 = 2.9). Allow ±0.5s tolerance.
-DUR="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$EPISODE/stage-1-cut/master.mp4")"
+DUR="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$EPISODE/stage-2-composite/assets/master.mp4")"
 python -c "import sys; d=float('$DUR'); sys.exit(0 if 2.4 <= d <= 3.4 else 1)" \
   || { echo "FAIL: duration $DUR out of expected 2.4..3.4 range"; exit 1; }
 

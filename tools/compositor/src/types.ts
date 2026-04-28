@@ -44,6 +44,9 @@ export interface Seam {
   index: number;
   at_ms: number;
   scene: SceneMode;
+  // TODO(6b): consumed by the agentic graphics planner; currently round-trip
+  // only — the compositor selects per-seam HTML by file existence, not by
+  // reading this field. Do not delete as "unused".
   graphic?: {
     component: string;
     data: Record<string, unknown>;

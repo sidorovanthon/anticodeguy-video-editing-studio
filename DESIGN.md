@@ -16,6 +16,8 @@ Roles:
 - **text.accent** — soft sky-blue for highlights, links, and one-word emphasis.
 - **caption.active / caption.inactive** — karaoke caption pair: full-white when the word is being spoken, 55% white before/after.
 
+**Base palette:** custom — not a derivative of any catalog palette in `tools/hyperframes-skills/hyperframes/palettes/`. The frosted-glass-on-dark aesthetic is channel-specific. If a palette deviation is requested per-episode, document it in that episode's `notes.md`; never override DESIGN.md's tokens.
+
 ```json hyperframes-tokens
 {
   "color": {
@@ -33,7 +35,8 @@ Roles:
   "radius":   { "sm": "16px", "md": "28px", "lg": "44px", "pill": "9999px" },
   "spacing":  { "xs": "8px", "sm": "16px", "md": "24px", "lg": "40px", "xl": "64px" },
   "safezone": { "top": "8%", "bottom": "22%", "side": "6%" },
-  "video":    { "width": 1440, "height": 2560, "fps": 60, "color": "rec709-sdr" }
+  "video":    { "width": 1440, "height": 2560, "fps": 60, "color": "rec709-sdr" },
+  "transition": { "primary": "crossfade", "duration": 0.4, "easing": "power2.inOut" }
 }
 ```
 
@@ -43,6 +46,12 @@ Roles:
 - **Display / headings:** `Inter Display` 700–900 — 96 px+. Used for title cards and seam-level emphasis only, never on captions.
 
 System-font fallback chain: `system-ui, sans-serif`. The HyperFrames compiler embeds Inter on render.
+
+**Inter override (intentional):** HF's `references/typography.md` lists Inter on the banned-fonts catalogue (it's an over-used default). We override deliberately: the channel's calm-technical voice is well-served by a neutral grotesque, and Inter's tabular-nums + display variants cover our needs without introducing a second family. Re-evaluate during channel rebrands; do not switch silently.
+
+## Transitions
+
+The channel's primary scene-to-scene transition is a 0.4 s crossfade with `power2.inOut` easing — calm, neutral, non-disruptive. This matches the "calm / brand story" energy bucket from `tools/hyperframes-skills/hyperframes/references/transitions.md`. Per HF's non-negotiable rules, every multi-scene composition uses transitions; jump cuts are a bug. Bolder primaries (`blur-crossfade`, `push-slide`, `zoom-through`) are catalog-spelled and reserved for episodes whose mood explicitly calls for them.
 
 ## Motion
 
@@ -58,3 +67,9 @@ System-font fallback chain: `system-ui, sans-serif`. The HyperFrames compiler em
 3. **No off-palette colors.** Hex values come from the JSON block above; no `#333`, no `#3b82f6`, no on-the-fly tints. Adjust within the palette family to fix contrast warnings.
 4. **No full-screen linear gradients on dark backgrounds.** H.264 banding makes them ugly. Use a radial gradient or solid + localized glow.
 5. **No `Math.random()` / `Date.now()` / network fetches** in any composition — HyperFrames runtime forbids them and the render breaks.
+6. **No `var(--…)` on captured elements.** html2canvas (used by shader transitions) does not reliably resolve custom properties. The compositor inlines literal hex/RGBA into element styles. `:root { --… }` declarations may exist in `<head>` for documentation/fallback, but no element style consumed by capture references them via `var()`.
+7. **No `transparent` keyword in gradients.** Canvas interpolates `transparent` as `rgba(0,0,0,0)` — black at zero alpha — creating dark fringes. Use the target colour at zero alpha: `rgba(255,255,255,0)`, never `transparent`.
+8. **No gradient backgrounds on elements thinner than 4 px.** Canvas can't match CSS gradient rendering at 1–2 px. Use a solid `background-color` on thin accent lines.
+9. **Mark uncapturable decorative elements with `data-no-capture`.** They render in the live DOM but skip the shader texture; use this for elements that violate the rules above.
+10. **No gradient opacity below 0.15.** Below 10 % opacity, canvas and CSS render gradients differently. Bump to 0.15+ or use a solid colour at equivalent brightness.
+11. **Every `.scene` div carries an explicit `background-color`** matching the `init({ bgColor })` config. Without both, the scene texture renders as black.

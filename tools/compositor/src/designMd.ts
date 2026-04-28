@@ -47,3 +47,61 @@ export function designMdToCss(tree: TokenTree): string {
   lines.push("");
   return lines.join("\n");
 }
+
+export function resolveToken(tree: TokenTree, dottedPath: string): string {
+  const parts = dottedPath.split(".");
+  let cursor: TokenTree | string | number = tree;
+  for (const part of parts) {
+    if (cursor === null || typeof cursor !== "object" || Array.isArray(cursor)) {
+      throw new Error(`resolveToken: '${dottedPath}' missing — '${part}' has no parent object`);
+    }
+    if (!(part in (cursor as TokenTree))) {
+      throw new Error(`resolveToken: '${dottedPath}' not found in DESIGN.md tokens`);
+    }
+    cursor = (cursor as TokenTree)[part];
+  }
+  if (cursor !== null && typeof cursor === "object") {
+    throw new Error(`resolveToken: '${dottedPath}' resolves to a subtree, not a leaf value`);
+  }
+  return String(cursor);
+}
+
+export type TransitionPrimary = "crossfade" | "blur-crossfade" | "push-slide" | "zoom-through";
+
+export interface TransitionConfig {
+  primary: TransitionPrimary;
+  duration: number;
+  easing: string;
+}
+
+const KNOWN_PRIMARIES: ReadonlySet<string> = new Set([
+  "crossfade",
+  "blur-crossfade",
+  "push-slide",
+  "zoom-through",
+]);
+
+const DEFAULT_TRANSITION: TransitionConfig = {
+  primary: "crossfade",
+  duration: 0.4,
+  easing: "power2.inOut",
+};
+
+export function readTransitionConfig(tree: TokenTree): TransitionConfig {
+  const block = (tree as Record<string, unknown>).transition;
+  if (!block) return DEFAULT_TRANSITION;
+  if (typeof block !== "object" || Array.isArray(block)) {
+    throw new Error("DESIGN.md: transition block must be a JSON object");
+  }
+  const b = block as Record<string, unknown>;
+  const primary = b.primary;
+  if (typeof primary !== "string" || !KNOWN_PRIMARIES.has(primary)) {
+    throw new Error(
+      `DESIGN.md: transition.primary='${String(primary)}' is not in the catalog ` +
+        `(known: ${[...KNOWN_PRIMARIES].join(", ")})`,
+    );
+  }
+  const duration = typeof b.duration === "number" ? b.duration : DEFAULT_TRANSITION.duration;
+  const easing = typeof b.easing === "string" ? b.easing : DEFAULT_TRANSITION.easing;
+  return { primary: primary as TransitionPrimary, duration, easing };
+}

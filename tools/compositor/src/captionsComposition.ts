@@ -1,65 +1,127 @@
 import type { MasterBundle } from "./types.js";
+import type { TokenTree } from "./designMd.js";
+import { resolveToken } from "./designMd.js";
+import { groupWords } from "./groupWords.js";
 
 export interface CaptionsArgs {
   bundle: MasterBundle;
+  tree: TokenTree;
 }
+
+const MAX_WORDS_PER_GROUP = 5;
+const BREAK_AFTER_PAUSE_MS = 120;
 
 export function buildCaptionsCompositionHtml(args: CaptionsArgs): string {
   const totalSec = (Math.round(args.bundle.master.durationMs) / 1000).toFixed(3);
-  const wordsForRuntime = args.bundle.transcript.words.map((w) => ({
-    text: w.text,
-    start_ms: w.startMs,
-    end_ms: w.endMs,
+  const words = args.bundle.transcript.words;
+
+  const fontFamily      = resolveToken(args.tree, "type.family.caption");
+  const fontSize        = resolveToken(args.tree, "type.size.caption");
+  const fontWeight      = resolveToken(args.tree, "type.weight.bold");
+  const colorActive     = resolveToken(args.tree, "color.caption.active");
+  const colorInactive   = resolveToken(args.tree, "color.caption.inactive");
+  const safezoneSide    = resolveToken(args.tree, "safezone.side");
+  const safezoneBottom  = resolveToken(args.tree, "safezone.bottom");
+
+  if (words.length === 0) {
+    return `<template id="captions-template">
+<div data-composition-id="captions" data-start="0" data-duration="${totalSec}" data-width="1440" data-height="2560">
+  <!-- no transcript words; captions sub-composition emits no timeline -->
+</div>
+</template>`;
+  }
+
+  const groups = groupWords(
+    words.map((w) => ({ text: w.text, startMs: w.startMs, endMs: w.endMs })),
+    { maxWordsPerGroup: MAX_WORDS_PER_GROUP, breakAfterPauseMs: BREAK_AFTER_PAUSE_MS },
+  );
+
+  const groupsForRuntime = groups.map((g) => ({
+    id: g.id,
+    startSec: g.startMs / 1000,
+    endSec: g.endMs / 1000,
   }));
+
+  const groupDivs = groups
+    .map((g) => {
+      const inner = g.words.map((w) => `<span class="caption-word">${escapeHtml(w.text)}</span>`).join(" ");
+      return `<div class="caption-group" data-group-id="${g.id}">${inner}</div>`;
+    })
+    .join("\n  ");
+
+  const fontSizePx = parseFontSizePx(fontSize);
+
   return `<template id="captions-template">
 <div data-composition-id="captions" data-start="0" data-duration="${totalSec}" data-width="1440" data-height="2560">
   <style>
-    [data-composition-id="captions"] { width: 100%; height: 100%; position: relative; }
-    [data-composition-id="captions"] .caption-row {
-      position: absolute;
-      left: var(--safezone-side, 6%);
-      right: var(--safezone-side, 6%);
-      bottom: var(--safezone-bottom, 22%);
-      text-align: center;
-      font-family: var(--type-family-caption, system-ui);
-      font-size: var(--type-size-caption, 64px);
-      font-weight: var(--type-weight-bold, 700);
-      line-height: 1.2;
+    [data-composition-id="captions"] {
+      width: 100%; height: 100%; position: relative;
+      background-color: rgba(0,0,0,0);
     }
-    [data-composition-id="captions"] .word {
+    [data-composition-id="captions"] .caption-group {
+      position: absolute;
+      left: ${safezoneSide}; right: ${safezoneSide};
+      bottom: ${safezoneBottom};
+      text-align: center;
+      font-family: ${fontFamily};
+      font-size: ${fontSize};
+      font-weight: ${fontWeight};
+      line-height: 1.2;
+      color: ${colorActive};
+      visibility: hidden;
+      opacity: 0;
+    }
+    [data-composition-id="captions"] .caption-word {
       display: inline-block;
       margin: 0 0.18em;
-      color: var(--color-caption-inactive, rgba(255,255,255,0.55));
     }
-    [data-composition-id="captions"] .word.active {
-      color: var(--color-caption-active, #FFFFFF);
+    [data-composition-id="captions"] .caption-group.muted .caption-word {
+      color: ${colorInactive};
     }
   </style>
-  <div class="caption-row" id="captions-row"></div>
+  ${groupDivs}
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
   <script>
     (function () {
-      var WORDS = ${JSON.stringify(wordsForRuntime)};
-      var row = document.getElementById("captions-row");
-      WORDS.forEach(function (w, i) {
-        var span = document.createElement("span");
-        span.className = "word";
-        span.dataset.start = w.start_ms;
-        span.dataset.end = w.end_ms;
-        span.textContent = w.text;
-        row.appendChild(span);
-      });
+      var GROUPS = ${JSON.stringify(groupsForRuntime)};
+      var root = document.querySelector('[data-composition-id="captions"]');
       window.__timelines = window.__timelines || {};
       var tl = gsap.timeline({ paused: true });
-      WORDS.forEach(function (w, i) {
-        var sel = ".word:nth-child(" + (i + 1) + ")";
-        tl.set(sel, { className: "+=active" }, w.start_ms / 1000);
-        tl.set(sel, { className: "-=active" }, w.end_ms / 1000);
+      var fit = (window.__hyperframes && window.__hyperframes.fitTextFontSize) || null;
+
+      GROUPS.forEach(function (g) {
+        var sel = '[data-group-id="' + g.id + '"]';
+        var el = root.querySelector(sel);
+        tl.from(el, { autoAlpha: 0, y: 24, duration: 0.32, ease: "power3.out" }, g.startSec);
+        tl.set(el, { autoAlpha: 0 }, g.endSec);
+        if (fit) {
+          tl.call(function () { fit(el, { maxFontSize: ${fontSizePx}, minFontSize: 28 }); }, [], g.startSec);
+        }
       });
+
       tl.to({}, { duration: ${totalSec} }, 0);
       window.__timelines["captions"] = tl;
+
+      // Self-lint: every group must have an entry tween and a hard-kill set.
+      var children = tl.getChildren(false, true, true);
+      GROUPS.forEach(function (g) {
+        var hasEntry = children.some(function (c) { return Math.abs(c.startTime() - g.startSec) < 1e-3 && c.vars && c.vars.duration; });
+        var hasKill  = children.some(function (c) { return Math.abs(c.startTime() - g.endSec)   < 1e-3 && c.vars && c.vars.autoAlpha === 0 && !c.vars.duration; });
+        if (!hasEntry || !hasKill) {
+          throw new Error("captions self-lint failed for group " + g.id + ": entry=" + hasEntry + " kill=" + hasKill);
+        }
+      });
     })();
   </script>
 </div>
 </template>`;
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+}
+
+function parseFontSizePx(token: string): number {
+  const m = token.match(/^(\d+(?:\.\d+)?)px$/);
+  return m ? Number(m[1]) : 64;
 }

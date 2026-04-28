@@ -76,6 +76,24 @@ case "$FPS" in ''|*[!0-9]*) echo "ERROR: --fps must be a positive integer"; exit
 case "$QUALITY" in draft|standard|high) ;; *) echo "ERROR: --quality must be draft|standard|high"; exit 1 ;; esac
 
 REPO_ROOT="$(pwd)"
+HF_BIN="$REPO_ROOT/tools/compositor/node_modules/.bin/hyperframes"
+[ -x "$HF_BIN" ] || { echo "ERROR: pinned hyperframes binary not found at $HF_BIN — run 'cd tools/compositor && npm install'"; exit 1; }
+
+HF_RENDER_MODE="${HF_RENDER_MODE:-docker}"
+RENDER_FLAGS=()
+if [ "$HF_RENDER_MODE" = "docker" ]; then
+  RENDER_FLAGS+=(--docker)
+elif [ "$HF_RENDER_MODE" = "local" ]; then
+  WORKERS=1
+  QUALITY=draft
+else
+  echo "ERROR: HF_RENDER_MODE must be 'docker' or 'local' (got '$HF_RENDER_MODE')"
+  exit 1
+fi
+
+# shellcheck source=tools/scripts/lib/preflight.sh
+. "$(dirname "$0")/lib/preflight.sh"
+hf_preflight || { echo "ERROR: doctor preflight failed; aborting preview"; exit 1; }
 EPISODE="$REPO_ROOT/episodes/$SLUG"
 COMPOSITE_DIR="$EPISODE/stage-2-composite"
 HF_INDEX="$COMPOSITE_DIR/index.html"
@@ -84,13 +102,14 @@ HF_INDEX="$COMPOSITE_DIR/index.html"
 
 HF_OUT="$COMPOSITE_DIR/preview.mp4"
 rm -f "$HF_OUT"
-npx -y hyperframes render "$COMPOSITE_DIR" \
+"$HF_BIN" render "$COMPOSITE_DIR" \
   -o preview.mp4 \
   -f "$FPS" \
   -q "$QUALITY" \
   --format mp4 \
   --workers "$WORKERS" \
-  --max-concurrent-renders 1 || { echo "ERROR: hyperframes render failed"; exit 1; }
+  --max-concurrent-renders 1 \
+  "${RENDER_FLAGS[@]}" || { echo "ERROR: hyperframes render failed"; exit 1; }
 
 # `-o` may be interpreted relative to the project dir or to cwd, or HF may
 # place it in the default renders/<name>_<ts>.mp4 location. Relocate to $HF_OUT.

@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Stage 2 final render: composes the stage-1 master.mp4 with the HyperFrames
-# overlay layer (rendered as transparent .mov via --format mov) and the music
-# sidecar from library/music/<file>.mp3 into final.mp4.
-#
-# Audio per standards/audio.md: voice (master) at full level, music ducked
-# 6 dB lower (loudnorm to -20 LUFS, weighted 0.5 in amix).
+# Final render: HF renders the complete final.mp4 in one pass. Music has
+# already been copied into stage-2-composite/assets/ by run-stage2-compose.sh,
+# and index.html references it via data-volume=0.5 (music ducked 6 dB below
+# voice). No ffmpeg post-processing.
 #
 # Usage: tools/scripts/render-final.sh <slug>
 
@@ -17,61 +15,46 @@ fi
 
 SLUG="$1"
 REPO_ROOT="$(pwd)"
+HF_BIN="$REPO_ROOT/tools/compositor/node_modules/.bin/hyperframes"
+[ -x "$HF_BIN" ] || { echo "ERROR: pinned hyperframes binary not found at $HF_BIN — run 'cd tools/compositor && npm install'"; exit 1; }
+
+# shellcheck source=tools/scripts/lib/preflight.sh
+. "$(dirname "$0")/lib/preflight.sh"
+hf_preflight || { echo "ERROR: doctor preflight failed; aborting final render"; exit 1; }
 EP="$REPO_ROOT/episodes/$SLUG"
 COMPOSITE_DIR="$EP/stage-2-composite"
 HF_INDEX="$COMPOSITE_DIR/index.html"
-MASTER="$EP/stage-1-cut/master.mp4"
-META="$EP/meta.yaml"
 FINAL="$COMPOSITE_DIR/final.mp4"
 
-[ -f "$HF_INDEX" ] || { echo "ERROR: $HF_INDEX missing — run run-stage2-compose.sh first"; exit 1; }
-[ -f "$MASTER" ]   || { echo "ERROR: master.mp4 missing"; exit 1; }
-[ -f "$META" ]     || { echo "ERROR: meta.yaml missing"; exit 1; }
+[ -f "$HF_INDEX" ]                          || { echo "ERROR: $HF_INDEX missing — run run-stage2-compose.sh first"; exit 1; }
+[ -f "$COMPOSITE_DIR/assets/master.mp4" ]   || { echo "ERROR: assets/master.mp4 missing — run run-stage1.sh <slug> render first"; exit 1; }
 
-# Extract music path from meta.yaml (supports quoted or unquoted).
-MUSIC_REL="$(grep '^music:' "$META" | sed 's/^music:[[:space:]]*//;s/^"//;s/"$//')"
-if [ -z "$MUSIC_REL" ]; then
-  echo "ERROR: meta.yaml music: field is empty. Set it to library/music/<file>.mp3"
+HF_RENDER_MODE="${HF_RENDER_MODE:-docker}"
+RENDER_FLAGS=()
+if [ "$HF_RENDER_MODE" = "docker" ]; then
+  RENDER_FLAGS+=(--docker)
+elif [ "$HF_RENDER_MODE" != "local" ]; then
+  echo "ERROR: HF_RENDER_MODE must be 'docker' or 'local' (got '$HF_RENDER_MODE')"
   exit 1
 fi
-MUSIC="$REPO_ROOT/$MUSIC_REL"
-[ -f "$MUSIC" ] || { echo "ERROR: music file not found at $MUSIC"; exit 1; }
 
-# Render overlays as MOV with alpha (HyperFrames: --format mov => transparent).
-OVERLAYS_NAME="overlays.mov"
-OVERLAYS="$COMPOSITE_DIR/$OVERLAYS_NAME"
-rm -f "$OVERLAYS"
-npx -y hyperframes render "$COMPOSITE_DIR" \
-  -o "$OVERLAYS_NAME" \
+rm -f "$FINAL"
+"$HF_BIN" render "$COMPOSITE_DIR" \
+  -o final.mp4 \
   -f 60 \
   -q high \
-  --format mov || { echo "ERROR: hyperframes final render failed"; exit 1; }
+  --format mp4 \
+  --workers 1 \
+  --max-concurrent-renders 1 \
+  "${RENDER_FLAGS[@]}" || { echo "ERROR: hyperframes render failed"; exit 1; }
 
-# Relocate output if HF placed it elsewhere (mirror run-stage2.sh fallback chain).
-if [ ! -f "$OVERLAYS" ]; then
-  if   [ -f "$REPO_ROOT/$OVERLAYS_NAME" ]; then mv "$REPO_ROOT/$OVERLAYS_NAME" "$OVERLAYS"
-  elif ls "$COMPOSITE_DIR"/renders/*.mov >/dev/null 2>&1; then
-    mv "$(ls -t "$COMPOSITE_DIR"/renders/*.mov | head -n1)" "$OVERLAYS"
+# Relocate output if HF placed it in a renders/ subdir.
+if [ ! -f "$FINAL" ]; then
+  if   [ -f "$REPO_ROOT/final.mp4" ]; then mv "$REPO_ROOT/final.mp4" "$FINAL"
+  elif ls "$COMPOSITE_DIR"/renders/*.mp4 >/dev/null 2>&1; then
+    mv "$(ls -t "$COMPOSITE_DIR"/renders/*.mp4 | head -n1)" "$FINAL"
   fi
 fi
-[ -f "$OVERLAYS" ] || { echo "ERROR: overlays.mov not produced"; exit 1; }
 
-# ffmpeg merge: master video + overlays alpha + music sidecar.
-# Audio per standards/audio.md: voice arrives from master at -14 LUFS (mastered
-# upstream by video-use); music is loudnorm'd to -20 LUFS, which already bakes in
-# the 6 dB gap below voice. amix weights are both 1 — no extra attenuation.
-ffmpeg -y \
-  -i "$MASTER" \
-  -i "$OVERLAYS" \
-  -i "$MUSIC" \
-  -filter_complex "[0:v][1:v]overlay=0:0:format=auto[vout]; \
-                   [2:a]loudnorm=I=-20:TP=-1:LRA=11[mloud]; \
-                   [0:a][mloud]amix=inputs=2:duration=first:weights=1 1:normalize=0[aout]" \
-  -map "[vout]" -map "[aout]" \
-  -c:v libx264 -profile:v high -level 5.1 -pix_fmt yuv420p \
-  -b:v 35M -maxrate 40M -bufsize 70M \
-  -colorspace bt709 -color_primaries bt709 -color_trc bt709 \
-  -c:a aac -b:a 320k -ar 48000 -ac 2 \
-  "$FINAL"
-
+[ -f "$FINAL" ] || { echo "ERROR: final.mp4 not produced"; exit 1; }
 echo "Final render complete: $FINAL"
