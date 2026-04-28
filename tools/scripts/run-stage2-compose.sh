@@ -7,10 +7,6 @@ set -euo pipefail
 #
 # Usage: tools/scripts/run-stage2-compose.sh <slug>
 
-# shellcheck source=tools/scripts/lib/preflight.sh
-. "$(dirname "$0")/lib/preflight.sh"
-hf_preflight || { echo "ERROR: doctor preflight failed; aborting compose"; exit 1; }
-
 if [ "$#" -ne 1 ]; then
   echo "Usage: $0 <slug>"
   exit 1
@@ -18,6 +14,12 @@ fi
 
 SLUG="$1"
 REPO_ROOT="$(pwd)"
+HF_BIN="$REPO_ROOT/tools/compositor/node_modules/.bin/hyperframes"
+[ -x "$HF_BIN" ] || { echo "ERROR: pinned hyperframes binary not found at $HF_BIN — run 'cd tools/compositor && npm install'"; exit 1; }
+
+# shellcheck source=tools/scripts/lib/preflight.sh
+. "$(dirname "$0")/lib/preflight.sh"
+hf_preflight || { echo "ERROR: doctor preflight failed; aborting compose"; exit 1; }
 EPISODE="$REPO_ROOT/episodes/$SLUG"
 COMPOSITE_DIR="$EPISODE/stage-2-composite"
 
@@ -59,9 +61,9 @@ REPO_ROOT="$REPO_ROOT" npx tsx tools/compositor/src/index.ts compose --episode "
 
 # Step 3: HyperFrames lint + validate + inspect against the canonical
 # project (index.html lives directly under stage-2-composite/).
-npx -y hyperframes lint "$COMPOSITE_DIR"      || { echo "ERROR: hyperframes lint failed"; exit 1; }
-npx hyperframes validate "$COMPOSITE_DIR" || { echo "ERROR: hyperframes validate failed"; exit 1; }
-npx hyperframes inspect "$COMPOSITE_DIR" --json > "$COMPOSITE_DIR/.inspect.json" || {
+"$HF_BIN" lint "$COMPOSITE_DIR"      || { echo "ERROR: hyperframes lint failed"; exit 1; }
+"$HF_BIN" validate "$COMPOSITE_DIR" || { echo "ERROR: hyperframes validate failed"; exit 1; }
+"$HF_BIN" inspect "$COMPOSITE_DIR" --json > "$COMPOSITE_DIR/.inspect.json" || {
   echo "ERROR: hyperframes inspect failed; see $COMPOSITE_DIR/.inspect.json"
   echo "       annotate intentional overflow with data-layout-allow-overflow / data-layout-ignore"
   exit 1

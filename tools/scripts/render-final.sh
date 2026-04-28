@@ -8,10 +8,6 @@ set -euo pipefail
 #
 # Usage: tools/scripts/render-final.sh <slug>
 
-# shellcheck source=tools/scripts/lib/preflight.sh
-. "$(dirname "$0")/lib/preflight.sh"
-hf_preflight || { echo "ERROR: doctor preflight failed; aborting final render"; exit 1; }
-
 if [ "$#" -ne 1 ]; then
   echo "Usage: $0 <slug>"
   exit 1
@@ -19,6 +15,12 @@ fi
 
 SLUG="$1"
 REPO_ROOT="$(pwd)"
+HF_BIN="$REPO_ROOT/tools/compositor/node_modules/.bin/hyperframes"
+[ -x "$HF_BIN" ] || { echo "ERROR: pinned hyperframes binary not found at $HF_BIN — run 'cd tools/compositor && npm install'"; exit 1; }
+
+# shellcheck source=tools/scripts/lib/preflight.sh
+. "$(dirname "$0")/lib/preflight.sh"
+hf_preflight || { echo "ERROR: doctor preflight failed; aborting final render"; exit 1; }
 EP="$REPO_ROOT/episodes/$SLUG"
 COMPOSITE_DIR="$EP/stage-2-composite"
 HF_INDEX="$COMPOSITE_DIR/index.html"
@@ -37,7 +39,7 @@ elif [ "$HF_RENDER_MODE" != "local" ]; then
 fi
 
 rm -f "$FINAL"
-npx -y hyperframes render "$COMPOSITE_DIR" \
+"$HF_BIN" render "$COMPOSITE_DIR" \
   -o final.mp4 \
   -f 60 \
   -q high \

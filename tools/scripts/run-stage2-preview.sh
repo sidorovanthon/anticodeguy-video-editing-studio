@@ -75,9 +75,9 @@ case "$FPS" in ''|*[!0-9]*) echo "ERROR: --fps must be a positive integer"; exit
 [ "$FPS" -ge 1 ] || { echo "ERROR: --fps must be >= 1"; exit 1; }
 case "$QUALITY" in draft|standard|high) ;; *) echo "ERROR: --quality must be draft|standard|high"; exit 1 ;; esac
 
-# shellcheck source=tools/scripts/lib/preflight.sh
-. "$(dirname "$0")/lib/preflight.sh"
-hf_preflight || { echo "ERROR: doctor preflight failed; aborting preview"; exit 1; }
+REPO_ROOT="$(pwd)"
+HF_BIN="$REPO_ROOT/tools/compositor/node_modules/.bin/hyperframes"
+[ -x "$HF_BIN" ] || { echo "ERROR: pinned hyperframes binary not found at $HF_BIN — run 'cd tools/compositor && npm install'"; exit 1; }
 
 HF_RENDER_MODE="${HF_RENDER_MODE:-docker}"
 RENDER_FLAGS=()
@@ -91,7 +91,9 @@ else
   exit 1
 fi
 
-REPO_ROOT="$(pwd)"
+# shellcheck source=tools/scripts/lib/preflight.sh
+. "$(dirname "$0")/lib/preflight.sh"
+hf_preflight || { echo "ERROR: doctor preflight failed; aborting preview"; exit 1; }
 EPISODE="$REPO_ROOT/episodes/$SLUG"
 COMPOSITE_DIR="$EPISODE/stage-2-composite"
 HF_INDEX="$COMPOSITE_DIR/index.html"
@@ -100,7 +102,7 @@ HF_INDEX="$COMPOSITE_DIR/index.html"
 
 HF_OUT="$COMPOSITE_DIR/preview.mp4"
 rm -f "$HF_OUT"
-npx -y hyperframes render "$COMPOSITE_DIR" \
+"$HF_BIN" render "$COMPOSITE_DIR" \
   -o preview.mp4 \
   -f "$FPS" \
   -q "$QUALITY" \

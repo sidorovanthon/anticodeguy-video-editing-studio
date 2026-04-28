@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Sourced by run-stage2-compose.sh / run-stage2-preview.sh / render-final.sh.
-# Runs `npx hyperframes doctor` and exits the calling shell on critical
-# failures.
+# Runs `hyperframes doctor` (via pinned binary) and exits the calling shell
+# on critical failures.
 #
-# Critical failures (always fatal):  Node, FFmpeg, Chrome.
+# Critical failures (always fatal):  Node, FFmpeg, FFprobe, Chrome.
 # Conditional failures (fatal only when HF_RENDER_MODE != local):
 #   Docker, Docker running.
 #
@@ -12,8 +12,13 @@
 
 hf_preflight() {
   local mode="${HF_RENDER_MODE:-docker}"
+  local hf_bin="$REPO_ROOT/tools/compositor/node_modules/.bin/hyperframes"
+  if [ ! -x "$hf_bin" ]; then
+    echo "ERROR: pinned hyperframes binary not found at $hf_bin — run 'cd tools/compositor && npm install'"
+    return 1
+  fi
   local out
-  out="$(npx -y hyperframes doctor 2>&1 || true)"
+  out="$("$hf_bin" doctor 2>&1 || true)"
 
   if echo "$out" | grep -E "^\s*✗\s+(Node\.js|FFmpeg|FFprobe|Chrome)\b" >/dev/null; then
     echo "[preflight] Critical doctor check failed:"
