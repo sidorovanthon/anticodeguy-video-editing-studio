@@ -75,3 +75,52 @@ Never edit existing entries. To revoke a rule, append a new entry that removes i
 - Phase 6 brief written at docs/superpowers/specs/2026-04-28-agentic-graphics-planner-brief.md.
 - Source: docs/superpowers/plans/2026-04-28-phase-5-pipeline-contracts.md.
 - Reason: pilot of Phase 4 surfaced 5 Stage 1 -> Stage 2 contract drifts; this phase closes the class of bugs at the source.
+
+## 2026-04-28 — Phase 6a HF-native foundation
+
+Stage 2 pipeline moved onto HyperFrames-canonical project layout:
+- Single project-level `DESIGN.md` at repo root replaces
+  `design-system/tokens/tokens.json`. The compositor parses a fenced
+  `hyperframes-tokens` JSON block to emit `:root` CSS variables.
+- Compositor emits `episodes/<slug>/stage-2-composite/index.html` with
+  HF sub-compositions under `compositions/`. The `hf-project/` staging
+  directory is gone; `index.html` is the canonical entry.
+- Captions migrated from `caption-karaoke.html` to
+  `compositions/captions.html` (HF sub-composition with `<template>`,
+  scoped styles, registered timeline).
+- Placeholder homemade components removed
+  (`glass-card`, `title-card`, `overlay-plate`, `fullscreen-broll`,
+  `split-frame`, `_base.css`); `split-frame` and `overlay-plate` will be
+  re-authored as HF layout shells during Phase 6b.
+- `hyperframes lint` + `validate` + `inspect` + `animation-map` wired
+  into `run-stage2-compose.sh`. Lint gates the build; validate and
+  inspect run as warn-and-continue until Phase 6b tightens them
+  (current contrast and text-overflow reports look like measurement
+  artifacts from headless validation, not real palette issues).
+- HF skills vendored at `tools/hyperframes-skills/` (v0.4.31), refresh
+  via `tools/scripts/sync-hf-skills.sh`. Available to coding subagents
+  in Phase 6b.
+
+WATCH catalog in `standards/motion-graphics.md` rewritten to use real HF
+registry block names (`yt-lower-third`, `data-chart`, `flowchart`, etc.)
+plus the `bespoke` marker. The previous aspirational catalog
+(`side-figure`, `code-block`, `chart`, `quote-card`, `lower-third`,
+`subscribe-cta`, `name-plate`, `full-bleed-figure`, `b-roll-clip`) is
+removed.
+
+Render-stage memory tuning (operational, not standards):
+`run-stage2-preview.sh` gained `--quality` / `--draft` flags and pins
+`--max-concurrent-renders=1`. Default `hyperframes render` against
+1440x2560 wedged the host on the smoke run; with `--draft --workers 1`
+the smoke episode rendered cleanly. The architecturally correct fix is
+to move render into `hyperframes render --docker` (deterministic
+environment plus hard cgroup memory cap); planned as a small Phase
+6a-1 follow-up before Phase 6b.
+
+Smoke test: `episodes/2026-04-28-phase-6a-smoke-test` (copy of pilot,
+which is FROZEN). Synthetic '6A WIRING OK' frosted-glass plate authored
+as `compositions/seam-4.html` rendered correctly into preview.mp4
+(33.7 MB, 52.7 s, 1440x2560 30 fps draft).
+
+Spec: `docs/superpowers/specs/2026-04-28-phase-6a-hf-native-foundation-design.md`
+Plan: `docs/superpowers/plans/2026-04-28-phase-6a-hf-native-foundation.md`
