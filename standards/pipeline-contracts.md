@@ -71,3 +71,5 @@ canonical entry consumed directly by `npx hyperframes lint /
 validate / inspect / render`. Captions live at
 `compositions/captions.html`; per-seam bespoke graphics (when present,
 Phase 6b onward) live at `compositions/seam-<id>.html`.
+
+> **FROZEN pilot caveat.** `episodes/2026-04-27-desktop-software-licensing-it-turns-out/stage-2-composite/` is non-canonical (predates Phase 6a; uses `composition.html` + `hf-project/`). The canonical contract below is what `run-stage2-compose.sh` emits today: `index.html`, `compositions/captions.html`, `compositions/transitions.html`, `compositions/seam-<id>.html`, `hyperframes.json`, `meta.json`, `seam-plan.md`.
