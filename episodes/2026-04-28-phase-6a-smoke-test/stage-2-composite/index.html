@@ -40,10 +40,13 @@
   --video-height: 2560;
   --video-fps: 60;
   --video-color: rec709-sdr;
+  --transition-primary: crossfade;
+  --transition-duration: 0.4;
+  --transition-easing: power2.inOut;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { width: 1440px; height: 2560px; background: var(--color-bg-transparent); color: var(--color-text-primary); font-family: var(--type-family-caption); overflow: hidden; }
+html, body { width: 1440px; height: 2560px; background: rgba(0,0,0,0); color: #FFFFFF; font-family: 'Inter', system-ui, sans-serif; overflow: hidden; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
 </head>
@@ -62,14 +65,14 @@ html, body { width: 1440px; height: 2560px; background: var(--color-bg-transpare
        data-has-audio="false"
        muted
        playsinline
-       src="../stage-1-cut/master.mp4"></video>
+       src="assets/master.mp4"></video>
 <audio id="master-audio"
        class="clip"
        data-start="0"
        data-duration="52.700"
        data-track-index="2"
        data-volume="1"
-       src="../stage-1-cut/master.mp4"></audio>
+       src="assets/master.mp4"></audio>
 <div class="clip"
      data-composition-src="compositions/captions.html"
      data-composition-id="captions"
@@ -78,6 +81,14 @@ html, body { width: 1440px; height: 2560px; background: var(--color-bg-transpare
      data-width="1440"
      data-height="2560"
      data-track-index="1"></div>
+<div class="clip"
+     data-composition-src="compositions/transitions.html"
+     data-composition-id="transitions"
+     data-start="0"
+     data-duration="52.700"
+     data-width="1440"
+     data-height="2560"
+     data-track-index="4"></div>
 <div class="clip"
      data-composition-src="compositions/seam-4.html"
      data-composition-id="seam-4"
