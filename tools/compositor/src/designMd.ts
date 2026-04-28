@@ -47,3 +47,21 @@ export function designMdToCss(tree: TokenTree): string {
   lines.push("");
   return lines.join("\n");
 }
+
+export function resolveToken(tree: TokenTree, dottedPath: string): string {
+  const parts = dottedPath.split(".");
+  let cursor: TokenTree | string | number = tree;
+  for (const part of parts) {
+    if (cursor === null || typeof cursor !== "object" || Array.isArray(cursor)) {
+      throw new Error(`resolveToken: '${dottedPath}' missing — '${part}' has no parent object`);
+    }
+    if (!(part in (cursor as TokenTree))) {
+      throw new Error(`resolveToken: '${dottedPath}' not found in DESIGN.md tokens`);
+    }
+    cursor = (cursor as TokenTree)[part];
+  }
+  if (cursor !== null && typeof cursor === "object") {
+    throw new Error(`resolveToken: '${dottedPath}' resolves to a subtree, not a leaf value`);
+  }
+  return String(cursor);
+}
