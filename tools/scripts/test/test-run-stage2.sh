@@ -36,11 +36,13 @@ JSON
 ffmpeg -y -f lavfi -i "color=c=red:s=1440x2560:r=60:d=2" -c:v libx264 -pix_fmt yuv420p \
   "$EP/stage-1-cut/master.mp4" >/dev/null 2>&1
 
-./tools/scripts/run-stage2.sh 2026-04-27-demo \
-  || { echo "FAIL: run-stage2 exited non-zero"; exit 1; }
+./tools/scripts/run-stage2-compose.sh 2026-04-27-demo \
+  || { echo "FAIL: run-stage2-compose exited non-zero"; exit 1; }
+./tools/scripts/run-stage2-preview.sh 2026-04-27-demo --draft \
+  || { echo "FAIL: run-stage2-preview exited non-zero"; exit 1; }
 
-[ -f "$EP/stage-2-composite/seam-plan.md" ]      || { echo "FAIL: seam-plan.md missing"; exit 1; }
-[ -f "$EP/stage-2-composite/composition.html" ]  || { echo "FAIL: composition.html missing"; exit 1; }
-[ -f "$EP/stage-2-composite/preview.mp4" ]       || { echo "FAIL: preview.mp4 missing"; exit 1; }
+[ -f "$EP/stage-2-composite/seam-plan.md" ]  || { echo "FAIL: seam-plan.md missing"; exit 1; }
+[ -f "$EP/stage-2-composite/index.html" ]    || { echo "FAIL: index.html missing"; exit 1; }
+[ -f "$EP/stage-2-composite/preview.mp4" ]   || { echo "FAIL: preview.mp4 missing"; exit 1; }
 
 echo "OK"

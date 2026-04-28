@@ -48,7 +48,8 @@ targets: [youtube-shorts]
 music: library/music/test.mp3
 EOF
 
-./tools/scripts/run-stage2.sh 2026-04-27-demo
+./tools/scripts/run-stage2-compose.sh 2026-04-27-demo \
+  || { echo "FAIL: run-stage2-compose exited non-zero"; exit 1; }
 ./tools/scripts/render-final.sh 2026-04-27-demo \
   || { echo "FAIL: render-final exited non-zero"; exit 1; }
 

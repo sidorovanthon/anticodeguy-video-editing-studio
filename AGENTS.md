@@ -78,7 +78,8 @@ changed, why if known. Each delta yields at most one proposed rule change tagged
 - Verify environment: `tools/scripts/check-deps.sh`
 - New episode: `tools/scripts/new-episode.sh <slug>`
 - Stage 1 (added in Phase 2): `tools/scripts/run-stage1.sh <slug>`
-- Stage 2 (added in Phase 3): `tools/scripts/run-stage2.sh <slug>`
+- Stage 2 compose (added in Phase 3): `tools/scripts/run-stage2-compose.sh <slug>`
+- Stage 2 preview (added in Phase 3): `tools/scripts/run-stage2-preview.sh <slug>`
 - Final render (added in Phase 3): `tools/scripts/render-final.sh <slug>`
 - Script fidelity check (added in Phase 3.5): `tools/scripts/script-diff.py --episode <path>`
 - Retro promotion (added in Phase 4): `tools/scripts/retro-promote.sh <slug>`

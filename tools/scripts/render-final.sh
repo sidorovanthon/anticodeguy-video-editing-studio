@@ -61,7 +61,7 @@ npx -y hyperframes render "$COMPOSITE_DIR" \
   --format mov \
   "${RENDER_FLAGS[@]}" || { echo "ERROR: hyperframes final render failed"; exit 1; }
 
-# Relocate output if HF placed it elsewhere (mirror run-stage2.sh fallback chain).
+# Relocate output if HF placed it elsewhere (mirror run-stage2-preview.sh fallback chain).
 if [ ! -f "$OVERLAYS" ]; then
   if   [ -f "$REPO_ROOT/$OVERLAYS_NAME" ]; then mv "$REPO_ROOT/$OVERLAYS_NAME" "$OVERLAYS"
   elif ls "$COMPOSITE_DIR"/renders/*.mov >/dev/null 2>&1; then
