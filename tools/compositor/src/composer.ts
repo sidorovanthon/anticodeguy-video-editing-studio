@@ -1,7 +1,7 @@
 import { writeFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import type { SeamPlan, MasterBundle } from "./types.js";
-import { loadDesignMd, designMdToCss } from "./designMd.js";
+import { loadDesignMd, designMdToCss, resolveToken } from "./designMd.js";
 import { buildCaptionsCompositionHtml } from "./captionsComposition.js";
 
 export interface ComposeArgs {
@@ -27,6 +27,9 @@ export function buildRootIndexHtml(args: ComposeArgs): string {
   const tree = loadDesignMd(args.designMdPath);
   const css = designMdToCss(tree);
   const masterDurationSec = msToSeconds(args.bundle.master.durationMs);
+  const bgTransparent = resolveToken(tree, "color.bg.transparent");
+  const textPrimary  = resolveToken(tree, "color.text.primary");
+  const fontCaption  = resolveToken(tree, "type.family.caption");
 
   const seamFragments = args.plan.seams
     .filter((s) => args.existingSeamFiles.has(s.index))
@@ -51,7 +54,7 @@ export function buildRootIndexHtml(args: ComposeArgs): string {
 <style>
 ${css}
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { width: ${ROOT_WIDTH}px; height: ${ROOT_HEIGHT}px; background: var(--color-bg-transparent); color: var(--color-text-primary); font-family: var(--type-family-caption); overflow: hidden; }
+html, body { width: ${ROOT_WIDTH}px; height: ${ROOT_HEIGHT}px; background: ${bgTransparent}; color: ${textPrimary}; font-family: ${fontCaption}; overflow: hidden; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
 </head>

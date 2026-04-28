@@ -12,8 +12,12 @@ describe("parseDesignMd", () => {
     const md = readFileSync(FIXTURE, "utf8");
     const tree = parseDesignMd(md);
     expect(tree).toEqual({
-      color: { text: { primary: "#FFFFFF" } },
+      color: {
+        text: { primary: "#FFFFFF" },
+        bg: { transparent: "rgba(0,0,0,0)" },
+      },
       spacing: { md: "24px" },
+      type: { family: { caption: "Inter, sans-serif" } },
     });
   });
 

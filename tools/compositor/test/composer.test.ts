@@ -68,4 +68,15 @@ describe("buildRootIndexHtml", () => {
     const trackIndexes = [...html.matchAll(/data-track-index="(\d+)"/g)].map((m) => Number(m[1]));
     expect(new Set(trackIndexes).size).toBe(trackIndexes.length);
   });
+
+  it("inlines literal hex/RGBA on captured elements (no var() in body styles)", () => {
+    // The :root { --… } declarations are documentation only; the body's own
+    // style attributes must use literal values for shader-compat.
+    const bodyStyleMatch = html.match(/<style>[\s\S]*?<\/style>/);
+    expect(bodyStyleMatch).toBeTruthy();
+    const styleBlock = bodyStyleMatch![0];
+    const bodyRule = styleBlock.match(/html,\s*body\s*\{[^}]*\}/);
+    expect(bodyRule).toBeTruthy();
+    expect(bodyRule![0]).not.toMatch(/var\(--/);
+  });
 });
