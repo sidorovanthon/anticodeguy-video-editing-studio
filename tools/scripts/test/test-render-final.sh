@@ -8,7 +8,7 @@ trap 'rm -rf "$WORK"' EXIT
 cp -r "$REPO_ROOT" "$WORK/repo"
 cd "$WORK/repo"
 EP="$WORK/repo/episodes/2026-04-27-demo"
-mkdir -p "$EP/stage-1-cut" "$EP/stage-2-composite" "$EP/master" "$WORK/repo/library/music"
+mkdir -p "$EP/stage-1-cut" "$EP/stage-2-composite/assets" "$EP/master" "$WORK/repo/library/music"
 
 # Stage 2 reads ONLY the bundle (Phase 5 contract). No transcript.json or cut-list.md needed.
 cat > "$EP/master/bundle.json" <<'JSON'
@@ -34,7 +34,7 @@ JSON
 
 ffmpeg -y -f lavfi -i "color=c=red:s=1440x2560:r=60:d=2" -f lavfi -i "anullsrc=r=48000:cl=stereo:d=2" \
   -c:v libx264 -pix_fmt yuv420p -c:a aac -b:a 128k -shortest \
-  "$EP/stage-1-cut/master.mp4" >/dev/null 2>&1
+  "$EP/stage-2-composite/assets/master.mp4" >/dev/null 2>&1
 ffmpeg -y -f lavfi -i "anoisesrc=d=2:c=pink:r=48000:a=0.05" -c:a libmp3lame \
   "$WORK/repo/library/music/test.mp3" >/dev/null 2>&1
 
