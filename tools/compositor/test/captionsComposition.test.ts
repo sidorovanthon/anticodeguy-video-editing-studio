@@ -39,7 +39,8 @@ describe("buildCaptionsCompositionHtml (grouped rewrite)", () => {
   });
 
   it("registers autoAlpha:0 hard-kill at group.endMs in the runtime script", () => {
-    expect(html).toMatch(/tl\.set\([^,]+,\s*\{\s*autoAlpha:\s*0\s*\}\s*,\s*[\d.]+\s*\)/);
+    // Accept either runtime ref (g.endSec) or compile-time literal (e.g. 0.4).
+    expect(html).toMatch(/tl\.set\([^,]+,\s*\{\s*autoAlpha:\s*0\s*\}\s*,\s*(?:g\.endSec|[\d.]+)\s*\)/);
   });
 
   it("calls window.__hyperframes.fitTextFontSize per group", () => {
@@ -47,7 +48,7 @@ describe("buildCaptionsCompositionHtml (grouped rewrite)", () => {
   });
 
   it("appends a self-lint sweep that throws on missing entry/exit", () => {
-    expect(html).toMatch(/getChildren\(\)/);
+    expect(html).toMatch(/getChildren\(false,\s*true,\s*true\)/);
     expect(html).toMatch(/throw/);
   });
 

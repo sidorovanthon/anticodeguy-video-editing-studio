@@ -51,24 +51,6 @@ export function buildCaptionsCompositionHtml(args: CaptionsArgs): string {
 
   const fontSizePx = parseFontSizePx(fontSize);
 
-  // Build per-group tween statements with literal numeric time positions so the
-  // emitted JS is self-contained and the self-lint regex tests can match literals.
-  const groupTweens = groups
-    .map((g) => {
-      const startSec = (g.startMs / 1000).toFixed(3);
-      const endSec   = (g.endMs   / 1000).toFixed(3);
-      return [
-        `      // Group ${g.id}: [${startSec}s – ${endSec}s]`,
-        `      (function () {`,
-        `        var el = root.querySelector('[data-group-id="${g.id}"]');`,
-        `        tl.from(el, { autoAlpha: 0, y: 24, duration: 0.32, ease: "power3.out" }, ${startSec});`,
-        `        tl.set(el, { autoAlpha: 0 }, ${endSec});`,
-        `        if (fit) { tl.call(function () { window.__hyperframes.fitTextFontSize(el, { maxFontSize: ${fontSizePx}, minFontSize: 28 }); }, [], ${startSec}); }`,
-        `      })();`,
-      ].join("\n");
-    })
-    .join("\n");
-
   return `<template id="captions-template">
 <div data-composition-id="captions" data-start="0" data-duration="${totalSec}" data-width="1440" data-height="2560">
   <style>
@@ -101,19 +83,27 @@ export function buildCaptionsCompositionHtml(args: CaptionsArgs): string {
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
   <script>
     (function () {
+      var GROUPS = ${JSON.stringify(groupsForRuntime)};
       var root = document.querySelector('[data-composition-id="captions"]');
       window.__timelines = window.__timelines || {};
       var tl = gsap.timeline({ paused: true });
       var fit = (window.__hyperframes && window.__hyperframes.fitTextFontSize) || null;
 
-${groupTweens}
+      GROUPS.forEach(function (g) {
+        var sel = '[data-group-id="' + g.id + '"]';
+        var el = root.querySelector(sel);
+        tl.from(el, { autoAlpha: 0, y: 24, duration: 0.32, ease: "power3.out" }, g.startSec);
+        tl.set(el, { autoAlpha: 0 }, g.endSec);
+        if (fit) {
+          tl.call(function () { fit(el, { maxFontSize: ${fontSizePx}, minFontSize: 28 }); }, [], g.startSec);
+        }
+      });
 
       tl.to({}, { duration: ${totalSec} }, 0);
       window.__timelines["captions"] = tl;
 
       // Self-lint: every group must have an entry tween and a hard-kill set.
-      var children = tl.getChildren();
-      var GROUPS = ${JSON.stringify(groupsForRuntime)};
+      var children = tl.getChildren(false, true, true);
       GROUPS.forEach(function (g) {
         var hasEntry = children.some(function (c) { return Math.abs(c.startTime() - g.startSec) < 1e-3 && c.vars && c.vars.duration; });
         var hasKill  = children.some(function (c) { return Math.abs(c.startTime() - g.endSec)   < 1e-3 && c.vars && c.vars.autoAlpha === 0 && !c.vars.duration; });
