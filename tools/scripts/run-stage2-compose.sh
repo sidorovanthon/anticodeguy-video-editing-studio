@@ -7,6 +7,10 @@ set -euo pipefail
 #
 # Usage: tools/scripts/run-stage2-compose.sh <slug>
 
+# shellcheck source=tools/scripts/lib/preflight.sh
+. "$(dirname "$0")/lib/preflight.sh"
+hf_preflight || { echo "ERROR: doctor preflight failed; aborting compose"; exit 1; }
+
 if [ "$#" -ne 1 ]; then
   echo "Usage: $0 <slug>"
   exit 1
@@ -34,9 +38,12 @@ REPO_ROOT="$REPO_ROOT" npx tsx tools/compositor/src/index.ts compose --episode "
 # Step 3: HyperFrames lint + validate + inspect against the canonical
 # project (index.html lives directly under stage-2-composite/).
 npx -y hyperframes lint "$COMPOSITE_DIR"      || { echo "ERROR: hyperframes lint failed"; exit 1; }
-npx hyperframes validate "$COMPOSITE_DIR"     || echo "WARN: hyperframes validate reported issues; continuing (Phase 6b will tighten this gate)"
-npx hyperframes inspect "$COMPOSITE_DIR" --json > "$COMPOSITE_DIR/.inspect.json" || \
-  echo "WARN: hyperframes inspect reported issues; see $COMPOSITE_DIR/.inspect.json (Phase 6b will tighten this gate)"
+npx hyperframes validate "$COMPOSITE_DIR" || { echo "ERROR: hyperframes validate failed"; exit 1; }
+npx hyperframes inspect "$COMPOSITE_DIR" --json > "$COMPOSITE_DIR/.inspect.json" || {
+  echo "ERROR: hyperframes inspect failed; see $COMPOSITE_DIR/.inspect.json"
+  echo "       annotate intentional overflow with data-layout-allow-overflow / data-layout-ignore"
+  exit 1
+}
 
 # Step 4: animation-map (informational; does not gate). Outputs JSON for
 # review during smoke tests and Phase 6b agent iteration.
@@ -45,6 +52,15 @@ if [ -f "$ANIM_MAP_SCRIPT" ]; then
   node "$ANIM_MAP_SCRIPT" "$COMPOSITE_DIR" --out "$COMPOSITE_DIR/.hyperframes/anim-map" || {
     echo "WARN: animation-map errored; continuing"
   }
+fi
+
+# Captured-element guard: shader-compat rule forbids var() in inline styles
+# and class rules consumed by html2canvas. The :root { --… } docs are fine.
+if grep -REn 'style="[^"]*var\(--' "$COMPOSITE_DIR/index.html" "$COMPOSITE_DIR/compositions"/*.html >/dev/null; then
+  echo "ERROR: var(--…) found in inline style attribute on a captured element."
+  echo "       Resolve via designMd.resolveToken at compose time; see DESIGN.md 'What NOT to Do' #6."
+  grep -REn 'style="[^"]*var\(--' "$COMPOSITE_DIR/index.html" "$COMPOSITE_DIR/compositions"/*.html
+  exit 1
 fi
 
 echo "Compose ready: $COMPOSITE_DIR/index.html. Run run-stage2-preview.sh next."
