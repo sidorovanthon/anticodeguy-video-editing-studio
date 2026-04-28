@@ -12,6 +12,7 @@ export interface ComposeArgs {
   plan: SeamPlan;
   bundle: MasterBundle;
   masterRelPath: string;
+  musicRelPath?: string;
   existingSeamFiles: Set<number>;
 }
 
@@ -22,6 +23,7 @@ const TRACK_CAPTIONS = 1;
 const TRACK_AUDIO = 2;
 const TRACK_SEAM_BASE = 3;
 const TRACK_TRANSITIONS = 4;
+const TRACK_MUSIC = 5;
 
 function msToSeconds(ms: number): string {
   return (Math.round(ms) / 1000).toFixed(3);
@@ -84,6 +86,13 @@ html, body { width: ${ROOT_WIDTH}px; height: ${ROOT_HEIGHT}px; background: ${bgT
        data-track-index="${TRACK_AUDIO}"
        data-volume="1"
        src="${args.masterRelPath}"></audio>
+${args.musicRelPath ? `<audio id="music"
+       class="clip"
+       data-start="0"
+       data-duration="${masterDurationSec}"
+       data-track-index="${TRACK_MUSIC}"
+       data-volume="0.5"
+       src="${args.musicRelPath}"></audio>` : ""}
 <div class="clip"
      data-composition-src="compositions/captions.html"
      data-composition-id="captions"

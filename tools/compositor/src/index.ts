@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { planSeams } from "./seamPlanner.js";
 import { writeSeamPlan, readSeamPlan } from "./seamPlanWriter.js";
@@ -65,11 +65,22 @@ if (cmd === "write-bundle") {
     if (existsSync(candidate)) existingSeamFiles.add(seam.index);
   }
 
+  const assetsDir = path.join(episodeDir, "stage-2-composite/assets");
+  let musicRelPath: string | undefined;
+  if (existsSync(assetsDir)) {
+    const entries = readdirSync(assetsDir);
+    const musicFile = entries.find((f) => /^music\.(mp3|wav|ogg|m4a)$/i.test(f));
+    if (musicFile) {
+      musicRelPath = `assets/${musicFile}`;
+    }
+  }
+
   const { indexPath, captionsPath, transitionsPath } = writeCompositionFiles({
     designMdPath,
     plan,
     bundle,
-    masterRelPath: "../stage-1-cut/master.mp4",
+    masterRelPath: "assets/master.mp4",
+    musicRelPath,
     existingSeamFiles,
     episodeDir,
   });
