@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseDesignMd, designMdToCss, resolveToken } from "../src/designMd.js";
+import { parseDesignMd, designMdToCss, resolveToken, readTransitionConfig } from "../src/designMd.js";
 import { readFileSync } from "node:fs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -79,5 +79,34 @@ describe("resolveToken", () => {
 
   it("throws when path resolves to a subtree, not a leaf", () => {
     expect(() => resolveToken(tree, "color.text")).toThrow(/leaf/);
+  });
+});
+
+describe("readTransitionConfig", () => {
+  it("returns the transition block when present", () => {
+    const md = `\`\`\`json hyperframes-tokens
+{
+  "color": {},
+  "transition": { "primary": "blur-crossfade", "duration": 0.5, "easing": "sine.inOut" }
+}
+\`\`\``;
+    const tree = parseDesignMd(md);
+    expect(readTransitionConfig(tree)).toEqual({ primary: "blur-crossfade", duration: 0.5, easing: "sine.inOut" });
+  });
+
+  it("returns the safe default when the block is absent", () => {
+    const md = `\`\`\`json hyperframes-tokens
+{ "color": {} }
+\`\`\``;
+    const tree = parseDesignMd(md);
+    expect(readTransitionConfig(tree)).toEqual({ primary: "crossfade", duration: 0.4, easing: "power2.inOut" });
+  });
+
+  it("throws on unknown primary", () => {
+    const md = `\`\`\`json hyperframes-tokens
+{ "transition": { "primary": "warp-fold", "duration": 0.5, "easing": "sine.inOut" } }
+\`\`\``;
+    const tree = parseDesignMd(md);
+    expect(() => readTransitionConfig(tree)).toThrow(/warp-fold/);
   });
 });

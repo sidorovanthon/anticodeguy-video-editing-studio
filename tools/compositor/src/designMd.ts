@@ -65,3 +65,43 @@ export function resolveToken(tree: TokenTree, dottedPath: string): string {
   }
   return String(cursor);
 }
+
+export type TransitionPrimary = "crossfade" | "blur-crossfade" | "push-slide" | "zoom-through";
+
+export interface TransitionConfig {
+  primary: TransitionPrimary;
+  duration: number;
+  easing: string;
+}
+
+const KNOWN_PRIMARIES: ReadonlySet<string> = new Set([
+  "crossfade",
+  "blur-crossfade",
+  "push-slide",
+  "zoom-through",
+]);
+
+const DEFAULT_TRANSITION: TransitionConfig = {
+  primary: "crossfade",
+  duration: 0.4,
+  easing: "power2.inOut",
+};
+
+export function readTransitionConfig(tree: TokenTree): TransitionConfig {
+  const block = (tree as Record<string, unknown>).transition;
+  if (!block) return DEFAULT_TRANSITION;
+  if (typeof block !== "object" || Array.isArray(block)) {
+    throw new Error("DESIGN.md: transition block must be a JSON object");
+  }
+  const b = block as Record<string, unknown>;
+  const primary = b.primary;
+  if (typeof primary !== "string" || !KNOWN_PRIMARIES.has(primary)) {
+    throw new Error(
+      `DESIGN.md: transition.primary='${String(primary)}' is not in the catalog ` +
+        `(known: ${[...KNOWN_PRIMARIES].join(", ")})`,
+    );
+  }
+  const duration = typeof b.duration === "number" ? b.duration : DEFAULT_TRANSITION.duration;
+  const easing = typeof b.easing === "string" ? b.easing : DEFAULT_TRANSITION.easing;
+  return { primary: primary as TransitionPrimary, duration, easing };
+}
