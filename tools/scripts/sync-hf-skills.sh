@@ -21,8 +21,12 @@ VERSION="$(HF_PKG_JSON="$PKG_JSON_NATIVE" node -e "
 const fs = require('fs');
 const pkg = JSON.parse(fs.readFileSync(process.env.HF_PKG_JSON, 'utf8'));
 const v = pkg.dependencies.hyperframes;
+if (!v) {
+  process.stderr.write('ERROR: hyperframes not found in dependencies of tools/compositor/package.json\n');
+  process.exit(2);
+}
 if (/^[\^~]/.test(v)) {
-  process.stderr.write('ERROR: hyperframes pin ' + v + ' is not exact (no ^ or ~ allowed)\n');
+  process.stderr.write('ERROR: hyperframes pin ' + v + ' is not exact (no ^ or ~ allowed)\n       fix: edit tools/compositor/package.json to \"hyperframes\": \"<version>\" (no caret/tilde)\n');
   process.exit(2);
 }
 console.log(v);
@@ -32,11 +36,11 @@ console.log(v);
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
-TARBALL_URL="$(npm view "hyperframes@$VERSION" dist.tarball)"
+TARBALL_URL="$(npm view "hyperframes@$VERSION" dist.tarball --registry https://registry.npmjs.org)"
 [ -n "$TARBALL_URL" ] || { echo "ERROR: hyperframes@$VERSION has no tarball on npm"; exit 1; }
 
 echo "Syncing hyperframes@$VERSION skills from $TARBALL_URL"
-curl -sL "$TARBALL_URL" | tar xz -C "$TMP_DIR"
+curl -fsSL "$TARBALL_URL" | tar xz -C "$TMP_DIR"
 
 [ -d "$TMP_DIR/package/dist/skills" ] || {
   echo "ERROR: tarball has no dist/skills/ — HF may have changed layout"
