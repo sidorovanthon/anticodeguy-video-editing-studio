@@ -39,7 +39,9 @@ mkdir -p "$STAGE1"
 if [ "$MODE" = "render" ]; then
   # ============== RENDER MODE (CP2) ==============
   EDL="$STAGE1/edl.json"
-  MASTER="$STAGE1/master.mp4"
+  STAGE2_ASSETS="$EPISODE/stage-2-composite/assets"
+  MASTER="$STAGE2_ASSETS/master.mp4"
+  mkdir -p "$STAGE2_ASSETS"
   GRADE_JSON="$REPO_ROOT/tools/compositor/grade.json"
 
   [ -f "$EDL" ]        || { echo "ERROR: $EDL not found — run CP1 first"; exit 1; }

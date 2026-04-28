@@ -25,7 +25,7 @@ if (!episodeDir) usage();
 
 const repoRoot = process.env.REPO_ROOT ?? path.resolve(episodeDir, "../..");
 const seamPlanPath = path.join(episodeDir, "stage-2-composite/seam-plan.md");
-const masterPath = path.join(episodeDir, "stage-1-cut/master.mp4");
+const masterPath = path.join(episodeDir, "stage-2-composite/assets/master.mp4");
 const designMdPath = path.join(repoRoot, "DESIGN.md");
 
 if (cmd === "write-bundle") {
