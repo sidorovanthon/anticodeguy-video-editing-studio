@@ -12,7 +12,7 @@ export function buildCaptionsCompositionHtml(args: CaptionsArgs): string {
     end_ms: w.endMs,
   }));
   return `<template id="captions-template">
-<div data-composition-id="captions" data-width="1440" data-height="2560">
+<div data-composition-id="captions" data-start="0" data-duration="${totalSec}" data-width="1440" data-height="2560">
   <style>
     [data-composition-id="captions"] { width: 100%; height: 100%; position: relative; }
     [data-composition-id="captions"] .caption-row {

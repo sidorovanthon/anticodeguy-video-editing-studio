@@ -67,6 +67,7 @@ html, body { width: ${ROOT_WIDTH}px; height: ${ROOT_HEIGHT}px; background: var(-
        data-start="0"
        data-duration="${masterDurationSec}"
        data-track-index="${TRACK_VIDEO}"
+       data-has-audio="false"
        muted
        playsinline
        src="${args.masterRelPath}"></video>

@@ -47,6 +47,7 @@ describe("buildRootIndexHtml", () => {
   it("emits a muted video track and a separate audio track for master.mp4", () => {
     expect(html).toContain('src="../stage-1-cut/master.mp4"');
     expect(html).toMatch(/<video[^>]*muted/);
+    expect(html).toMatch(/<video[^>]*data-has-audio="false"/);
     expect(html).toMatch(/<audio[^>]*data-volume="1"/);
   });
 
