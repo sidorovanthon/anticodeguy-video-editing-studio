@@ -1,0 +1,10 @@
+# Promote batch for episode 2026-04-27-desktop-software-licensing-it-turns-out.
+# Single-token values (script uses awk $2/$3/$4); architecture-scale items deferred to Phase 5.
+PROMOTE color.md ffmpeg-range-remap explicit-scale-in-out-range episode=2026-04-27-desktop-software-licensing-it-turns-out reason="metadata-only setparams left pixel data full-range; players crushed shadows"
+PROMOTE color.md grade-chain colorbalance+eq.brightness+curves+vignette episode=2026-04-27-desktop-software-licensing-it-turns-out reason="layered chain converged in 3 iterations on real footage"
+PROMOTE color.md encoder-defaults -g60-tune-fastdecode episode=2026-04-27-desktop-software-licensing-it-turns-out reason="seekability+decoder-load improvements; harmless when audio sync is correct"
+PROMOTE audio.md loudnorm-mode two-pass-with-measured episode=2026-04-27-desktop-software-licensing-it-turns-out reason="single-pass introduces 2-3s PTS desync at start"
+PROMOTE audio.md no-fades hard-cuts episode=2026-04-27-desktop-software-licensing-it-turns-out reason="host preference; video-use fade injection bypassed by direct ffmpeg render anyway"
+PROMOTE motion-graphics.md outro-scene overlay-with-subscribe episode=2026-04-27-desktop-software-licensing-it-turns-out reason="OUTRO must end on subscribe CTA; if previous scene is overlay, demote to split"
+PROMOTE captions.md timing-source master-aligned-via-edl episode=2026-04-27-desktop-software-licensing-it-turns-out reason="raw-timeline word timings drift by accumulated EDL gaps; fixed by remapWordsToMaster"
+PROMOTE captions.md field-contract start_ms-end_ms-only episode=2026-04-27-desktop-software-licensing-it-turns-out reason="caption components consume ms-fields; compositor normalizes; component must not assume other naming"
