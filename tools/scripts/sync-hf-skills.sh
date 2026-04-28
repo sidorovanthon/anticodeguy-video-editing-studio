@@ -1,17 +1,39 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Sync vendored HyperFrames skills from the latest npm tarball.
-# Writes the resolved version to tools/hyperframes-skills/VERSION.
-# Run on demand when HyperFrames updates and we want their newer skill text.
+# Sync vendored HyperFrames skills to match the pinned CLI version in
+# tools/compositor/package.json. CLI and skills MUST stay at the same
+# version — drift causes methodology rules and runtime to diverge silently.
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SKILLS_DIR="$REPO_ROOT/tools/hyperframes-skills"
+PKG_JSON="$REPO_ROOT/tools/compositor/package.json"
+
+# On Windows (Git Bash), Node.js needs a native Windows path; cygpath -w
+# converts /c/... → C:\...; on Linux/macOS cygpath is absent so fall back.
+if command -v cygpath &>/dev/null; then
+  PKG_JSON_NATIVE="$(cygpath -w "$PKG_JSON")"
+else
+  PKG_JSON_NATIVE="$PKG_JSON"
+fi
+
+VERSION="$(HF_PKG_JSON="$PKG_JSON_NATIVE" node -e "
+const fs = require('fs');
+const pkg = JSON.parse(fs.readFileSync(process.env.HF_PKG_JSON, 'utf8'));
+const v = pkg.dependencies.hyperframes;
+if (/^[\^~]/.test(v)) {
+  process.stderr.write('ERROR: hyperframes pin ' + v + ' is not exact (no ^ or ~ allowed)\n');
+  process.exit(2);
+}
+console.log(v);
+")"
+[ -n "$VERSION" ] || { echo "ERROR: could not read pinned hyperframes version"; exit 1; }
+
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
-VERSION="$(npm view hyperframes version)"
-TARBALL_URL="$(npm view hyperframes dist.tarball)"
+TARBALL_URL="$(npm view "hyperframes@$VERSION" dist.tarball)"
+[ -n "$TARBALL_URL" ] || { echo "ERROR: hyperframes@$VERSION has no tarball on npm"; exit 1; }
 
 echo "Syncing hyperframes@$VERSION skills from $TARBALL_URL"
 curl -sL "$TARBALL_URL" | tar xz -C "$TMP_DIR"
