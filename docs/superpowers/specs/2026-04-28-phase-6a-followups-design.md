@@ -18,21 +18,29 @@ Close every open follow-up from the Phase 6a-aftermath retrospective before star
 
 Six focused commits on a single feature branch (`phase-6a-followups`) → single PR against `main`. Each commit is self-contained and keeps `lint 0/0`, `validate 0/0`, `inspect ok=true`, and `75/75 vitest` green on the smoke fixture (`episodes/2026-04-28-phase-6a-smoke-test`).
 
-### Commit 1 — `fix(compositor): pin @hyperframes/producer 0.4.31 for animation-map`
+### Commit 1 — `fix(hf-skills): provide @hyperframes/producer to vendored skill scripts`
 
 **Closes follow-up #1.**
 
-`@hyperframes/producer` is a separate npm package (HF internal) that the vendored skill scripts `animation-map.mjs` and `contrast-report.mjs` import. It is not bundled with `hyperframes@0.4.31` and is not declared anywhere on our side, so the scripts fail at module-resolve time and `run-stage2-compose.sh` swallows it as informational WARN.
+The vendored skill scripts at `tools/hyperframes-skills/hyperframes/scripts/animation-map.mjs` and `contrast-report.mjs` import `@hyperframes/producer`. This is a separate npm package — HF internal, ships independently from the `hyperframes` CLI tarball. In the upstream HF monorepo it is a workspace sibling of the skill scripts; our vendored copy needs the same dependency to be resolvable.
 
-`0.4.31` of `@hyperframes/producer` exists on npm (published 2026-04-26T23:42:36Z, same minute as `hyperframes@0.4.31` — lockstep release).
+**Architectural placement:** the dep belongs where its consumer lives. Only the vendored skill scripts import `@hyperframes/producer`; our compositor source code does not. Therefore `tools/hyperframes-skills/` becomes a self-contained vendored subproject with its own `package.json` and `node_modules`, mirroring how the upstream monorepo provides the dep to the same scripts.
+
+ESM bare-specifier resolution walks from the importing file's directory upward looking for `node_modules/`. The skill script's parent walk now reaches `tools/hyperframes-skills/node_modules/@hyperframes/producer` — no flags, no `NODE_PATH`, no symlinks, no wrapper.
 
 Changes:
-- `tools/compositor/package.json` `dependencies`: add `"@hyperframes/producer": "0.4.31"` (exact pin, no caret/tilde — same convention as `hyperframes`).
-- `npm install` in `tools/compositor/` to refresh `package-lock.json`.
-- `tools/scripts/check-updates.sh`: extend the existing hyperframes drift check to also `npm view @hyperframes/producer version` and warn on drift from the installed version.
-- Re-run `run-stage2-compose.sh` against smoke fixture; verify the previous animation-map WARN is gone and the script exits cleanly.
+- New file: `tools/hyperframes-skills/package.json` — single dep `"@hyperframes/producer": "0.4.31"` (exact-pin, lockstep with the CLI pin).
+- New file: `tools/hyperframes-skills/.gitignore` — ignores `node_modules/`.
+- `npm install` in `tools/hyperframes-skills/` produces `package-lock.json` (tracked) and `node_modules/` (ignored).
+- `tools/scripts/sync-hf-skills.sh`: replace `rm -rf "$SKILLS_DIR"` (which would nuke our `package.json`/lockfile/node_modules on every sync) with targeted removal of the three upstream-managed subtrees: `gsap/`, `hyperframes/`, `hyperframes-cli/`. The local `package.json`, `package-lock.json`, `node_modules/`, and `VERSION` (rewritten by the script itself) survive.
+- `tools/scripts/check-updates.sh`: read producer pin from `tools/hyperframes-skills/package.json` (its actual home), not from `tools/compositor/package.json`. Continue checking pin-vs-latest drift and pin-vs-CLI lockstep.
+- Re-run `run-stage2-compose.sh` against smoke fixture; verify the previous `WARN: animation-map errored; continuing` is gone, `.hyperframes/anim-map/` populates with output files, and exit is clean.
 
-Out of scope: investigating whether the upstream HF repo intends `@hyperframes/producer` to be a runtime dep of the skill scripts. We treat this as "the skills assume it; we provide it."
+Implementation notes for engineers picking this up:
+- Do NOT add `@hyperframes/producer` to `tools/compositor/package.json`. The compositor never imports it; placing it there would couple a 300-MB-with-Chromium dep to a project that does not consume it.
+- Repo onboarding now requires two `npm install` invocations: `cd tools/compositor && npm install` and `cd tools/hyperframes-skills && npm install`. Document this in `AGENTS.md` and any README that lists setup steps.
+
+Out of scope: investigating whether HF intends to ship `dist/skills/` such that `@hyperframes/producer` resolves automatically. We treat this as "skills assume it; we provide it where they look for it."
 
 ### Commit 2 — `chore(gitignore): re-narrow FROZEN pilot hf-project to exact path`
 

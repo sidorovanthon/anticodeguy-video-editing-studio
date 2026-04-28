@@ -46,49 +46,60 @@ If anything else fails, STOP and surface the regression — do not proceed.
 
 ---
 
-## Task 1: pin `@hyperframes/producer@0.4.31` for animation-map (closes #1)
+## Task 1: provide `@hyperframes/producer@0.4.31` to vendored skill scripts (closes #1)
 
 **Files:**
-- Modify: `tools/compositor/package.json`
+- Create: `tools/hyperframes-skills/package.json`
+- Create: `tools/hyperframes-skills/.gitignore`
+- Generated: `tools/hyperframes-skills/package-lock.json`
+- Modify: `tools/scripts/sync-hf-skills.sh`
 - Modify: `tools/scripts/check-updates.sh`
-- Generated: `tools/compositor/package-lock.json` (npm install side effect)
 
-**What and why:** Vendored skill scripts at `tools/hyperframes-skills/hyperframes/scripts/animation-map.mjs` and `contrast-report.mjs` import `@hyperframes/producer`. That package is published separately on npm and is not a transitive dep of `hyperframes@0.4.31`. Adding it as an exact-pin runtime dep makes `animation-map` work and lets `check-updates.sh` warn on drift the same way it does for `hyperframes`.
+**What and why:** Vendored skill scripts at `tools/hyperframes-skills/hyperframes/scripts/animation-map.mjs` and `contrast-report.mjs` import `@hyperframes/producer`. ESM bare-specifier resolution walks from the importing file's directory upward looking for `node_modules/`. Placing the dep in `tools/compositor/node_modules/` does NOT help — it is a sibling of the skill scripts, not an ancestor.
 
-- [ ] **Step 1.1: Inspect transitive size before installing**
+Architecturally, the dep belongs where it is consumed. `tools/hyperframes-skills/` becomes a self-contained vendored subproject with its own `package.json` listing `@hyperframes/producer` as an exact-pin dep, mirroring how the upstream HF monorepo provides the same dep to the same scripts (workspace sibling there → vendored sibling here). The skill scripts' parent walk reaches `tools/hyperframes-skills/node_modules/@hyperframes/producer`. No flags, no `NODE_PATH`, no symlinks, no wrappers.
 
-Run:
-```bash
-npm view @hyperframes/producer@0.4.31 dependencies dist.unpackedSize
-```
+`sync-hf-skills.sh` previously wiped the entire `tools/hyperframes-skills/` directory before resync. With this change, three subtrees (`gsap/`, `hyperframes/`, `hyperframes-cli/`) come from the upstream tarball and are synced; everything else (`package.json`, `package-lock.json`, `node_modules/`, `VERSION`) is ours and survives sync.
 
-Note the unpacked size and the dependency list. If the dep tree is large (>10 MB unpacked or pulls in heavyweight peers like puppeteer), pause and report — the spec assumed it would be light, and a surprise here is worth flagging before the PR. If it is a small package (only `gsap` / utility-grade peers), continue.
+- [ ] **Step 1.1: Create `tools/hyperframes-skills/package.json`**
 
-- [ ] **Step 1.2: Add the exact-pin to compositor dependencies**
+Write the file with the single exact-pin dep:
 
-Edit `tools/compositor/package.json`. The current `dependencies` block is:
 ```json
-"dependencies": {
-  "hyperframes": "0.4.31"
-}
-```
-Change to (alphabetical):
-```json
-"dependencies": {
-  "@hyperframes/producer": "0.4.31",
-  "hyperframes": "0.4.31"
+{
+  "name": "hyperframes-skills",
+  "version": "1.0.0",
+  "description": "Vendored HyperFrames skill scripts (markdown + helper .mjs). This package.json provides the runtime deps the skill scripts need; sync-hf-skills.sh preserves it on resync.",
+  "private": true,
+  "dependencies": {
+    "@hyperframes/producer": "0.4.31"
+  }
 }
 ```
 
-- [ ] **Step 1.3: Install and verify the lockfile updated**
+Notes:
+- `private: true` — never published.
+- The pin matches `hyperframes@0.4.31` in `tools/compositor/package.json` (lockstep).
+- `name` is descriptive only; nothing imports this package.
+
+- [ ] **Step 1.2: Create `tools/hyperframes-skills/.gitignore`**
+
+```
+node_modules/
+```
+
+`package-lock.json` IS tracked (deterministic installs); `node_modules/` is not.
+
+- [ ] **Step 1.3: Install and verify**
 
 Run:
 ```bash
-cd tools/compositor && npm install
+cd tools/hyperframes-skills && npm install
 ```
-Expected: `package-lock.json` and `node_modules/@hyperframes/producer/` present. Exit code 0.
 
-Run:
+Expected: install completes (puppeteer postinstall downloads Chromium — multi-minute, that is normal). Exit 0. `package-lock.json` and `node_modules/@hyperframes/producer/` exist.
+
+Verify version:
 ```bash
 ls node_modules/@hyperframes/producer/package.json && grep '"version"' node_modules/@hyperframes/producer/package.json
 ```
@@ -98,19 +109,50 @@ Expected: `"version": "0.4.31"`.
 
 Run from repo root:
 ```bash
-cd ../.. && bash tools/scripts/run-stage2-compose.sh 2026-04-28-phase-6a-smoke-test 2>&1 | grep -E "animation-map|WARN|Compose ready" | head -10
+cd ../.. && HF_RENDER_MODE=local bash tools/scripts/run-stage2-compose.sh 2026-04-28-phase-6a-smoke-test 2>&1 | tail -40
 ```
-Expected: no `WARN: animation-map errored` line; the script exits with `Compose ready:`. The `.hyperframes/anim-map` output dir should now exist:
+
+Expected: NO `WARN: animation-map errored; continuing` line; NO `Cannot find package '@hyperframes/producer'` block. Final line is `Compose ready:`. Exit 0.
+
+Verify the output dir:
 ```bash
-ls episodes/2026-04-28-phase-6a-smoke-test/stage-2-composite/.hyperframes/anim-map | head -5
+ls episodes/2026-04-28-phase-6a-smoke-test/stage-2-composite/.hyperframes/anim-map 2>&1 | head -10
 ```
-Expected: at least one JSON or HTML file present (skill-defined output shape).
+Expected: at least one JSON or HTML file present.
 
-If `animation-map.mjs` still errors with a different missing module, install that module too at exact-pin (it would be another HF internal package); record the addition in the commit message.
+- [ ] **Step 1.5: Update `tools/scripts/sync-hf-skills.sh` to preserve our files**
 
-- [ ] **Step 1.5: Extend `check-updates.sh` to flag producer drift**
+Currently the script does (lines ~50–53):
+```bash
+rm -rf "$SKILLS_DIR"
+mkdir -p "$SKILLS_DIR"
+cp -r "$TMP_DIR/package/dist/skills/." "$SKILLS_DIR/"
+echo "$VERSION" > "$SKILLS_DIR/VERSION"
+```
 
-Open `tools/scripts/check-updates.sh`. After the existing block that checks `hyperframes` (around lines 16–23), add a parallel block.
+This nukes our local `package.json`, `package-lock.json`, and `node_modules/` on every sync. Replace with targeted removal of upstream-managed subtrees only.
+
+Tarball `dist/skills/` contains exactly three top-level subtrees: `gsap/`, `hyperframes/`, `hyperframes-cli/` (verified during planning). Remove only those before copy.
+
+Replace the four-line block above with:
+
+```bash
+# Sync upstream-managed subtrees only. tools/hyperframes-skills/package.json,
+# package-lock.json, and node_modules/ are ours (provide @hyperframes/producer
+# to the vendored skill scripts) and must survive resync.
+mkdir -p "$SKILLS_DIR"
+for subtree in gsap hyperframes hyperframes-cli; do
+  rm -rf "$SKILLS_DIR/$subtree"
+done
+cp -r "$TMP_DIR/package/dist/skills/." "$SKILLS_DIR/"
+echo "$VERSION" > "$SKILLS_DIR/VERSION"
+```
+
+If a future HF version adds a new top-level subtree under `dist/skills/`, that subtree will simply be cp'd over but never cleaned on subsequent syncs (stale-content risk). Add an inline note: `# If dist/skills/ adds a new top-level dir, append it to the loop above.`
+
+- [ ] **Step 1.6: Update `tools/scripts/check-updates.sh` to read producer pin from new location**
+
+Open `tools/scripts/check-updates.sh`. After the existing `hyperframes` block (~lines 16–23), add a parallel `1b.` block.
 
 Replace this:
 ```bash
@@ -135,8 +177,9 @@ if [ -n "$LOCAL_HF" ]; then
   fi
 fi
 
-# 1b. @hyperframes/producer — must move in lockstep with the CLI pin (see docs/hyperframes-integration.md).
-LOCAL_HFP="$(node -e "console.log(require('./tools/compositor/package.json').dependencies?.['@hyperframes/producer'] || '')" 2>/dev/null | sed 's/^[~^>=]*//')"
+# 1b. @hyperframes/producer — pinned in tools/hyperframes-skills/package.json (where its
+#     consumers live). Must move in lockstep with the hyperframes CLI pin.
+LOCAL_HFP="$(node -e "console.log(require('./tools/hyperframes-skills/package.json').dependencies?.['@hyperframes/producer'] || '')" 2>/dev/null | sed 's/^[~^>=]*//')"
 if [ -n "$LOCAL_HFP" ]; then
   LATEST_HFP="$(npm view @hyperframes/producer version 2>/dev/null || true)"
   if [ -n "$LATEST_HFP" ] && [ "$LOCAL_HFP" != "$LATEST_HFP" ]; then
@@ -148,39 +191,79 @@ if [ -n "$LOCAL_HFP" ]; then
 fi
 ```
 
-- [ ] **Step 1.6: Smoke-run check-updates.sh**
+- [ ] **Step 1.7: Smoke-run check-updates.sh**
 
 Run from repo root:
 ```bash
 bash tools/scripts/check-updates.sh
 ```
-Expected: exit 0. If the latest npm versions are still `0.4.32` (per the spec's npm view output), there will already be a notice for `hyperframes` AND for `@hyperframes/producer`; both should match the pinned-vs-latest format. No new ERROR lines.
+Expected: exit 0. Two notices appear (both `hyperframes` and `@hyperframes/producer` pinned at 0.4.31 vs latest 0.4.32). No cross-pin disagreement notice.
 
-- [ ] **Step 1.7: Re-run vitest**
+- [ ] **Step 1.8: Smoke-run sync-hf-skills.sh and verify our files survived**
 
 Run:
+```bash
+bash tools/scripts/sync-hf-skills.sh
+```
+Expected: `Done. Vendored at .../tools/hyperframes-skills (version 0.4.31).` Exit 0.
+
+Verify our files survived:
+```bash
+ls tools/hyperframes-skills/package.json tools/hyperframes-skills/package-lock.json tools/hyperframes-skills/node_modules/@hyperframes/producer/package.json
+```
+Expected: all three exist.
+
+Re-run smoke compose to confirm animation-map still resolves:
+```bash
+HF_RENDER_MODE=local bash tools/scripts/run-stage2-compose.sh 2026-04-28-phase-6a-smoke-test 2>&1 | grep -E "animation-map|Compose ready" | head -5
+```
+Expected: no `animation-map errored`; `Compose ready:`.
+
+- [ ] **Step 1.9: Re-run vitest**
+
 ```bash
 cd tools/compositor && npm test 2>&1 | tail -10
 ```
-Expected: 75/75 pass, no test changes (we did not touch source, only dep manifest).
+Expected: 75/75 pass.
 
-- [ ] **Step 1.8: Commit**
+- [ ] **Step 1.10: Document the new install step**
+
+Open `AGENTS.md`. Find the section listing first-time setup or pinned-binary install commands (search for `npm install` or `tools/compositor`). Add `tools/hyperframes-skills && npm install` alongside the compositor install step, with a one-line explanation: "Provides @hyperframes/producer to vendored skill scripts (used by animation-map / contrast-report)."
+
+If `AGENTS.md` does not currently document install steps explicitly, add a short subsection under the relevant top-level section, or add the note inline where `tools/compositor/node_modules/.bin/hyperframes` is first mentioned.
+
+- [ ] **Step 1.11: Commit**
 
 Run:
 ```bash
-cd ../.. && git add tools/compositor/package.json tools/compositor/package-lock.json tools/scripts/check-updates.sh
+cd ../.. && git add tools/hyperframes-skills/package.json tools/hyperframes-skills/package-lock.json tools/hyperframes-skills/.gitignore tools/scripts/sync-hf-skills.sh tools/scripts/check-updates.sh AGENTS.md
 git commit -m "$(cat <<'EOF'
-fix(compositor): pin @hyperframes/producer 0.4.31 for animation-map
+fix(hf-skills): provide @hyperframes/producer to vendored skill scripts
 
 Vendored HF skill scripts (animation-map.mjs, contrast-report.mjs)
-import @hyperframes/producer, which is published as a separate npm
-package and is not a transitive dep of hyperframes@0.4.31. Add it
-as an exact-pin runtime dep so the post-compose animation-map call
-no longer fails with 'Cannot find package'.
+import @hyperframes/producer. ESM bare-specifier resolution walks
+from the importing file's directory upward; placing the dep in
+tools/compositor/node_modules/ does not work because compositor is
+a sibling of the skill scripts, not an ancestor.
 
-check-updates.sh now also flags pinned-vs-latest drift for
-@hyperframes/producer and warns if its pin diverges from the
-hyperframes CLI pin (must move in lockstep).
+Architecturally the dep belongs where it is consumed: introduce
+tools/hyperframes-skills/ as a self-contained vendored subproject
+with its own package.json declaring @hyperframes/producer at the
+exact-pinned 0.4.31 (lockstep with the hyperframes CLI pin in
+tools/compositor/package.json). Skill scripts' parent walk now
+reaches tools/hyperframes-skills/node_modules/@hyperframes/producer
+naturally — no flags, NODE_PATH, symlinks, or wrappers.
+
+sync-hf-skills.sh previously rm -rf'd the entire skills dir before
+resync; now it removes only the upstream-managed subtrees
+(gsap/, hyperframes/, hyperframes-cli/) so our package.json,
+package-lock.json, and node_modules/ survive.
+
+check-updates.sh reads the producer pin from its actual home and
+flags both pinned-vs-latest drift and pin-vs-CLI lockstep drift.
+
+AGENTS.md documents the new tools/hyperframes-skills && npm install
+step required on fresh checkouts.
 
 Closes 6a-aftermath follow-up #1.
 
