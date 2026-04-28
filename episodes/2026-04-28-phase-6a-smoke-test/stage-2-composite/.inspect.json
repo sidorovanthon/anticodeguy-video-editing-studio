@@ -24,8 +24,8 @@
   "truncated": false,
   "issues": [],
   "_meta": {
-    "version": "0.4.32",
+    "version": "0.4.31",
     "latestVersion": "0.4.32",
-    "updateAvailable": false
+    "updateAvailable": true
   }
 }
