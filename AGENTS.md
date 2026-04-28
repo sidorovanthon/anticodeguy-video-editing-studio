@@ -25,7 +25,7 @@ stop and wait for explicit user approval.
 3. **Stage 2 — compositor** — overlays captions, motion graphics, music.
    - 2.1 Generate `stage-2-composite/seam-plan.md` → **⏸ CP2.5**
    - 2.2 Build `index.html`, render `preview.mp4` → **⏸ CP3**
-   - 2.3 Final render + ffmpeg merge with `library/music/<track>.mp3` → `final.mp4`
+   - 2.3 Final render via hyperframes (HF mixes voice + music natively per data-volume) → `final.mp4`
 4. **Retro** — fill `episodes/<slug>/retro.md`, run macro-retro, propose standards
    updates as `WATCH` / `CONFIRM` / `PROMOTE`. User selects which to promote.
 
@@ -56,7 +56,7 @@ changed, why if known. Each delta yields at most one proposed rule change tagged
 ## Hard rules
 - Never edit `standards/*.md` outside macro-retro with explicit user `PROMOTE`.
 - Never edit `standards/retro-changelog.md` historically — append only.
-- Never duplicate `music.mp3` into episode folders — always reference `library/music/`.
+- Never commit music files into episode folders — `run-stage2-compose.sh` copies them into `stage-2-composite/assets/` at compose time (gitignored). The authoritative source is always `library/music/`.
 - Never skip a checkpoint. A checkpoint without stop is a bug.
 - Never produce a seam transition forbidden by the matrix in `standards/motion-graphics.md`
   (`head↔head`, `head↔overlay`, `overlay↔overlay`, same-graphic `split→split` or `full→full`;
@@ -91,6 +91,13 @@ changed, why if known. Each delta yields at most one proposed rule change tagged
 - HF skills (vendored)    → `tools/hyperframes-skills/` (refresh via `tools/scripts/sync-hf-skills.sh`)
 - Layout shells           → `design-system/components/` (currently empty in 6a; populated in 6b)
 - Per-episode artifacts  → `episodes/<slug>/`
+  - `source/raw.mp4`           — incoming footage (from `incoming/`)
+  - `stage-1-cut/`             — Stage 1 intermediates (transcript.json, edl.json, raw.mp4 staging)
+  - `stage-2-composite/`       — HF project root (self-contained)
+    - `assets/master.mp4`      — Stage 1 final artifact (talking-head + voice); written here directly by `run-stage1.sh ... render`
+    - `assets/music.<ext>`     — staged at compose time from `library/music/`
+    - `index.html`             — HF project entry
+    - `compositions/`          — sub-compositions (captions, transitions, per-seam)
 - Long-lived rules       → `standards/`
 - Scripts                → `tools/scripts/`
 
