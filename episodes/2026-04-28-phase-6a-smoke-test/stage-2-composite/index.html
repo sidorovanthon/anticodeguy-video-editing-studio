@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+:root {
+  --color-bg-transparent: rgba(0,0,0,0);
+  --color-glass-fill: rgba(255,255,255,0.18);
+  --color-glass-stroke: rgba(255,255,255,0.32);
+  --color-glass-shadow: rgba(0,0,0,0.35);
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: rgba(255,255,255,0.72);
+  --color-text-accent: #7CC4FF;
+  --color-caption-active: #FFFFFF;
+  --color-caption-inactive: rgba(255,255,255,0.55);
+  --type-family-caption: 'Inter', system-ui, sans-serif;
+  --type-family-display: 'Inter Display', 'Inter', sans-serif;
+  --type-weight-regular: 500;
+  --type-weight-bold: 700;
+  --type-weight-black: 900;
+  --type-size-caption: 64px;
+  --type-size-title: 96px;
+  --type-size-body: 44px;
+  --blur-glass-sm: 16px;
+  --blur-glass-md: 24px;
+  --blur-glass-lg: 40px;
+  --radius-sm: 16px;
+  --radius-md: 28px;
+  --radius-lg: 44px;
+  --radius-pill: 9999px;
+  --spacing-xs: 8px;
+  --spacing-sm: 16px;
+  --spacing-md: 24px;
+  --spacing-lg: 40px;
+  --spacing-xl: 64px;
+  --safezone-top: 8%;
+  --safezone-bottom: 22%;
+  --safezone-side: 6%;
+  --video-width: 1440;
+  --video-height: 2560;
+  --video-fps: 60;
+  --video-color: rec709-sdr;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1440px; height: 2560px; background: var(--color-bg-transparent); color: var(--color-text-primary); font-family: var(--type-family-caption); overflow: hidden; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+</head>
+<body>
+<div id="root"
+     data-composition-id="root"
+     data-start="0"
+     data-duration="52.700"
+     data-width="1440"
+     data-height="2560">
+<video id="master-video"
+       class="clip"
+       data-start="0"
+       data-duration="52.700"
+       data-track-index="0"
+       data-has-audio="false"
+       muted
+       playsinline
+       src="../stage-1-cut/master.mp4"></video>
+<audio id="master-audio"
+       class="clip"
+       data-start="0"
+       data-duration="52.700"
+       data-track-index="2"
+       data-volume="1"
+       src="../stage-1-cut/master.mp4"></audio>
+<div class="clip"
+     data-composition-src="compositions/captions.html"
+     data-composition-id="captions"
+     data-start="0"
+     data-duration="52.700"
+     data-width="1440"
+     data-height="2560"
+     data-track-index="1"></div>
+<div class="clip"
+     data-composition-src="compositions/seam-4.html"
+     data-composition-id="seam-4"
+     data-start="36.200"
+     data-duration="12.100"
+     data-width="1440"
+     data-height="2560"
+     data-track-index="3"></div>
+<script>
+(function () {
+  if (typeof gsap === "undefined") return;
+  window.__timelines = window.__timelines || {};
+  var tl = gsap.timeline({ paused: true });
+  tl.to({}, { duration: 52.700 });
+  window.__timelines["root"] = tl;
+})();
+</script>
+</div>
+</body>
+</html>
