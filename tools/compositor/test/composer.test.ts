@@ -29,7 +29,7 @@ describe("buildRootIndexHtml", () => {
     plan,
     bundle,
     masterRelPath: "../stage-1-cut/master.mp4",
-    existingSeamFiles: new Set<number>([2]),
+    existingSeamFiles: new Set<number>([1, 2]),
   });
 
   it("declares root composition with correct dimensions and duration", () => {
@@ -57,16 +57,25 @@ describe("buildRootIndexHtml", () => {
 
   it("loads per-seam sub-compositions only when their file exists", () => {
     expect(html).toContain('data-composition-src="compositions/seam-2.html"');
-    expect(html).not.toContain('data-composition-src="compositions/seam-1.html"');
+    expect(html).toContain('data-composition-src="compositions/seam-1.html"');
   });
 
   it("places per-seam sub-composition at the seam window in seconds", () => {
     expect(html).toMatch(/data-composition-src="compositions\/seam-2\.html"[^>]*data-start="30\.000"[^>]*data-duration="30\.000"/);
   });
 
-  it("uses distinct track indexes per layered element (no collisions)", () => {
+  it("uses exactly four distinct track indexes (video=0, captions=1, audio=2, seam=3)", () => {
     const trackIndexes = [...html.matchAll(/data-track-index="(\d+)"/g)].map((m) => Number(m[1]));
-    expect(new Set(trackIndexes).size).toBe(trackIndexes.length);
+    expect(new Set(trackIndexes)).toEqual(new Set([0, 1, 2, 3]));
+  });
+
+  it("emits all seams on a single track index (3)", () => {
+    const seamClipMatches = html.match(/data-composition-src="compositions\/seam-\d+\.html"[\s\S]*?data-track-index="(\d+)"/g);
+    expect(seamClipMatches).not.toBeNull();
+    for (const clip of seamClipMatches!) {
+      const m = clip.match(/data-track-index="(\d+)"/);
+      expect(m![1]).toBe("3");
+    }
   });
 
   it("inlines literal hex/RGBA on captured elements (no var() in body styles)", () => {

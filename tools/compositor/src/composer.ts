@@ -33,10 +33,9 @@ export function buildRootIndexHtml(args: ComposeArgs): string {
 
   const seamFragments = args.plan.seams
     .filter((s) => args.existingSeamFiles.has(s.index))
-    .map((s, i) => {
+    .map((s) => {
       const startSec = msToSeconds(s.at_ms);
       const durationSec = msToSeconds(s.ends_at_ms - s.at_ms);
-      const trackIndex = TRACK_SEAM_BASE + i;
       return `<div class="clip"
      data-composition-src="compositions/seam-${s.index}.html"
      data-composition-id="seam-${s.index}"
@@ -44,7 +43,7 @@ export function buildRootIndexHtml(args: ComposeArgs): string {
      data-duration="${durationSec}"
      data-width="${ROOT_WIDTH}"
      data-height="${ROOT_HEIGHT}"
-     data-track-index="${trackIndex}"></div>`;
+     data-track-index="${TRACK_SEAM_BASE}"></div>`;
     });
 
   return `<!doctype html>
