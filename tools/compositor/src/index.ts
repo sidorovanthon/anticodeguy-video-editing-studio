@@ -65,7 +65,7 @@ if (cmd === "write-bundle") {
     if (existsSync(candidate)) existingSeamFiles.add(seam.index);
   }
 
-  const { indexPath, captionsPath } = writeCompositionFiles({
+  const { indexPath, captionsPath, transitionsPath } = writeCompositionFiles({
     designMdPath,
     plan,
     bundle,
@@ -75,6 +75,7 @@ if (cmd === "write-bundle") {
   });
   console.log(`Wrote ${indexPath}`);
   console.log(`Wrote ${captionsPath}`);
+  console.log(`Wrote ${transitionsPath}`);
   const compositeDir = path.join(episodeDir, "stage-2-composite");
   const slug = path.basename(path.resolve(episodeDir));
   const meta = writeEpisodeMeta({ episodeSlug: slug, outDir: compositeDir });

@@ -64,9 +64,14 @@ describe("buildRootIndexHtml", () => {
     expect(html).toMatch(/data-composition-src="compositions\/seam-2\.html"[^>]*data-start="30\.000"[^>]*data-duration="30\.000"/);
   });
 
-  it("uses exactly four distinct track indexes (video=0, captions=1, audio=2, seam=3)", () => {
+  it("uses exactly five distinct track indexes (video=0, captions=1, audio=2, seam=3, transitions=4)", () => {
     const trackIndexes = [...html.matchAll(/data-track-index="(\d+)"/g)].map((m) => Number(m[1]));
-    expect(new Set(trackIndexes)).toEqual(new Set([0, 1, 2, 3]));
+    expect(new Set(trackIndexes)).toEqual(new Set([0, 1, 2, 3, 4]));
+  });
+
+  it("emits a transitions clip referencing compositions/transitions.html", () => {
+    expect(html).toContain('data-composition-src="compositions/transitions.html"');
+    expect(html).toContain('data-composition-id="transitions"');
   });
 
   it("emits all seams on a single track index (3)", () => {
