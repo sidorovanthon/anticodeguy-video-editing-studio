@@ -58,6 +58,7 @@ changed, why if known. Each delta yields at most one proposed rule change tagged
 - Never edit `standards/retro-changelog.md` historically — append only.
 - Never commit music files into episode folders — `run-stage2-compose.sh` copies them into `stage-2-composite/assets/` at compose time (gitignored). The authoritative source is always `library/music/`.
 - Never skip a checkpoint. A checkpoint without stop is a bug.
+- Never run `run-stage2-preview.sh` or `render-final.sh` in foreground Bash — `hyperframes render` at 1440×2560 launches Chromium and is a system-killing OOM on dev hosts. Always use `run_in_background: true` in the Bash tool, or hand the command to the user to run themselves.
 - Never produce a seam transition forbidden by the matrix in `standards/motion-graphics.md`
   (`head↔head`, `head↔overlay`, `overlay↔overlay`, same-graphic `split→split` or `full→full`;
   alias form: `a↔a`, `a↔d`, `d↔d`, `b→b`, `c→c`).
