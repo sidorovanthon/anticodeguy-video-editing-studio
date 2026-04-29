@@ -19,6 +19,10 @@ export function validateSeamPlan(plan: SeamPlan, seamsInsideByScene: Map<number,
     if (dur < 1500 && s.mode !== "head" && s.mode !== "overlay") {
       throw new Error(`scene ${i + 1}: short scene (${dur}ms) must be head or overlay`);
     }
+    if ((s.mode === "split" || s.mode === "broll" || s.mode === "overlay") &&
+        s.graphic.kind === "none") {
+      throw new Error(`scene ${i + 1}: ${s.mode} requires a graphic (got source=none)`);
+    }
     if (i === 0) continue;
     const prev = plan.scenes[i - 1];
 

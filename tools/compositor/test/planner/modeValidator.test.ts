@@ -61,6 +61,46 @@ describe("modeValidator", () => {
     expect(() => validateSeamPlan(plan, noSeams)).toThrow(/same-graphic split/);
   });
 
+  it("rejects same-graphic broll→broll", () => {
+    const g = { kind: "generative" as const, brief: "identical broll brief" };
+    const plan: SeamPlan = { slug: "t", masterDurationMs: 8000, scenes: [
+      scene({ startMs: 0, endMs: 4000, mode: "broll", graphic: g }),
+      scene({ startMs: 4000, endMs: 8000, mode: "broll", graphic: g }),
+    ]};
+    expect(() => validateSeamPlan(plan, noSeams)).toThrow(/same-graphic broll/);
+  });
+
+  it("accepts broll→broll with different briefs", () => {
+    const plan: SeamPlan = { slug: "t", masterDurationMs: 8000, scenes: [
+      scene({ startMs: 0, endMs: 4000, mode: "broll",
+              graphic: { kind: "generative", brief: "first broll" } }),
+      scene({ startMs: 4000, endMs: 8000, mode: "broll",
+              graphic: { kind: "generative", brief: "second broll" } }),
+    ]};
+    expect(() => validateSeamPlan(plan, noSeams)).not.toThrow();
+  });
+
+  it("rejects split with graphic.kind=none", () => {
+    const plan: SeamPlan = { slug: "t", masterDurationMs: 4000, scenes: [
+      scene({ startMs: 0, endMs: 4000, mode: "split", graphic: { kind: "none" } }),
+    ]};
+    expect(() => validateSeamPlan(plan, noSeams)).toThrow(/split requires a graphic/);
+  });
+
+  it("rejects broll with graphic.kind=none", () => {
+    const plan: SeamPlan = { slug: "t", masterDurationMs: 4000, scenes: [
+      scene({ startMs: 0, endMs: 4000, mode: "broll", graphic: { kind: "none" } }),
+    ]};
+    expect(() => validateSeamPlan(plan, noSeams)).toThrow(/broll requires a graphic/);
+  });
+
+  it("rejects overlay with graphic.kind=none", () => {
+    const plan: SeamPlan = { slug: "t", masterDurationMs: 4000, scenes: [
+      scene({ startMs: 0, endMs: 4000, mode: "overlay", graphic: { kind: "none" } }),
+    ]};
+    expect(() => validateSeamPlan(plan, noSeams)).toThrow(/overlay requires a graphic/);
+  });
+
   it("rejects head with seamsInside>1", () => {
     const plan: SeamPlan = { slug: "t", masterDurationMs: 4000, scenes: [
       scene({ startMs: 0, endMs: 4000, mode: "head" }),
