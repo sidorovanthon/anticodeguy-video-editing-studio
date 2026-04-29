@@ -1,4 +1,4 @@
-import { writeFileSync, mkdirSync } from "node:fs";
+import { writeFileSync, mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import type { SeamPlan, MasterBundle } from "./types.js";
 import type { TokenTree } from "./designMd.js";
@@ -6,6 +6,22 @@ import { loadDesignMd, designMdToCss, resolveToken } from "./designMd.js";
 import { buildCaptionsCompositionHtml } from "./captionsComposition.js";
 import { buildTransitionsHtml } from "./transitionsComposition.js";
 import { readTransitionConfig } from "./designMd.js";
+import { readSeamPlan as legacyParse } from "./seamPlanWriter.js";
+import { parseSeamPlan as parseEnrichedPlan } from "./planner/seamPlanFormat.js";
+import type { SeamPlan as EnrichedSeamPlan } from "./planner/types.js";
+
+export type LoadedSeamPlan =
+  | { kind: "enriched"; plan: EnrichedSeamPlan }
+  | { kind: "legacy"; plan: SeamPlan };
+
+export function loadSeamPlan(seamPlanPath: string): LoadedSeamPlan {
+  const text = readFileSync(seamPlanPath, "utf-8");
+  try {
+    return { kind: "enriched", plan: parseEnrichedPlan(text) };
+  } catch {
+    return { kind: "legacy", plan: legacyParse(text) };
+  }
+}
 
 export interface ComposeArgs {
   designMdPath: string;
@@ -14,6 +30,7 @@ export interface ComposeArgs {
   masterRelPath: string;
   musicRelPath?: string;
   existingSeamFiles: Set<number>;
+  enrichedPlan?: EnrichedSeamPlan;
 }
 
 const ROOT_WIDTH = 1440;
@@ -56,6 +73,29 @@ export function buildRootIndexHtml(args: ComposeArgs, tree?: TokenTree): string 
      data-height="${ROOT_HEIGHT}"
      data-track-index="${TRACKS.SEAM_BASE}"></div>`;
     });
+
+  const graphicFragments: string[] = [];
+  if (args.enrichedPlan) {
+    args.enrichedPlan.scenes.forEach((scene, idx) => {
+      if (scene.graphic.kind === "none") return;
+      const startSec = msToSeconds(scene.startMs);
+      const durationSec = msToSeconds(scene.endMs - scene.startMs);
+      let compositionId: string;
+      let compositionSrc: string;
+      if (scene.graphic.kind === "catalog") {
+        compositionId = scene.graphic.name;
+        compositionSrc = `compositions/${scene.graphic.name}.html`;
+      } else {
+        compositionId = `scene-${scene.beatId}-${idx}`;
+        compositionSrc = `compositions/scene-${scene.beatId}-${idx}.html`;
+      }
+      graphicFragments.push(`<div data-composition-id="${compositionId}"
+     data-composition-src="${compositionSrc}"
+     data-start="${startSec}"
+     data-duration="${durationSec}"
+     data-track-index="3"></div>`);
+    });
+  }
 
   return `<!doctype html>
 <html>
@@ -115,6 +155,7 @@ ${args.musicRelPath ? `<audio id="music"
      data-height="${ROOT_HEIGHT}"
      data-track-index="${TRACKS.TRANSITIONS}"></div>
 ${seamFragments.join("\n")}
+${graphicFragments.join("\n")}
 <script>
 (function () {
   if (typeof gsap === "undefined") return;

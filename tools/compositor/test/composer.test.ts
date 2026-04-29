@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildRootIndexHtml } from "../src/composer.js";
 import type { SeamPlan, MasterBundle } from "../src/types.js";
+import type { SeamPlan as EnrichedSeamPlan } from "../src/planner/types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const designMdPath = path.join(__dirname, "fixtures", "design-minimal.md");
@@ -117,5 +118,81 @@ describe("buildRootIndexHtml", () => {
   it("uses exactly six distinct track indexes when music is present (0-5)", () => {
     const trackIndexes = [...htmlWithMusic.matchAll(/data-track-index="(\d+)"/g)].map((m) => Number(m[1]));
     expect(new Set(trackIndexes)).toEqual(new Set([0, 1, 2, 3, 4, 5]));
+  });
+});
+
+describe("buildRootIndexHtml — enriched seam-plan graphic refs", () => {
+  const enrichedPlan: EnrichedSeamPlan = {
+    slug: "fixture",
+    masterDurationMs: 60_000,
+    scenes: [
+      {
+        startMs: 0,
+        endMs: 4_000,
+        beatId: "b1",
+        narrativePosition: "opening",
+        energyHint: "calm",
+        keyPhrase: "intro",
+        scriptChunk: "hello",
+        mode: "head",
+        transitionOut: "cut",
+        graphic: { kind: "none" },
+      },
+      {
+        startMs: 4_000,
+        endMs: 8_500,
+        beatId: "b2",
+        narrativePosition: "setup",
+        energyHint: "medium",
+        keyPhrase: "stat",
+        scriptChunk: "a stat",
+        mode: "broll",
+        transitionOut: "cut",
+        graphic: { kind: "catalog", name: "stat-callout" },
+      },
+      {
+        startMs: 8_500,
+        endMs: 12_000,
+        beatId: "b3",
+        narrativePosition: "main",
+        energyHint: "high",
+        keyPhrase: "wow",
+        scriptChunk: "wow",
+        mode: "broll",
+        transitionOut: "cut",
+        graphic: { kind: "generative", brief: "an animated diagram" },
+      },
+    ],
+  };
+
+  const html = buildRootIndexHtml({
+    ...baseArgs,
+    masterRelPath: "assets/master.mp4",
+    enrichedPlan,
+  });
+
+  it("emits no graphic clip for head scenes (graphic.kind === 'none')", () => {
+    expect(html).not.toContain('data-composition-id="b1"');
+    expect(html).not.toContain('data-composition-src="compositions/b1.html"');
+  });
+
+  it("emits a catalog graphic reference with the catalog name", () => {
+    expect(html).toContain('data-composition-id="stat-callout"');
+    expect(html).toContain('data-composition-src="compositions/stat-callout.html"');
+    expect(html).toMatch(/data-composition-src="compositions\/stat-callout\.html"[^>]*data-start="4\.000"[^>]*data-duration="4\.500"/);
+  });
+
+  it("emits a generative graphic reference with scene-{beatId}-{idx} id", () => {
+    expect(html).toContain('data-composition-id="scene-b3-2"');
+    expect(html).toContain('data-composition-src="compositions/scene-b3-2.html"');
+  });
+
+  it("places enriched graphic clips on track-index 3", () => {
+    const catalogClip = html.match(/<div data-composition-id="stat-callout"[\s\S]*?<\/div>/);
+    expect(catalogClip).not.toBeNull();
+    expect(catalogClip![0]).toContain('data-track-index="3"');
+    const generativeClip = html.match(/<div data-composition-id="scene-b3-2"[\s\S]*?<\/div>/);
+    expect(generativeClip).not.toBeNull();
+    expect(generativeClip![0]).toContain('data-track-index="3"');
   });
 });
