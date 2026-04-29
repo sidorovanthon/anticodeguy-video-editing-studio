@@ -1,0 +1,22 @@
+
+hyperframes doctor
+
+  ✗ Version          0.4.31 → 0.4.32 available
+                     Run: hyperframes upgrade
+  ✓ Node.js          v24.11.1 (win32 x64)
+  ✓ CPU              16 cores · Intel(R) Core(TM) i9-9900KF CPU @ 3.60GHz @ 3600MHz
+  ✓ Memory           31.9 GB total · 11.0 GB free
+  ✓ Disk             88.9 GB free
+  ✓ Environment      non-TTY
+  ✓ FFmpeg           ffmpeg version 2025-02-13-git-19a2d26177-full_build-www.gyan.dev Copyright (c) 2000-2025 the FFmpeg developers
+  ✓ FFprobe          ffprobe version 2025-02-13-git-19a2d26177-full_build-www.gyan.dev Copyright (c) 2007-2025 the FFmpeg developers
+  ✓ Chrome           cache: C:\Users\sidor\.cache\hyperframes\chrome\chrome-headless-shell\win64-131.0.6778.85\chrome-headless-shell-win64\chrome-headless-shell.exe
+'docker' is not recognized as an internal or external command,
+operable program or batch file.
+  ✗ Docker           Not found
+                     https://docs.docker.com/get-docker/
+  ✗ Docker running   Not running
+                     Start Docker Desktop or run: sudo systemctl start docker
+
+  ◇  Some checks failed — see hints above
+
