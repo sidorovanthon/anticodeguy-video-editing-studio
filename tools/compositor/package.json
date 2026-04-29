@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "bin": {
+    "episode-state": "./dist/bin/episode-state.js"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
