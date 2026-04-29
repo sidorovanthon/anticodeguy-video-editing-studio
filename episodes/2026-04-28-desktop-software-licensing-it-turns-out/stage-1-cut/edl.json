@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "sources": {
+    "raw": "/c/Users/sidor/repos/anticodeguy-video-editing-studio/episodes/2026-04-28-desktop-software-licensing-it-turns-out/stage-1-cut/raw.mp4"
+  },
+  "ranges": [
+    {
+      "source": "raw",
+      "start": 3.76,
+      "end": 10.80,
+      "beat": "HOOK",
+      "reason": "Opening hook — licensing is a whole story, different options exist"
+    },
+    {
+      "source": "raw",
+      "start": 13.78,
+      "end": 24.22,
+      "beat": "SETUP",
+      "reason": "App context — offline app, online activation path introduced"
+    },
+    {
+      "source": "raw",
+      "start": 24.76,
+      "end": 37.0,
+      "beat": "EXPLANATION",
+      "reason": "Cloudflare Workers verification approach; aborted restart of next sentence trimmed from phrase tail"
+    },
+    {
+      "source": "raw",
+      "start": 43.00,
+      "end": 49.78,
+      "beat": "CAVEAT",
+      "reason": "Successful take of the simplification caveat (aborted attempt cut from prior phrase)"
+    },
+    {
+      "source": "raw",
+      "start": 51.66,
+      "end": 64.38,
+      "beat": "ALTERNATIVE",
+      "reason": "Offline/crypto/hardware licensing alternatives; end extended to 64.38 to preserve deliberate pre-outro pause (tonal-shift keep rule)"
+    },
+    {
+      "source": "raw",
+      "start": 64.38,
+      "end": 68.62,
+      "beat": "OUTRO",
+      "reason": "Human-written disclosure + subscribe CTA"
+    }
+  ],
+  "grade": "none",
+  "overlays": [],
+  "subtitles": null
+}

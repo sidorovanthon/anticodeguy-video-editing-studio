@@ -1,0 +1,26 @@
+{
+  "script_words_total": 158,
+  "final_words_total": 156,
+  "script_coverage_pct": 96.8,
+  "dropped_spans": [],
+  "ad_libs": [],
+  "retakes": [
+    {
+      "text": "is of course simplified for understanding",
+      "raw_ranges": [
+        [
+          37.079,
+          39.219
+        ],
+        [
+          43.159,
+          45.319
+        ]
+      ],
+      "kept_range": [
+        43.159,
+        45.319
+      ]
+    }
+  ]
+}

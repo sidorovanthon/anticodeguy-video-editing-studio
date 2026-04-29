@@ -1,0 +1,1595 @@
+{
+  "schemaVersion": 1,
+  "slug": "2026-04-28-desktop-software-licensing-it-turns-out",
+  "master": {
+    "durationMs": 53566,
+    "width": 1440,
+    "height": 2560,
+    "fps": 60
+  },
+  "boundaries": [
+    {
+      "atMs": 0,
+      "kind": "start"
+    },
+    {
+      "atMs": 7040,
+      "kind": "seam"
+    },
+    {
+      "atMs": 17480,
+      "kind": "seam"
+    },
+    {
+      "atMs": 29720,
+      "kind": "seam"
+    },
+    {
+      "atMs": 36500,
+      "kind": "seam"
+    },
+    {
+      "atMs": 49220,
+      "kind": "seam"
+    },
+    {
+      "atMs": 53566,
+      "kind": "end"
+    }
+  ],
+  "transcript": {
+    "language": "en",
+    "words": [
+      {
+        "text": " ",
+        "startMs": 459,
+        "endMs": 559
+      },
+      {
+        "text": "software",
+        "startMs": 559,
+        "endMs": 939
+      },
+      {
+        "text": " ",
+        "startMs": 939,
+        "endMs": 1039
+      },
+      {
+        "text": "licensing,",
+        "startMs": 1039,
+        "endMs": 1559
+      },
+      {
+        "text": " ",
+        "startMs": 1559,
+        "endMs": 1660
+      },
+      {
+        "text": "it",
+        "startMs": 1660,
+        "endMs": 1740
+      },
+      {
+        "text": " ",
+        "startMs": 1740,
+        "endMs": 1799
+      },
+      {
+        "text": "turns",
+        "startMs": 1799,
+        "endMs": 2039
+      },
+      {
+        "text": " ",
+        "startMs": 2039,
+        "endMs": 2159
+      },
+      {
+        "text": "out,",
+        "startMs": 2160,
+        "endMs": 2359
+      },
+      {
+        "text": " ",
+        "startMs": 2359,
+        "endMs": 2539
+      },
+      {
+        "text": "is",
+        "startMs": 2539,
+        "endMs": 2720
+      },
+      {
+        "text": " ",
+        "startMs": 2720,
+        "endMs": 2799
+      },
+      {
+        "text": "also",
+        "startMs": 2799,
+        "endMs": 3019
+      },
+      {
+        "text": " ",
+        "startMs": 3019,
+        "endMs": 3099
+      },
+      {
+        "text": "a",
+        "startMs": 3099,
+        "endMs": 3160
+      },
+      {
+        "text": " ",
+        "startMs": 3160,
+        "endMs": 3200
+      },
+      {
+        "text": "whole",
+        "startMs": 3200,
+        "endMs": 3379
+      },
+      {
+        "text": " ",
+        "startMs": 3379,
+        "endMs": 3439
+      },
+      {
+        "text": "story.",
+        "startMs": 3439,
+        "endMs": 3799
+      },
+      {
+        "text": " ",
+        "startMs": 3799,
+        "endMs": 4200
+      },
+      {
+        "text": "There",
+        "startMs": 4200,
+        "endMs": 4299
+      },
+      {
+        "text": " ",
+        "startMs": 4299,
+        "endMs": 4319
+      },
+      {
+        "text": "are",
+        "startMs": 4319,
+        "endMs": 4399
+      },
+      {
+        "text": " ",
+        "startMs": 4399,
+        "endMs": 4559
+      },
+      {
+        "text": "different",
+        "startMs": 4559,
+        "endMs": 4799
+      },
+      {
+        "text": " ",
+        "startMs": 4799,
+        "endMs": 4879
+      },
+      {
+        "text": "options",
+        "startMs": 4879,
+        "endMs": 5259
+      },
+      {
+        "text": " ",
+        "startMs": 5259,
+        "endMs": 5359
+      },
+      {
+        "text": "for",
+        "startMs": 5359,
+        "endMs": 5500
+      },
+      {
+        "text": " ",
+        "startMs": 5500,
+        "endMs": 5660
+      },
+      {
+        "text": "how",
+        "startMs": 5660,
+        "endMs": 5819
+      },
+      {
+        "text": " ",
+        "startMs": 5819,
+        "endMs": 5919
+      },
+      {
+        "text": "licenses",
+        "startMs": 5919,
+        "endMs": 6379
+      },
+      {
+        "text": " ",
+        "startMs": 6379,
+        "endMs": 6439
+      },
+      {
+        "text": "can",
+        "startMs": 6439,
+        "endMs": 6599
+      },
+      {
+        "text": " ",
+        "startMs": 6599,
+        "endMs": 6759
+      },
+      {
+        "text": "work.",
+        "startMs": 6759,
+        "endMs": 7040
+      },
+      {
+        "text": " ",
+        "startMs": 7180,
+        "endMs": 7239
+      },
+      {
+        "text": "selecting",
+        "startMs": 7239,
+        "endMs": 7539
+      },
+      {
+        "text": " ",
+        "startMs": 7539,
+        "endMs": 7600
+      },
+      {
+        "text": "options",
+        "startMs": 7600,
+        "endMs": 7859
+      },
+      {
+        "text": " ",
+        "startMs": 7859,
+        "endMs": 7939
+      },
+      {
+        "text": "for",
+        "startMs": 7939,
+        "endMs": 8059
+      },
+      {
+        "text": " ",
+        "startMs": 8059,
+        "endMs": 8199
+      },
+      {
+        "text": "my",
+        "startMs": 8199,
+        "endMs": 8299
+      },
+      {
+        "text": " ",
+        "startMs": 8299,
+        "endMs": 8379
+      },
+      {
+        "text": "application,",
+        "startMs": 8379,
+        "endMs": 8919
+      },
+      {
+        "text": " ",
+        "startMs": 8919,
+        "endMs": 9079
+      },
+      {
+        "text": "which",
+        "startMs": 9079,
+        "endMs": 9220
+      },
+      {
+        "text": " ",
+        "startMs": 9220,
+        "endMs": 9260
+      },
+      {
+        "text": "should",
+        "startMs": 9260,
+        "endMs": 9459
+      },
+      {
+        "text": " ",
+        "startMs": 9459,
+        "endMs": 9519
+      },
+      {
+        "text": "work",
+        "startMs": 9520,
+        "endMs": 9699
+      },
+      {
+        "text": " ",
+        "startMs": 9699,
+        "endMs": 9739
+      },
+      {
+        "text": "completely",
+        "startMs": 9739,
+        "endMs": 10239
+      },
+      {
+        "text": " ",
+        "startMs": 10239,
+        "endMs": 10299
+      },
+      {
+        "text": "offline,",
+        "startMs": 10299,
+        "endMs": 10839
+      },
+      {
+        "text": " ",
+        "startMs": 10839,
+        "endMs": 11179
+      },
+      {
+        "text": "and",
+        "startMs": 11180,
+        "endMs": 11379
+      },
+      {
+        "text": " ",
+        "startMs": 11379,
+        "endMs": 11479
+      },
+      {
+        "text": "one",
+        "startMs": 11479,
+        "endMs": 11579
+      },
+      {
+        "text": " ",
+        "startMs": 11579,
+        "endMs": 11639
+      },
+      {
+        "text": "of",
+        "startMs": 11639,
+        "endMs": 11700
+      },
+      {
+        "text": " ",
+        "startMs": 11700,
+        "endMs": 11739
+      },
+      {
+        "text": "the",
+        "startMs": 11739,
+        "endMs": 11799
+      },
+      {
+        "text": " ",
+        "startMs": 11799,
+        "endMs": 11879
+      },
+      {
+        "text": "options",
+        "startMs": 11879,
+        "endMs": 12360
+      },
+      {
+        "text": " ",
+        "startMs": 12360,
+        "endMs": 12419
+      },
+      {
+        "text": "that's",
+        "startMs": 12419,
+        "endMs": 12719
+      },
+      {
+        "text": " ",
+        "startMs": 12719,
+        "endMs": 12799
+      },
+      {
+        "text": "clear",
+        "startMs": 12799,
+        "endMs": 13100
+      },
+      {
+        "text": " ",
+        "startMs": 13100,
+        "endMs": 13159
+      },
+      {
+        "text": "to",
+        "startMs": 13159,
+        "endMs": 13279
+      },
+      {
+        "text": " ",
+        "startMs": 13279,
+        "endMs": 13360
+      },
+      {
+        "text": "me",
+        "startMs": 13360,
+        "endMs": 13559
+      },
+      {
+        "text": " ",
+        "startMs": 13559,
+        "endMs": 13659
+      },
+      {
+        "text": "is",
+        "startMs": 13659,
+        "endMs": 13780
+      },
+      {
+        "text": " ",
+        "startMs": 13780,
+        "endMs": 13819
+      },
+      {
+        "text": "online",
+        "startMs": 13819,
+        "endMs": 14119
+      },
+      {
+        "text": " ",
+        "startMs": 14119,
+        "endMs": 14159
+      },
+      {
+        "text": "activation",
+        "startMs": 14159,
+        "endMs": 14600
+      },
+      {
+        "text": " ",
+        "startMs": 14600,
+        "endMs": 14680
+      },
+      {
+        "text": "with",
+        "startMs": 14680,
+        "endMs": 14780
+      },
+      {
+        "text": " ",
+        "startMs": 14780,
+        "endMs": 14819
+      },
+      {
+        "text": "a",
+        "startMs": 14819,
+        "endMs": 14839
+      },
+      {
+        "text": " ",
+        "startMs": 14839,
+        "endMs": 14879
+      },
+      {
+        "text": "request",
+        "startMs": 14879,
+        "endMs": 15299
+      },
+      {
+        "text": " ",
+        "startMs": 15299,
+        "endMs": 15339
+      },
+      {
+        "text": "to",
+        "startMs": 15339,
+        "endMs": 15419
+      },
+      {
+        "text": " ",
+        "startMs": 15419,
+        "endMs": 15459
+      },
+      {
+        "text": "an",
+        "startMs": 15459,
+        "endMs": 15499
+      },
+      {
+        "text": " ",
+        "startMs": 15499,
+        "endMs": 15579
+      },
+      {
+        "text": "external",
+        "startMs": 15579,
+        "endMs": 15979
+      },
+      {
+        "text": " ",
+        "startMs": 15979,
+        "endMs": 16079
+      },
+      {
+        "text": "license",
+        "startMs": 16079,
+        "endMs": 16379
+      },
+      {
+        "text": " ",
+        "startMs": 16379,
+        "endMs": 16419
+      },
+      {
+        "text": "verification",
+        "startMs": 16419,
+        "endMs": 16959
+      },
+      {
+        "text": " ",
+        "startMs": 16959,
+        "endMs": 17079
+      },
+      {
+        "text": "service.",
+        "startMs": 17079,
+        "endMs": 17479
+      },
+      {
+        "text": " ",
+        "startMs": 17479,
+        "endMs": 17480
+      },
+      {
+        "text": "To",
+        "startMs": 17480,
+        "endMs": 17539
+      },
+      {
+        "text": " ",
+        "startMs": 17539,
+        "endMs": 17619
+      },
+      {
+        "text": "verify",
+        "startMs": 17619,
+        "endMs": 18019
+      },
+      {
+        "text": " ",
+        "startMs": 18019,
+        "endMs": 18060
+      },
+      {
+        "text": "the",
+        "startMs": 18060,
+        "endMs": 18159
+      },
+      {
+        "text": " ",
+        "startMs": 18159,
+        "endMs": 18339
+      },
+      {
+        "text": "license,",
+        "startMs": 18339,
+        "endMs": 18759
+      },
+      {
+        "text": " ",
+        "startMs": 18759,
+        "endMs": 18839
+      },
+      {
+        "text": "you",
+        "startMs": 18839,
+        "endMs": 18900
+      },
+      {
+        "text": " ",
+        "startMs": 18900,
+        "endMs": 18959
+      },
+      {
+        "text": "can",
+        "startMs": 18959,
+        "endMs": 19119
+      },
+      {
+        "text": " ",
+        "startMs": 19119,
+        "endMs": 19319
+      },
+      {
+        "text": "build",
+        "startMs": 19319,
+        "endMs": 19519
+      },
+      {
+        "text": " ",
+        "startMs": 19519,
+        "endMs": 19599
+      },
+      {
+        "text": "a",
+        "startMs": 19599,
+        "endMs": 19699
+      },
+      {
+        "text": " ",
+        "startMs": 19699,
+        "endMs": 19779
+      },
+      {
+        "text": "worker",
+        "startMs": 19779,
+        "endMs": 20099
+      },
+      {
+        "text": " ",
+        "startMs": 20099,
+        "endMs": 20140
+      },
+      {
+        "text": "that",
+        "startMs": 20140,
+        "endMs": 20279
+      },
+      {
+        "text": " ",
+        "startMs": 20279,
+        "endMs": 20359
+      },
+      {
+        "text": "will",
+        "startMs": 20359,
+        "endMs": 20459
+      },
+      {
+        "text": " ",
+        "startMs": 20459,
+        "endMs": 20519
+      },
+      {
+        "text": "require",
+        "startMs": 20519,
+        "endMs": 20859
+      },
+      {
+        "text": " ",
+        "startMs": 20859,
+        "endMs": 20919
+      },
+      {
+        "text": "a",
+        "startMs": 20919,
+        "endMs": 20999
+      },
+      {
+        "text": " ",
+        "startMs": 20999,
+        "endMs": 21059
+      },
+      {
+        "text": "database",
+        "startMs": 21060,
+        "endMs": 21679
+      },
+      {
+        "text": " ",
+        "startMs": 21679,
+        "endMs": 21779
+      },
+      {
+        "text": "of",
+        "startMs": 21779,
+        "endMs": 21919
+      },
+      {
+        "text": " ",
+        "startMs": 21919,
+        "endMs": 22079
+      },
+      {
+        "text": "generated",
+        "startMs": 22079,
+        "endMs": 22619
+      },
+      {
+        "text": " ",
+        "startMs": 22619,
+        "endMs": 22699
+      },
+      {
+        "text": "keys",
+        "startMs": 22699,
+        "endMs": 23359
+      },
+      {
+        "text": " ",
+        "startMs": 23359,
+        "endMs": 23439
+      },
+      {
+        "text": "and",
+        "startMs": 23439,
+        "endMs": 23539
+      },
+      {
+        "text": " ",
+        "startMs": 23539,
+        "endMs": 23739
+      },
+      {
+        "text": "check",
+        "startMs": 23739,
+        "endMs": 23939
+      },
+      {
+        "text": " ",
+        "startMs": 23939,
+        "endMs": 23999
+      },
+      {
+        "text": "for",
+        "startMs": 23999,
+        "endMs": 24079
+      },
+      {
+        "text": " ",
+        "startMs": 24079,
+        "endMs": 24119
+      },
+      {
+        "text": "their",
+        "startMs": 24119,
+        "endMs": 24339
+      },
+      {
+        "text": " ",
+        "startMs": 24339,
+        "endMs": 24419
+      },
+      {
+        "text": "presence.",
+        "startMs": 24419,
+        "endMs": 24879
+      },
+      {
+        "text": " ",
+        "startMs": 24879,
+        "endMs": 25339
+      },
+      {
+        "text": "Such",
+        "startMs": 25339,
+        "endMs": 25499
+      },
+      {
+        "text": " ",
+        "startMs": 25499,
+        "endMs": 25519
+      },
+      {
+        "text": "a",
+        "startMs": 25519,
+        "endMs": 25560
+      },
+      {
+        "text": " ",
+        "startMs": 25560,
+        "endMs": 25600
+      },
+      {
+        "text": "worker",
+        "startMs": 25600,
+        "endMs": 25819
+      },
+      {
+        "text": " ",
+        "startMs": 25819,
+        "endMs": 25879
+      },
+      {
+        "text": "can",
+        "startMs": 25879,
+        "endMs": 25979
+      },
+      {
+        "text": " ",
+        "startMs": 25979,
+        "endMs": 26019
+      },
+      {
+        "text": "be",
+        "startMs": 26019,
+        "endMs": 26080
+      },
+      {
+        "text": " ",
+        "startMs": 26080,
+        "endMs": 26159
+      },
+      {
+        "text": "set",
+        "startMs": 26159,
+        "endMs": 26279
+      },
+      {
+        "text": " ",
+        "startMs": 26279,
+        "endMs": 26339
+      },
+      {
+        "text": "up,",
+        "startMs": 26339,
+        "endMs": 26420
+      },
+      {
+        "text": " ",
+        "startMs": 26420,
+        "endMs": 26459
+      },
+      {
+        "text": "for",
+        "startMs": 26459,
+        "endMs": 26519
+      },
+      {
+        "text": " ",
+        "startMs": 26519,
+        "endMs": 26600
+      },
+      {
+        "text": "example,",
+        "startMs": 26600,
+        "endMs": 26939
+      },
+      {
+        "text": " ",
+        "startMs": 26939,
+        "endMs": 27100
+      },
+      {
+        "text": "on",
+        "startMs": 27100,
+        "endMs": 27159
+      },
+      {
+        "text": " ",
+        "startMs": 27159,
+        "endMs": 27199
+      },
+      {
+        "text": "the",
+        "startMs": 27199,
+        "endMs": 27299
+      },
+      {
+        "text": " ",
+        "startMs": 27299,
+        "endMs": 27419
+      },
+      {
+        "text": "basis",
+        "startMs": 27420,
+        "endMs": 27779
+      },
+      {
+        "text": " ",
+        "startMs": 27779,
+        "endMs": 27839
+      },
+      {
+        "text": "of",
+        "startMs": 27839,
+        "endMs": 27959
+      },
+      {
+        "text": " ",
+        "startMs": 27959,
+        "endMs": 28079
+      },
+      {
+        "text": "Cloudflare",
+        "startMs": 28080,
+        "endMs": 28600
+      },
+      {
+        "text": " ",
+        "startMs": 28600,
+        "endMs": 28839
+      },
+      {
+        "text": "Workers.",
+        "startMs": 28839,
+        "endMs": 29279
+      },
+      {
+        "text": " ",
+        "startMs": 29279,
+        "endMs": 29639
+      },
+      {
+        "text": "This",
+        "startMs": 29639,
+        "endMs": 29720
+      },
+      {
+        "text": "This",
+        "startMs": 29720,
+        "endMs": 29819
+      },
+      {
+        "text": " ",
+        "startMs": 29819,
+        "endMs": 29879
+      },
+      {
+        "text": "is,",
+        "startMs": 29879,
+        "endMs": 29940
+      },
+      {
+        "text": " ",
+        "startMs": 29940,
+        "endMs": 29999
+      },
+      {
+        "text": "of",
+        "startMs": 29999,
+        "endMs": 30099
+      },
+      {
+        "text": " ",
+        "startMs": 30099,
+        "endMs": 30159
+      },
+      {
+        "text": "course,",
+        "startMs": 30159,
+        "endMs": 30359
+      },
+      {
+        "text": " ",
+        "startMs": 30359,
+        "endMs": 30459
+      },
+      {
+        "text": "simplified",
+        "startMs": 30459,
+        "endMs": 31080
+      },
+      {
+        "text": " ",
+        "startMs": 31080,
+        "endMs": 31139
+      },
+      {
+        "text": "for",
+        "startMs": 31139,
+        "endMs": 31199
+      },
+      {
+        "text": " ",
+        "startMs": 31199,
+        "endMs": 31279
+      },
+      {
+        "text": "understanding",
+        "startMs": 31279,
+        "endMs": 32039
+      },
+      {
+        "text": " ",
+        "startMs": 32039,
+        "endMs": 32159
+      },
+      {
+        "text": "and",
+        "startMs": 32159,
+        "endMs": 32379
+      },
+      {
+        "text": " ",
+        "startMs": 32379,
+        "endMs": 32459
+      },
+      {
+        "text": "a",
+        "startMs": 32459,
+        "endMs": 32499
+      },
+      {
+        "text": " ",
+        "startMs": 32499,
+        "endMs": 32639
+      },
+      {
+        "text": "lot",
+        "startMs": 32639,
+        "endMs": 32920
+      },
+      {
+        "text": " ",
+        "startMs": 32920,
+        "endMs": 33080
+      },
+      {
+        "text": "needs",
+        "startMs": 33080,
+        "endMs": 33379
+      },
+      {
+        "text": " ",
+        "startMs": 33379,
+        "endMs": 33420
+      },
+      {
+        "text": "to",
+        "startMs": 33420,
+        "endMs": 33539
+      },
+      {
+        "text": " ",
+        "startMs": 33539,
+        "endMs": 33580
+      },
+      {
+        "text": "be",
+        "startMs": 33580,
+        "endMs": 33819
+      },
+      {
+        "text": " ",
+        "startMs": 33819,
+        "endMs": 33900
+      },
+      {
+        "text": "added",
+        "startMs": 33900,
+        "endMs": 34139
+      },
+      {
+        "text": " ",
+        "startMs": 34139,
+        "endMs": 34199
+      },
+      {
+        "text": "for",
+        "startMs": 34199,
+        "endMs": 34319
+      },
+      {
+        "text": " ",
+        "startMs": 34319,
+        "endMs": 34419
+      },
+      {
+        "text": "everything",
+        "startMs": 34420,
+        "endMs": 34760
+      },
+      {
+        "text": " ",
+        "startMs": 34760,
+        "endMs": 34779
+      },
+      {
+        "text": "to",
+        "startMs": 34779,
+        "endMs": 34859
+      },
+      {
+        "text": " ",
+        "startMs": 34859,
+        "endMs": 34939
+      },
+      {
+        "text": "work",
+        "startMs": 34939,
+        "endMs": 35099
+      },
+      {
+        "text": " ",
+        "startMs": 35099,
+        "endMs": 35119
+      },
+      {
+        "text": "reliably",
+        "startMs": 35119,
+        "endMs": 35580
+      },
+      {
+        "text": " ",
+        "startMs": 35580,
+        "endMs": 35639
+      },
+      {
+        "text": "and",
+        "startMs": 35639,
+        "endMs": 35779
+      },
+      {
+        "text": " ",
+        "startMs": 35779,
+        "endMs": 35839
+      },
+      {
+        "text": "securely.",
+        "startMs": 35839,
+        "endMs": 36499
+      },
+      {
+        "text": " ",
+        "startMs": 36499,
+        "endMs": 36499
+      },
+      {
+        "text": " ",
+        "startMs": 36959,
+        "endMs": 37039
+      },
+      {
+        "text": "there",
+        "startMs": 37039,
+        "endMs": 37139
+      },
+      {
+        "text": " ",
+        "startMs": 37139,
+        "endMs": 37180
+      },
+      {
+        "text": "are",
+        "startMs": 37180,
+        "endMs": 37259
+      },
+      {
+        "text": " ",
+        "startMs": 37259,
+        "endMs": 37319
+      },
+      {
+        "text": "also",
+        "startMs": 37319,
+        "endMs": 37639
+      },
+      {
+        "text": " ",
+        "startMs": 37639,
+        "endMs": 37700
+      },
+      {
+        "text": "offline",
+        "startMs": 37700,
+        "endMs": 38220
+      },
+      {
+        "text": " ",
+        "startMs": 38220,
+        "endMs": 38279
+      },
+      {
+        "text": "activation",
+        "startMs": 38279,
+        "endMs": 39039
+      },
+      {
+        "text": " ",
+        "startMs": 39039,
+        "endMs": 39119
+      },
+      {
+        "text": "and",
+        "startMs": 39119,
+        "endMs": 39279
+      },
+      {
+        "text": " ",
+        "startMs": 39279,
+        "endMs": 39379
+      },
+      {
+        "text": "licensing",
+        "startMs": 39379,
+        "endMs": 39779
+      },
+      {
+        "text": " ",
+        "startMs": 39779,
+        "endMs": 39879
+      },
+      {
+        "text": "schemes",
+        "startMs": 39879,
+        "endMs": 40360
+      },
+      {
+        "text": " ",
+        "startMs": 40360,
+        "endMs": 40419
+      },
+      {
+        "text": "that",
+        "startMs": 40419,
+        "endMs": 40539
+      },
+      {
+        "text": " ",
+        "startMs": 40539,
+        "endMs": 40579
+      },
+      {
+        "text": "are",
+        "startMs": 40579,
+        "endMs": 40779
+      },
+      {
+        "text": " ",
+        "startMs": 40779,
+        "endMs": 40799
+      },
+      {
+        "text": "based",
+        "startMs": 40799,
+        "endMs": 41040
+      },
+      {
+        "text": " ",
+        "startMs": 41040,
+        "endMs": 41059
+      },
+      {
+        "text": "on",
+        "startMs": 41059,
+        "endMs": 41180
+      },
+      {
+        "text": " ",
+        "startMs": 41180,
+        "endMs": 41200
+      },
+      {
+        "text": "cryptography,",
+        "startMs": 41200,
+        "endMs": 42019
+      },
+      {
+        "text": " ",
+        "startMs": 42019,
+        "endMs": 42079
+      },
+      {
+        "text": "hardware",
+        "startMs": 42079,
+        "endMs": 42439
+      },
+      {
+        "text": " ",
+        "startMs": 42439,
+        "endMs": 42499
+      },
+      {
+        "text": "production",
+        "startMs": 42499,
+        "endMs": 42919
+      },
+      {
+        "text": " ",
+        "startMs": 42919,
+        "endMs": 42979
+      },
+      {
+        "text": "keys,",
+        "startMs": 42979,
+        "endMs": 43279
+      },
+      {
+        "text": " ",
+        "startMs": 43279,
+        "endMs": 43360
+      },
+      {
+        "text": "and",
+        "startMs": 43360,
+        "endMs": 43540
+      },
+      {
+        "text": " ",
+        "startMs": 43540,
+        "endMs": 43579
+      },
+      {
+        "text": "time-based",
+        "startMs": 43579,
+        "endMs": 44159
+      },
+      {
+        "text": " ",
+        "startMs": 44159,
+        "endMs": 44199
+      },
+      {
+        "text": "licenses,",
+        "startMs": 44199,
+        "endMs": 45119
+      },
+      {
+        "text": " ",
+        "startMs": 45119,
+        "endMs": 45199
+      },
+      {
+        "text": "whose",
+        "startMs": 45199,
+        "endMs": 45419
+      },
+      {
+        "text": " ",
+        "startMs": 45419,
+        "endMs": 45479
+      },
+      {
+        "text": "validity",
+        "startMs": 45479,
+        "endMs": 45939
+      },
+      {
+        "text": " ",
+        "startMs": 45939,
+        "endMs": 45979
+      },
+      {
+        "text": "is",
+        "startMs": 45979,
+        "endMs": 46179
+      },
+      {
+        "text": " ",
+        "startMs": 46179,
+        "endMs": 46239
+      },
+      {
+        "text": "checked",
+        "startMs": 46239,
+        "endMs": 46479
+      },
+      {
+        "text": " ",
+        "startMs": 46479,
+        "endMs": 46539
+      },
+      {
+        "text": "locally",
+        "startMs": 46539,
+        "endMs": 46939
+      },
+      {
+        "text": " ",
+        "startMs": 46939,
+        "endMs": 46979
+      },
+      {
+        "text": "without",
+        "startMs": 46979,
+        "endMs": 47439
+      },
+      {
+        "text": " ",
+        "startMs": 47439,
+        "endMs": 47479
+      },
+      {
+        "text": "connecting",
+        "startMs": 47479,
+        "endMs": 47919
+      },
+      {
+        "text": " ",
+        "startMs": 47919,
+        "endMs": 47919
+      },
+      {
+        "text": "to",
+        "startMs": 47919,
+        "endMs": 48020
+      },
+      {
+        "text": " ",
+        "startMs": 48020,
+        "endMs": 48039
+      },
+      {
+        "text": "the",
+        "startMs": 48039,
+        "endMs": 48079
+      },
+      {
+        "text": " ",
+        "startMs": 48079,
+        "endMs": 48119
+      },
+      {
+        "text": "internet.",
+        "startMs": 48119,
+        "endMs": 48599
+      },
+      {
+        "text": " ",
+        "startMs": 48599,
+        "endMs": 49219
+      },
+      {
+        "text": "The",
+        "startMs": 49219,
+        "endMs": 49220
+      },
+      {
+        "text": " ",
+        "startMs": 49259,
+        "endMs": 49340
+      },
+      {
+        "text": "script",
+        "startMs": 49340,
+        "endMs": 49519
+      },
+      {
+        "text": " ",
+        "startMs": 49519,
+        "endMs": 49579
+      },
+      {
+        "text": "for",
+        "startMs": 49579,
+        "endMs": 49639
+      },
+      {
+        "text": " ",
+        "startMs": 49639,
+        "endMs": 49699
+      },
+      {
+        "text": "this",
+        "startMs": 49700,
+        "endMs": 49859
+      },
+      {
+        "text": " ",
+        "startMs": 49859,
+        "endMs": 49899
+      },
+      {
+        "text": "video",
+        "startMs": 49899,
+        "endMs": 50199
+      },
+      {
+        "text": " ",
+        "startMs": 50199,
+        "endMs": 50240
+      },
+      {
+        "text": "was",
+        "startMs": 50240,
+        "endMs": 50399
+      },
+      {
+        "text": " ",
+        "startMs": 50399,
+        "endMs": 50439
+      },
+      {
+        "text": "written",
+        "startMs": 50439,
+        "endMs": 50739
+      },
+      {
+        "text": " ",
+        "startMs": 50739,
+        "endMs": 50779
+      },
+      {
+        "text": "by",
+        "startMs": 50779,
+        "endMs": 50859
+      },
+      {
+        "text": " ",
+        "startMs": 50859,
+        "endMs": 50859
+      },
+      {
+        "text": "a",
+        "startMs": 50859,
+        "endMs": 50939
+      },
+      {
+        "text": " ",
+        "startMs": 50939,
+        "endMs": 50979
+      },
+      {
+        "text": "human",
+        "startMs": 50979,
+        "endMs": 51240
+      },
+      {
+        "text": " ",
+        "startMs": 51240,
+        "endMs": 51279
+      },
+      {
+        "text": "being.",
+        "startMs": 51279,
+        "endMs": 51840
+      },
+      {
+        "text": " ",
+        "startMs": 51840,
+        "endMs": 51899
+      },
+      {
+        "text": "For",
+        "startMs": 51899,
+        "endMs": 52019
+      },
+      {
+        "text": " ",
+        "startMs": 52019,
+        "endMs": 52039
+      },
+      {
+        "text": "more",
+        "startMs": 52039,
+        "endMs": 52139
+      },
+      {
+        "text": " ",
+        "startMs": 52139,
+        "endMs": 52200
+      },
+      {
+        "text": "stuff",
+        "startMs": 52200,
+        "endMs": 52359
+      },
+      {
+        "text": " ",
+        "startMs": 52359,
+        "endMs": 52419
+      },
+      {
+        "text": "like",
+        "startMs": 52420,
+        "endMs": 52539
+      },
+      {
+        "text": " ",
+        "startMs": 52539,
+        "endMs": 52579
+      },
+      {
+        "text": "this,",
+        "startMs": 52579,
+        "endMs": 52939
+      },
+      {
+        "text": " ",
+        "startMs": 52939,
+        "endMs": 52999
+      },
+      {
+        "text": "subscribe.",
+        "startMs": 52999,
+        "endMs": 53459
+      }
+    ]
+  }
+}
