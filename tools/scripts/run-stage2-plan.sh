@@ -29,6 +29,21 @@ hf_preflight || { echo "ERROR: doctor preflight failed; aborting plan"; exit 1; 
 TSX_BIN="$REPO_ROOT/tools/compositor/node_modules/.bin/tsx"
 [ -x "$TSX_BIN" ] || { echo "ERROR: pinned tsx binary not found at $TSX_BIN — run 'cd tools/compositor && npm install'"; exit 1; }
 
+EPISODE_STATE_BIN="$REPO_ROOT/tools/compositor/dist/bin/episode-state.js"
+if [ ! -f "$EPISODE_STATE_BIN" ]; then
+  echo "error: $EPISODE_STATE_BIN not found; run 'npm run build' in tools/compositor" >&2
+  exit 1
+fi
+
+if [ ! -f "$EP/state.json" ]; then
+  node "$EPISODE_STATE_BIN" init --episode-dir "$EP" --slug "$SLUG"
+fi
+
+node "$EPISODE_STATE_BIN" mark-step-started --episode-dir "$EP" --step plan
+
 REPO_ROOT="$REPO_ROOT" "$TSX_BIN" "$REPO_ROOT/tools/compositor/src/index.ts" plan --episode "$EP"
+
+# State: mark plan step done (last successful action of the script)
+node "$EPISODE_STATE_BIN" mark-step-done --episode-dir "$EP" --step plan --checkpoint CP1
 
 echo "CP2.5 ready: $EP/stage-2-composite/seam-plan.md. Awaiting review."
