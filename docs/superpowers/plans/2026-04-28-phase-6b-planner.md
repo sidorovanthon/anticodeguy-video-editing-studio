@@ -77,7 +77,7 @@ Existing seam-plan format (to be superseded): single line per seam, `SEAM N at_m
 
 ```typescript
 // tools/compositor/src/planner/types.ts
-import type { SceneMode } from "../sceneMode.js";
+import type { SceneMode } from "../types.js";
 
 export type NarrativePosition =
   | "opening" | "setup" | "main" | "topic_change"
@@ -1272,7 +1272,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Scene, EnrichedScene, GraphicSource } from "./types.js";
-import type { SceneMode } from "../sceneMode.js";
+import type { SceneMode } from "../types.js";
 import { pickTransition, type TransitionPickerState } from "./transitionPicker.js";
 import type { SubagentDispatcher } from "./segmenter.js";
 
