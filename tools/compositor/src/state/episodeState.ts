@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync, unlinkSync } from "node:fs";
 import path from "node:path";
 import { writeJsonAtomic } from "./atomicWrite.js";
 import {
@@ -143,4 +143,18 @@ export function isSceneSatisfied(
   } catch {
     return false;
   }
+}
+
+export function invalidateStep(episodeDir: string, step: StepName): EpisodeState {
+  const next = mutate(episodeDir, (s) => ({
+    ...s,
+    completedSteps: s.completedSteps.filter((n) => n !== step),
+    inProgressStep: s.inProgressStep === step ? null : s.inProgressStep,
+    stepStartedAt: s.inProgressStep === step ? null : s.stepStartedAt,
+  }));
+  if (step === "generate") {
+    const m = generateManifestPath(episodeDir);
+    if (existsSync(m)) unlinkSync(m);
+  }
+  return next;
 }

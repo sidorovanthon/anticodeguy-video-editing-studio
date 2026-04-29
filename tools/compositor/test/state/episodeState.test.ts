@@ -151,3 +151,38 @@ describe("generate manifest", () => {
     expect(isSceneSatisfied(episodeDir, "B-1", "sha256:abc")).toBe(false);
   });
 });
+
+import { invalidateStep } from "../../src/state/episodeState.js";
+import { generateManifestPath } from "../../src/state/episodeState.js";
+
+describe("invalidateStep", () => {
+  let episodeDir: string;
+  let stageDir: string;
+  beforeEach(() => {
+    episodeDir = mkdtempSync(path.join(tmpdir(), "ep-"));
+    stageDir = path.join(episodeDir, "stage-2-composite");
+    mkdirSync(stageDir, { recursive: true });
+    initState(episodeDir, "test-slug");
+  });
+  afterEach(() => { rmSync(episodeDir, { recursive: true, force: true }); });
+
+  it("removes step from completedSteps", () => {
+    markStepStarted(episodeDir, "compose");
+    markStepDone(episodeDir, "compose", "CP3");
+    invalidateStep(episodeDir, "compose");
+    const s = readState(episodeDir);
+    expect(s.completedSteps).not.toContain("compose");
+  });
+
+  it("deletes generate.manifest.json when invalidating generate", () => {
+    recordSceneCompleted(episodeDir, "B-1", {
+      kind: "generative",
+      outputPath: "x.html",
+      promptHash: "sha256:abc",
+      outputBytes: 1024,
+      wallclockMs: 100,
+    });
+    invalidateStep(episodeDir, "generate");
+    expect(existsSync(generateManifestPath(episodeDir))).toBe(false);
+  });
+});
