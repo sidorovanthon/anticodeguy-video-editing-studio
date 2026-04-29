@@ -1472,7 +1472,7 @@ Use the `hyperframes` skill via the Skill tool. Read SKILL.md, then references/t
 6. Entrance animations on every visible element.
 7. **No exit animations** unless this is the final scene (the dispatcher tells you via `is_final`).
 8. All visual tokens from `hyperframes-tokens` JSON in DESIGN.md. No hardcoded colours.
-9. Pass `npx hyperframes lint --strict-all`, `validate --strict-all`, `inspect --strict-all`.
+9. Pass `npx hyperframes lint --strict-all`, `validate --strict-all`, `inspect --strict` (HF v0.4.x: `inspect` uses `--strict`, not `--strict-all`).
 
 If the scene mode is `split`, fill the right-side panel only. If `broll`, fill the full frame. If `overlay`, place in lower third unless brief says otherwise.
 
@@ -1578,9 +1578,11 @@ async function generateOne(
         continue;
       }
       try {
+        // HF v0.4.x: lint/validate accept --strict-all as a no-op (forward-compat);
+        // inspect uses --strict (the actually-supported strict mode). Mirror run-stage2-compose.sh.
         execFileSync(hfBin, ["lint", projectRoot, "--strict-all"], { stdio: "pipe" });
         execFileSync(hfBin, ["validate", projectRoot, "--strict-all"], { stdio: "pipe" });
-        execFileSync(hfBin, ["inspect", projectRoot, "--strict-all", "--json"], { stdio: "pipe" });
+        execFileSync(hfBin, ["inspect", projectRoot, "--strict", "--json"], { stdio: "pipe" });
       } catch (gateErr: any) {
         const stderrText = gateErr?.stderr?.toString?.() ?? gateErr?.message ?? String(gateErr);
         lastErr = `HF gate failed: ${stderrText}`;
