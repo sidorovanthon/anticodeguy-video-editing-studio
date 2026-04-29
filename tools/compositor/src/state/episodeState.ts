@@ -40,7 +40,13 @@ export function readState(episodeDir: string): EpisodeState {
   if (!existsSync(file)) {
     throw new Error(`state.json not found at ${file}`);
   }
-  const parsed = JSON.parse(readFileSync(file, "utf-8"));
+  const raw = readFileSync(file, "utf-8");
+  let parsed: any;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    throw new Error(`state.json corrupt: ${(err as Error).message}`);
+  }
   if (parsed.schemaVersion !== STATE_SCHEMA_VERSION) {
     throw new Error(
       `state.json schemaVersion ${parsed.schemaVersion} not supported (expected ${STATE_SCHEMA_VERSION})`
@@ -101,7 +107,13 @@ export function readGenerateManifest(episodeDir: string): GenerateManifest {
   if (!existsSync(file)) {
     return { schemaVersion: GENERATE_MANIFEST_SCHEMA_VERSION, scenes: {} };
   }
-  const parsed = JSON.parse(readFileSync(file, "utf-8"));
+  const raw = readFileSync(file, "utf-8");
+  let parsed: any;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    throw new Error(`generate.manifest.json corrupt: ${(err as Error).message}`);
+  }
   if (parsed.schemaVersion !== GENERATE_MANIFEST_SCHEMA_VERSION) {
     throw new Error(
       `generate.manifest.json schemaVersion ${parsed.schemaVersion} not supported`

@@ -45,7 +45,15 @@ export async function generateAll(inputs: GenerativeDispatcherInputs): Promise<G
       .filter(s => s.graphic.kind === "catalog")
       .map(s => (s.graphic as any).name as string),
   ));
+  // Catalog names flow from seam-plan.md (LLM-authored, operator-reviewed) into
+  // a `shell: true` exec below. Whitelist before passing to the shell so a
+  // malformed name like "foo; rm -rf ~" cannot escape the argv slot.
+  // Real catalog names are kebab-case alphanumeric (see hyperframes catalog).
+  const CATALOG_NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/;
   for (const name of catalogNames) {
+    if (!CATALOG_NAME_RE.test(name)) {
+      throw new Error(`refusing to install catalog block with non-conforming name: ${JSON.stringify(name)}`);
+    }
     const target = path.join(compositionsDir, `${name}.html`);
     if (existsSync(target)) continue;
     try {
@@ -53,7 +61,7 @@ export async function generateAll(inputs: GenerativeDispatcherInputs): Promise<G
       // block under compositions/. Run synchronously (cheap, network only).
       // shell:true so Windows can resolve the .cmd wrapper for the npm-bin
       // shell script (.bin/hyperframes); on POSIX shell:true is harmless here
-      // since args are array-typed.
+      // since args are array-typed. Name is whitelisted above.
       execFileSync(inputs.hfBin, ["add", name], { cwd: projectRoot, stdio: "pipe", shell: true });
     } catch (err: any) {
       const stderrText = err?.stderr?.toString?.() ?? err?.message ?? String(err);
@@ -134,6 +142,11 @@ async function generateOne(
   // Resumability via manifest: same prompt hash + recorded file still on disk
   // → skip. Replaces the prior file-existence-only check, so a re-run after a
   // prompt template change correctly invalidates and regenerates.
+  // Resume key is `fileStem` (`scene-${beatId}-${idx}`), intentionally
+  // index-stable rather than beat-stable: if a scene is inserted upstream and
+  // every following scene's idx shifts by one, every downstream entry naturally
+  // misses cache and regenerates against its new index — safer than reusing a
+  // stale entry under a different idx.
   const promptHash = computePromptHash({
     prompt: basePrompt,
     model,

@@ -52,10 +52,21 @@ export function makeRealSubagentDispatcher(opts: RealDispatcherOptions): Subagen
   const claudeBin = opts.claudeBin ?? "claude";
   const allowedTools = opts.allowedTools ?? ["Read", "Write", "Bash"];
   const repoRoot = path.resolve(opts.repoRoot);
+  // Precedence: env var first (operator's override surface per spec §2),
+  // then explicit option, then default. Inversion would make a hardcoded
+  // caller silently shadow the operator's HF_GENERATIVE_TIMEOUT_MS.
   const envOverride = process.env.HF_GENERATIVE_TIMEOUT_MS;
-  const timeoutMs = opts.timeoutMs
-    ?? (envOverride && /^\d+$/.test(envOverride) ? Number(envOverride) : undefined)
-    ?? 4 * 60 * 1000;
+  let envTimeoutMs: number | undefined;
+  if (envOverride !== undefined && envOverride !== "") {
+    if (/^\d+$/.test(envOverride)) {
+      envTimeoutMs = Number(envOverride);
+    } else {
+      console.warn(
+        `[realDispatcher] HF_GENERATIVE_TIMEOUT_MS=${JSON.stringify(envOverride)} is not a positive integer; ignoring and falling back.`,
+      );
+    }
+  }
+  const timeoutMs = envTimeoutMs ?? opts.timeoutMs ?? 4 * 60 * 1000;
   return {
     async run(promptText: string): Promise<string> {
       const args = [
