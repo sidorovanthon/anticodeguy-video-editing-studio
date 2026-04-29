@@ -65,6 +65,7 @@ changed, why if known. Each delta yields at most one proposed rule change tagged
 - Never let raw-timeline data cross the Stage 1 → Stage 2 seam. See
   `standards/pipeline-contracts.md` for the master-aligned rule.
 - Never accept HDR/HLG source. Reject at `new-episode.sh` with a clear error.
+- **No preview or final render runs without HF gates green: `lint` (no errors) + `validate` (no errors) + `inspect --strict` (no warnings).** The compose wrapper enforces this; do not bypass by editing the wrapper unless you have a written justification in the run log and explicit user approval. `lint`/`validate` carry `--strict-all` for forward-compatibility with future HF versions, but in HF v0.4.x only `inspect --strict` actually fails on warnings. See `tools/scripts/run-stage2-compose.sh`.
 - All repo content (code, docs, file names, commit messages, retros) is **English**.
 - All chat communication with the user is **Russian**, including checkpoint summaries.
 - Final `final.mp4` must be 1440×2560, 60 fps, Rec.709 SDR, H.264 high, AAC 320 kbps,

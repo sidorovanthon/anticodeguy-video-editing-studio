@@ -54,6 +54,8 @@ These three are exactly the scope of Phase 6b (separate spec).
 
 Update `tools/scripts/run-stage2-compose.sh` and `tools/scripts/run-stage2-preview.sh` so that `npx hyperframes lint`, `npx hyperframes validate`, and `npx hyperframes inspect --strict-all` are required-pass before render. Currently they run; some warnings do not abort. Move to `--strict-all` (errors AND warnings fail). Confirm `--strict` is at least passed where `--strict-all` is unsupported.
 
+> **Implementation note (2026-04-29):** in HF v0.4.31, `lint` and `validate` silently accept `--strict-all` but do not honor it; only `inspect` has a working strict mode, spelled `--strict` (not `--strict-all`). The wrapper ships `lint --strict-all` + `validate --strict-all` for forward-compat and `inspect --strict` as the only currently-enforcing gate. The AGENTS.md hard rule reflects this reality.
+
 Promote into `AGENTS.md` Hard Rules: "No preview/final render runs without `lint` + `validate` + `inspect --strict-all` all green." Override only via explicit `--allow-warnings` flag with a written justification in the run log.
 
 Add `npx hyperframes doctor` as a one-shot pre-flight on first use of a fresh dev environment, captured in `docs/operations/render-environment.md` (new file). Not gated per-render; gated per-environment.
