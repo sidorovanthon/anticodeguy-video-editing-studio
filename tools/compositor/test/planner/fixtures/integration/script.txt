@@ -1,0 +1,1 @@
+Hello today the topic is desktop software licensing. There are three approaches that ship in the wild. First approach: online check. Second approach: hardware key. Third approach: time-based expiry. Each one breaks differently. Like this. And like this. And finally this. Thanks for watching, please subscribe.
