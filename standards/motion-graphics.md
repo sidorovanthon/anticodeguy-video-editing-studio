@@ -33,8 +33,18 @@ same-graphic `split→split`, same-graphic `broll→broll`.
 
 (Equivalent in alias form: `a↔a`, `a↔d`, `d↔d`, same-graphic `b→b`/`c→c`.)
 
-## Scene length
-Bounded by phrase boundaries, not arbitrary timers. A scene runs from one seam to the next regardless of resulting duration.
+## Scene length and seam mapping
+
+A **scene** is the unit of visual planning. Scenes are derived from script semantics, not from EDL seams.
+
+- **Hard cap: 5 seconds per scene.** No scene exceeds 5 s, regardless of script structure. A 12 s narrative beat is subdivided into 2–3 sub-scenes by the planner. The cap is enforced at planner output, not as a soft preference.
+- **Scene boundaries are independent of EDL seams.** EDL seams are structural (where the footage cuts); scene boundaries are semantic (what the viewer should see). A scene may contain 0, 1, or N seams inside it; one seam does not imply a new scene.
+- **`max_seams_per_scene` per mode:**
+  - `head` — 1 seam max (the visible cut would expose itself on a fullscreen face).
+  - `split`, `broll`, `overlay` — N seams allowed (graphic coverage hides the cut).
+- **Snap pass.** After semantic segmentation, scene boundaries are snapped to the nearest transcript phrase boundary (silence > ~150 ms between words) within ±300 ms tolerance. Snapping is deterministic and runs as a separate pass between the segmenter and the decorator.
+
+The retired rule "scene runs from one seam to the next regardless of resulting duration" is superseded by this section as of 2026-04-28.
 
 ## Visual language
 - Frosted glass surfaces use `color.glass.fill`, `blur.*`, `color.glass.stroke`, `color.glass.shadow` (resolved from `DESIGN.md` `hyperframes-tokens` JSON block).
