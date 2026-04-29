@@ -21,11 +21,12 @@ set -euo pipefail
 # does not double-spawn Chrome instances behind our back.
 
 usage() {
-  echo "Usage: $0 <slug> [--workers N] [--fps N] [--quality Q] [--draft]"
+  echo "Usage: $0 <slug> [--workers N] [--fps N] [--quality Q] [--draft] [--gpu]"
   echo "  --workers N    Parallel Chromium render workers (default: 1)"
   echo "  --fps N        Frame rate: 24, 30, or 60 (default: 30)"
   echo "  --quality Q    HF encoder quality: draft, standard, high (default: standard)"
   echo "  --draft        Shortcut for --quality draft. Recommended for smoke tests."
+  echo "  --gpu          Use GPU encoding (passes --gpu to hyperframes render)."
 }
 
 if [ "$#" -lt 1 ]; then
@@ -37,6 +38,7 @@ SLUG=""
 WORKERS=1
 FPS=30
 QUALITY=standard
+GPU=0
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -57,6 +59,8 @@ while [ "$#" -gt 0 ]; do
       QUALITY="${1#--quality=}"; shift ;;
     --draft)
       QUALITY=draft; shift ;;
+    --gpu)
+      GPU=1; shift ;;
     -h|--help)
       usage; exit 0 ;;
     -*)
@@ -89,6 +93,10 @@ elif [ "$HF_RENDER_MODE" = "local" ]; then
 else
   echo "ERROR: HF_RENDER_MODE must be 'docker' or 'local' (got '$HF_RENDER_MODE')"
   exit 1
+fi
+
+if [ "$GPU" = "1" ]; then
+  RENDER_FLAGS+=(--gpu)
 fi
 
 # shellcheck source=tools/scripts/lib/preflight.sh
