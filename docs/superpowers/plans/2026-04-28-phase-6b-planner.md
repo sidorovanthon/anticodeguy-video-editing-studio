@@ -1110,9 +1110,13 @@ function validateBeats(beats: Beat[]): void {
 
 function wordTimeAt(script: string, words: WordTiming[], charOff: number, side: "start" | "end"): number {
   if (script.length === 0 || words.length === 0) return 0;
+  // Treat charOff as a split point: contiguous beats abut at the same word.startMs
+  // so boundary offsets land cleanly without overlap. Special-case end-of-script
+  // to extend the final beat to the actual end of audio.
+  if (side === "end" && charOff >= script.length) return words[words.length - 1].endMs;
   const frac = Math.max(0, Math.min(1, charOff / script.length));
   const idx = Math.min(words.length - 1, Math.floor(frac * words.length));
-  return side === "start" ? words[idx].startMs : words[idx].endMs;
+  return words[idx].startMs;
 }
 
 function isNarrative(v: string): v is NarrativePosition {
