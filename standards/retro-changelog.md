@@ -217,3 +217,11 @@ No code-behaviour changes. No tests added. Smoke fixture verified end-to-end aft
 Source: hand-off audit at the start of session 2026-04-28; three Explore agents (architecture / docs / retro) returned a 13-finding punch-list; triage retired 5 stale rules, fixed 4 active items, ignored 3 cosmetic plan-doc references.
 
 Reason: ensure the first real episode runs against a tree where `standards/` has no superseded rules masquerading as live, where the retro has no open hangovers without explicit closure, and where the README onboards a fresh checkout cleanly.
+
+## 2026-04-28 — HF methodology promotions (D6 + Delta 4)
+- Source: `episodes/2026-04-28-desktop-software-licensing-it-turns-out/retro.md` deltas 4 + 6.
+- HF gates (`lint`, `validate`, `inspect --strict-all`) are required-pass before any preview/final render. Promoted to AGENTS.md hard rule.
+- `standards/motion-graphics.md` "Scene length" replaced: scenes are ≤5 s hard cap, decoupled from EDL seams, with `max_seams_per_scene` per mode (head=1, others=N). Retires the prior "scene = seam-to-seam regardless of duration" rule.
+- `standards/motion-graphics.md` adds "Two orthogonal axes" section: `scene_mode` and HF transition are independent decisions; both made per scene.
+- `standards/motion-graphics.md` adds "Mood inheritance" section: project mood from `DESIGN.md` is the default; per-scene `mood_hint` is an optional override.
+- Reason: HF methodology audit (spec `docs/superpowers/specs/2026-04-28-hf-methodology-promotions-design.md`) confirmed our previous "scene = seam" model was inverted vs the HF transition matrix; the retired rule made it impossible to pace visual dynamism on long beats. The orthogonality + mood promotions formalise distinctions that surfaced informally during the 6a-aftermath retro.
