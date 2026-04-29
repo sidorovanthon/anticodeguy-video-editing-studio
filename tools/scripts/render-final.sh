@@ -29,7 +29,7 @@ FINAL="$COMPOSITE_DIR/final.mp4"
 [ -f "$HF_INDEX" ]                          || { echo "ERROR: $HF_INDEX missing — run run-stage2-compose.sh first"; exit 1; }
 [ -f "$COMPOSITE_DIR/assets/master.mp4" ]   || { echo "ERROR: assets/master.mp4 missing — run run-stage1.sh <slug> render first"; exit 1; }
 
-HF_RENDER_MODE="${HF_RENDER_MODE:-docker}"
+HF_RENDER_MODE="${HF_RENDER_MODE:-local}"
 RENDER_FLAGS=()
 if [ "$HF_RENDER_MODE" = "docker" ]; then
   RENDER_FLAGS+=(--docker)

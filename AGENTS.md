@@ -109,10 +109,6 @@ changed, why if known. Each delta yields at most one proposed rule change tagged
 
 ## Render modes
 
-By default, Stage 2 preview/final rendering uses Docker (`hyperframes render --docker`) for memory-safe execution on Windows hosts. Contributors without Docker installed can opt out:
+Default is `HF_RENDER_MODE=local` — `hyperframes render` runs directly. Empirically the wrapper's local-mode defaults (`--workers 1 --quality draft --max-concurrent-renders 1`) keep peak combined RSS at ~1.3 GB on full 1440×2560 compositions on a 32 GB host (see `docs/operations/render-oom/findings.md`). Do not change these knobs without re-measuring on a memory-pressured host.
 
-```bash
-HF_RENDER_MODE=local tools/scripts/run-stage2-preview.sh <slug>
-```
-
-Local mode falls back to `--workers 1 --max-concurrent-renders 1 -q draft` to bound RAM. Do not change these knobs without re-running the smoke test on a memory-pressured host.
+Docker mode (`HF_RENDER_MODE=docker tools/scripts/run-stage2-preview.sh <slug>`) is opt-in and exists for byte-identical reproducibility across hosts — not a memory-safety requirement. We have no current use case for it; it remains supported for operators who do.

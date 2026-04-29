@@ -25,7 +25,7 @@ Replace `<host>` with a short hostname. The output is human-readable; scan for:
 
 `tools/scripts/lib/preflight.sh:hf_preflight()` (sourced by every render wrapper) gates on:
 - Node, FFmpeg, FFprobe, Chrome present (always fatal).
-- Docker present + running (fatal only when `HF_RENDER_MODE != local`).
+- Docker present + running (only when `HF_RENDER_MODE=docker` is explicitly set; default mode is `local` and skips this check).
 
 It does *not* gate on:
 - Memory warnings.

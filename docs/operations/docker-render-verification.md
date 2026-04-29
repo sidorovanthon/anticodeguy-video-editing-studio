@@ -1,8 +1,8 @@
 # Docker render-mode verification
 
-Status: **deferred-with-reason** (2026-04-28); **memory-safety framing superseded** (2026-04-29 — see `docs/operations/render-oom/findings.md`). The current dev host has no Docker installed, so the F-phase scripts default to `HF_RENDER_MODE=docker` but are run with `HF_RENDER_MODE=local`. Before declaring `--docker` a hard production requirement, an operator on a Docker-capable host must run through this verification.
+Status: **archived — not a project requirement** (2026-04-29). The render wrappers default to `HF_RENDER_MODE=local` and we have no use case for byte-identical cross-host reproducibility. Docker mode remains supported as an explicit opt-in for operators who do; the procedure below is preserved as a reference for any such operator. We are not running it ourselves.
 
-This document tracks the procedure so the verification is not silently skipped when the next operator picks it up.
+History: this doc was written when AGENTS.md framed Docker as a memory-safety requirement. That framing was wrong — see `docs/operations/render-oom/findings.md` (2026-04-29). With that framing gone, the verification has no driver from our side.
 
 ## Context
 

@@ -87,7 +87,7 @@ REPO_ROOT="$(pwd)"
 HF_BIN="$REPO_ROOT/tools/compositor/node_modules/.bin/hyperframes"
 [ -x "$HF_BIN" ] || { echo "ERROR: pinned hyperframes binary not found at $HF_BIN — run 'cd tools/compositor && npm install'"; exit 1; }
 
-HF_RENDER_MODE="${HF_RENDER_MODE:-docker}"
+HF_RENDER_MODE="${HF_RENDER_MODE:-local}"
 RENDER_FLAGS=()
 if [ "$HF_RENDER_MODE" = "docker" ]; then
   RENDER_FLAGS+=(--docker)
