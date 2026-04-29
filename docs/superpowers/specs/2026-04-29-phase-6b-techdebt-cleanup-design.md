@@ -34,6 +34,16 @@ Before designing or building any of §1–§4, read HF docs to confirm we are no
 
 **Stop condition:** all four questions answered, even if the answer is "not found, proceed as designed." Do not expand into a full pipeline audit — that is §6 (separate spec).
 
+### HF-audit findings (narrow)
+
+- [pertains-to: D19] HF exposes no concept of episode/run-state, checkpoints, resume, or cross-run manifests outside the composition document. All CLI commands (`init`, `lint`, `preview`, `render`, `compositions`) are stateless per-invocation; `hyperframe.manifest.json` (dist root) is a package descriptor, not a run-state store. Not found in audited docs. Decision: D19 unchanged — `state.json` and `generate.manifest.json` design proceeds as specified.
+
+- [pertains-to: D3] HF `render` exposes `--workers`, `--fps`, `--quality`, `--crf`, `--gpu` flags (rendering.md:17-27, hyperframes-cli/SKILL.md:101-113) but no per-scene or per-subagent timeout or retry policy. No env-var surface for invocation time limits. Not found in audited docs. Decision: D3 unchanged — `HF_GENERATIVE_TIMEOUT_MS` override and wallclock aggregator proceed as designed.
+
+- [pertains-to: D15/D21] HF's own SKILL.md (dist/skills/hyperframes/SKILL.md:148-158) prescribes `[data-composition-id="my-comp"] { /* scoped styles */ }` attribute selectors as the canonical scoping pattern for sub-compositions — `#id` selectors are not recommended. Catalog blocks authored to this convention are following HF guidance; the bug is that HF does not enforce isolation between sibling instances when the same block is embedded twice (both match the same attribute selector). The upstream issue framing needs adjustment: it is a **nesting isolation gap** (HF does not scope embedded sub-document CSS per-instance), not merely a catalog-block authoring anti-pattern. Decision: upstream issue framing revised — issue 1 should describe the isolation gap and request per-instance CSS scoping; `#id` recommendation remains valid as a workaround but should not be the primary ask.
+
+- [pertains-to: flowchart aspect] `data-composition-src` is loaded lazily per-instance (compositions.md:19-20; SKILL.md:142-164 shows `<template>` wrapper loaded at runtime, not compile-time inlined by our composer). Each sub-composition controls its own `data-width`/`data-height`; the parent composer does not override dimensions. Therefore the landscape `flowchart` block's 1920×1080 dimensions are fixed in the block itself, and portrait episodes cannot fix the mismatch composer-side. Decision: §4 framing confirmed unchanged — gating `flowchart` out of vertical episodes (Path B) is correct; portrait variant must come from upstream catalog (Path A).
+
 ---
 
 ## §1 — D19: Crash-Safe Resumable Pipeline State
