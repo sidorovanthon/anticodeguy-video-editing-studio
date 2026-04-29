@@ -743,7 +743,7 @@ const WORDS = [
   { startMs: 380,  endMs: 720,  text: "today" },
   { startMs: 1100, endMs: 1480, text: "the" },     // gap 380 before → boundary at 910
   { startMs: 1500, endMs: 1900, text: "topic" },
-  { startMs: 2100, endMs: 2400, text: "is" },
+  { startMs: 2050, endMs: 2400, text: "is" },          // gap 150 ≤ minGap → no boundary
   { startMs: 2700, endMs: 3300, text: "DRM" },     // gap 300 before → boundary at 2550
   { startMs: 4400, endMs: 4900, text: "fin" },     // gap 1100 → boundary at 3850
 ];
