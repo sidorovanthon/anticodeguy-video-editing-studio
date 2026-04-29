@@ -1,0 +1,3 @@
+# Investigation artifacts: large progress-bar logs and process snapshots.
+# Peaks/conclusions are extracted into findings.md.
+*.log

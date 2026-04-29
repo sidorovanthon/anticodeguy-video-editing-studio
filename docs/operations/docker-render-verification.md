@@ -1,24 +1,16 @@
 # Docker render-mode verification
 
-Status: **deferred-with-reason** (2026-04-28). The current dev host has no
-Docker installed, so the F-phase scripts default to `HF_RENDER_MODE=docker`
-but are run with `HF_RENDER_MODE=local`. Before declaring `--docker` a hard
-production requirement, an operator on a Docker-capable host must run
-through this verification.
+Status: **deferred-with-reason** (2026-04-28); **memory-safety framing superseded** (2026-04-29 — see `docs/operations/render-oom/findings.md`). The current dev host has no Docker installed, so the F-phase scripts default to `HF_RENDER_MODE=docker` but are run with `HF_RENDER_MODE=local`. Before declaring `--docker` a hard production requirement, an operator on a Docker-capable host must run through this verification.
 
-This document tracks the procedure so the verification is not silently
-skipped when the next operator picks it up.
+This document tracks the procedure so the verification is not silently skipped when the next operator picks it up.
 
 ## Context
 
-`hyperframes render --docker` is the only bit-deterministic mode HyperFrames
-ships (per `docs/notes/hyperframes-cli.md`). It also gives a hard cgroup
-memory cap, which matters at 1440×2560 where local mode wedged the dev host
-during Phase 6a. F-phase scripts therefore default to docker mode, with
-`HF_RENDER_MODE=local` as an explicit opt-out.
+`hyperframes render --docker` is the only bit-deterministic mode HyperFrames ships (per `docs/notes/hyperframes-cli.md`). That reproducibility — not memory safety — is the production motivation for keeping `HF_RENDER_MODE=docker` as the default.
 
-The architectural assumption is "docker mode works as advertised". This
-document is the verification of that assumption.
+**Memory-safety framing (revised 2026-04-29):** the original Phase 6a wedging was caused by host-side memory pressure (~45 background `chrome.exe` instances per `c280f57`), not by uncontained HF render memory. With the wrapper's current local-mode defaults (`--workers 1 --quality draft --max-concurrent-renders 1`), peak combined RSS for HF + Chromium + ffmpeg is ~1.0–1.3 GB on the full 1440×2560 × 53 s composition. Docker's cgroup is therefore not a memory requirement on this host class; it remains the byte-identical render path required for production-final reproducibility.
+
+The architectural assumption being verified here is "docker mode works as advertised for byte-identical reproducibility". This document is the verification of that assumption.
 
 ## Prerequisites
 
