@@ -112,6 +112,19 @@ HF_INDEX="$COMPOSITE_DIR/index.html"
 
 [ -f "$HF_INDEX" ] || { echo "ERROR: $HF_INDEX missing — run run-stage2-compose.sh first"; exit 1; }
 
+EP="$EPISODE"
+EPISODE_STATE_BIN="$REPO_ROOT/tools/compositor/dist/bin/episode-state.js"
+if [ ! -f "$EPISODE_STATE_BIN" ]; then
+  echo "error: $EPISODE_STATE_BIN not found; run 'npm run build' in tools/compositor" >&2
+  exit 1
+fi
+
+if [ ! -f "$EP/state.json" ]; then
+  node "$EPISODE_STATE_BIN" init --episode-dir "$EP" --slug "$SLUG"
+fi
+
+node "$EPISODE_STATE_BIN" mark-step-started --episode-dir "$EP" --step preview
+
 # Duration-warning tripwire: in local mode, large masters can OOM 32 GB hosts
 # unless quality=draft. Local mode currently force-overrides QUALITY=draft, so
 # this is presently belt-and-braces — but we check USER_QUALITY (pre-override)
@@ -146,4 +159,5 @@ if [ ! -f "$HF_OUT" ]; then
 fi
 
 [ -f "$HF_OUT" ] || { echo "ERROR: preview.mp4 not produced"; exit 1; }
-echo "Preview ready: $HF_OUT (workers=$WORKERS fps=$FPS). Awaiting CP3 review."
+node "$EPISODE_STATE_BIN" mark-step-done --episode-dir "$EP" --step preview --checkpoint CP4
+echo "Preview ready: $HF_OUT (workers=$WORKERS fps=$FPS). Awaiting CP4 review."
