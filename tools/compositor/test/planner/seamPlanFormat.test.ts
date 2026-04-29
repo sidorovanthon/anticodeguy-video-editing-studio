@@ -76,4 +76,34 @@ describe("seamPlanFormat", () => {
       .replace(/  - source: generative\s*\n\s*- brief:[\s\S]*?\n\n/, "  - source: generative\n\n");
     expect(() => parseSeamPlan(broken)).toThrow(/generative.*brief/i);
   });
+
+  it("preserves internal indentation in script and brief blocks across round-trip", () => {
+    const plan = parseSeamPlan(SAMPLE);
+    // Inject internally-indented content into both script and brief.
+    plan.scenes[1].scriptChunk = "first line\n    indented four spaces\n  two spaces\nflat again";
+    if (plan.scenes[1].graphic.kind === "generative") {
+      plan.scenes[1].graphic.brief = "outer line\n    deep indent\n  shallow indent\nback";
+    }
+    const re = writeSeamPlan(plan);
+    const parsed = parseSeamPlan(re);
+    expect(parsed.scenes[1].scriptChunk).toBe(plan.scenes[1].scriptChunk);
+    if (parsed.scenes[1].graphic.kind === "generative" && plan.scenes[1].graphic.kind === "generative") {
+      expect(parsed.scenes[1].graphic.brief).toBe(plan.scenes[1].graphic.brief);
+    }
+  });
+
+  it("treats empty-string fields as present (not missing)", () => {
+    // transition_out: "" should not throw; should be preserved as empty string.
+    const plan = parseSeamPlan(SAMPLE);
+    plan.scenes[0].transitionOut = "";
+    const re = writeSeamPlan(plan);
+    const parsed = parseSeamPlan(re);
+    expect(parsed.scenes[0].transitionOut).toBe("");
+  });
+
+  it("parses CRLF line endings identically to LF", () => {
+    const lf = parseSeamPlan(SAMPLE);
+    const crlf = parseSeamPlan(SAMPLE.replace(/\n/g, "\r\n"));
+    expect(crlf).toEqual(lf);
+  });
 });

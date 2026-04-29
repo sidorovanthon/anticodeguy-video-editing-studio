@@ -122,7 +122,7 @@ function numField(f: Map<string, string>, name: string, n: number): number {
 }
 function strField(f: Map<string, string>, name: string, n: number): string {
   const v = f.get(name);
-  if (!v) throw new Error(`scene ${n}: missing ${name}`);
+  if (v === undefined) throw new Error(`scene ${n}: missing ${name}`);
   return v;
 }
 function enumField<T extends string>(f: Map<string, string>, name: string, allowed: ReadonlyArray<T>, n: number): T {
