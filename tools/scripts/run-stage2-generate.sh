@@ -19,6 +19,10 @@ PLAN="$EP/stage-2-composite/seam-plan.md"
 [ -d "$EP" ]   || { echo "ERROR: episode dir missing: $EP"; exit 1; }
 [ -f "$PLAN" ] || { echo "ERROR: $PLAN missing — run run-stage2-plan.sh first"; exit 1; }
 
+# Allow operator to override default 4-minute per-scene timeout.
+# Override is also picked up by realDispatcher.ts via opts.timeoutMs.
+export HF_GENERATIVE_TIMEOUT_MS="${HF_GENERATIVE_TIMEOUT_MS:-}"
+
 grep -q "^## Scene " "$PLAN" || { echo "ERROR: $PLAN is not in enriched format"; exit 1; }
 
 # shellcheck source=tools/scripts/lib/preflight.sh
