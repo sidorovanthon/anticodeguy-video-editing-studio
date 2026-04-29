@@ -106,6 +106,7 @@ fi
 # shellcheck source=tools/scripts/lib/preflight.sh
 . "$(dirname "$0")/lib/preflight.sh"
 hf_preflight || { echo "ERROR: doctor preflight failed; aborting preview"; exit 1; }
+hf_upstream_shim_check
 EPISODE="$REPO_ROOT/episodes/$SLUG"
 COMPOSITE_DIR="$EPISODE/stage-2-composite"
 HF_INDEX="$COMPOSITE_DIR/index.html"

@@ -22,6 +22,7 @@ TSX_BIN="$REPO_ROOT/tools/compositor/node_modules/.bin/tsx"
 # shellcheck source=tools/scripts/lib/preflight.sh
 . "$(dirname "$0")/lib/preflight.sh"
 hf_preflight || { echo "ERROR: doctor preflight failed; aborting compose"; exit 1; }
+hf_upstream_shim_check
 EPISODE="$REPO_ROOT/episodes/$SLUG"
 EP="$EPISODE"
 

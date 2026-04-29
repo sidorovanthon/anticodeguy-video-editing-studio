@@ -27,6 +27,6 @@
     "vitest": "^4.1.5"
   },
   "dependencies": {
-    "hyperframes": "0.4.31"
+    "hyperframes": "^0.4.34"
   }
 }

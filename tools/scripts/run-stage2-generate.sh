@@ -28,6 +28,7 @@ grep -q "^## Scene " "$PLAN" || { echo "ERROR: $PLAN is not in enriched format";
 # shellcheck source=tools/scripts/lib/preflight.sh
 . "$(dirname "$0")/lib/preflight.sh"
 hf_preflight || { echo "ERROR: doctor preflight failed; aborting generate"; exit 1; }
+hf_upstream_shim_check
 
 TSX_BIN="$REPO_ROOT/tools/compositor/node_modules/.bin/tsx"
 [ -x "$TSX_BIN" ] || { echo "ERROR: pinned tsx binary not found at $TSX_BIN — run 'cd tools/compositor && npm install'"; exit 1; }
