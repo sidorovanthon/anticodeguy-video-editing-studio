@@ -7,7 +7,7 @@ This pre-flight runs once per dev environment (fresh checkout, new machine, afte
 - First clone of the repo on a new machine.
 - After upgrading Node, FFmpeg, or system Chrome.
 - After a `tools/compositor/` `npm install` that bumped `hyperframes`.
-- When investigating a render failure (capture full doctor output for the investigation; see `docs/operations/render-oom/findings.md` for an example).
+- When investigating a render failure (capture full doctor output for the investigation; once Topic 1 lands, an example will live at `docs/operations/render-oom/findings.md` — pending).
 
 ## How to run
 

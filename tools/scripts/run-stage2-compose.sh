@@ -69,7 +69,7 @@ REPO_ROOT="$REPO_ROOT" "$TSX_BIN" "$REPO_ROOT/tools/compositor/src/index.ts" com
 "$HF_BIN" lint "$COMPOSITE_DIR" --strict-all      || { echo "ERROR: hyperframes lint failed (strict-all)"; exit 1; }
 "$HF_BIN" validate "$COMPOSITE_DIR" --strict-all  || { echo "ERROR: hyperframes validate failed (strict-all)"; exit 1; }
 "$HF_BIN" inspect "$COMPOSITE_DIR" --strict --json > "$COMPOSITE_DIR/.inspect.json" || {
-  echo "ERROR: hyperframes inspect failed (strict-all); see $COMPOSITE_DIR/.inspect.json"
+  echo "ERROR: hyperframes inspect failed (strict); see $COMPOSITE_DIR/.inspect.json"
   echo "       annotate intentional overflow with data-layout-allow-overflow / data-layout-ignore"
   exit 1
 }
