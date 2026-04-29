@@ -40,6 +40,10 @@ async function generateOne(
   episodeDir: string, hfBin: string,
   dispatcher: SubagentDispatcher, maxRetries: number,
 ): Promise<GenerationResult> {
+  if (!/^[A-Za-z0-9_-]+$/.test(scene.beatId)) {
+    return { sceneIndex: idx, outputPath: "", ok: false, attempts: 0,
+      error: `beatId "${scene.beatId}" contains characters other than [A-Za-z0-9_-]` };
+  }
   const fileStem = `scene-${scene.beatId}-${idx}`;
   const projectRoot = path.join(episodeDir, "stage-2-composite");
   const outputPath = path.join(projectRoot, "compositions", `${fileStem}.html`);
@@ -80,6 +84,10 @@ async function generateOne(
       try {
         // HF v0.4.x: lint/validate accept --strict-all as a no-op (forward-compat);
         // inspect uses --strict (the actually-supported strict mode). Mirror run-stage2-compose.sh.
+        // KNOWN RACE: gates scan projectRoot while sibling scenes may still be writing to
+        // compositions/ concurrently — a sibling's in-progress file could trip this scene's gate.
+        // Accepted for now: HF lint typically finishes in <1s, T16 integration will surface any
+        // real-episode failures, and a full fix would require post-write serialised gating.
         execFileSync(hfBin, ["lint", projectRoot, "--strict-all"], { stdio: "pipe" });
         execFileSync(hfBin, ["validate", projectRoot, "--strict-all"], { stdio: "pipe" });
         execFileSync(hfBin, ["inspect", projectRoot, "--strict", "--json"], { stdio: "pipe" });
