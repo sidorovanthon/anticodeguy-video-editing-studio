@@ -5,6 +5,7 @@ import {
   EpisodeState,
   STATE_SCHEMA_VERSION,
 } from "./types.js";
+import type { StepName, CheckpointId } from "./types.js";
 
 export function statePath(episodeDir: string): string {
   return path.join(episodeDir, "state.json");
@@ -43,4 +44,45 @@ export function readState(episodeDir: string): EpisodeState {
     );
   }
   return parsed as EpisodeState;
+}
+
+function mutate(episodeDir: string, fn: (s: EpisodeState) => EpisodeState): EpisodeState {
+  const current = readState(episodeDir);
+  const next = fn(current);
+  next.lastUpdate = new Date().toISOString();
+  writeJsonAtomic(statePath(episodeDir), next);
+  return next;
+}
+
+export function markStepStarted(episodeDir: string, step: StepName): EpisodeState {
+  return mutate(episodeDir, (s) => ({
+    ...s,
+    inProgressStep: step,
+    stepStartedAt: new Date().toISOString(),
+  }));
+}
+
+export function markStepDone(
+  episodeDir: string,
+  step: StepName,
+  checkpoint: CheckpointId,
+): EpisodeState {
+  return mutate(episodeDir, (s) => ({
+    ...s,
+    inProgressStep: null,
+    stepStartedAt: null,
+    completedSteps: s.completedSteps.includes(step)
+      ? s.completedSteps
+      : [...s.completedSteps, step],
+    lastCheckpoint: checkpoint,
+  }));
+}
+
+export function recordFix(episodeDir: string, label: string): EpisodeState {
+  return mutate(episodeDir, (s) => ({
+    ...s,
+    fixesApplied: s.fixesApplied.includes(label)
+      ? s.fixesApplied
+      : [...s.fixesApplied, label],
+  }));
 }

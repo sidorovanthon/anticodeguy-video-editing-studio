@@ -34,3 +34,47 @@ describe("episodeState init + read", () => {
     expect(() => readState(episodeDir)).toThrow(/state\.json not found/);
   });
 });
+
+import { markStepStarted, markStepDone, recordFix } from "../../src/state/episodeState.js";
+
+describe("step transitions", () => {
+  let episodeDir: string;
+  beforeEach(() => {
+    episodeDir = mkdtempSync(path.join(tmpdir(), "ep-"));
+    initState(episodeDir, "test-slug");
+  });
+  afterEach(() => { rmSync(episodeDir, { recursive: true, force: true }); });
+
+  it("markStepStarted sets inProgressStep and stepStartedAt", () => {
+    markStepStarted(episodeDir, "plan");
+    const s = readState(episodeDir);
+    expect(s.inProgressStep).toBe("plan");
+    expect(s.stepStartedAt).not.toBeNull();
+  });
+
+  it("markStepDone clears inProgressStep, appends to completedSteps, sets checkpoint", () => {
+    markStepStarted(episodeDir, "plan");
+    markStepDone(episodeDir, "plan", "CP1");
+    const s = readState(episodeDir);
+    expect(s.inProgressStep).toBeNull();
+    expect(s.stepStartedAt).toBeNull();
+    expect(s.completedSteps).toEqual(["plan"]);
+    expect(s.lastCheckpoint).toBe("CP1");
+  });
+
+  it("markStepDone is idempotent — re-calling does not duplicate completedSteps", () => {
+    markStepStarted(episodeDir, "plan");
+    markStepDone(episodeDir, "plan", "CP1");
+    markStepDone(episodeDir, "plan", "CP1");
+    const s = readState(episodeDir);
+    expect(s.completedSteps).toEqual(["plan"]);
+  });
+
+  it("recordFix appends and dedupes", () => {
+    recordFix(episodeDir, "D17");
+    recordFix(episodeDir, "D21");
+    recordFix(episodeDir, "D17");
+    const s = readState(episodeDir);
+    expect(s.fixesApplied).toEqual(["D17", "D21"]);
+  });
+});
