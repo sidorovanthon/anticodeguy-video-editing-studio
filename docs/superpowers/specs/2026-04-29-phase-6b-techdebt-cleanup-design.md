@@ -261,8 +261,9 @@ No design surface beyond the above. Implementation = measure + tune.
 
 ### Deliverable
 
-- Two GitHub issues opened against `heygen-com/hyperframes` (or its catalog subrepo).
-- Issue numbers recorded in this spec at implementation time.
+- Two GitHub issues opened against `heygen-com/hyperframes`:
+  - Issue 1 (selector isolation gap): https://github.com/heygen-com/hyperframes/issues/556
+  - Issue 2 (lint rule): https://github.com/heygen-com/hyperframes/issues/557
 - A note in `docs/operations/planner-pipeline-fixes/findings.md` linking to both issues, replacing the current "consider a composer-side rewrite" line.
 
 No code changes in our repo for §3.
@@ -286,7 +287,7 @@ Either path leaves us methodologically clean: we do not author a parallel `flowc
 
 ### Deliverable
 
-- One issue against the catalog repo proposing the portrait variant (Path A).
+- One issue against the catalog repo proposing the portrait variant (Path A): https://github.com/heygen-com/hyperframes/issues/558
 - One commit removing `flowchart` from the planner's allowed-catalog list when target dimensions are portrait (Path B as immediate mitigation).
 
 ### Touched files
