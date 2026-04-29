@@ -3,6 +3,15 @@
 ## Purpose
 The four-scene system, transition matrix at seams, and visual language for motion graphics overlays.
 
+## Two orthogonal axes
+
+Every scene is described by two independent decisions:
+
+1. **Scene mode** (head / split / broll / overlay) — *how visible is the host*. Project-specific axis. Constrains what graphics may appear (see catalog table below).
+2. **HF transition** (selected via `tools/hyperframes-skills/hyperframes/references/transitions.md`) — *how this scene gives way to the next*. HF's axes apply: energy + mood + narrative position. The project's default primary is set in `DESIGN.md` (calm / crossfade 0.4 s / `power2.inOut`); deviations are justified per-scene.
+
+The axes do not collapse. Choosing `mode = broll` does not imply a particular transition; choosing `transition = blur-crossfade` does not imply a particular mode.
+
 ## Scenes
 - **(a) `head` — plain talking-head** — head fills frame, no overlay.
 - **(b) `split` — split-screen** — head reduced to one half, frosted-glass graphic on the other.
