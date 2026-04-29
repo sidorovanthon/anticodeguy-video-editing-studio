@@ -23,6 +23,17 @@ TSX_BIN="$REPO_ROOT/tools/compositor/node_modules/.bin/tsx"
 . "$(dirname "$0")/lib/preflight.sh"
 hf_preflight || { echo "ERROR: doctor preflight failed; aborting compose"; exit 1; }
 EPISODE="$REPO_ROOT/episodes/$SLUG"
+EP="$EPISODE"
+
+EPISODE_STATE_BIN="$REPO_ROOT/tools/compositor/dist/bin/episode-state.js"
+if [ ! -f "$EPISODE_STATE_BIN" ]; then
+  echo "error: $EPISODE_STATE_BIN not found; run 'npm run build' in tools/compositor" >&2
+  exit 1
+fi
+
+if [ ! -f "$EP/state.json" ]; then
+  node "$EPISODE_STATE_BIN" init --episode-dir "$EP" --slug "$SLUG"
+fi
 COMPOSITE_DIR="$EPISODE/stage-2-composite"
 
 [ -d "$EPISODE" ]                                          || { echo "ERROR: $EPISODE not found"; exit 1; }
@@ -54,9 +65,18 @@ if [ -f "$META_FILE" ]; then
   fi
 fi
 
-# Step 1: seam-plan (CP2.5)
-REPO_ROOT="$REPO_ROOT" "$TSX_BIN" "$REPO_ROOT/tools/compositor/src/index.ts" seam-plan --episode "$EPISODE"
-echo "CP2.5 ready: $COMPOSITE_DIR/seam-plan.md. Awaiting review."
+# Step 1 was: emit a legacy seam-plan from EDL boundaries. Removed —
+# the canonical Stage 2 pipeline is now plan → generate → compose, where
+# `run-stage2-plan.sh` produces an enriched seam-plan with `## Scene` sections
+# and per-scene `graphic:` specs. Calling the legacy `seam-plan` subcommand
+# here would overwrite the enriched plan with a six-seam EDL skeleton and
+# silently strip every `graphic:` reference (preview ends up = master + music
+# + transitions only, no graphics). The compose subcommand below auto-detects
+# legacy vs enriched plans via `loadSeamPlan`. If you ever need the legacy
+# CP2.5 output as a debugging tool, run the subcommand directly:
+#   "$TSX_BIN" "$REPO_ROOT/tools/compositor/src/index.ts" seam-plan --episode "$EPISODE"
+
+node "$EPISODE_STATE_BIN" mark-step-started --episode-dir "$EP" --step compose
 
 # Step 2: emit root index.html + captions sub-composition + per-seam wires
 REPO_ROOT="$REPO_ROOT" "$TSX_BIN" "$REPO_ROOT/tools/compositor/src/index.ts" compose --episode "$EPISODE"
@@ -91,5 +111,8 @@ if grep -REn 'style="[^"]*var\(--' "$COMPOSITE_DIR/index.html" "$COMPOSITE_DIR/c
   grep -REn 'style="[^"]*var\(--' "$COMPOSITE_DIR/index.html" "$COMPOSITE_DIR/compositions"/*.html
   exit 1
 fi
+
+# State: mark compose step done (all validation guards passed)
+node "$EPISODE_STATE_BIN" mark-step-done --episode-dir "$EP" --step compose --checkpoint CP3
 
 echo "Compose ready: $COMPOSITE_DIR/index.html. Run run-stage2-preview.sh next."
