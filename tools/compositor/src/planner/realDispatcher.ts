@@ -12,6 +12,18 @@
 //
 // We mirror that exactly here, but via `execFileSync` with array args (no shell,
 // no string concatenation) per the security guidance in the Phase 6b plan.
+//
+// Calibration procedure for `timeoutMs`:
+//   1. Run `node tools/compositor/dist/bin/aggregate-generate-wallclocks.js`
+//      from the repo root.
+//   2. Take the printed "recommended timeoutMs" value.
+//   3. Update the default in `makeRealSubagentDispatcher` (the
+//      `4 * 60 * 1000` literal) and replace the line below with:
+//      `// last calibrated YYYY-MM-DD over N samples; p99=X ms`.
+// Re-run after every ~10 episodes or after a model swap.
+//
+// Last calibrated: not yet (default is a guess; see D3 in
+// docs/operations/planner-pipeline-fixes/findings.md).
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
