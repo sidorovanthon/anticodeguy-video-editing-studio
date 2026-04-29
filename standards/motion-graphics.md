@@ -61,6 +61,10 @@ The retired rule "scene runs from one seam to the next regardless of resulting d
 - Padding inside glass surfaces: at least `spacing.md`.
 - Captions never sit on these surfaces — see `standards/captions.md`.
 
+## Mood inheritance
+
+Project mood is fixed in `DESIGN.md`'s Style Prompt and applies to every scene unless explicitly overridden. The seam-plan's `mood_hint` field is optional; populate it only when a specific scene deliberately departs from project mood (e.g. project is *calm* but a climax scene is *dramatic*). Default mood = project mood.
+
 ## Graphic specs are mandatory for non-`head` seams
 A scene mode is only a label until a seam carries a `graphic:` (component +
 data) spec. The compositor's `renderSeamFragment` emits visible content
