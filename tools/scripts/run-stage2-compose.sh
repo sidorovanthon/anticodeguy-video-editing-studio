@@ -63,10 +63,13 @@ REPO_ROOT="$REPO_ROOT" "$TSX_BIN" "$REPO_ROOT/tools/compositor/src/index.ts" com
 
 # Step 3: HyperFrames lint + validate + inspect against the canonical
 # project (index.html lives directly under stage-2-composite/).
-"$HF_BIN" lint "$COMPOSITE_DIR"      || { echo "ERROR: hyperframes lint failed"; exit 1; }
-"$HF_BIN" validate "$COMPOSITE_DIR" || { echo "ERROR: hyperframes validate failed"; exit 1; }
-"$HF_BIN" inspect "$COMPOSITE_DIR" --json > "$COMPOSITE_DIR/.inspect.json" || {
-  echo "ERROR: hyperframes inspect failed; see $COMPOSITE_DIR/.inspect.json"
+# --strict-all: fail on warnings as well as errors (lint/validate accept the
+# flag now for forward-compatibility; inspect uses --strict which is the
+# supported strict mode in v0.4.x).
+"$HF_BIN" lint "$COMPOSITE_DIR" --strict-all      || { echo "ERROR: hyperframes lint failed (strict-all)"; exit 1; }
+"$HF_BIN" validate "$COMPOSITE_DIR" --strict-all  || { echo "ERROR: hyperframes validate failed (strict-all)"; exit 1; }
+"$HF_BIN" inspect "$COMPOSITE_DIR" --strict --json > "$COMPOSITE_DIR/.inspect.json" || {
+  echo "ERROR: hyperframes inspect failed (strict-all); see $COMPOSITE_DIR/.inspect.json"
   echo "       annotate intentional overflow with data-layout-allow-overflow / data-layout-ignore"
   exit 1
 }
