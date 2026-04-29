@@ -79,6 +79,10 @@ case "$FPS" in ''|*[!0-9]*) echo "ERROR: --fps must be a positive integer"; exit
 [ "$FPS" -ge 1 ] || { echo "ERROR: --fps must be >= 1"; exit 1; }
 case "$QUALITY" in draft|standard|high) ;; *) echo "ERROR: --quality must be draft|standard|high"; exit 1 ;; esac
 
+# Capture user-supplied quality before any mode-specific overrides clobber it.
+# This is the source of truth for the duration-warning tripwire below.
+USER_QUALITY="$QUALITY"
+
 REPO_ROOT="$(pwd)"
 HF_BIN="$REPO_ROOT/tools/compositor/node_modules/.bin/hyperframes"
 [ -x "$HF_BIN" ] || { echo "ERROR: pinned hyperframes binary not found at $HF_BIN — run 'cd tools/compositor && npm install'"; exit 1; }
@@ -107,6 +111,18 @@ COMPOSITE_DIR="$EPISODE/stage-2-composite"
 HF_INDEX="$COMPOSITE_DIR/index.html"
 
 [ -f "$HF_INDEX" ] || { echo "ERROR: $HF_INDEX missing — run run-stage2-compose.sh first"; exit 1; }
+
+# Duration-warning tripwire: in local mode, large masters can OOM 32 GB hosts
+# unless quality=draft. Local mode currently force-overrides QUALITY=draft, so
+# this is presently belt-and-braces — but we check USER_QUALITY (pre-override)
+# so the warning still fires if that override is ever loosened.
+MASTER_MP4="$COMPOSITE_DIR/assets/master.mp4"
+if [ "$HF_RENDER_MODE" = "local" ] && [ -f "$MASTER_MP4" ]; then
+  DUR_S="$(ffprobe -v error -show_entries format=duration -of default=nokey=1:noprint_wrappers=1 "$MASTER_MP4" 2>/dev/null | awk -F. '{print $1}')"
+  if [ -n "$DUR_S" ] && [ "$DUR_S" -gt 30 ] && [ "$USER_QUALITY" != "draft" ]; then
+    echo "WARNING: long episode in local mode without --draft: ${DUR_S}s. OOM risk on 32 GB hosts. Pass --draft for previews." >&2
+  fi
+fi
 
 HF_OUT="$COMPOSITE_DIR/preview.mp4"
 rm -f "$HF_OUT"
