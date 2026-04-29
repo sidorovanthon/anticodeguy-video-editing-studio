@@ -37,6 +37,8 @@ Return a JSON array, no prose:
 
 `graphic.source`: `"none"` | `"catalog/<name>"` | `"generative"`. `<name>` must be from the catalog table. For `mode == "head"`, `graphic.source` must be `"none"`.
 
+**Catalog gating — vertical/portrait episodes.** The catalog block `flowchart` is authored at 1920×1080 (landscape only) and renders off-canvas inside a 1440×2560 portrait viewport. If this project's target dimensions are portrait (height > width), do NOT emit `graphic.source = "catalog/flowchart"` for any scene. Use `"generative"` instead with a brief that asks for a portrait-friendly diagram. Tracked upstream: https://github.com/heygen-com/hyperframes/issues/558.
+
 For `generative`, the brief names: layout (split-frame? overlay-plate? full broll?), entrance choreography (stagger, eases, durations), decorative elements (frosted glass surface? hairline rules? glow?), and data anchor (numbers, list items, quote).
 
 **Same-graphic prohibition.** If the previous scene had the same mode (split→split or broll→broll), your `brief` must be visibly distinct from the previous scene's brief.
