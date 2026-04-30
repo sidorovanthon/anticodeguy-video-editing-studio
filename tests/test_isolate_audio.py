@@ -5,6 +5,7 @@ import pytest
 
 from scripts.isolate_audio import find_raw_video, IsolationError
 from scripts.isolate_audio import audio_stream_has_clean_tag
+from scripts.isolate_audio import load_api_key
 
 
 def test_find_raw_video_picks_unique_match(tmp_path: Path):
@@ -60,3 +61,60 @@ def test_tag_ignored_on_video_stream():
 
 def test_tag_absent_when_no_streams_key():
     assert audio_stream_has_clean_tag({}) is False
+
+
+def test_load_api_key_from_environ_when_no_files(tmp_path: Path):
+    project_env = tmp_path / "p.env"
+    video_use_env = tmp_path / "v.env"
+    key = load_api_key(
+        project_env=project_env,
+        video_use_env=video_use_env,
+        environ={"ELEVENLABS_API_KEY": "k-from-env"},
+    )
+    assert key == "k-from-env"
+
+
+def test_load_api_key_project_env_takes_precedence(tmp_path: Path):
+    project_env = tmp_path / "p.env"
+    project_env.write_text('ELEVENLABS_API_KEY="k-project"\n', encoding="utf-8")
+    video_use_env = tmp_path / "v.env"
+    video_use_env.write_text("ELEVENLABS_API_KEY=k-video-use\n", encoding="utf-8")
+    key = load_api_key(
+        project_env=project_env,
+        video_use_env=video_use_env,
+        environ={"ELEVENLABS_API_KEY": "k-environ"},
+    )
+    assert key == "k-project"
+
+
+def test_load_api_key_falls_back_to_video_use_env(tmp_path: Path):
+    project_env = tmp_path / "p.env"  # absent
+    video_use_env = tmp_path / "v.env"
+    video_use_env.write_text("ELEVENLABS_API_KEY=k-video-use\n", encoding="utf-8")
+    key = load_api_key(project_env=project_env, video_use_env=video_use_env, environ={})
+    assert key == "k-video-use"
+
+
+def test_load_api_key_strips_quotes_and_whitespace(tmp_path: Path):
+    project_env = tmp_path / "p.env"
+    project_env.write_text("  ELEVENLABS_API_KEY = '  k-quoted  '  \n", encoding="utf-8")
+    key = load_api_key(project_env=project_env, video_use_env=tmp_path / "absent", environ={})
+    assert key == "k-quoted"
+
+
+def test_load_api_key_raises_when_nowhere(tmp_path: Path):
+    with pytest.raises(IsolationError, match="ELEVENLABS_API_KEY not found"):
+        load_api_key(
+            project_env=tmp_path / "absent1",
+            video_use_env=tmp_path / "absent2",
+            environ={},
+        )
+
+
+def test_load_api_key_ignores_comments_and_blank_lines(tmp_path: Path):
+    project_env = tmp_path / "p.env"
+    project_env.write_text(
+        "# comment\n\nOTHER=1\nELEVENLABS_API_KEY=k-real\n", encoding="utf-8"
+    )
+    key = load_api_key(project_env=project_env, video_use_env=tmp_path / "absent", environ={})
+    assert key == "k-real"

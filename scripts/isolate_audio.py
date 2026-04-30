@@ -39,3 +39,33 @@ def audio_stream_has_clean_tag(ffprobe_json: dict) -> bool:
         if tags.get(TAG_KEY) == TAG_VALUE:
             return True
     return False
+
+
+def _read_env_file(path: Path) -> dict[str, str]:
+    """Parse a minimal .env file. Mirrors video-use/helpers/transcribe.py:load_api_key."""
+    out: dict[str, str] = {}
+    if not path.exists():
+        return out
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        out[k.strip()] = v.strip().strip('"').strip("'").strip()
+    return out
+
+
+def load_api_key(
+    *,
+    project_env: Path,
+    video_use_env: Path,
+    environ: dict[str, str],
+) -> str:
+    """Resolve ELEVENLABS_API_KEY using the same ladder as video-use's transcribe.py."""
+    for source in (project_env, video_use_env):
+        parsed = _read_env_file(source)
+        if "ELEVENLABS_API_KEY" in parsed and parsed["ELEVENLABS_API_KEY"]:
+            return parsed["ELEVENLABS_API_KEY"]
+    if environ.get("ELEVENLABS_API_KEY"):
+        return environ["ELEVENLABS_API_KEY"]
+    raise IsolationError("ELEVENLABS_API_KEY not found in .env or environment")
