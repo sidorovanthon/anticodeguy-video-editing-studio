@@ -442,3 +442,51 @@ def test_isolate_raises_on_ffmpeg_failure(tmp_path: Path):
 
     with pytest.raises(IsolationError, match="ffmpeg failed"):
         isolate(episode_dir=ep, runner=runner, post=post, key_loader=lambda: "k")
+
+
+import io
+import sys
+
+from scripts import isolate_audio as ia
+
+
+def test_main_returns_2_and_writes_stderr_on_isolation_error(tmp_path, capsys, monkeypatch):
+    # episode_dir does not contain raw.<ext> → IsolationError
+    ep = tmp_path / "ep"
+    ep.mkdir()
+    rc = ia.main(["--episode-dir", str(ep)])
+    assert rc == 2
+    out = capsys.readouterr()
+    assert "isolation error:" in out.err
+    assert "not found" in out.err
+    assert out.out.strip() == ""  # nothing on stdout
+
+
+def test_main_prints_json_on_success(tmp_path, capsys, monkeypatch):
+    ep = tmp_path / "ep"
+    ep.mkdir()
+    (ep / "raw.mp4").write_bytes(b"x")
+
+    fixture = (Path(__file__).parent / "fixtures" / "elevenlabs_response_tiny.wav").read_bytes()
+
+    def fake_isolate(*, episode_dir, runner, post, key_loader):
+        # exercise key_loader so test catches accidental removal
+        _ = key_loader()
+        return ia.IsolateResult(
+            cached=False,
+            api_called=True,
+            raw_path=episode_dir / "raw.mp4",
+            wav_path=episode_dir / "audio" / "raw.cleaned.wav",
+            reason="isolated",
+        )
+
+    monkeypatch.setattr(ia, "isolate", fake_isolate)
+    monkeypatch.setattr(ia, "load_api_key", lambda **kw: "test-key")
+
+    rc = ia.main(["--episode-dir", str(ep)])
+    assert rc == 0
+    out = capsys.readouterr()
+    payload = json.loads(out.out.strip())
+    assert payload["cached"] is False
+    assert payload["api_called"] is True
+    assert payload["reason"] == "isolated"

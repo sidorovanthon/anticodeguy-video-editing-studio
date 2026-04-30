@@ -232,3 +232,45 @@ def isolate(
         cached=False, api_called=api_called, raw_path=raw, wav_path=wav_path,
         reason="api-cache-hit" if not api_called else "isolated",
     )
+
+
+import argparse
+import subprocess
+import sys
+
+import requests
+
+
+def _default_runner(cmd, *, capture_output=False, check=False):
+    return subprocess.run(cmd, capture_output=capture_output, check=check)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Phase 2: ElevenLabs Audio Isolation.")
+    parser.add_argument("--episode-dir", type=Path, required=True)
+    args = parser.parse_args(argv)
+
+    project_env = Path(".env").resolve()
+    video_use_env = (Path.home() / ".claude" / "skills" / "video-use" / ".env").resolve()
+
+    try:
+        result = isolate(
+            episode_dir=args.episode_dir,
+            runner=_default_runner,
+            post=requests.post,
+            key_loader=lambda: load_api_key(
+                project_env=project_env,
+                video_use_env=video_use_env,
+                environ=dict(os.environ),
+            ),
+        )
+    except IsolationError as e:
+        print(f"isolation error: {e}", file=sys.stderr)
+        return 2
+
+    print(result.to_json())
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
