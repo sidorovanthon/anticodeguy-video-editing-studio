@@ -90,12 +90,16 @@ Otherwise dispatch a sub-agent via the `Agent` tool with `subagent_type: general
 >
 > **Pre-cleaned audio:** the audio track of `raw.<ext>` has already been processed by ElevenLabs Audio Isolation in Phase 2 — treat it as a studio-grade source. Do not apply additional noise-suppression filters; loudnorm and the per-segment 30ms fades from Hard Rule 3 are still required.
 >
-> **Pacing:** follow the "Cut craft (techniques)" section of the canon — silences ≥400ms cleanest cuts, 150–400ms usable with visual check, <150ms unsafe. Padding stays in 30–200ms (Hard Rule 7). Per Principle 5, the canon's launch-video example values (50ms / 80ms) are a worked example, not a mandate. Default lean for our content: tight end of the window, eliminate retakes/false starts.
+> **Pacing target.** Aim for **25–35% runtime reduction** from source. Treat any inter-phrase silence > 300ms as a cut candidate (canon: silences ≥ 400ms are cleanest cut targets, 150–400ms usable with visual check, < 150ms unsafe — mid-phrase). Cut padding stays in 30–200ms (Hard Rule 7 — absorbs Scribe's 50–100ms drift; this rule is about cut-edge padding, NOT inter-phrase silence). Remove all retakes and false starts. If final runtime > 75% of source, append a one-line note in `project.md` explaining why tighter cuts were not possible.
+>
+> **Subtitles.** Do NOT burn subtitles into `final.mp4`. Omit the `subtitles` field from EDL **and** pass `--no-subtitles` to `helpers/render.py` (defense in depth — canon §8 of `docs/cheatsheets/video-use.md`). Do not pass `--build-subtitles`. Captions are produced downstream by Phase 4 (HyperFrames `references/captions.md`).
+>
+> **Retake selection.** When the same beat is recorded multiple times (false-starts, retakes within a single take or across takes), pick the cleanest delivery — fewer slips, better energy, completed thought. If two takes are roughly equal, prefer the **later** one (the speaker is usually warmed up). Note the choice briefly in EDL `reason`, e.g. `"Last take, first had stutter"` (canon EDL example uses this `reason` shape).
 >
 > **Required outputs (all under `<EPISODE_DIR>/edit/`):**
 > - `final.mp4` — rendered video.
 > - `transcripts/raw.json` — Scribe word-level on source timeline (cached if exists; **never re-transcribe** per Hard Rule 9).
-> - `edl.json` — final EDL per the canon's "EDL format". Functionally required: `ranges`, `sources`. Recommended: `total_duration_s`, `grade`, `subtitles`, `overlays`.
+> - `edl.json` — final EDL per the canon's "EDL format". Functionally required: `ranges`, `sources`. Recommended: `total_duration_s`, `grade`, `overlays`. **Do NOT** include `subtitles` — HF owns captions (see Subtitles block above).
 > - `project.md` — append a session block per the canon's "Memory — `project.md`" section.
 >
 > **Self-eval (canon's 8-step process, step 7):**
