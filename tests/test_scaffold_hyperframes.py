@@ -78,13 +78,16 @@ def test_patch_index_html_replaces_dimensions_and_duration():
 
 
 def test_patch_index_html_injects_video_audio_pair():
-    out = patch_index_html(DEFAULT_INDEX_HTML, width=1080, height=1920, duration=58.8, video_src="../edit/final.mp4")
-    # canonical pattern: video muted playsinline + separate audio
-    assert '<video id="el-video"' in out
+    out = patch_index_html(DEFAULT_INDEX_HTML, width=1080, height=1920, duration=58.8, video_src="final.mp4")
+    # canonical pattern: video muted playsinline + separate audio, both class="clip"
+    assert '<video id="el-video" class="clip"' in out
     assert 'muted' in out
     assert 'playsinline' in out
-    assert '<audio id="el-audio"' in out
-    assert out.count('src="../edit/final.mp4"') == 2  # both elements
+    assert '<audio id="el-audio" class="clip"' in out
+    assert out.count('src="final.mp4"') == 2  # both elements, sibling-relative path
+    # canonical track-indices per HF SKILL.md line 175/184
+    assert 'data-track-index="0"' in out  # video on track 0
+    assert 'data-track-index="2"' in out  # audio on track 2 (per canon example)
     # example-clip comment removed
     assert "Add your clips here" not in out
 
@@ -154,15 +157,17 @@ def test_scaffold_end_to_end(tmp_path: Path):
     assert (hf / "package.json").exists()
     assert (hf / "transcript.json").exists()
 
-    # NO video copy
-    assert not (hf / "final.mp4").exists()
+    # final.mp4 hardlinked from edit/ next to index.html
+    assert (hf / "final.mp4").exists()
 
     # patches applied
     html = (hf / "index.html").read_text(encoding="utf-8")
     assert 'data-width="1080"' in html
     assert 'data-height="1920"' in html
     assert "<video" in html and "<audio" in html
-    assert 'src="../edit/final.mp4"' in html
+    assert 'src="final.mp4"' in html
+    # parent-dir path no longer used — sibling hardlink replaces it
+    assert 'src="../edit/final.mp4"' not in html
     assert "data-has-audio" not in html
 
     meta = json.loads((hf / "meta.json").read_text(encoding="utf-8"))
@@ -174,3 +179,47 @@ def test_scaffold_end_to_end(tmp_path: Path):
 
     transcript = json.loads((hf / "transcript.json").read_text(encoding="utf-8"))
     assert transcript == [{"text": "hi", "start": 0, "end": 0.2}]
+
+
+import os
+
+
+def test_hardlink_final_mp4_creates_link(tmp_path: Path):
+    """`_hardlink_final_mp4` places final.mp4 next to index.html via hardlink (not copy)."""
+    from scripts.scaffold_hyperframes import _hardlink_final_mp4
+
+    episode_dir = tmp_path / "ep"
+    (episode_dir / "edit").mkdir(parents=True)
+    src = episode_dir / "edit" / "final.mp4"
+    src.write_bytes(b"hello")
+    (episode_dir / "hyperframes").mkdir()
+
+    _hardlink_final_mp4(episode_dir)
+
+    dst = episode_dir / "hyperframes" / "final.mp4"
+    assert dst.exists()
+    # hardlink semantics: same inode = same content + same st_nlink>=2
+    src_stat = src.stat()
+    dst_stat = dst.stat()
+    if os.name != "nt":
+        # st_ino comparison is reliable on POSIX
+        assert src_stat.st_ino == dst_stat.st_ino
+    # both Windows and Unix: link count >= 2 after hardlink
+    assert src_stat.st_nlink >= 2
+    # content matches
+    assert dst.read_bytes() == b"hello"
+
+
+def test_hardlink_final_mp4_is_idempotent(tmp_path: Path):
+    """Running twice does not raise — second call is a no-op."""
+    from scripts.scaffold_hyperframes import _hardlink_final_mp4
+
+    episode_dir = tmp_path / "ep"
+    (episode_dir / "edit").mkdir(parents=True)
+    (episode_dir / "edit" / "final.mp4").write_bytes(b"hello")
+    (episode_dir / "hyperframes").mkdir()
+
+    _hardlink_final_mp4(episode_dir)
+    _hardlink_final_mp4(episode_dir)  # must not raise
+
+    assert (episode_dir / "hyperframes" / "final.mp4").exists()

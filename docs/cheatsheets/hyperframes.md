@@ -941,6 +941,15 @@ Output — `audio-data.json` с per-frame RMS + N частотных полос.
 
 ---
 
+## Scaffolding gotchas
+
+Drift between `SKILL.md` examples and what the runtime actually requires has bitten this orchestrator twice. Future scaffold authors:
+
+- **Prefer this cheatsheet's `<video>`/`<audio>` example over `SKILL.md`'s.** The main `SKILL.md` `Video and Audio` example (canon line 171–188) omits `class="clip"`. The runtime's per-project `CLAUDE.md` Key Rule 2 requires `class="clip"` on every timed element, and `npx hyperframes lint` enforces it. The §"Видео и аудио" examples on this cheatsheet include `class="clip"` correctly — that is the source of truth for media-element scaffolding.
+- **Parent-directory paths (`../`) in `src` attributes break `lint`/`validate`.** All media referenced from `index.html` must live alongside it (or in subdirectories). When the file's logical home is a sibling directory (e.g., `<episode>/edit/final.mp4` for an HF project at `<episode>/hyperframes/`), use a hardlink (`mklink /H` on Windows, `os.link` on Unix) — zero additional disk vs. a copy.
+
+---
+
 ## Setup / окружение
 
 | Требование | Проверка |

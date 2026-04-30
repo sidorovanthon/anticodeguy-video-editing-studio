@@ -6,15 +6,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
-VIDEO_AUDIO_PAIR_TEMPLATE = """      <video id="el-video" data-start="0" data-track-index="0"
+VIDEO_AUDIO_PAIR_TEMPLATE = """      <video id="el-video" class="clip" data-start="0" data-track-index="0"
              src="{src}" muted playsinline></video>
-      <audio id="el-audio" data-start="0" data-track-index="1"
+      <audio id="el-audio" class="clip" data-start="0" data-track-index="2"
              src="{src}" data-volume="1"></audio>"""
 
 
@@ -106,6 +107,36 @@ def _ffprobe_dimensions_and_duration(video: Path) -> tuple[int, int, float]:
     return width, height, duration
 
 
+def _hardlink_final_mp4(episode_dir: Path) -> None:
+    """Place a hardlink to edit/final.mp4 alongside hyperframes/index.html.
+
+    Without this, <video src="../edit/final.mp4"> trips HF lint/validate's
+    parent-directory path check. Hardlink is zero additional disk; both
+    Windows and Unix are supported.
+
+    Idempotent: returns silently if hyperframes/final.mp4 already exists.
+    """
+    src = episode_dir / "edit" / "final.mp4"
+    dst = episode_dir / "hyperframes" / "final.mp4"
+    if dst.exists():
+        return
+    if not src.exists():
+        raise FileNotFoundError(f"cannot hardlink {dst}: {src} does not exist")
+    if sys.platform == "win32":
+        # Windows: mklink /H requires cmd.exe
+        result = subprocess.run(
+            ["cmd", "/c", "mklink", "/H", str(dst), str(src)],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"mklink /H failed (exit {result.returncode}): {result.stderr or result.stdout}"
+            )
+    else:
+        os.link(src, dst)
+
+
 def scaffold(
     *,
     episode_dir: Path,
@@ -138,7 +169,7 @@ def scaffold(
     html = index_path.read_text(encoding="utf-8")
     html = patch_index_html(
         html, width=width, height=height, duration=duration,
-        video_src="../edit/final.mp4",
+        video_src="final.mp4",
     )
     if '<video id="el-video"' not in html:
         raise RuntimeError(
@@ -147,6 +178,9 @@ def scaffold(
             f"{index_path} and update the example-clip regex in patch_index_html."
         )
     index_path.write_text(html, encoding="utf-8")
+
+    # Hardlink final.mp4 next to index.html (canon path resolution)
+    _hardlink_final_mp4(episode_dir)
 
     # Patch meta.json
     meta_path = hf / "meta.json"

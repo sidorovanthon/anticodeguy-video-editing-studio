@@ -90,12 +90,16 @@ Otherwise dispatch a sub-agent via the `Agent` tool with `subagent_type: general
 >
 > **Pre-cleaned audio:** the audio track of `raw.<ext>` has already been processed by ElevenLabs Audio Isolation in Phase 2 — treat it as a studio-grade source. Do not apply additional noise-suppression filters; loudnorm and the per-segment 30ms fades from Hard Rule 3 are still required.
 >
-> **Pacing:** follow the "Cut craft (techniques)" section of the canon — silences ≥400ms cleanest cuts, 150–400ms usable with visual check, <150ms unsafe. Padding stays in 30–200ms (Hard Rule 7). Per Principle 5, the canon's launch-video example values (50ms / 80ms) are a worked example, not a mandate. Default lean for our content: tight end of the window, eliminate retakes/false starts.
+> **Pacing target.** Aim for **25–35% runtime reduction** from source. Treat any inter-phrase silence > 300ms as a cut candidate (canon: silences ≥ 400ms are cleanest cut targets, 150–400ms usable with visual check, < 150ms unsafe — mid-phrase). Cut padding stays in 30–200ms (Hard Rule 7 — absorbs Scribe's 50–100ms drift; this rule is about cut-edge padding, NOT inter-phrase silence). Remove all retakes and false starts. If final runtime > 75% of source, append a one-line note in `project.md` explaining why tighter cuts were not possible.
+>
+> **Subtitles.** Do NOT burn subtitles into `final.mp4`. Omit the `subtitles` field from EDL **and** pass `--no-subtitles` to `helpers/render.py` (defense in depth — canon §8 of `docs/cheatsheets/video-use.md`). Do not pass `--build-subtitles`. Captions are produced downstream by Phase 4 (HyperFrames `references/captions.md`).
+>
+> **Retake selection.** When the same beat is recorded multiple times (false-starts, retakes within a single take or across takes), pick the cleanest delivery — fewer slips, better energy, completed thought. If two takes are roughly equal, prefer the **later** one (the speaker is usually warmed up). Note the choice briefly in EDL `reason`, e.g. `"Last take, first had stutter"` (canon EDL example uses this `reason` shape).
 >
 > **Required outputs (all under `<EPISODE_DIR>/edit/`):**
 > - `final.mp4` — rendered video.
 > - `transcripts/raw.json` — Scribe word-level on source timeline (cached if exists; **never re-transcribe** per Hard Rule 9).
-> - `edl.json` — final EDL per the canon's "EDL format". Functionally required: `ranges`, `sources`. Recommended: `total_duration_s`, `grade`, `subtitles`, `overlays`.
+> - `edl.json` — final EDL per the canon's "EDL format". Functionally required: `ranges`, `sources`. Recommended: `total_duration_s`, `grade`, `overlays`. **Do NOT** include `subtitles` — HF owns captions (see Subtitles block above).
 > - `project.md` — append a session block per the canon's "Memory — `project.md`" section.
 >
 > **Self-eval (canon's 8-step process, step 7):**
@@ -146,23 +150,44 @@ Then invoke the `hyperframes` skill via the `Skill` tool with this verbatim brie
 >
 > The author's script is at `<EPISODE_DIR>/script.txt` — use it as the source of truth for caption wording when it diverges from the transcript.
 >
-> **Visual Identity Gate (canonical `<HARD-GATE>`):** before writing any composition HTML, follow the canon's gate order in SKILL.md §"Visual Identity Gate". The user's named style is **"Liquid Glass / iOS frosted glass"** — start at gate step 3: read `~/.agents/skills/hyperframes/visual-styles.md` for a matching named preset and apply it. If no matching preset exists, generate a minimal `DESIGN.md` per the canon's structure. Do not hardcode `#333` / `#3b82f6` / `Roboto`.
+> **Visual Identity Gate (canonical `<HARD-GATE>`).** Before writing any composition HTML, follow the canon's gate order in SKILL.md §"Visual Identity Gate". The user's named style is **"Liquid Glass / iOS frosted glass"** — start at gate step 3: read `~/.agents/skills/hyperframes/visual-styles.md` for a matching named preset and apply it. If no matching preset exists, generate a `DESIGN.md` per the canon's structure. Do not hardcode `#333` / `#3b82f6` / `Roboto`.
 >
-> **Multi-scene transitions:** if the composition has multiple scenes, the canon's "Scene Transitions (Non-Negotiable)" rules apply: always use transitions, every scene gets entrance animations, never exit animations except on the final scene.
+> **DESIGN.md substance.** The generated `DESIGN.md` must contain — not as a template, but as real authored content:
+> - **Style Prompt** — one-paragraph mood statement.
+> - **Colors** — 3–5 hex values with named roles.
+> - **Typography** — 1–2 font families.
+> - **Visual References** — name ≥ 2 specific real-world references (e.g., "iOS 17 Control Center frosted panels", "Vision Pro spatial UI"). Generic references like "modern minimalist" do not count.
+> - **Alternatives Considered** — describe ≥ 1 alternative direction and why it was rejected.
+> - **What NOT to Do** — 3–5 anti-patterns specific to this episode.
+> - **Beat→Visual Mapping** — from the multi-scene block above.
+>
+> **WCAG fail handling.** WCAG fails are resolved by adjusting hue within the palette family (HF SKILL.md §"Contrast": "On dark backgrounds: brighten until clears 4.5:1 ... Stay within palette family — don't invent a new color, adjust the existing one"). Try ≥ 2 darker/brighter variants of the same hue before considering structural changes. Removing color in favor of weight-only emphasis is a last resort and requires a one-line justification in `DESIGN.md`.
+>
+> **Multi-scene narrative composition (mandatory).** Read `<EPISODE_DIR>/script.txt` and identify ≥ 3 narrative beats. Compositions MUST be multi-scene with ≥ 3 beat-derived scenes. Apply Scene Transitions canon (HF SKILL.md §"Scene Transitions" — non-negotiable: always use transitions, every scene gets entrance animations, never exit animations except on the final scene). For each beat, choose either (a) a registry block (run `npx hyperframes catalog` to browse before authoring custom HTML; install via `npx hyperframes add <name>`) or (b) custom motion / overlay justified by the script content. Single-scene caption-only compositions are not acceptable. Document the beat→visual mapping in `DESIGN.md` alongside palette and typography decisions.
 >
 > **Output Checklist (canonical):**
 > 1. `npx hyperframes lint` — passes.
 > 2. `npx hyperframes validate` — passes; built-in WCAG contrast audit produces no warnings.
 > 3. `npx hyperframes inspect` — passes, or every reported overflow is intentional and marked.
-> 4. `node ~/.agents/skills/hyperframes/scripts/animation-map.mjs <hyperframes-dir> --out <hyperframes-dir>/.hyperframes/anim-map` — required for new compositions per canon. Read the JSON; check every flag (`offscreen`, `collision`, `invisible`, `paced-fast`, `paced-slow`); fix or justify.
+> 4. `node ~/.agents/skills/hyperframes/scripts/animation-map.mjs <hyperframes-dir> --out <hyperframes-dir>/.hyperframes/anim-map` — required for new compositions per canon. **Currently broken in our environment:** the script imports a helper that calls `hyperframesPackageSpec("@hyperframes/producer")` eagerly as an argument; that helper walks ancestors of the script's own dir (`~/.agents/skills/hyperframes/scripts/`) looking for a `package.json` with `name: "hyperframes"` or `name: "@hyperframes/cli"` and never finds one, throwing `Could not determine the bundled HyperFrames version`. Setting `HYPERFRAMES_SKILL_NODE_MODULES` does not help (the env var is honored only by `resolvePackageEntry`, not by `hyperframesPackageSpec`). Until upstream fix lands, mark this step `skipped — blocked by hyperframes-skill upstream issue` in the brief output and proceed; do not block Phase 4 on it. Read the JSON if it ran.
 >
 > **Extra check we add (not in canon — orchestrator-imposed):** run `node ~/.agents/skills/hyperframes/scripts/contrast-report.mjs <hyperframes-dir>` and open the resulting `contrast-overlay.png` in the output dir. Fix any magenta regions; ideally clear yellow too. If absent or failing, do not block — log "extra check skipped/failed" and proceed.
 >
+> **Visual verification (mandatory before announcing Done).** Use canonical HF tools — no ffmpeg shell-out.
+>
+> 1. **Canonical layout audit at beat boundaries.** Run `npx hyperframes inspect --at <beat_timestamps>` from `<EPISODE_DIR>/hyperframes/`, where `<beat_timestamps>` are the comma-separated start times of each beat from the §"Beat→Visual Mapping" of `DESIGN.md`. Re-uses the canonical layout/overflow audit on the timestamps that matter narratively.
+> 2. **Canonical screenshots at beat boundaries.** Run `npx hyperframes snapshot --at <beat_timestamps>` (canonical PNG screenshots without full render — see `docs/cheatsheets/hyperframes.md` §"snapshot"). Include `1`, every beat boundary, and `<duration - 1>` in the timestamp list.
+> 3. **Three explicit questions per snapshot** — answer in writing in your final report, before the studio launch:
+>    a. Is the expected beat element visible (registry block / scene card / overlay from §"Multi-scene narrative composition")?
+>    b. Any unintended z-overlap (caption covering a key element, scene exit leaving residue)?
+>    c. Is the A-roll video accidentally occluded by a semi-transparent overlay?
+> 4. Only after this list is in your report, proceed to the studio launch.
+>
 > **Project memory:** append a session block to `<EPISODE_DIR>/edit/project.md` with Strategy / Decisions / Outstanding for this composition.
 >
-> **Studio launch:** after gates pass, launch the preview server in the background. Run from `<EPISODE_DIR>/hyperframes/`:
-> - PowerShell: `Start-Process npx -ArgumentList 'hyperframes','preview','--port','3002' -WindowStyle Hidden`
-> - Bash: `npx hyperframes preview --port 3002 &`
+> **Studio launch:** after gates pass, launch the preview server in the background. Run from `<EPISODE_DIR>/hyperframes/`. Logs go to `.hyperframes/preview.log` (canonical scratch dir):
+> - Bash: `mkdir -p .hyperframes && npx hyperframes preview --port 3002 > .hyperframes/preview.log 2>&1 &`
+> - PowerShell: `New-Item -ItemType Directory -Force -Path .hyperframes | Out-Null; Start-Process npx -ArgumentList 'hyperframes','preview','--port','3002' -RedirectStandardOutput .hyperframes\preview.log -RedirectStandardError .hyperframes\preview.err.log -WindowStyle Hidden`
 >
 > Report `http://localhost:3002` to the user.
 
