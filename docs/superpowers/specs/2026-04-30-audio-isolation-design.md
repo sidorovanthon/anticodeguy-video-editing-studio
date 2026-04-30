@@ -209,13 +209,13 @@ Deleting `episodes/<slug>/` deletes both caches; re-running on a fresh pickup of
 
 ---
 
-## 9. Open questions for plan-writing phase
+## 9. Verified API contract
 
-Items where the design has a defensible default but implementation may surface a better answer:
+All items below were resolved during implementation by reading the live ElevenLabs docs and the official Python SDK source (`elevenlabs-python/src/elevenlabs/audio_isolation/raw_client.py`).
 
-1. **API endpoint name and request shape.** §4.1 step 4 names `https://api.elevenlabs.io/v1/audio-isolation` and a `multipart/form-data` body with an `audio` field. This must be verified against the live ElevenLabs docs at implementation time. If the actual endpoint is named differently (e.g., `/voice-isolation`, `/audio-cleanup`) or expects a different field name, only the constant in the script changes.
-2. **Response content type.** If the API returns `audio/mpeg` instead of `audio/wav`, the script must decode (via ffmpeg) and re-encode to PCM WAV before writing the cache. The cache format MUST be PCM WAV regardless of API response, so step 5 (mux) has a stable input shape.
-3. **AAC vs other audio codec on remux.** §4.1 step 5 specifies `-c:a aac -b:a 192k`. If the original `raw.<ext>` happens to be `.mkv` with Opus or some other codec, switching back to AAC is fine (`.mp4`/`.mov` need AAC anyway). If a future source extension cannot accept AAC, the codec choice may need to be conditional on container — implementation can decide, but AAC at 192k is a safe default for everything we currently support.
+1. **Endpoint and request shape — confirmed.** `POST https://api.elevenlabs.io/v1/audio-isolation`. Auth: `xi-api-key` header. Body: `multipart/form-data` with field `audio` (binary). Optional form fields: `file_format` (`pcm_s16le_16` or `other`, default `other`), `preview_b64` (we omit). API limits: 500 MB / 1 hour per call. Cost: 1000 characters per minute of audio (same per-minute pricing tier as Scribe).
+2. **Response content type — confirmed.** With default `file_format="other"`, the response body is **streamed MP3 bytes** (`Content-Type` audio stream, consumed via `iter_bytes` in the SDK). The script receives the full body via `requests`'s `resp.content`; for sources beyond ~10 minutes a switch to `iter_content` would avoid holding the full body in RAM. `normalize_to_pcm_wav_cmd` re-encodes the MP3 into PCM WAV before the cache write, giving the mux step a stable input shape regardless of the API's output codec.
+3. **AAC on remux — confirmed safe.** `mux_cmd` emits `-c:a aac -b:a 192k`. Verified compatible with all supported source extensions (`.mp4`, `.mov`, `.mkv`, `.webm`). If a future source codec rejects AAC the codec choice can become container-conditional, but no current codec does.
 
 ---
 

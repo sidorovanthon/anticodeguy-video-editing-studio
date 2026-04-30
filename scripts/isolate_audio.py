@@ -113,7 +113,16 @@ ISOLATION_URL = "https://api.elevenlabs.io/v1/audio-isolation"
 
 
 def call_isolation_api(api_key: str, wav_bytes: bytes, *, post) -> bytes:
-    """POST wav_bytes to ElevenLabs Audio Isolation; return cleaned audio bytes."""
+    """POST wav_bytes to ElevenLabs Audio Isolation; return cleaned audio bytes.
+
+    Contract verified against elevenlabs-python SDK
+    (src/elevenlabs/audio_isolation/raw_client.py): POST v1/audio-isolation,
+    auth via xi-api-key header, multipart field name "audio", response streamed
+    as audio bytes. Default file_format="other" returns MP3 — normalize_to_pcm_wav_cmd
+    re-encodes to PCM WAV before the cache write. API limit: 500MB / 1 hour per call.
+    For sources beyond ~10 minutes consider switching to streaming reads
+    (resp.iter_content) instead of resp.content to avoid holding the full body in RAM.
+    """
     headers = {"xi-api-key": api_key}
     files = {"audio": ("source.wav", wav_bytes, "audio/wav")}
     try:
