@@ -68,7 +68,7 @@ python -m scripts.isolate_audio --episode-dir <EPISODE_DIR>
 
 Parse the JSON on stdout. Fields: `cached`, `api_called`, `wav_path`, `raw_path`, `reason`.
 
-- If `cached: true` (`reason: "tag-present"`): announce `Phase 2 already complete (audio stream tagged) — skipping isolation.` and proceed.
+- If `cached: true` (`reason: "tag-present"`): announce `Phase 2 already complete (container tagged) — skipping isolation.` and proceed.
 - If `cached: false, api_called: false` (`reason: "api-cache-hit"`): announce `Phase 2 used cached WAV (audio/raw.cleaned.wav) — remuxed into raw.<ext>.`
 - Otherwise (`reason: "isolated"`): announce `Phase 2 done — audio isolated and muxed into raw.<ext>. Cache at <wav_path>.`
 
@@ -183,7 +183,7 @@ Announce: `Done. Studio: http://localhost:3002. Episode: <EPISODE_DIR>.`
 ## Idempotency and rebuild guidance
 
 The command is safe to re-run on the same slug. Skip rules:
-1. `<EPISODE_DIR>/raw.<ext>` audio stream tagged `ANTICODEGUY_AUDIO_CLEANED=elevenlabs-v1` → skip Phase 2 entirely.
+1. `<EPISODE_DIR>/raw.<ext>` container tagged `ANTICODEGUY_AUDIO_CLEANED=elevenlabs-v1` → skip Phase 2 entirely.
 2. `<EPISODE_DIR>/edit/final.mp4` exists → skip Phase 3.
 3. `<EPISODE_DIR>/edit/transcripts/final.json` exists → skip glue remap.
 4. `<EPISODE_DIR>/hyperframes/index.html` exists → skip scaffold and Skill, only relaunch studio.

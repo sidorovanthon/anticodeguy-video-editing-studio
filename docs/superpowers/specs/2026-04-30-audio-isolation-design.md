@@ -55,7 +55,7 @@ Rejected alternatives:
 Two-level cache:
 
 1. **API cache.** `episodes/<slug>/audio/raw.cleaned.wav` is the raw bytes of the API response. Presence of this file → skip the API call on re-runs. This is the expensive cache (avoids re-spending Audio Isolation credits).
-2. **Mux idempotency tag.** When step 5 of §4.1 muxes the cleaned audio into `raw.<ext>`, it also sets an ffmpeg metadata tag on the audio stream: `ANTICODEGUY_AUDIO_CLEANED=elevenlabs-v1`. On any future run, `ffprobe` reads this tag — if present, the script is a full no-op (no API call, no mux).
+2. **Mux idempotency tag.** When step 5 of §4.1 muxes the cleaned audio into `raw.<ext>`, it also sets an ffmpeg metadata tag at the **container/format level**: `ANTICODEGUY_AUDIO_CLEANED=elevenlabs-v1` via `-movflags use_metadata_tags -metadata`. On any future run, `ffprobe -show_format` reads this tag — if present, the script is a full no-op (no API call, no mux). (The tag was originally placed at the per-stream level via `-metadata:s:a:0`; real-API smoke testing revealed mp4 silently drops custom per-stream metadata keys, so the design moved to container-level. mp4 lowercases the key on write while mkv preserves case — the read path is therefore case-insensitive.)
 
 The version suffix (`-v1`) lets us invalidate later if isolation parameters change (e.g., switching to a paid model that produces a different mix). To force re-isolation: delete `audio/raw.cleaned.wav` AND drop the tag (or restore raw.<ext> from inbox / source).
 
@@ -85,7 +85,7 @@ The script discovers `raw.<ext>` itself by scanning `<EPISODE_DIR>` for the supp
 
 **Steps:**
 
-1. **Tag check.** Run `ffprobe -v quiet -print_format json -show_streams raw.<ext>`. If any audio stream's `tags` contains `ANTICODEGUY_AUDIO_CLEANED=elevenlabs-v1`, exit 0 immediately with stdout `{"cached": true, "api_called": false, "reason": "tag-present", "wav_path": "...", "raw_path": "..."}`. Full no-op.
+1. **Tag check.** Run `ffprobe -v quiet -print_format json -show_format raw.<ext>`. If `format.tags` contains a key matching `ANTICODEGUY_AUDIO_CLEANED` (case-insensitive — mp4 lowercases container metadata keys, mkv preserves case) with value `elevenlabs-v1`, exit 0 immediately with stdout `{"cached": true, "api_called": false, "reason": "tag-present", "wav_path": "...", "raw_path": "..."}`. Full no-op.
 
 2. **WAV cache check.** If `<EPISODE_DIR>/audio/raw.cleaned.wav` exists, skip step 3 (API call); jump to step 5 (mux).
 
@@ -146,7 +146,7 @@ python -m scripts.isolate_audio --episode-dir <EPISODE_DIR>
 
 Parse the JSON on stdout. Fields: `cached`, `api_called`, `wav_path`, `raw_path`.
 
-- If `cached: true`: announce `Phase 2 already complete (audio stream tagged) — skipping isolation.` and proceed.
+- If `cached: true`: announce `Phase 2 already complete (container tagged) — skipping isolation.` and proceed.
 - If `cached: false, api_called: false`: announce `Phase 2 used cached WAV (audio/raw.cleaned.wav) — remuxed into raw.<ext>.`
 - Otherwise announce `Phase 2 done — audio isolated and muxed into raw.<ext>. Cache at <wav_path>.`
 
@@ -161,7 +161,7 @@ Spec A §5.1 / §5 of `edit-episode.md` Phase 2 brief gets the sentence from §3
 
 The skip-rules list in `edit-episode.md` (Spec A §6, "Idempotency and rebuild guidance") expands from three checkpoints to four:
 
-1. `<EPISODE_DIR>/raw.<ext>` audio stream tagged `ANTICODEGUY_AUDIO_CLEANED=elevenlabs-v1` → skip Phase 2 entirely. *(new)*
+1. `<EPISODE_DIR>/raw.<ext>` container tagged `ANTICODEGUY_AUDIO_CLEANED=elevenlabs-v1` → skip Phase 2 entirely. *(new)*
 2. `<EPISODE_DIR>/edit/final.mp4` exists → skip Phase 3 (video-use).
 3. `<EPISODE_DIR>/edit/transcripts/final.json` exists → skip glue remap.
 4. `<EPISODE_DIR>/hyperframes/index.html` exists → skip scaffold + Skill, only relaunch studio.
@@ -170,7 +170,7 @@ Rebuild guidance gets a fourth bullet:
 
 - **Re-isolate audio.** Delete `<EPISODE_DIR>/audio/raw.cleaned.wav` AND restore `raw.<ext>` to its un-tagged state (re-pickup from `inbox/`, or `git`/manual restore). Costs ElevenLabs Audio Isolation credits. Almost never needed; documented for completeness.
 
-The existing re-cut and re-compose paths from Spec A do **not** trigger Phase 2 re-spend, because the audio stream tag survives those operations:
+The existing re-cut and re-compose paths from Spec A do **not** trigger Phase 2 re-spend, because the container tag survives those operations:
 
 - **Re-cut** (delete `edit/final.mp4` and `hyperframes/`): Phase 2 no-ops on tag, Phase 3 sees the cleaned audio it expects.
 - **Re-compose** (delete `hyperframes/`): Phase 2 and Phase 3 both no-op.
@@ -183,7 +183,7 @@ Two paid steps, each cached on a per-source basis:
 
 | Phase | Service | Cache artifact | Per-source key |
 |---|---|---|---|
-| 2 | Audio Isolation | `episodes/<slug>/audio/raw.cleaned.wav` + audio-stream tag on `raw.<ext>` | `raw.<ext>` (immutable after pickup) |
+| 2 | Audio Isolation | `episodes/<slug>/audio/raw.cleaned.wav` + container tag on `raw.<ext>` | `raw.<ext>` (immutable after pickup) |
 | 3 | Scribe (transcribe) | `episodes/<slug>/edit/transcripts/raw.json` | `raw.<ext>` stem |
 
 Deleting `episodes/<slug>/` deletes both caches; re-running on a fresh pickup of the same source pays both. No other operations re-spend credits.
@@ -223,7 +223,7 @@ All items below were resolved during implementation by reading the live ElevenLa
 
 The spec is implemented when, on a fresh episode dropped into `inbox/`:
 
-- Phase 2 runs after pickup, calls Audio Isolation once, writes `audio/raw.cleaned.wav`, and stamps `ANTICODEGUY_AUDIO_CLEANED=elevenlabs-v1` on `raw.<ext>`'s audio stream.
+- Phase 2 runs after pickup, calls Audio Isolation once, writes `audio/raw.cleaned.wav`, and stamps `ANTICODEGUY_AUDIO_CLEANED=elevenlabs-v1` in `raw.<ext>`'s container/format metadata.
 - Phase 3 (video-use sub-agent) sees the cleaned `raw.<ext>` as input, transcribes via Scribe once (no extra spend), and produces a `final.mp4` audibly cleaner than the pilot run on the same material.
 - Re-running `/edit-episode <slug>` does not call the Audio Isolation API a second time (tag short-circuit).
 - Re-running with `audio/raw.cleaned.wav` deleted but the tag still present: Phase 2 still no-ops on the tag (correct — the tag is the authoritative idempotency signal; the WAV cache is for explicit re-mux scenarios).
