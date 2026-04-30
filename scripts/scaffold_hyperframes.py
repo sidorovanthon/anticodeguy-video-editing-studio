@@ -12,9 +12,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-VIDEO_AUDIO_PAIR_TEMPLATE = """      <video id="el-video" data-start="0" data-track-index="0"
+VIDEO_AUDIO_PAIR_TEMPLATE = """      <video id="el-video" class="clip" data-start="0" data-track-index="0"
              src="{src}" muted playsinline></video>
-      <audio id="el-audio" data-start="0" data-track-index="1"
+      <audio id="el-audio" class="clip" data-start="0" data-track-index="2"
              src="{src}" data-volume="1"></audio>"""
 
 

@@ -78,13 +78,16 @@ def test_patch_index_html_replaces_dimensions_and_duration():
 
 
 def test_patch_index_html_injects_video_audio_pair():
-    out = patch_index_html(DEFAULT_INDEX_HTML, width=1080, height=1920, duration=58.8, video_src="../edit/final.mp4")
-    # canonical pattern: video muted playsinline + separate audio
-    assert '<video id="el-video"' in out
+    out = patch_index_html(DEFAULT_INDEX_HTML, width=1080, height=1920, duration=58.8, video_src="final.mp4")
+    # canonical pattern: video muted playsinline + separate audio, both class="clip"
+    assert '<video id="el-video" class="clip"' in out
     assert 'muted' in out
     assert 'playsinline' in out
-    assert '<audio id="el-audio"' in out
-    assert out.count('src="../edit/final.mp4"') == 2  # both elements
+    assert '<audio id="el-audio" class="clip"' in out
+    assert out.count('src="final.mp4"') == 2  # both elements, sibling-relative path
+    # canonical track-indices per HF SKILL.md line 175/184
+    assert 'data-track-index="0"' in out  # video on track 0
+    assert 'data-track-index="2"' in out  # audio on track 2 (per canon example)
     # example-clip comment removed
     assert "Add your clips here" not in out
 
