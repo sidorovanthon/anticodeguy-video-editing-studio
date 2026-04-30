@@ -29,15 +29,17 @@ All paths passed to skills MUST be absolute. Substitute `<EPISODE_DIR>` etc. at 
 
 Run `scripts/pickup.py` to pair video+script in `inbox/`, derive slug, and move files into `episodes/<slug>/`. Use the appropriate shell for the environment (Windows: PowerShell; otherwise Bash):
 
+Use `python -m` invocation (not `python <path>`) because `scripts/pickup.py` does `from scripts.slugify import ...` — running it as a path bypasses the package machinery and breaks the import.
+
 **PowerShell:**
 ```powershell
-python scripts\pickup.py --inbox inbox --episodes episodes ${arg}
+python -m scripts.pickup --inbox inbox --episodes episodes ${arg}
 ```
 where `${arg}` is `--slug $1` if `$1` was given, otherwise empty.
 
 **Bash:**
 ```bash
-python scripts/pickup.py --inbox inbox --episodes episodes ${arg}
+python -m scripts.pickup --inbox inbox --episodes episodes ${arg}
 ```
 
 Parse the JSON on stdout. Fields: `slug`, `episode_dir`, `raw_path`, `script_path`, `resumed`, `idle`, `warning`.
@@ -90,7 +92,7 @@ After the sub-agent returns, verify `<EPISODE_DIR>/edit/final.mp4`, `transcripts
 Run from project root:
 
 ```bash
-python scripts/remap_transcript.py \
+python -m scripts.remap_transcript \
   --raw <EPISODE_DIR>/edit/transcripts/raw.json \
   --edl <EPISODE_DIR>/edit/edl.json \
   --out <EPISODE_DIR>/edit/transcripts/final.json
@@ -107,7 +109,7 @@ python scripts/remap_transcript.py \
 Otherwise scaffold first:
 
 ```bash
-python scripts/scaffold_hyperframes.py \
+python -m scripts.scaffold_hyperframes \
   --episode-dir <EPISODE_DIR> \
   --slug <SLUG>
 ```
