@@ -92,17 +92,30 @@ Reasoning for Python over PowerShell: slug derivation needs Unicode transliterat
 
 ### 4.2 `scripts/scaffold_hyperframes.py`
 
-Replaces `npx hyperframes init` end-to-end. Reads `episodes/<slug>/edit/final.mp4` via `ffprobe`, gets actual `width × height × duration`, writes:
+**Approach: canonical `init` + targeted post-init patches.** Verified empirically (2026-04-30) that `npx hyperframes init <name> --yes` **without** `--video`:
+- Does not invoke whisper (fixes retro 1.2).
+- Does not copy any media (fixes retro 3.2).
+- Produces 5 canonical files in <2s: `index.html`, `meta.json`, `hyperframes.json`, `AGENTS.md`, `CLAUDE.md`.
 
-- `hyperframes/index.html` — minimal template per cheatsheet §3 (`<!doctype>`, viewport with real dimensions, root div with `data-width`/`data-height`/`data-duration` set from ffprobe, GSAP CDN, empty `window.__timelines.main` registration).
-- `hyperframes/package.json` — declares `hyperframes` as devDependency at the latest version known at scaffold time. `npm install` runs once per project; subsequent `npx hyperframes` calls hit the local cache (fixes retro 3.6).
-- `hyperframes/hyperframes.json` — empty registry manifest `{"registry": []}`.
-- `hyperframes/meta.json` — minimal metadata.
-- `hyperframes/DESIGN.md` — minimal stub triggering Visual Identity Gate. The stub references `~/.agents/skills/hyperframes/visual-styles.md` for the "Liquid Glass / iOS frosted glass" identity if present, otherwise leaves the standard 3-question prompt for the executor.
-- `hyperframes/final.mp4` — **relative reference, not a copy**. Either a Windows symlink (`mklink`, requires elevation) or a `.lnk` shortcut, or a `<video src="../edit/final.mp4">` reference inside `index.html` skipping the file altogether. **Decision: skip the file** — `<video src="../edit/final.mp4">` works in both studio preview and render because Chrome resolves relative paths from the HTML file. Cleanest, no symlink permissions issue, fixes retro 3.2.
-- `hyperframes/transcript.json` — copy of `episodes/<slug>/edit/transcripts/final.json` (output-timeline word-level, see §4.3). A copy here, not a reference, because hyperframes treats it as a project-local asset.
+This keeps the scaffold canonical — future hyperframes versions that add new fields to `meta.json`/`hyperframes.json` will be picked up automatically when our daily `npm` cache pulls the latest package. We only patch what we know is wrong for our use case.
 
-Replaces fixes 1.2, 1.3, 2.4, 3.2, 3.3 in one script.
+**Steps:**
+
+1. `cd episodes/<slug>` and run `npx hyperframes init hyperframes --yes`. Produces `episodes/<slug>/hyperframes/{index.html, meta.json, hyperframes.json, AGENTS.md, CLAUDE.md}`.
+2. Read `episodes/<slug>/edit/final.mp4` via `ffprobe` to get `width × height × duration`.
+3. **Patch `index.html`** — exactly 4 known-wrong locations (init defaults to 1920×1080×10s):
+   - `<meta name="viewport" content="width=W, height=H" />`
+   - `body { width: Wpx; height: Hpx }` in the inline `<style>` block.
+   - Root div `data-width="W" data-height="H" data-duration="D"`.
+   - Inject `<video id="el-video" class="clip" data-start="0" data-track-index="0" data-has-audio="true" src="../edit/final.mp4" muted playsinline></video>` inside the root div (replaces the example-clip comment).
+4. **Patch `meta.json`** — overwrite `id` and `name` from the literal `"hyperframes"` (init's default from the dir argument) to the episode slug.
+5. **Add `hyperframes/package.json`** — init does not generate one. We add it ourselves with `hyperframes` pinned as devDependency. `npm install` runs once at scaffold; subsequent `npx hyperframes` calls hit the local cache (fixes retro 3.6).
+6. **Add `hyperframes/DESIGN.md`** — init does not generate one (cheatsheet §19 marks it "optional"), but Hard Rule 14 requires it before any HTML authoring. The stub points the executor to `~/.agents/skills/hyperframes/visual-styles.md` for the "Liquid Glass / iOS frosted glass" identity if a matching named identity exists, otherwise leaves the standard 3-question prompt.
+7. **Copy transcript** — copy `episodes/<slug>/edit/transcripts/final.json` (output-timeline word-level, see §4.3) to `hyperframes/transcript.json`. A copy, not a reference, because hyperframes treats it as a project-local asset.
+
+**Video reference rationale:** `<video src="../edit/final.mp4">` is used instead of copying or symlinking the file. Chrome resolves the relative path from the HTML location; verified to work in studio preview. If hyperframes' renderer turns out to copy assets into a sandboxed temp dir during `render`, the relative path will break — see §9 open question. Symlink + UAC elevation prompt remains the fallback.
+
+Replaces retro fixes 1.2, 1.3, 2.4, 3.2, 3.3, 3.6 in one script.
 
 ### 4.3 `scripts/remap_transcript.py`
 
