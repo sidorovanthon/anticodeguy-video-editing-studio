@@ -334,3 +334,32 @@ def test_isolate_short_circuits_when_tag_present(tmp_path: Path):
     # audio/ dir not created
     assert not (ep / "audio").exists()
     assert posts == []
+
+
+def test_isolate_skips_api_when_wav_cached(tmp_path: Path):
+    ep = tmp_path / "ep"
+    ep.mkdir()
+    (ep / "raw.mp4").write_bytes(b"x")
+    audio_dir = ep / "audio"
+    audio_dir.mkdir()
+    fixture = (Path(__file__).parent / "fixtures" / "elevenlabs_response_tiny.wav").read_bytes()
+    (audio_dir / "raw.cleaned.wav").write_bytes(fixture)
+
+    runner = _make_runner(
+        ffprobe_json={"streams": [{"codec_type": "audio"}]},  # tag absent → mux still runs
+        fixture_wav=fixture,
+    )
+
+    def post(*a, **kw):
+        raise AssertionError("must not call API when WAV cached")
+
+    result = isolate(
+        episode_dir=ep, runner=runner, post=post, key_loader=lambda: "k",
+    )
+    assert result.cached is False
+    assert result.api_called is False
+    assert result.reason == "api-cache-hit"
+    # Mux ran (one ffmpeg call), no extract, no normalize
+    ffmpegs = [c for c in runner.calls if c[0] == "ffmpeg"]
+    assert len(ffmpegs) == 1
+    assert any("ANTICODEGUY_AUDIO_CLEANED=elevenlabs-v1" in str(x) for x in ffmpegs[0])
