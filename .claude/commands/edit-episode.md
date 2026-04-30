@@ -18,26 +18,28 @@ episodes/<slug>/edit/         -> produced by video-use (final.mp4 + transcripts/
 episodes/<slug>/hyperframes/  -> produced by hyperframes (index.html + package.json + ...)
 ```
 
-All paths passed to skills MUST be absolute — derive them from the project root via `pwd` once at the start.
+All paths passed to skills MUST be absolute — derive them from the project root at the start of execution. Throughout this recipe, use whichever shell/tool fits your environment (Bash, PowerShell, Read, Glob, etc.); the steps describe outcomes, not literal commands. Match the syntax to the shell you actually invoke.
 
 ## Phase 0 — Resolve slug and pickup
 
-1. Capture `PROJECT_ROOT` = `pwd`.
-2. Ensure `inbox/` and `episodes/` exist (`mkdir -p`).
-3. Resolve slug:
+1. Determine `PROJECT_ROOT` (the absolute path of the working directory).
+2. Ensure directories `inbox/` and `episodes/` exist; create them if not.
+3. Define `SUPPORTED_EXTS = [mp4, mov, mkv, webm]` (lowercase; check case-insensitively).
+4. Resolve slug:
    - **If `$1` given:**
-     - If `inbox/$1.<ext>` exists for some supported ext → SLUG=$1, RAW_SRC=`inbox/$1.<ext>`.
-     - Else if `episodes/$1/raw.<ext>` exists → SLUG=$1, RAW_SRC already in place (skip move).
+     - Search `inbox/` for files named `$1.<ext>` where `<ext>` is in `SUPPORTED_EXTS`. Try extensions in the order listed (`mp4` first, then `mov`, `mkv`, `webm`); use the first match. If you find a match → SLUG=$1, RAW_SRC=that file.
+     - Else if `episodes/$1/raw.<ext>` exists for some `<ext>` in `SUPPORTED_EXTS` → SLUG=$1, RAW_SRC already in place (skip move). If multiple `raw.*` files exist in `episodes/$1/`, stop with: `ambiguous: multiple raw.* in episodes/$1/`.
      - Else stop with: `no episode named "$1" — no file in inbox/ and no episodes/$1/raw.* found`.
    - **If `$1` omitted:**
-     - List files in `inbox/` matching `*.mp4 *.mov *.mkv *.webm`.
-     - If empty: list `episodes/*/hyperframes/index.html`. If any exist, ask the user whether to relaunch the studio for the most recently modified one. Otherwise report "nothing to do — drop a video in inbox/".
-     - Otherwise pick the file with the oldest mtime → SLUG = filename stem, RAW_SRC = that path.
-4. If RAW_SRC is in `inbox/`:
-   - `mkdir -p episodes/<SLUG>`
-   - `mv <RAW_SRC> episodes/<SLUG>/raw.<ext>` (preserve original extension)
-5. Set `EPISODE_DIR = <PROJECT_ROOT>/episodes/<SLUG>` (absolute).
-6. Announce to the user: `Episode: <SLUG>. Raw at <EPISODE_DIR>/raw.<ext>.`
+     - List files in `inbox/` whose extension is in `SUPPORTED_EXTS`.
+     - If empty: list `episodes/*/hyperframes/index.html`. If any exist, ask the user whether to relaunch the studio for the most recently modified one. Otherwise report `nothing to do — drop a video in inbox/`.
+     - Otherwise pick the file with the **oldest mtime** (FIFO queue — first dropped, first processed). SLUG = filename without its final extension (everything before the last `.`; e.g. `foo.bar.mp4` → `foo.bar`). RAW_SRC = that path.
+5. If RAW_SRC is in `inbox/` (i.e. we are picking up, not resuming):
+   - **Collision guard:** if `episodes/<SLUG>/` already contains a `raw.*` file, stop with: `collision: episodes/<SLUG>/raw.* already exists — rename the inbox file or delete the stale episode dir`. Do NOT overwrite.
+   - Create `episodes/<SLUG>/` if missing.
+   - Move `RAW_SRC` to `episodes/<SLUG>/raw.<ext>` (preserve original extension; this is a move, not a copy — `inbox/` should be empty for this slug afterwards).
+6. Set `EPISODE_DIR = <PROJECT_ROOT>/episodes/<SLUG>` (absolute path).
+7. Announce to the user: `Episode: <SLUG>. Raw at <EPISODE_DIR>/raw.<ext>.`
 
 ## Phase 1 — Video Use
 
@@ -60,19 +62,13 @@ Otherwise invoke the `hyperframes` skill (via the Skill tool) with this verbatim
 > Build a HyperFrames composition from the video at `<EPISODE_DIR>/edit/final.mp4` and the transcript at `<EPISODE_DIR>/edit/transcripts/raw.json`. Write the project to `<EPISODE_DIR>/hyperframes/`.
 >
 > Style is fixed:
-> - frosted-glass overlays (last-iOS aesthetic)
+> - frosted-glass overlays (latest iOS / "Liquid Glass" aesthetic)
 > - synchronized word-level captions
 > - contextual illustrative animations driven by the transcript content (one per beat / key idea)
 >
 > When the composition is ready, launch the preview studio (`hyperframes preview`) and report the local URL.
 
-If the skill does not launch the studio itself, do it manually after verifying `index.html` exists:
-
-```bash
-cd <EPISODE_DIR>/hyperframes && hyperframes preview
-```
-
-Run that in the **background** so the studio keeps serving while the command returns. Capture the printed URL and show it to the user.
+If the skill does not launch the studio itself, do it manually after verifying `index.html` exists: from the directory `<EPISODE_DIR>/hyperframes/`, run `hyperframes preview` **in the background** (so the studio keeps serving while the command returns). Use the appropriate background-execution mechanism for the shell you invoke. Capture the printed URL and show it to the user.
 
 ### Studio launch (skip-build path)
 

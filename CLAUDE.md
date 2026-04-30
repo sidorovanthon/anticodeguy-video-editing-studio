@@ -14,7 +14,7 @@ episodes/               # processed archive (gitignored). One folder per episode
     hyperframes/        # produced by hyperframes: index.html, package.json, ...
 ```
 
-**Slug:** filename stem of the raw video. `inbox/launch-promo.mp4` → `episodes/launch-promo/raw.mp4`.
+**Slug:** filename without its final extension (everything before the last `.`). `inbox/launch-promo.mp4` → slug `launch-promo`. `inbox/foo.bar.mp4` → slug `foo.bar`.
 
 **Supported raw extensions:** `.mp4`, `.mov`, `.mkv`, `.webm`.
 
