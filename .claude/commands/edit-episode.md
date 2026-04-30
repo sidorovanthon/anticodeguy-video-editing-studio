@@ -1,5 +1,5 @@
 ---
-description: Run the video editing pipeline (pickup → video-use → hyperframes → studio) on an episode from inbox/ or by slug.
+description: Run the video editing pipeline (pickup → audio-isolation → video-use → hyperframes → studio) on an episode from inbox/ or by slug.
 argument-hint: "[slug]"
 ---
 
@@ -188,10 +188,10 @@ The command is safe to re-run on the same slug. Skip rules:
 3. `<EPISODE_DIR>/edit/transcripts/final.json` exists → skip glue remap.
 4. `<EPISODE_DIR>/hyperframes/index.html` exists → skip scaffold and Skill, only relaunch studio.
 
-To force re-cut: delete `<EPISODE_DIR>/edit/final.mp4` AND `<EPISODE_DIR>/hyperframes/`. `transcripts/raw.json` stays — **no Scribe re-spend**.
+Rebuild paths:
 
-To re-compose only: delete `<EPISODE_DIR>/hyperframes/`. Phase 3 skipped; `final.mp4` and transcripts preserved.
-
+- **Re-cut:** delete `<EPISODE_DIR>/edit/final.mp4` AND `<EPISODE_DIR>/hyperframes/`. `transcripts/raw.json` stays — **no Scribe re-spend**. The audio tag on `raw.<ext>` survives — **no Audio Isolation re-spend either**.
+- **Re-compose only:** delete `<EPISODE_DIR>/hyperframes/`. Phase 3 skipped; `final.mp4` and transcripts preserved.
 - **Re-isolate audio:** delete `<EPISODE_DIR>/audio/raw.cleaned.wav` AND restore `raw.<ext>` to its un-tagged state (re-pickup from `inbox/`, or git/manual restore). Costs ElevenLabs Audio Isolation credits — almost never needed.
 
 ---

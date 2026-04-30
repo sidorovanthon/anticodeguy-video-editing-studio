@@ -235,7 +235,7 @@ def isolate(
 
     return IsolateResult(
         cached=False, api_called=api_called, raw_path=raw, wav_path=wav_path,
-        reason="api-cache-hit" if not api_called else "isolated",
+        reason="isolated" if api_called else "api-cache-hit",
     )
 
 
