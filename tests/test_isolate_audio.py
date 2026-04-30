@@ -11,6 +11,7 @@ from scripts.isolate_audio import extract_audio_cmd, mux_cmd
 from scripts.isolate_audio import call_isolation_api, ISOLATION_URL
 from scripts.isolate_audio import normalize_to_pcm_wav_cmd
 from scripts.isolate_audio import isolate, IsolateResult
+from scripts import isolate_audio as ia
 
 
 def test_find_raw_video_picks_unique_match(tmp_path: Path):
@@ -442,12 +443,6 @@ def test_isolate_raises_on_ffmpeg_failure(tmp_path: Path):
 
     with pytest.raises(IsolationError, match="ffmpeg failed"):
         isolate(episode_dir=ep, runner=runner, post=post, key_loader=lambda: "k")
-
-
-import io
-import sys
-
-from scripts import isolate_audio as ia
 
 
 def test_main_returns_2_and_writes_stderr_on_isolation_error(tmp_path, capsys, monkeypatch):

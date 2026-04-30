@@ -4,11 +4,16 @@ Per docs/superpowers/specs/2026-04-30-audio-isolation-design.md.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import os
+import subprocess
+import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+
+import requests
 
 SUPPORTED_EXTS = (".mp4", ".mov", ".mkv", ".webm")
 TAG_KEY = "ANTICODEGUY_AUDIO_CLEANED"
@@ -234,20 +239,16 @@ def isolate(
     )
 
 
-import argparse
-import subprocess
-import sys
-
-import requests
-
-
 def _default_runner(cmd, *, capture_output=False, check=False):
     return subprocess.run(cmd, capture_output=capture_output, check=check)
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Phase 2: ElevenLabs Audio Isolation.")
-    parser.add_argument("--episode-dir", type=Path, required=True)
+    parser.add_argument(
+        "--episode-dir", type=Path, required=True,
+        help="Path to episodes/<slug>/ directory containing raw.<ext>",
+    )
     args = parser.parse_args(argv)
 
     project_env = Path(".env").resolve()
