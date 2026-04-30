@@ -128,3 +128,113 @@ def normalize_to_pcm_wav_cmd(src: Path, dst: Path) -> list[str]:
         "-c:a", "pcm_s16le",
         str(dst),
     ]
+
+
+import json
+import os
+import tempfile
+from dataclasses import dataclass
+
+
+@dataclass
+class IsolateResult:
+    cached: bool
+    api_called: bool
+    raw_path: Path
+    wav_path: Path
+    reason: str | None = None
+
+    def to_json(self) -> str:
+        return json.dumps(
+            {
+                "cached": self.cached,
+                "api_called": self.api_called,
+                "raw_path": str(self.raw_path),
+                "wav_path": str(self.wav_path),
+                "reason": self.reason,
+            },
+            ensure_ascii=False,
+        )
+
+
+def _run(runner, cmd: list[str]) -> None:
+    """Run a subprocess; raise IsolationError on failure with a useful tail."""
+    try:
+        result = runner(cmd, capture_output=True, check=False)
+    except FileNotFoundError as e:
+        raise IsolationError(f"executable not found: {cmd[0]}") from e
+    if getattr(result, "returncode", 0) != 0:
+        tail = (getattr(result, "stderr", b"") or b"").decode("utf-8", errors="replace")[-400:]
+        raise IsolationError(f"{cmd[0]} failed: {tail}")
+
+
+def _ffprobe_json(runner, video: Path) -> dict:
+    cmd = ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_streams", str(video)]
+    try:
+        result = runner(cmd, capture_output=True, check=False)
+    except FileNotFoundError as e:
+        raise IsolationError("ffprobe not found on PATH") from e
+    if getattr(result, "returncode", 0) != 0:
+        raise IsolationError(f"ffprobe failed on {video}")
+    raw = getattr(result, "stdout", b"") or b""
+    try:
+        return json.loads(raw.decode("utf-8", errors="replace"))
+    except json.JSONDecodeError as e:
+        raise IsolationError(f"ffprobe returned non-JSON: {e}") from e
+
+
+def isolate(
+    *,
+    episode_dir: Path,
+    runner,
+    post,
+    key_loader,
+) -> IsolateResult:
+    """Phase 2 orchestration. Pure I/O; all side-effecting deps injected."""
+    raw = find_raw_video(episode_dir)
+    audio_dir = episode_dir / "audio"
+    wav_path = audio_dir / "raw.cleaned.wav"
+
+    # Layer 1: tag check (full no-op).
+    probe = _ffprobe_json(runner, raw)
+    if audio_stream_has_clean_tag(probe):
+        return IsolateResult(
+            cached=True, api_called=False, raw_path=raw, wav_path=wav_path,
+            reason="tag-present",
+        )
+
+    audio_dir.mkdir(parents=True, exist_ok=True)
+
+    # Layer 2: WAV cache check.
+    api_called = False
+    if not wav_path.exists():
+        api_key = key_loader()
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            extracted = tmp / "source.wav"
+            _run(runner, extract_audio_cmd(raw, extracted))
+            wav_bytes = extracted.read_bytes()
+            cleaned_bytes = call_isolation_api(api_key, wav_bytes, post=post)
+            api_called = True
+            # Normalize whatever came back into PCM WAV in the cache slot, atomically.
+            api_blob = tmp / "api.bin"
+            api_blob.write_bytes(cleaned_bytes)
+            tmp_wav = tmp / "cleaned.wav"
+            _run(runner, normalize_to_pcm_wav_cmd(api_blob, tmp_wav))
+            tmp_dest = wav_path.with_suffix(".wav.tmp")
+            tmp_dest.write_bytes(tmp_wav.read_bytes())
+            os.replace(tmp_dest, wav_path)
+
+    # Mux (always runs when tag absent — cheap and stamps the tag).
+    with tempfile.TemporaryDirectory() as td:
+        tmp = Path(td)
+        muxed = tmp / f"raw.muxed{raw.suffix}"
+        _run(runner, mux_cmd(raw, wav_path, muxed, tag_value=TAG_VALUE))
+        tmp_dest = raw.with_suffix(raw.suffix + ".tmp")
+        tmp_dest.write_bytes(muxed.read_bytes())
+        os.replace(tmp_dest, raw)
+
+    return IsolateResult(
+        cached=False, api_called=api_called, raw_path=raw, wav_path=wav_path,
+        reason="api-cache-hit" if not api_called else "isolated",
+    )

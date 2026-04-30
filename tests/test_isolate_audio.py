@@ -3,12 +3,15 @@ from pathlib import Path
 
 import pytest
 
+import json
+
 from scripts.isolate_audio import find_raw_video, IsolationError
 from scripts.isolate_audio import audio_stream_has_clean_tag
 from scripts.isolate_audio import load_api_key
 from scripts.isolate_audio import extract_audio_cmd, mux_cmd
 from scripts.isolate_audio import call_isolation_api, ISOLATION_URL
 from scripts.isolate_audio import normalize_to_pcm_wav_cmd
+from scripts.isolate_audio import isolate, IsolateResult
 
 
 def test_find_raw_video_picks_unique_match(tmp_path: Path):
@@ -218,3 +221,76 @@ def test_normalize_cmd_re_encodes_to_pcm_wav():
     assert "-c:a" in cmd_str and "pcm_s16le" in cmd_str
     assert "-vn" in cmd_str
     assert cmd_str[-1] == str(dst)
+
+
+def _make_runner(*, ffprobe_json: dict, fixture_wav: bytes):
+    """Build a runner stub that inspects argv and writes outputs as ffmpeg/ffprobe would."""
+    calls: list[list[str]] = []
+
+    def runner(cmd: list[str], *, capture_output: bool = False, check: bool = True):
+        calls.append(list(cmd))
+        if cmd[0] == "ffprobe":
+            class R:
+                returncode = 0
+                stdout = json.dumps(ffprobe_json).encode("utf-8")
+                stderr = b""
+            return R()
+        if cmd[0] == "ffmpeg":
+            # write output file (last argv) so downstream existence checks pass
+            out = Path(cmd[-1])
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_bytes(fixture_wav if out.suffix == ".wav" else b"\x00")
+            class R:
+                returncode = 0
+                stdout = b""
+                stderr = b""
+            return R()
+        raise AssertionError(f"unexpected cmd: {cmd[0]}")
+
+    runner.calls = calls  # type: ignore[attr-defined]
+    return runner
+
+
+def test_isolate_happy_path_calls_api_and_muxes(tmp_path: Path):
+    ep = tmp_path / "ep"
+    ep.mkdir()
+    (ep / "raw.mp4").write_bytes(b"FAKE_VIDEO")
+
+    fixture = (Path(__file__).parent / "fixtures" / "elevenlabs_response_tiny.wav").read_bytes()
+    runner = _make_runner(
+        ffprobe_json={"streams": [{"codec_type": "audio"}]},  # no tag → must call API
+        fixture_wav=fixture,
+    )
+
+    posts: list[tuple] = []
+
+    def post(url, headers=None, files=None, timeout=None):
+        posts.append((url, headers, files, timeout))
+        class R:
+            status_code = 200
+            content = fixture  # API returns valid WAV bytes
+            text = ""
+        return R()
+
+    result = isolate(
+        episode_dir=ep,
+        runner=runner,
+        post=post,
+        key_loader=lambda: "test-key",
+    )
+
+    assert result.cached is False
+    assert result.api_called is True
+    assert result.wav_path == ep / "audio" / "raw.cleaned.wav"
+    assert result.wav_path.exists()
+    assert result.raw_path == ep / "raw.mp4"
+
+    # API was called once
+    assert len(posts) == 1
+    # Three ffmpeg invocations: extract, (no normalize because response is WAV bytes — but our
+    # implementation normalizes unconditionally for safety), mux. Allow either 2 or 3.
+    ffmpegs = [c for c in runner.calls if c[0] == "ffmpeg"]
+    assert 2 <= len(ffmpegs) <= 3
+    # mux invocation includes the metadata tag
+    mux = next(c for c in ffmpegs if any("ANTICODEGUY_AUDIO_CLEANED=" in str(x) for x in c))
+    assert mux is not None
