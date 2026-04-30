@@ -44,8 +44,8 @@ For any non-trivial change (new feature, refactor, multi-file edit):
 1. Create a feature branch (`git worktree add .worktrees/<branch> -b <branch>` is the standard pattern; the `superpowers:using-git-worktrees` skill handles this).
 2. Commit work on the branch with focused, frequent commits.
 3. Push the branch (`git push -u origin <branch>`) and open a PR via `gh pr create --base main` with a Summary + Test plan body.
-4. Merge happens via the PR — typically a manual review-and-merge step on GitHub. Do not auto-merge from the agent unless the user explicitly says so.
-5. After merge, clean up: `git worktree remove .worktrees/<branch>` and `git branch -d <branch>`.
+4. The agent merges the PR via `gh pr merge --squash` (or `--merge` when the per-commit history is worth preserving, like Spec B) once tests pass and the work is complete. Skip the auto-merge only if the user has explicitly asked to review on GitHub themselves.
+5. After merge: `git checkout main && git pull` in the main worktree, then clean up: `git worktree remove .worktrees/<branch>` and `git branch -d <branch>` (local). The remote branch is auto-deleted by `gh pr merge --delete-branch` — pass that flag.
 
 Trivial fixes (typo, single-line doc tweak) MAY land directly on main with the user's explicit go-ahead, but the default is "branch + PR".
 
