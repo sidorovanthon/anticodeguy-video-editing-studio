@@ -7,6 +7,7 @@ from scripts.isolate_audio import find_raw_video, IsolationError
 from scripts.isolate_audio import audio_stream_has_clean_tag
 from scripts.isolate_audio import load_api_key
 from scripts.isolate_audio import extract_audio_cmd, mux_cmd
+from scripts.isolate_audio import call_isolation_api, ISOLATION_URL
 
 
 def test_find_raw_video_picks_unique_match(tmp_path: Path):
@@ -159,3 +160,47 @@ def test_mux_cmd_includes_metadata_tag():
     ), f"tag missing in {cmd_str}"
     # output last
     assert cmd_str[-1] == str(dst)
+
+
+class _FakeResponse:
+    def __init__(self, *, status_code: int, content: bytes = b"", text: str = ""):
+        self.status_code = status_code
+        self.content = content
+        self.text = text or content.decode("latin-1", errors="replace")
+
+
+def test_call_isolation_api_posts_to_endpoint_with_key_and_audio():
+    captured = {}
+
+    def fake_post(url, headers=None, files=None, timeout=None):
+        captured["url"] = url
+        captured["headers"] = headers
+        captured["files"] = files
+        captured["timeout"] = timeout
+        return _FakeResponse(status_code=200, content=b"OK_BYTES")
+
+    out = call_isolation_api("api-key-xyz", b"WAV_BYTES", post=fake_post)
+    assert out == b"OK_BYTES"
+    assert captured["url"] == ISOLATION_URL
+    assert captured["headers"]["xi-api-key"] == "api-key-xyz"
+    assert "audio" in captured["files"]
+    # files["audio"] is a tuple of (filename, bytes, content_type) per requests convention
+    name, payload, *_ = captured["files"]["audio"]
+    assert payload == b"WAV_BYTES"
+    assert captured["timeout"] is not None and captured["timeout"] > 0
+
+
+def test_call_isolation_api_raises_on_non_200():
+    def fake_post(*a, **kw):
+        return _FakeResponse(status_code=429, text="rate limited")
+
+    with pytest.raises(IsolationError, match="429"):
+        call_isolation_api("k", b"x", post=fake_post)
+
+
+def test_call_isolation_api_raises_on_empty_body():
+    def fake_post(*a, **kw):
+        return _FakeResponse(status_code=200, content=b"")
+
+    with pytest.raises(IsolationError, match="empty"):
+        call_isolation_api("k", b"x", post=fake_post)

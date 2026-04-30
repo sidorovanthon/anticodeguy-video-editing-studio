@@ -98,3 +98,22 @@ def mux_cmd(src_video: Path, src_wav: Path, dst: Path, *, tag_value: str) -> lis
         "-metadata:s:a:0", f"{TAG_KEY}={tag_value}",
         str(dst),
     ]
+
+
+ISOLATION_URL = "https://api.elevenlabs.io/v1/audio-isolation"
+
+
+def call_isolation_api(api_key: str, wav_bytes: bytes, *, post) -> bytes:
+    """POST wav_bytes to ElevenLabs Audio Isolation; return cleaned audio bytes."""
+    headers = {"xi-api-key": api_key}
+    files = {"audio": ("source.wav", wav_bytes, "audio/wav")}
+    try:
+        resp = post(ISOLATION_URL, headers=headers, files=files, timeout=300)
+    except Exception as e:
+        raise IsolationError(f"Network error: {e}") from e
+    if resp.status_code != 200:
+        snippet = (resp.text or "")[:200]
+        raise IsolationError(f"Audio Isolation API returned {resp.status_code}: {snippet}")
+    if not resp.content:
+        raise IsolationError("Audio Isolation API returned empty body")
+    return resp.content
