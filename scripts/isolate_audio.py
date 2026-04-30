@@ -69,3 +69,32 @@ def load_api_key(
     if environ.get("ELEVENLABS_API_KEY"):
         return environ["ELEVENLABS_API_KEY"]
     raise IsolationError("ELEVENLABS_API_KEY not found in .env or environment")
+
+
+def extract_audio_cmd(src: Path, dst: Path) -> list[str]:
+    """ffmpeg argv to extract stereo 48kHz PCM WAV from src into dst."""
+    return [
+        "ffmpeg", "-y",
+        "-i", str(src),
+        "-vn",
+        "-ac", "2",
+        "-ar", "48000",
+        "-c:a", "pcm_s16le",
+        str(dst),
+    ]
+
+
+def mux_cmd(src_video: Path, src_wav: Path, dst: Path, *, tag_value: str) -> list[str]:
+    """ffmpeg argv to mux src_video's video stream with src_wav's audio, stamping the tag."""
+    return [
+        "ffmpeg", "-y",
+        "-i", str(src_video),
+        "-i", str(src_wav),
+        "-map", "0:v",
+        "-map", "1:a",
+        "-c:v", "copy",
+        "-c:a", "aac",
+        "-b:a", "192k",
+        "-metadata:s:a:0", f"{TAG_KEY}={tag_value}",
+        str(dst),
+    ]
