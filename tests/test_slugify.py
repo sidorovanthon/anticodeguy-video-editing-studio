@@ -40,13 +40,15 @@ def test_accented_latin_strips_to_ascii():
     assert derive_slug(text, date="2026-04-30") == "2026-04-30-cafe-resume-naive"
 
 
-def test_60_char_cap_with_word_boundary():
+def test_title_cap_with_word_boundary():
     text = "This is a very long sentence that absolutely must be truncated somewhere reasonable."
     slug = derive_slug(text, date="2026-04-30")
     title_part = slug[len("2026-04-30-"):]
-    assert len(title_part) <= 60
+    assert len(title_part) <= 45
     assert not title_part.endswith("-")
     assert "-trunc" not in title_part  # backed up before mid-word
+    # Sanity-check that the cap actually fired (full slugified title would be ~83 chars)
+    assert "reasonable" not in title_part
 
 
 def test_empty_input_returns_just_date_with_dash():

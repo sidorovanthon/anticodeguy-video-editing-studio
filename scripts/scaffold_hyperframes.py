@@ -140,6 +140,12 @@ def scaffold(
         html, width=width, height=height, duration=duration,
         video_src="../edit/final.mp4",
     )
+    if '<video id="el-video"' not in html:
+        raise RuntimeError(
+            "patch_index_html: video/audio injection failed — the upstream "
+            "`npx hyperframes init` template likely changed shape. Inspect "
+            f"{index_path} and update the example-clip regex in patch_index_html."
+        )
     index_path.write_text(html, encoding="utf-8")
 
     # Patch meta.json
