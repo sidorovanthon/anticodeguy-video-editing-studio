@@ -1,0 +1,8 @@
+[
+  {"text": "Hello", "start": 0.0, "end": 0.3},
+  {"text": "world", "start": 0.4, "end": 0.8},
+  {"text": "this", "start": 0.9, "end": 1.1},
+  {"text": "is", "start": 1.2, "end": 1.3},
+  {"text": "a", "start": 1.4, "end": 1.5},
+  {"text": "test", "start": 1.6, "end": 1.9}
+]

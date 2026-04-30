@@ -1,0 +1,15 @@
+{
+  "language_code": "en",
+  "language_probability": 0.99,
+  "text": "Hello world this is a test",
+  "words": [
+    {"text": "Hello", "type": "word", "start": 1.0, "end": 1.3, "speaker_id": "S0"},
+    {"text": " ", "type": "spacing", "start": 1.3, "end": 1.4, "speaker_id": "S0"},
+    {"text": "world", "type": "word", "start": 1.4, "end": 1.8, "speaker_id": "S0"},
+    {"text": "(laughs)", "type": "audio_event", "start": 2.0, "end": 2.5, "speaker_id": "S0"},
+    {"text": "this", "type": "word", "start": 5.0, "end": 5.2, "speaker_id": "S0"},
+    {"text": "is", "type": "word", "start": 5.3, "end": 5.4, "speaker_id": "S0"},
+    {"text": "a", "type": "word", "start": 5.5, "end": 5.6, "speaker_id": "S0"},
+    {"text": "test", "type": "word", "start": 5.7, "end": 6.0, "speaker_id": "S0"}
+  ]
+}
