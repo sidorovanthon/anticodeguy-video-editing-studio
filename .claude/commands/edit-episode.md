@@ -150,9 +150,20 @@ Then invoke the `hyperframes` skill via the `Skill` tool with this verbatim brie
 >
 > The author's script is at `<EPISODE_DIR>/script.txt` — use it as the source of truth for caption wording when it diverges from the transcript.
 >
-> **Visual Identity Gate (canonical `<HARD-GATE>`):** before writing any composition HTML, follow the canon's gate order in SKILL.md §"Visual Identity Gate". The user's named style is **"Liquid Glass / iOS frosted glass"** — start at gate step 3: read `~/.agents/skills/hyperframes/visual-styles.md` for a matching named preset and apply it. If no matching preset exists, generate a minimal `DESIGN.md` per the canon's structure. Do not hardcode `#333` / `#3b82f6` / `Roboto`.
+> **Visual Identity Gate (canonical `<HARD-GATE>`).** Before writing any composition HTML, follow the canon's gate order in SKILL.md §"Visual Identity Gate". The user's named style is **"Liquid Glass / iOS frosted glass"** — start at gate step 3: read `~/.agents/skills/hyperframes/visual-styles.md` for a matching named preset and apply it. If no matching preset exists, generate a `DESIGN.md` per the canon's structure. Do not hardcode `#333` / `#3b82f6` / `Roboto`.
 >
-> **Multi-scene transitions:** if the composition has multiple scenes, the canon's "Scene Transitions (Non-Negotiable)" rules apply: always use transitions, every scene gets entrance animations, never exit animations except on the final scene.
+> **DESIGN.md substance.** The generated `DESIGN.md` must contain — not as a template, but as real authored content:
+> - **Style Prompt** — one-paragraph mood statement.
+> - **Colors** — 3–5 hex values with named roles.
+> - **Typography** — 1–2 font families.
+> - **Visual References** — name ≥ 2 specific real-world references (e.g., "iOS 17 Control Center frosted panels", "Vision Pro spatial UI"). Generic references like "modern minimalist" do not count.
+> - **Alternatives Considered** — describe ≥ 1 alternative direction and why it was rejected.
+> - **What NOT to Do** — 3–5 anti-patterns specific to this episode.
+> - **Beat→Visual Mapping** — from the multi-scene block above.
+>
+> **WCAG fail handling.** WCAG fails are resolved by adjusting hue within the palette family (HF SKILL.md §"Contrast": "On dark backgrounds: brighten until clears 4.5:1 ... Stay within palette family — don't invent a new color, adjust the existing one"). Try ≥ 2 darker/brighter variants of the same hue before considering structural changes. Removing color in favor of weight-only emphasis is a last resort and requires a one-line justification in `DESIGN.md`.
+>
+> **Multi-scene narrative composition (mandatory).** Read `<EPISODE_DIR>/script.txt` and identify ≥ 3 narrative beats. Compositions MUST be multi-scene with ≥ 3 beat-derived scenes. Apply Scene Transitions canon (HF SKILL.md §"Scene Transitions" — non-negotiable: always use transitions, every scene gets entrance animations, never exit animations except on the final scene). For each beat, choose either (a) a registry block (run `npx hyperframes catalog` to browse before authoring custom HTML; install via `npx hyperframes add <name>`) or (b) custom motion / overlay justified by the script content. Single-scene caption-only compositions are not acceptable. Document the beat→visual mapping in `DESIGN.md` alongside palette and typography decisions.
 >
 > **Output Checklist (canonical):**
 > 1. `npx hyperframes lint` — passes.
