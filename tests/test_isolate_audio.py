@@ -1,9 +1,8 @@
 """Tests for scripts.isolate_audio."""
 from pathlib import Path
 
-import pytest
-
 import json
+import pytest
 
 from scripts.isolate_audio import find_raw_video, IsolationError
 from scripts.isolate_audio import audio_stream_has_clean_tag
@@ -287,10 +286,18 @@ def test_isolate_happy_path_calls_api_and_muxes(tmp_path: Path):
 
     # API was called once
     assert len(posts) == 1
-    # Three ffmpeg invocations: extract, (no normalize because response is WAV bytes — but our
-    # implementation normalizes unconditionally for safety), mux. Allow either 2 or 3.
+    # Exactly three ffmpeg invocations: extract, normalize, mux (unconditionally).
     ffmpegs = [c for c in runner.calls if c[0] == "ffmpeg"]
-    assert 2 <= len(ffmpegs) <= 3
-    # mux invocation includes the metadata tag
-    mux = next(c for c in ffmpegs if any("ANTICODEGUY_AUDIO_CLEANED=" in str(x) for x in c))
-    assert mux is not None
+    assert len(ffmpegs) == 3
+    # extract: reads raw.mp4, output ends with .wav, no metadata tag
+    extract = ffmpegs[0]
+    assert "raw.mp4" in extract[extract.index("-i") + 1]
+    assert extract[-1].endswith(".wav")
+    assert not any("ANTICODEGUY_AUDIO_CLEANED=" in str(x) for x in extract)
+    # normalize: output ends with .wav, input does not end with .wav
+    normalize = ffmpegs[1]
+    assert normalize[-1].endswith(".wav")
+    assert not normalize[normalize.index("-i") + 1].endswith(".wav")
+    # mux: last call, includes the metadata tag
+    mux = ffmpegs[2]
+    assert any("ANTICODEGUY_AUDIO_CLEANED=" in str(x) for x in mux)

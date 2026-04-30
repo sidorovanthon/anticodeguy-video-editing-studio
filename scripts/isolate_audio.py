@@ -4,6 +4,10 @@ Per docs/superpowers/specs/2026-04-30-audio-isolation-design.md.
 """
 from __future__ import annotations
 
+import json
+import os
+import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 
 SUPPORTED_EXTS = (".mp4", ".mov", ".mkv", ".webm")
@@ -130,12 +134,6 @@ def normalize_to_pcm_wav_cmd(src: Path, dst: Path) -> list[str]:
     ]
 
 
-import json
-import os
-import tempfile
-from dataclasses import dataclass
-
-
 @dataclass
 class IsolateResult:
     cached: bool
@@ -209,7 +207,7 @@ def isolate(
     api_called = False
     if not wav_path.exists():
         api_key = key_loader()
-        with tempfile.TemporaryDirectory() as td:
+        with tempfile.TemporaryDirectory(dir=episode_dir) as td:
             tmp = Path(td)
             extracted = tmp / "source.wav"
             _run(runner, extract_audio_cmd(raw, extracted))
@@ -221,18 +219,14 @@ def isolate(
             api_blob.write_bytes(cleaned_bytes)
             tmp_wav = tmp / "cleaned.wav"
             _run(runner, normalize_to_pcm_wav_cmd(api_blob, tmp_wav))
-            tmp_dest = wav_path.with_suffix(".wav.tmp")
-            tmp_dest.write_bytes(tmp_wav.read_bytes())
-            os.replace(tmp_dest, wav_path)
+            os.replace(tmp_wav, wav_path)
 
     # Mux (always runs when tag absent — cheap and stamps the tag).
-    with tempfile.TemporaryDirectory() as td:
+    with tempfile.TemporaryDirectory(dir=episode_dir) as td:
         tmp = Path(td)
         muxed = tmp / f"raw.muxed{raw.suffix}"
         _run(runner, mux_cmd(raw, wav_path, muxed, tag_value=TAG_VALUE))
-        tmp_dest = raw.with_suffix(raw.suffix + ".tmp")
-        tmp_dest.write_bytes(muxed.read_bytes())
-        os.replace(tmp_dest, raw)
+        os.replace(muxed, raw)
 
     return IsolateResult(
         cached=False, api_called=api_called, raw_path=raw, wav_path=wav_path,
