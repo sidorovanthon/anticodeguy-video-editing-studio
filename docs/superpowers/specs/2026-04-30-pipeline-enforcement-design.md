@@ -107,7 +107,14 @@ This keeps the scaffold canonical — future hyperframes versions that add new f
    - `<meta name="viewport" content="width=W, height=H" />`
    - `body { width: Wpx; height: Hpx }` in the inline `<style>` block.
    - Root div `data-width="W" data-height="H" data-duration="D"`.
-   - Inject `<video id="el-video" class="clip" data-start="0" data-track-index="0" data-has-audio="true" src="../edit/final.mp4" muted playsinline></video>` inside the root div (replaces the example-clip comment).
+   - Inject the canonical **video + audio pair** inside the root div (replaces the example-clip comment). Per live `~/.agents/skills/hyperframes/SKILL.md` §"Video and Audio": "Video must be `muted playsinline`. Audio is **always a separate `<audio>` element**." Two elements, same `src`:
+     ```html
+     <video id="el-video" data-start="0" data-track-index="0"
+            src="../edit/final.mp4" muted playsinline></video>
+     <audio id="el-audio" data-start="0" data-track-index="1"
+            src="../edit/final.mp4" data-volume="1"></audio>
+     ```
+     (Earlier drafts of this spec used `data-has-audio="true"` — that pattern appears in the cheatsheet but **not** in the live SKILL.md, so we follow canon and use the two-element pair.)
 4. **Patch `meta.json`** — overwrite `id` and `name` from the literal `"hyperframes"` (init's default from the dir argument) to the episode slug.
 5. **Add `hyperframes/package.json`** — init does not generate one. We add it ourselves with `hyperframes` pinned as devDependency. `npm install` runs once at scaffold; subsequent `npx hyperframes` calls hit the local cache (fixes retro 3.6).
 6. **Copy transcript** — copy `episodes/<slug>/edit/transcripts/final.json` (output-timeline word-level, see §4.3) to `hyperframes/transcript.json`. A copy, not a reference, because hyperframes treats it as a project-local asset.
@@ -156,42 +163,52 @@ The following are the canonical instructions written into `edit-episode.md`. The
 
 ### 5.1 Phase 2 brief (video-use sub-agent)
 
-Substitute absolute paths at runtime.
+Substitute absolute paths at runtime. Section names and rule numbers below match the live `~/.claude/skills/video-use/SKILL.md` (verified 2026-04-30) — the executor reads canon directly.
 
-> You are the video-use sub-agent. Edit `<EPISODE_DIR>/raw.<ext>` and write all outputs under `<EPISODE_DIR>/edit/`. The author's script is at `<EPISODE_DIR>/script.txt` — read it as ground truth for take selection and to verify ASR accuracy (flag any divergence in your reasoning log).
+> You are the video-use sub-agent. Read `~/.claude/skills/video-use/SKILL.md` first, then edit `<EPISODE_DIR>/raw.<ext>` and write all outputs under `<EPISODE_DIR>/edit/`.
 >
-> **Pacing:** apply your skill's standard cut-target rules from §6 of your canon — silences ≥400ms are clean targets, 150–400ms usable with visual check, padding 30–200ms per Hard Rule 7. Aim aggressively: trim every inter-phrase silence to ~120ms, eliminate retakes/false starts, target ~25–35% runtime reduction unless material is too sparse.
+> **Author's script** is at `<EPISODE_DIR>/script.txt`. Treat it as ground truth for take selection and to verify ASR accuracy. Flag any divergence in your reasoning log.
+>
+> **Strategy confirmation (canonical resolution of Hard Rule 11 in this orchestrated context):** the user invoked `/edit-episode`, which constitutes pre-approved strategy: "edit `raw.<ext>` per the script at `script.txt`, output a tight talking-head cut to `final.mp4`, default pacing on the tighter end of Hard Rule 7's 30–200ms window, all canonical hygiene." **Do not pause for further confirmation.** If — and only if — the material clearly does not match this implicit strategy (wrong content type, script unrelated to footage, multi-speaker where solo expected, etc.), return early with a single specific question and no edits performed.
+>
+> **Pacing:** follow the "Cut craft (techniques)" section of the canon — silences ≥400ms are the cleanest cut targets, 150–400ms usable with a visual check, <150ms unsafe (mid-phrase). Padding stays in the 30–200ms working window per Hard Rule 7. Per Principle 5, the specific padding values in the canon's launch-video example (50ms / 80ms) are a worked example, not a mandate — pick what the material wants. Default lean for our content (talking-head launch): tight end of the window, eliminate retakes/false starts, drop weak takes when alternatives exist.
 >
 > **Required outputs (all under `<EPISODE_DIR>/edit/`):**
 > - `final.mp4` — rendered video.
-> - `transcripts/raw.json` — Scribe word-level on source timeline (cached if exists; do not re-run Scribe).
-> - `edl.json` — your final EDL with `ranges`, `sources`, `total_duration_s`.
-> - `project.md` — append a session block per your skill's §15 convention (Strategy / Decisions / Reasoning log / Outstanding).
+> - `transcripts/raw.json` — Scribe word-level on source timeline (cached if exists; **never re-transcribe** per Hard Rule 9).
+> - `edl.json` — final EDL per the canon's "EDL format" section (`ranges`, `sources`, `total_duration_s`, `grade`, `subtitles`, `overlays`).
+> - `project.md` — append a session block per the canon's "Memory — `project.md`" section (Strategy / Decisions / Reasoning log / Outstanding).
 >
-> **Self-eval (rigid, do all):**
-> - Run `helpers/timeline_view.py` on the first 2s, last 2s, and at minimum 2 mid-points of `final.mp4`. Verify cut boundaries.
-> - Run `ffprobe` on `final.mp4`; compare actual duration to `total_duration_s` in your EDL — they must match within 100ms.
-> - Confirm Hard Rule 11 (strategy confirmation) and Hard Rule 12 (outputs in `<edit>/`).
+> **Self-eval (the canon's 8-step process, step 7):**
+> - Run `helpers/timeline_view.py` on the **rendered output** at every cut boundary (±1.5s window) — check for visual discontinuity, waveform spikes, subtitle hiding (Rule 1), overlay misalignment (Rule 4).
+> - Sample first 2s, last 2s, and 2–3 mid-points for grade consistency, subtitle readability, overall coherence.
+> - `ffprobe` on `final.mp4` — duration must match EDL `total_duration_s` within 100ms.
+> - **Cap at 3 self-eval passes.** If issues remain after 3, surface them rather than looping.
+> - Confirm Hard Rule 12 (outputs in `<edit>/`, not in `video-use/` repo).
 >
 > **Environment:** `PYTHONUTF8=1` is set globally; do not override. If a helper script crashes on encoding, that is a genuine bug — surface it.
 >
-> Report what you did, what you skipped and why, and any divergence you spotted between `script.txt` and ASR.
+> Report what you did, what you skipped and why, and any divergence between `script.txt` and ASR.
 
 ### 5.2 Phase 3 brief (hyperframes Skill in main session)
 
-> Build a HyperFrames composition for `<EPISODE_DIR>/hyperframes/`. The project is **already scaffolded** — do not run `npx hyperframes init`. The scaffolded `index.html`, `package.json`, `hyperframes.json`, `meta.json`, `DESIGN.md` are in place; the video reference is `<video src="../edit/final.mp4">` and the word-level transcript is at `hyperframes/transcript.json` (output-timeline, ready to use directly with `final.mp4`).
+Section names below match the live `~/.agents/skills/hyperframes/SKILL.md` (verified 2026-04-30).
+
+> Read `~/.agents/skills/hyperframes/SKILL.md` first, then build a HyperFrames composition in `<EPISODE_DIR>/hyperframes/`. The project is **already scaffolded** — do not run `npx hyperframes init`. The scaffolded `index.html`, `package.json`, `hyperframes.json`, `meta.json` are in place. The video and audio are wired as a canonical `<video muted playsinline> + <audio>` pair both pointing at `../edit/final.mp4`. The word-level transcript (output-timeline, ready to use directly with `final.mp4`) is at `hyperframes/transcript.json`.
 >
 > The author's script is at `<EPISODE_DIR>/script.txt` — use it as the source of truth for caption wording when it diverges from the transcript.
 >
-> **Style:** "Liquid Glass / iOS frosted glass" — first check `~/.agents/skills/hyperframes/visual-styles.md` for a matching named identity and follow it. If not present, follow Hard Rule 14: generate a minimal `DESIGN.md` (3-question pattern) before writing any HTML. Do not hardcode `#333` / `#3b82f6` / `Roboto` etc.
+> **Visual Identity Gate (canonical `<HARD-GATE>`):** before writing any composition HTML, follow the canon's gate order in `SKILL.md` §"Visual Identity Gate". The user's named style is **"Liquid Glass / iOS frosted glass"** — start at gate step 3: read `~/.agents/skills/hyperframes/visual-styles.md` for a matching named preset and apply it. If no matching preset exists, generate a minimal `DESIGN.md` per the canon's structure (`## Style Prompt`, `## Colors`, `## Typography`, `## What NOT to Do`). Do not hardcode `#333` / `#3b82f6` / `Roboto`.
 >
-> **Quality gates (rigid, run all in order, fix all errors and contrast warnings):**
-> 1. `npx hyperframes lint`
-> 2. `npx hyperframes validate`
-> 3. `npx hyperframes inspect`
-> 4. `node ~/.agents/skills/hyperframes/scripts/animation-map.mjs <hyperframes-dir>` — review output for degenerate/offscreen/collision flags.
-> 5. `node ~/.agents/skills/hyperframes/scripts/contrast-report.mjs <hyperframes-dir>` — open `contrast-overlay.png`, fix any magenta (fail AA) regions; ideally clear yellow too. **This is critical for our content** (white captions on light backgrounds).
-> 6. `npx hyperframes snapshot --at 0,2,5,10,...` at one snapshot per ~5s of `final.mp4`.
+> **Multi-scene transitions:** if the composition has multiple scenes (caption groups across the video), the canon's "Scene Transitions (Non-Negotiable)" rules apply: always use transitions, every scene gets entrance animations, never exit animations except on the final scene.
+>
+> **Output Checklist (canonical, from SKILL.md §"Output Checklist"):**
+> 1. `npx hyperframes lint` — passes.
+> 2. `npx hyperframes validate` — passes; built-in WCAG contrast audit produces no warnings (or all warnings are addressed).
+> 3. `npx hyperframes inspect` — passes, or every reported overflow is intentional and marked.
+> 4. `node ~/.agents/skills/hyperframes/scripts/animation-map.mjs <hyperframes-dir> --out <hyperframes-dir>/.hyperframes/anim-map` — required for new compositions per canon (skip only on small edits, not applicable here). Read the JSON; check every flag (`offscreen`, `collision`, `invisible`, `paced-fast`, `paced-slow`); fix or justify.
+>
+> **Extra check we add (not in canon — orchestrator-imposed):** run `node ~/.agents/skills/hyperframes/scripts/contrast-report.mjs <hyperframes-dir>` and open `contrast-overlay.png`. The pilot run highlighted a real white-captions-on-light-background risk that `validate`'s 5-timestamp sampling can miss; `contrast-report.mjs` is denser. Fix any magenta regions; ideally clear yellow too. If absent or failing, do not block — log as "extra check skipped/failed" and proceed.
 >
 > **Project memory:** append a session block to `<EPISODE_DIR>/edit/project.md` (the same file video-use writes to — extend the existing log) with Strategy / Decisions / Outstanding for this composition.
 >
@@ -275,6 +292,6 @@ The spec is implemented when, on a fresh episode dropped into `inbox/`:
 - Phase 2 runs as a sub-agent, returns `final.mp4` + `raw.json` + `edl.json` + appends to `project.md`, and visibly performs at least 4 timeline-view self-eval points.
 - `final.json` (output-timeline) is emitted by `remap_transcript.py`.
 - `hyperframes/` is scaffolded by `scaffold_hyperframes.py` with correct dimensions and no media duplication.
-- Phase 3 runs all six gates and contrast-overlay shows zero magenta regions.
+- Phase 3 runs the four canonical gates (`lint`, `validate`, `inspect`, `animation-map`) cleanly. `contrast-report.mjs` (extra) shows zero magenta regions; if not run or failing, that is logged but does not block.
 - Both phases append to `edit/project.md`.
 - A second episode dropped immediately afterwards runs without manual intervention and produces a unique, readable slug.
