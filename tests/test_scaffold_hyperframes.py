@@ -109,3 +109,68 @@ def test_build_package_json_declares_hyperframes_devdep():
     assert "hyperframes" in pkg["devDependencies"]
     assert pkg["devDependencies"]["hyperframes"] == "^0.4.39"
     assert "private" in pkg and pkg["private"] is True
+
+
+import shutil
+
+
+def _have_npx() -> bool:
+    return shutil.which("npx") is not None
+
+
+@pytest.mark.skipif(not _have_npx(), reason="npx not on PATH")
+def test_scaffold_end_to_end(tmp_path: Path):
+    """Calls real `npx hyperframes init`, applies patches, verifies all artifacts."""
+    from scripts.scaffold_hyperframes import scaffold
+
+    episode_dir = tmp_path / "ep"
+    episode_dir.mkdir()
+    # Place a tiny stand-in for final.mp4. ffprobe needs a real file but we'll
+    # bypass ffprobe by passing dimensions explicitly.
+    (episode_dir / "edit").mkdir()
+    (episode_dir / "edit" / "final.mp4").write_bytes(b"")
+    # Place a fake remapped transcript.
+    (episode_dir / "edit" / "transcripts").mkdir()
+    (episode_dir / "edit" / "transcripts" / "final.json").write_text(
+        '[{"text":"hi","start":0,"end":0.2}]', encoding="utf-8"
+    )
+
+    scaffold(
+        episode_dir=episode_dir,
+        slug="2026-04-30-test-episode",
+        width=1080,
+        height=1920,
+        duration=10.0,
+        hyperframes_version="^0.4.39",
+    )
+
+    hf = episode_dir / "hyperframes"
+    assert hf.is_dir()
+    # init produces these
+    assert (hf / "index.html").exists()
+    assert (hf / "meta.json").exists()
+    assert (hf / "hyperframes.json").exists()
+    # we add these
+    assert (hf / "package.json").exists()
+    assert (hf / "transcript.json").exists()
+
+    # NO video copy
+    assert not (hf / "final.mp4").exists()
+
+    # patches applied
+    html = (hf / "index.html").read_text(encoding="utf-8")
+    assert 'data-width="1080"' in html
+    assert 'data-height="1920"' in html
+    assert "<video" in html and "<audio" in html
+    assert 'src="../edit/final.mp4"' in html
+    assert "data-has-audio" not in html
+
+    meta = json.loads((hf / "meta.json").read_text(encoding="utf-8"))
+    assert meta["id"] == "2026-04-30-test-episode"
+    assert meta["name"] == "2026-04-30-test-episode"
+
+    pkg = json.loads((hf / "package.json").read_text(encoding="utf-8"))
+    assert pkg["devDependencies"]["hyperframes"] == "^0.4.39"
+
+    transcript = json.loads((hf / "transcript.json").read_text(encoding="utf-8"))
+    assert transcript == [{"text": "hi", "start": 0, "end": 0.2}]
