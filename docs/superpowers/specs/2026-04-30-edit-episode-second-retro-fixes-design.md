@@ -154,55 +154,19 @@ Add a single gotcha block near the §"Setup / окружение" section:
 - **Scaffolding from canon: prefer this cheatsheet over `SKILL.md`'s `<video>`/`<audio>` example.** The main `SKILL.md` example (lines 171-188) omits `class="clip"`, which is required per per-project `CLAUDE.md` Key Rule 2 and enforced by `lint`. The cheatsheet examples in §"Видео и аудио" are the source of truth for media-element scaffolding.
 - **Parent-directory paths (`../`) in `src` attributes break `lint`/`validate`.** All media referenced from `index.html` must live alongside it (or in subdirectories). Hardlinks (`mklink /H` on Windows, `os.link` on Unix) are zero-disk-cost workarounds when the file's logical home is a sibling directory.
 
-## Section 6 — Investigation task (retro 2.4)
+## Section 6 — Investigation task (retro 2.4) — RESOLVED 2026-04-30
 
-`~/.agents/skills/hyperframes/scripts/animation-map.mjs` and `contrast-report.mjs` look for `hyperframes` `package.json` via ancestor-chain from their own location. Globally-installed `hyperframes` does not appear in that chain → scripts fail to bootstrap.
+**Outcome:** Not blocked. The brief was wrong to invoke the global skill copy.
 
-**Steps (do not pre-decide a fix):**
+`~/.agents/skills/hyperframes/scripts/animation-map.mjs` and `contrast-report.mjs` are documentation-surface artifacts shipped by `npx hyperframes skills`. They are not runnable from that location because their `package-loader.mjs` walks ancestors of `HERE` looking for a `hyperframes`/`@hyperframes/cli` `package.json`, and the global skill dir has no such ancestor.
 
-1. Try `npm install hyperframes --save-dev` in the **repo root** (not in the episode — closes retro 3.2). Re-run animation-map; check if ancestor-search now resolves.
-2. If (1) fails: try setting `HYPERFRAMES_SKILL_NODE_MODULES` env var to point at the global install location.
-3. If (1) and (2) both fail: open issue upstream against hyperframes-skill, then add a `# TODO(remove-when-resolved): hyperframes-skill#NNN` skip in `edit-episode.md` for animation-map (currently mistakenly skipped — should be canonical).
+The same scripts ship inside the npm package at `<project>/node_modules/hyperframes/dist/skills/hyperframes/scripts/<name>.mjs`. Invoked from there, `node_modules/hyperframes/package.json` is on the ancestor chain, the version probe resolves, and the scripts run end-to-end. Verified on `2026-04-30-desktop-software-licensing-it-turns-out-is` — `animation-map.mjs` produces the full timeline output.
 
-### Investigation outcome (2026-04-30)
+**Fix landed:** `.claude/commands/edit-episode.md` Phase 4 Output Checklist items 4 and the orchestrator-imposed contrast-report check now point at the bundled `<hyperframes-dir>/node_modules/hyperframes/dist/skills/hyperframes/scripts/...` path.
 
-Both (1) and (2) fail. Root cause is more specific than the retro framing:
+**Prevention rule** added to `CLAUDE.md` §"Skill copies: docs vs. runnable": for any external-skill helper script, default to the bundled in-project copy; the global `~/.agents/...` / `~/.claude/...` copy is for SKILL.md / patterns / cheatsheets only. Verify executability empirically (run it) before declaring a helper broken.
 
-- `~/.agents/skills/hyperframes/scripts/animation-map.mjs:23-26` calls `importPackagesOrBootstrap(["@hyperframes/producer"], { npmPackages: [hyperframesPackageSpec("@hyperframes/producer")] })`. The object literal's `npmPackages` array is built **before** the function call — i.e. `hyperframesPackageSpec(...)` runs eagerly as part of argument evaluation.
-- `hyperframesPackageSpec` (in `package-loader.mjs:48-59`) calls `readBundledHyperframesVersion()`, which walks ancestors of `HERE` (the script's own directory: `~/.agents/skills/hyperframes/scripts/`) looking for a `package.json` whose `name` is `"hyperframes"` or `"@hyperframes/cli"`. None of those ancestors (`~/.agents/skills/hyperframes/`, `~/.agents/skills/`, `~/.agents/`, `~/`) carries such a manifest in our environment.
-- `HYPERFRAMES_SKILL_NODE_MODULES` is honored by `resolvePackageEntry` (which finds `@hyperframes/producer`) but **not** by `hyperframesPackageSpec` (which is called first and throws). So the env var cannot rescue the call path.
-- Installing `hyperframes` in `<orchestrator-repo>/node_modules/hyperframes/package.json` (a fix matching plan Step 3a) doesn't help either: that path is not on the ancestor chain of `HERE` — it's a sibling of the orchestrator repo, not a parent of the skill scripts.
-
-**Decision:** Step 3c — document the breakage in the brief, do not block Phase 4 on it. Open an upstream issue (paste-ready body below).
-
-### Paste-ready upstream issue body
-
-> **Repository:** https://github.com/heygen-com/hyperframes
->
-> **Title:** `scripts/animation-map.mjs` throws on `hyperframesPackageSpec` when no ancestor `package.json` is named `hyperframes`
->
-> **Body:**
->
-> Repro on a system where the `hyperframes` skill is installed at `~/.agents/skills/hyperframes/` (no ancestor `package.json` with `name: "hyperframes"` or `name: "@hyperframes/cli"` above the `scripts/` dir):
->
-> ```sh
-> node ~/.agents/skills/hyperframes/scripts/animation-map.mjs <some-comp-dir>
-> ```
->
-> Throws:
->
-> ```
-> Error: Could not determine the bundled HyperFrames version for @hyperframes/producer.
-> Install the package yourself or pass a pinned options.npmPackages entry.
->     at hyperframesPackageSpec (file:///.../scripts/package-loader.mjs:51:11)
->     at file:///.../scripts/animation-map.mjs:24:19
-> ```
->
-> The script unconditionally evaluates `hyperframesPackageSpec("@hyperframes/producer")` as an argument to `importPackagesOrBootstrap`. `hyperframesPackageSpec` calls `readBundledHyperframesVersion()` which walks ancestors of `HERE` (the script's own dir) looking for a manifest named `hyperframes` or `@hyperframes/cli`. In the skill-installed-to-`~/.agents/skills/` layout there is no such ancestor, so the spec helper always throws — even when `@hyperframes/producer` is already resolvable via cwd, `HYPERFRAMES_SKILL_NODE_MODULES`, or `PATH`-derived `node_modules`.
->
-> **Suggested fix:** defer `hyperframesPackageSpec` evaluation until bootstrap is actually needed (e.g. accept a getter callback in `options.npmPackages`, or call `hyperframesPackageSpec` from inside `importPackagesOrBootstrap` only on the `missing.length > 0` branch). Alternatively, fall back to a network lookup or to the latest version visible via `npm view hyperframes version` when the bundled-version probe returns null and the package is already resolvable.
->
-> **Workarounds tried (none worked):** repo-root `npm install hyperframes --save-dev`; setting `HYPERFRAMES_SKILL_NODE_MODULES` to the global install or to the episode-local node_modules.
+**Optional (not in this PR):** an upstream nicety — make the global skill copy of these scripts self-bootstrapping (defer `hyperframesPackageSpec` evaluation until the missing-package branch, or fall back to `npm view hyperframes version`). Low priority since the bundled copy is the canonical execution path.
 
 ## Section 7 — Verification after merge
 

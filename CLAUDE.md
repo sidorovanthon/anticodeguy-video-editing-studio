@@ -71,3 +71,21 @@ Cheatsheets in `docs/cheatsheets/` are reference summaries — useful for orient
 but the source of truth for canon checks is the SKILL.md itself. Never propose
 patches to upstream `video-use` or `hyperframes` repos; all glue lives in this
 orchestrator (`scripts/`, `.claude/commands/edit-episode.md`).
+
+### Skill copies: docs vs. runnable
+
+The global skill copies (`~/.agents/skills/hyperframes/`, `~/.claude/skills/video-use/`)
+are **documentation surfaces** for AI agents — read `SKILL.md`, `patterns.md`,
+`visual-styles.md`, etc. from there. Helper scripts shipped alongside (e.g.
+`animation-map.mjs`, `contrast-report.mjs`) are present but generally **not runnable
+from those paths**: they bootstrap their dependencies via ancestor-walk from the
+script's own dir, which only succeeds when the script lives inside the package's
+own `node_modules/<skill>/dist/...` layout.
+
+**Rule when invoking a helper script from an external skill:**
+
+1. Default to the bundled copy under the project's `node_modules/<skill>/dist/skills/<skill>/scripts/<name>.mjs`. The version probe and `@hyperframes/producer`-style sibling resolution rely on the package's own manifest as an ancestor.
+2. Only fall back to the `~/.agents/...` / `~/.claude/...` copy if you've actually verified it bootstraps in our environment (run it; check exit code, not just file existence).
+3. Before declaring a skill helper "broken", try at least: (a) the bundled in-project copy, (b) `npx <skill>` subcommand if the helper has been wrapped, (c) skim the package's `bin`/`scripts` map to see if there's a non-obvious entry point. Code-reading alone is insufficient evidence.
+
+This rule applies to *executable helpers*, not docs. `~/.agents/skills/hyperframes/SKILL.md`, `visual-styles.md`, `house-style.md` etc. should always be read from the global location — that's their canonical home.
