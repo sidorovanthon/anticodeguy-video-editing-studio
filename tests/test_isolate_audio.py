@@ -363,3 +363,82 @@ def test_isolate_skips_api_when_wav_cached(tmp_path: Path):
     ffmpegs = [c for c in runner.calls if c[0] == "ffmpeg"]
     assert len(ffmpegs) == 1
     assert any("ANTICODEGUY_AUDIO_CLEANED=elevenlabs-v1" in str(x) for x in ffmpegs[0])
+
+
+def test_isolate_raises_when_no_raw_file(tmp_path: Path):
+    ep = tmp_path / "ep"
+    ep.mkdir()
+
+    def runner(*a, **kw):
+        raise AssertionError("should not run")
+
+    with pytest.raises(IsolationError, match="not found"):
+        isolate(episode_dir=ep, runner=runner, post=None, key_loader=lambda: "k")
+
+
+def test_isolate_raises_on_api_non_200(tmp_path: Path):
+    ep = tmp_path / "ep"
+    ep.mkdir()
+    (ep / "raw.mp4").write_bytes(b"x")
+
+    runner = _make_runner(
+        ffprobe_json={"streams": [{"codec_type": "audio"}]},
+        fixture_wav=(Path(__file__).parent / "fixtures" / "elevenlabs_response_tiny.wav").read_bytes(),
+    )
+
+    def post(*a, **kw):
+        class R:
+            status_code = 500
+            content = b""
+            text = "boom"
+        return R()
+
+    with pytest.raises(IsolationError, match="500"):
+        isolate(episode_dir=ep, runner=runner, post=post, key_loader=lambda: "k")
+
+
+def test_isolate_raises_on_missing_api_key(tmp_path: Path):
+    ep = tmp_path / "ep"
+    ep.mkdir()
+    (ep / "raw.mp4").write_bytes(b"x")
+
+    runner = _make_runner(
+        ffprobe_json={"streams": [{"codec_type": "audio"}]},
+        fixture_wav=b"",
+    )
+
+    def bad_loader():
+        raise IsolationError("ELEVENLABS_API_KEY not found in .env or environment")
+
+    def post(*a, **kw):
+        raise AssertionError("must not call API without key")
+
+    with pytest.raises(IsolationError, match="ELEVENLABS_API_KEY not found"):
+        isolate(episode_dir=ep, runner=runner, post=post, key_loader=bad_loader)
+
+
+def test_isolate_raises_on_ffmpeg_failure(tmp_path: Path):
+    ep = tmp_path / "ep"
+    ep.mkdir()
+    (ep / "raw.mp4").write_bytes(b"x")
+
+    def runner(cmd: list[str], *, capture_output=True, check=False):
+        if cmd[0] == "ffprobe":
+            class R:
+                returncode = 0
+                stdout = b'{"streams":[{"codec_type":"audio"}]}'
+                stderr = b""
+            return R()
+
+        class R:
+            returncode = 1
+            stdout = b""
+            stderr = b"ffmpeg: synthetic failure for test"
+        return R()
+
+    def post(*a, **kw):
+        # This won't be reached — extract fails first.
+        raise AssertionError("API should not be called")
+
+    with pytest.raises(IsolationError, match="ffmpeg failed"):
+        isolate(episode_dir=ep, runner=runner, post=post, key_loader=lambda: "k")
