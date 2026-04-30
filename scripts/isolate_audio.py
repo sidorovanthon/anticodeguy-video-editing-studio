@@ -117,3 +117,14 @@ def call_isolation_api(api_key: str, wav_bytes: bytes, *, post) -> bytes:
     if not resp.content:
         raise IsolationError("Audio Isolation API returned empty body")
     return resp.content
+
+
+def normalize_to_pcm_wav_cmd(src: Path, dst: Path) -> list[str]:
+    """ffmpeg argv to re-encode whatever container/codec the API returned into PCM WAV."""
+    return [
+        "ffmpeg", "-y",
+        "-i", str(src),
+        "-vn",
+        "-c:a", "pcm_s16le",
+        str(dst),
+    ]

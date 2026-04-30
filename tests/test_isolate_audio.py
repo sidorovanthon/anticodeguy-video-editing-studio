@@ -8,6 +8,7 @@ from scripts.isolate_audio import audio_stream_has_clean_tag
 from scripts.isolate_audio import load_api_key
 from scripts.isolate_audio import extract_audio_cmd, mux_cmd
 from scripts.isolate_audio import call_isolation_api, ISOLATION_URL
+from scripts.isolate_audio import normalize_to_pcm_wav_cmd
 
 
 def test_find_raw_video_picks_unique_match(tmp_path: Path):
@@ -204,3 +205,16 @@ def test_call_isolation_api_raises_on_empty_body():
 
     with pytest.raises(IsolationError, match="empty"):
         call_isolation_api("k", b"x", post=fake_post)
+
+
+def test_normalize_cmd_re_encodes_to_pcm_wav():
+    src = Path("/tmp/api.bin")
+    dst = Path("/tmp/cleaned.wav")
+    cmd = normalize_to_pcm_wav_cmd(src, dst)
+    cmd_str = [str(x) for x in cmd]
+    assert cmd_str[0] == "ffmpeg"
+    assert "-y" in cmd_str
+    assert cmd_str[cmd_str.index("-i") + 1] == str(src)
+    assert "-c:a" in cmd_str and "pcm_s16le" in cmd_str
+    assert "-vn" in cmd_str
+    assert cmd_str[-1] == str(dst)
