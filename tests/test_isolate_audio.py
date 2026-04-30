@@ -301,3 +301,36 @@ def test_isolate_happy_path_calls_api_and_muxes(tmp_path: Path):
     # mux: last call, includes the metadata tag
     mux = ffmpegs[2]
     assert any("ANTICODEGUY_AUDIO_CLEANED=" in str(x) for x in mux)
+
+
+def test_isolate_short_circuits_when_tag_present(tmp_path: Path):
+    ep = tmp_path / "ep"
+    ep.mkdir()
+    (ep / "raw.mp4").write_bytes(b"x")
+
+    runner = _make_runner(
+        ffprobe_json={
+            "streams": [
+                {"codec_type": "audio", "tags": {"ANTICODEGUY_AUDIO_CLEANED": "elevenlabs-v1"}}
+            ]
+        },
+        fixture_wav=b"",
+    )
+
+    posts: list = []
+
+    def post(*a, **kw):
+        posts.append(1)
+        raise AssertionError("must not call API when tag present")
+
+    result = isolate(
+        episode_dir=ep, runner=runner, post=post, key_loader=lambda: "k",
+    )
+    assert result.cached is True
+    assert result.api_called is False
+    assert result.reason == "tag-present"
+    # Only ffprobe ran; no ffmpeg
+    assert all(c[0] == "ffprobe" for c in runner.calls)
+    # audio/ dir not created
+    assert not (ep / "audio").exists()
+    assert posts == []
