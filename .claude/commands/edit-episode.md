@@ -173,6 +173,16 @@ Then invoke the `hyperframes` skill via the `Skill` tool with this verbatim brie
 >
 > **Extra check we add (not in canon — orchestrator-imposed):** run `node ~/.agents/skills/hyperframes/scripts/contrast-report.mjs <hyperframes-dir>` and open the resulting `contrast-overlay.png` in the output dir. Fix any magenta regions; ideally clear yellow too. If absent or failing, do not block — log "extra check skipped/failed" and proceed.
 >
+> **Visual verification (mandatory before announcing Done).** Use canonical HF tools — no ffmpeg shell-out.
+>
+> 1. **Canonical layout audit at beat boundaries.** Run `npx hyperframes inspect --at <beat_timestamps>` from `<EPISODE_DIR>/hyperframes/`, where `<beat_timestamps>` are the comma-separated start times of each beat from the §"Beat→Visual Mapping" of `DESIGN.md`. Re-uses the canonical layout/overflow audit on the timestamps that matter narratively.
+> 2. **Canonical screenshots at beat boundaries.** Run `npx hyperframes snapshot --at <beat_timestamps>` (canonical PNG screenshots without full render — see `docs/cheatsheets/hyperframes.md` §"snapshot"). Include `1`, every beat boundary, and `<duration - 1>` in the timestamp list.
+> 3. **Three explicit questions per snapshot** — answer in writing in your final report, before the studio launch:
+>    a. Is the expected beat element visible (registry block / scene card / overlay from §"Multi-scene narrative composition")?
+>    b. Any unintended z-overlap (caption covering a key element, scene exit leaving residue)?
+>    c. Is the A-roll video accidentally occluded by a semi-transparent overlay?
+> 4. Only after this list is in your report, proceed to the studio launch.
+>
 > **Project memory:** append a session block to `<EPISODE_DIR>/edit/project.md` with Strategy / Decisions / Outstanding for this composition.
 >
 > **Studio launch:** after gates pass, launch the preview server in the background. Run from `<EPISODE_DIR>/hyperframes/`:
