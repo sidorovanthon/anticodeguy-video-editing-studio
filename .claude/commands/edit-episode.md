@@ -1,9 +1,9 @@
 ---
-description: Run the video editing pipeline (video-use → hyperframes → studio) on an episode from inbox/ or by slug.
+description: Run the video editing pipeline (pickup → video-use → hyperframes → studio) on an episode from inbox/ or by slug.
 argument-hint: "[slug]"
 ---
 
-You are orchestrating a two-stage video editing pipeline. Follow this recipe exactly. Do not improvise creative decisions — the `video-use` and `hyperframes` skills own those.
+You are orchestrating a three-phase video editing pipeline. Follow this recipe exactly. The skills `video-use` and `hyperframes` own all creative decisions; this command provides only structure, glue, and enforcement.
 
 ## Inputs
 
@@ -12,72 +12,159 @@ You are orchestrating a two-stage video editing pipeline. Follow this recipe exa
 ## Project layout (must hold)
 
 ```
-inbox/<slug>.<ext>            -> drop zone (extensions: mp4, mov, mkv, webm)
-episodes/<slug>/raw.<ext>     -> moved here at Phase 0
-episodes/<slug>/edit/         -> produced by video-use (final.mp4 + transcripts/raw.json)
-episodes/<slug>/hyperframes/  -> produced by hyperframes (index.html + package.json + ...)
+inbox/<stem>.<video-ext>      -> drop zone, paired with <stem>.txt or .md script
+inbox/<stem>.txt|.md          -> author script (optional but recommended)
+episodes/<slug>/raw.<ext>     -> moved here at Phase 1
+episodes/<slug>/script.txt    -> moved here at Phase 1 (always renamed to .txt)
+episodes/<slug>/edit/         -> produced by video-use sub-agent (final.mp4 + raw.json + edl.json + project.md)
+episodes/<slug>/edit/transcripts/final.json  -> emitted by orchestrator glue (output-timeline, hyperframes captions schema)
+episodes/<slug>/hyperframes/  -> scaffolded by orchestrator + authored by hyperframes Skill
 ```
 
-All paths passed to skills MUST be absolute — derive them from the project root at the start of execution. Throughout this recipe, use whichever shell/tool fits your environment (Bash, PowerShell, Read, Glob, etc.); the steps describe outcomes, not literal commands. Match the syntax to the shell you actually invoke.
+All paths passed to skills MUST be absolute. Substitute `<EPISODE_DIR>` etc. at runtime.
 
-## Phase 0 — Resolve slug and pickup
+---
 
-1. Determine `PROJECT_ROOT` (the absolute path of the working directory).
-2. Ensure directories `inbox/` and `episodes/` exist; create them if not.
-3. Define `SUPPORTED_EXTS = [mp4, mov, mkv, webm]` (lowercase; check case-insensitively).
-4. Resolve slug:
-   - **If `$1` given:**
-     - Search `inbox/` for files named `$1.<ext>` where `<ext>` is in `SUPPORTED_EXTS`. Try extensions in the order listed (`mp4` first, then `mov`, `mkv`, `webm`); use the first match. If you find a match → SLUG=$1, RAW_SRC=that file.
-     - Else if `episodes/$1/raw.<ext>` exists for some `<ext>` in `SUPPORTED_EXTS` → SLUG=$1, RAW_SRC already in place (skip move). If multiple `raw.*` files exist in `episodes/$1/`, stop with: `ambiguous: multiple raw.* in episodes/$1/`.
-     - Else stop with: `no episode named "$1" — no file in inbox/ and no episodes/$1/raw.* found`.
-   - **If `$1` omitted:**
-     - List files in `inbox/` whose extension is in `SUPPORTED_EXTS`.
-     - If empty: list `episodes/*/hyperframes/index.html`. If any exist, ask the user whether to relaunch the studio for the most recently modified one. Otherwise report `nothing to do — drop a video in inbox/`.
-     - Otherwise pick the file with the **oldest mtime** (FIFO queue — first dropped, first processed). SLUG = filename without its final extension (everything before the last `.`; e.g. `foo.bar.mp4` → `foo.bar`). RAW_SRC = that path.
-5. If RAW_SRC is in `inbox/` (i.e. we are picking up, not resuming):
-   - **Collision guard:** if `episodes/<SLUG>/` already contains a `raw.*` file, stop with: `collision: episodes/<SLUG>/raw.* already exists — rename the inbox file or delete the stale episode dir`. Do NOT overwrite.
-   - Create `episodes/<SLUG>/` if missing.
-   - Move `RAW_SRC` to `episodes/<SLUG>/raw.<ext>` (preserve original extension; this is a move, not a copy — `inbox/` should be empty for this slug afterwards).
-6. Set `EPISODE_DIR = <PROJECT_ROOT>/episodes/<SLUG>` (absolute path).
-7. Announce to the user: `Episode: <SLUG>. Raw at <EPISODE_DIR>/raw.<ext>.`
+## Phase 1 — Pickup
 
-## Phase 1 — Video Use
+Run `scripts/pickup.py` to pair video+script in `inbox/`, derive slug, and move files into `episodes/<slug>/`. Use the appropriate shell for the environment (Windows: PowerShell; otherwise Bash):
 
-**Skip if** `<EPISODE_DIR>/edit/final.mp4` exists. In that case announce `Phase 1 already complete — skipping video-use.` and proceed to Phase 2.
+**PowerShell:**
+```powershell
+python scripts\pickup.py --inbox inbox --episodes episodes ${arg}
+```
+where `${arg}` is `--slug $1` if `$1` was given, otherwise empty.
 
-Otherwise invoke the `video-use` skill (via the Skill tool) with this verbatim instruction, substituting absolute paths:
+**Bash:**
+```bash
+python scripts/pickup.py --inbox inbox --episodes episodes ${arg}
+```
 
-> Edit the video at `<EPISODE_DIR>/raw.<ext>`. Write all outputs to `<EPISODE_DIR>/edit/`. Use your standard cutting/grading defaults — no creative direction from me. Produce `final.mp4` and the transcript JSON in the conventional location (`<EPISODE_DIR>/edit/transcripts/raw.json`).
+Parse the JSON on stdout. Fields: `slug`, `episode_dir`, `raw_path`, `script_path`, `resumed`, `idle`, `warning`.
 
-After the skill returns:
-- Verify `<EPISODE_DIR>/edit/final.mp4` exists. If not, stop and surface the failure.
-- Verify a transcript JSON exists under `<EPISODE_DIR>/edit/transcripts/`. If not, stop.
+- If `idle: true`: there is nothing in `inbox/` and no slug arg. Offer to relaunch the studio for the most recently modified `episodes/*/hyperframes/index.html` (run `npx hyperframes preview <that-dir> --port 3002` in the background and report the URL). If no such directory exists, report `nothing to do — drop a video in inbox/` and stop.
+- If `warning` is set: display it to the user, then continue.
+- Otherwise announce: `Episode: <slug>. Raw at <raw_path>. Script at <script_path or "(none)">.`
 
-## Phase 2 — Hyperframes (with studio launch)
+Set `EPISODE_DIR = <absolute path to episodes/<slug>>`.
 
-**Skip-build if** `<EPISODE_DIR>/hyperframes/index.html` exists. In that case skip composition build and only launch the studio (see "Studio launch" below).
+---
 
-Otherwise invoke the `hyperframes` skill (via the Skill tool) with this verbatim instruction, substituting absolute paths:
+## Phase 2 — Video edit (video-use sub-agent)
 
-> Build a HyperFrames composition from the video at `<EPISODE_DIR>/edit/final.mp4` and the transcript at `<EPISODE_DIR>/edit/transcripts/raw.json`. Write the project to `<EPISODE_DIR>/hyperframes/`.
+**Skip if** `<EPISODE_DIR>/edit/final.mp4` exists. Announce `Phase 2 already complete — skipping video-use.` and proceed.
+
+Otherwise dispatch a sub-agent via the `Agent` tool with `subagent_type: general-purpose`. The brief — substitute absolute paths:
+
+> You are the video-use sub-agent. Read `~/.claude/skills/video-use/SKILL.md` first, then edit `<EPISODE_DIR>/raw.<ext>` and write all outputs under `<EPISODE_DIR>/edit/`.
 >
-> Style is fixed:
-> - frosted-glass overlays (latest iOS / "Liquid Glass" aesthetic)
-> - synchronized word-level captions
-> - contextual illustrative animations driven by the transcript content (one per beat / key idea)
+> **Author's script** is at `<EPISODE_DIR>/script.txt` (may be absent — check first). Treat it as ground truth for take selection and to verify ASR accuracy. Flag any divergence in your reasoning log.
 >
-> When the composition is ready, launch the preview studio (`hyperframes preview`) and report the local URL.
+> **Strategy confirmation (canonical resolution of Hard Rule 11 in this orchestrated context):** the user invoked `/edit-episode`, which constitutes pre-approved strategy: "edit `raw.<ext>` per the script at `script.txt`, output a tight talking-head cut to `final.mp4`, default pacing on the tighter end of Hard Rule 7's 30–200ms window, all canonical hygiene." Do not pause for further confirmation. If — and only if — the material clearly does not match this implicit strategy (wrong content type, script unrelated to footage, multi-speaker where solo expected), return early with a single specific question and no edits performed.
+>
+> **Pacing:** follow the "Cut craft (techniques)" section of the canon — silences ≥400ms cleanest cuts, 150–400ms usable with visual check, <150ms unsafe. Padding stays in 30–200ms (Hard Rule 7). Per Principle 5, the canon's launch-video example values (50ms / 80ms) are a worked example, not a mandate. Default lean for our content: tight end of the window, eliminate retakes/false starts.
+>
+> **Required outputs (all under `<EPISODE_DIR>/edit/`):**
+> - `final.mp4` — rendered video.
+> - `transcripts/raw.json` — Scribe word-level on source timeline (cached if exists; **never re-transcribe** per Hard Rule 9).
+> - `edl.json` — final EDL per the canon's "EDL format". Functionally required: `ranges`, `sources`. Recommended: `total_duration_s`, `grade`, `subtitles`, `overlays`.
+> - `project.md` — append a session block per the canon's "Memory — `project.md`" section.
+>
+> **Self-eval (canon's 8-step process, step 7):**
+> - `helpers/timeline_view.py` on the rendered output at every cut boundary (±1.5s).
+> - Sample first 2s, last 2s, 2–3 mid-points.
+> - `ffprobe` on `final.mp4` — duration must match EDL `total_duration_s` within 100ms.
+> - Cap at 3 self-eval passes.
+> - Confirm Hard Rule 12 (outputs in `<edit>/`).
+>
+> **Environment:** `PYTHONUTF8=1` is set globally; do not override.
+>
+> Report what you did, what you skipped and why, and any divergence between `script.txt` and ASR.
 
-If the skill does not launch the studio itself, do it manually after verifying `index.html` exists: from the directory `<EPISODE_DIR>/hyperframes/`, run `hyperframes preview` **in the background** (so the studio keeps serving while the command returns). Use the appropriate background-execution mechanism for the shell you invoke. Capture the printed URL and show it to the user.
+After the sub-agent returns, verify `<EPISODE_DIR>/edit/final.mp4`, `transcripts/raw.json`, and `edl.json` exist. If any is missing, stop and surface the failure.
 
-### Studio launch (skip-build path)
+---
 
-If you skipped the build because `index.html` already existed, just run the preview command above and report the URL.
+## Glue between Phase 2 and Phase 3
+
+Run from project root:
+
+```bash
+python scripts/remap_transcript.py \
+  --raw <EPISODE_DIR>/edit/transcripts/raw.json \
+  --edl <EPISODE_DIR>/edit/edl.json \
+  --out <EPISODE_DIR>/edit/transcripts/final.json
+```
+
+(Skip if `<EPISODE_DIR>/edit/transcripts/final.json` already exists — idempotent.)
+
+---
+
+## Phase 3 — Composition & studio (hyperframes Skill)
+
+**Skip-build if** `<EPISODE_DIR>/hyperframes/index.html` exists. Skip the scaffold and Skill invocation; jump straight to the studio launch.
+
+Otherwise scaffold first:
+
+```bash
+python scripts/scaffold_hyperframes.py \
+  --episode-dir <EPISODE_DIR> \
+  --slug <SLUG>
+```
+
+Then invoke the `hyperframes` skill via the `Skill` tool with this verbatim brief:
+
+> Read `~/.agents/skills/hyperframes/SKILL.md` first, then build a HyperFrames composition in `<EPISODE_DIR>/hyperframes/`. The project is **already scaffolded** — do not run `npx hyperframes init`. The scaffolded `index.html`, `package.json`, `hyperframes.json`, `meta.json` are in place. The video and audio are wired as a canonical `<video muted playsinline> + <audio>` pair both pointing at `../edit/final.mp4`. The word-level transcript (output-timeline, hyperframes captions schema) is at `hyperframes/transcript.json`.
+>
+> The author's script is at `<EPISODE_DIR>/script.txt` — use it as the source of truth for caption wording when it diverges from the transcript.
+>
+> **Visual Identity Gate (canonical `<HARD-GATE>`):** before writing any composition HTML, follow the canon's gate order in SKILL.md §"Visual Identity Gate". The user's named style is **"Liquid Glass / iOS frosted glass"** — start at gate step 3: read `~/.agents/skills/hyperframes/visual-styles.md` for a matching named preset and apply it. If no matching preset exists, generate a minimal `DESIGN.md` per the canon's structure. Do not hardcode `#333` / `#3b82f6` / `Roboto`.
+>
+> **Multi-scene transitions:** if the composition has multiple scenes, the canon's "Scene Transitions (Non-Negotiable)" rules apply: always use transitions, every scene gets entrance animations, never exit animations except on the final scene.
+>
+> **Output Checklist (canonical):**
+> 1. `npx hyperframes lint` — passes.
+> 2. `npx hyperframes validate` — passes; built-in WCAG contrast audit produces no warnings.
+> 3. `npx hyperframes inspect` — passes, or every reported overflow is intentional and marked.
+> 4. `node ~/.agents/skills/hyperframes/scripts/animation-map.mjs <hyperframes-dir> --out <hyperframes-dir>/.hyperframes/anim-map` — required for new compositions per canon. Read the JSON; check every flag (`offscreen`, `collision`, `invisible`, `paced-fast`, `paced-slow`); fix or justify.
+>
+> **Extra check we add (not in canon — orchestrator-imposed):** run `node ~/.agents/skills/hyperframes/scripts/contrast-report.mjs <hyperframes-dir>` and open the resulting `contrast-overlay.png` in the output dir. Fix any magenta regions; ideally clear yellow too. If absent or failing, do not block — log "extra check skipped/failed" and proceed.
+>
+> **Project memory:** append a session block to `<EPISODE_DIR>/edit/project.md` with Strategy / Decisions / Outstanding for this composition.
+>
+> **Studio launch:** after gates pass, launch the preview server in the background. Run from `<EPISODE_DIR>/hyperframes/`:
+> - PowerShell: `Start-Process npx -ArgumentList 'hyperframes','preview','--port','3002' -WindowStyle Hidden`
+> - Bash: `npx hyperframes preview --port 3002 &`
+>
+> Report `http://localhost:3002` to the user.
+
+---
+
+## Studio launch (skip-build path)
+
+If Phase 3 was skipped because `index.html` already existed, run the studio launch above directly (use `--list` first to detect an already-running server and skip if found).
+
+---
 
 ## Completion
 
-Announce to the user: `Done. Studio: <URL>. Episode: <EPISODE_DIR>.`
+Announce: `Done. Studio: http://localhost:3002. Episode: <EPISODE_DIR>.`
+
+---
+
+## Idempotency and rebuild guidance
+
+The command is safe to re-run on the same slug. Skip rules:
+1. `<EPISODE_DIR>/edit/final.mp4` exists → skip Phase 2.
+2. `<EPISODE_DIR>/edit/transcripts/final.json` exists → skip glue remap.
+3. `<EPISODE_DIR>/hyperframes/index.html` exists → skip scaffold and Skill, only relaunch studio.
+
+To force re-cut: delete `<EPISODE_DIR>/edit/final.mp4` AND `<EPISODE_DIR>/hyperframes/`. `transcripts/raw.json` stays — **no Scribe re-spend**.
+
+To re-compose only: delete `<EPISODE_DIR>/hyperframes/`. Phase 2 skipped; `final.mp4` and transcripts preserved.
+
+---
 
 ## Error handling
 
-Each phase is fail-fast. If `video-use` or `hyperframes` returns an error, stop immediately, show what failed, and tell the user to fix and re-run `/edit-episode <SLUG>`. Do NOT retry, do NOT roll back partial outputs. Idempotency rules ensure re-running picks up where it failed.
+Each phase is fail-fast. If `pickup.py`, `video-use` sub-agent, `remap_transcript.py`, `scaffold_hyperframes.py`, or `hyperframes` skill returns an error, stop, show what failed, and tell the user to fix and re-run `/edit-episode <slug>`. Do not retry; do not roll back partial outputs. Idempotency rules ensure re-running picks up where it failed.
