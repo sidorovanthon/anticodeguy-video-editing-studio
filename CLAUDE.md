@@ -35,6 +35,22 @@ artifact: `episodes/<slug>/edit/final.mp4`, then `episodes/<slug>/hyperframes/in
 then studio launch. Skipping Phase 1 when `final.mp4` exists is important — it avoids
 re-spending ElevenLabs Scribe credits.
 
+## Branching workflow — non-negotiable
+
+**Every change goes through a feature branch and a GitHub PR. No direct commits to `main`.**
+
+For any non-trivial change (new feature, refactor, multi-file edit):
+
+1. Create a feature branch (`git worktree add .worktrees/<branch> -b <branch>` is the standard pattern; the `superpowers:using-git-worktrees` skill handles this).
+2. Commit work on the branch with focused, frequent commits.
+3. Push the branch (`git push -u origin <branch>`) and open a PR via `gh pr create --base main` with a Summary + Test plan body.
+4. Merge happens via the PR — typically a manual review-and-merge step on GitHub. Do not auto-merge from the agent unless the user explicitly says so.
+5. After merge, clean up: `git worktree remove .worktrees/<branch>` and `git branch -d <branch>`.
+
+Trivial fixes (typo, single-line doc tweak) MAY land directly on main with the user's explicit go-ahead, but the default is "branch + PR".
+
+If a session ends with uncommitted work or an unmerged branch, leave the branch as-is — never reset/discard to "tidy up" without explicit instruction.
+
 ## External skill canon — non-negotiable
 
 `video-use` (`~/repos/video-use`, junctioned to `~/.claude/skills/video-use`) and
