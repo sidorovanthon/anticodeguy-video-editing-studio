@@ -1,0 +1,10 @@
+# Video pipeline working directories
+inbox/
+episodes/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
