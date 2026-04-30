@@ -1,8 +1,8 @@
 # video-use — Cheat Sheet
 
-Conversation-driven video editor. You drop footage in a folder, run an agent (`claude`, `codex`) there, say what you want — agent reads `SKILL.md`, runs helpers, hands you a finished cut.
+Conversation-driven video editor. Дроп footage в папку → запуск агента (`claude`, `codex`) в этой папке → бриф словами. Агент читает `SKILL.md`, выбирает кадры из транскрипта, оркестрирует хелперы, отдаёт готовый монтаж.
 
-Repo: `C:\Users\sidor\repos\video-use` → linked to `~/.claude/skills/video-use`. Auto-updates daily via Task Scheduler 10 min after logon.
+Скилл регистрируется как директория в `~/.claude/skills/video-use/` (или эквивалент для другого агента). `SKILL.md` и `helpers/` лежат рядом.
 
 ---
 
@@ -11,31 +11,43 @@ Repo: `C:\Users\sidor\repos\video-use` → linked to `~/.claude/skills/video-use
 ```
 cd <папка с видео>
 claude
-> "edit these into a launch video"   (или любой brief на русском/английском)
+> "edit these into a launch video"
 ```
 
-Агент проводит inventory → транскрибация → пред-сканирование → стратегия → **подтверждение** → рендер → self-eval → preview/final.
+Канонические 8 шагов сессии:
 
-**Все артефакты складываются в `<папка_видео>/edit/`** — никогда не в репо. Это Hard Rule 12.
-
----
-
-## 2. Helpers — что вызывает чего
-
-| Скрипт | Что делает | Когда вызывается |
+| # | Шаг | Артефакт |
 |---|---|---|
-| `helpers/transcribe.py` | один файл → ElevenLabs Scribe → JSON в `edit/transcripts/` | На одном видео или для отдельного файла |
-| `helpers/transcribe_batch.py` | папка → 4 параллельных воркера → JSON-кэш | Mass-take inventory |
-| `helpers/pack_transcripts.py` | JSON-ы → `edit/takes_packed.md` (phrase-level markdown) | Перед редактурой, как "первичный читальный артефакт" |
-| `helpers/timeline_view.py` | filmstrip + waveform PNG за временной диапазон | Точечно: проверка кадра/паузы/cut-point |
-| `helpers/render.py` | EDL → итоговое видео (extract → concat → overlays → subs → loudnorm) | Финальный рендер |
-| `helpers/grade.py` | один файл → цветокор (preset / auto / raw filter) | Standalone грейдинг или вызывается из render.py |
+| 1 | **Inventory** — `ffprobe` + `transcribe_batch` + `pack_transcripts` + sample `timeline_view` | `transcripts/*.json`, `takes_packed.md` |
+| 2 | **Pre-scan** — слипы, оговорки, фразы-избегайки | список заметок |
+| 3 | **Converse** — тип, длительность, аспект, эстетика, темп, must-keep, must-cut | бриф |
+| 4 | **Propose strategy** (4–8 предложений) → ждать подтверждения | план |
+| 5 | **Execute** — `edl.json`, animations (параллельно), grade per-segment, `render.py` | EDL, animations/, clips_graded/ |
+| 6 | **Preview** — `render.py --preview` | `preview.mp4` |
+| 7 | **Self-eval** — `timeline_view` на каждом cut-edge ±1.5s + `ffprobe` длительности (max 3 итерации) | PNG в `verify/` |
+| 8 | **Iterate + persist** — финал + запись в `project.md` | `final.mp4`, `project.md` |
+
+**Все артефакты в `<videos_dir>/edit/`** — никогда внутри репо скилла (Hard Rule 12).
 
 ---
 
-## 3. Транскрибация (audio-to-text via ElevenLabs Scribe)
+## 2. Helpers
 
-### Базовый вызов
+| Скрипт | Назначение |
+|---|---|
+| `helpers/transcribe.py` | ASR один файл через ElevenLabs Scribe |
+| `helpers/transcribe_batch.py` | Параллельная транскрипция директории (4 воркера) |
+| `helpers/pack_transcripts.py` | `transcripts/*.json` → `takes_packed.md` |
+| `helpers/timeline_view.py` | Filmstrip + waveform PNG для диапазона |
+| `helpers/render.py` | Сборка финала из EDL: extract → concat → overlays → subtitles → loudnorm |
+| `helpers/grade.py` | Цветокор через ffmpeg-фильтры (preset / auto / raw) |
+
+---
+
+## 3. Транскрипция (ElevenLabs Scribe)
+
+### `transcribe.py`
+
 ```bash
 python helpers/transcribe.py <video>
 python helpers/transcribe.py <video> --edit-dir /custom/edit
@@ -43,53 +55,65 @@ python helpers/transcribe.py <video> --language en
 python helpers/transcribe.py <video> --num-speakers 2
 ```
 
-### Параметры
-- `--edit-dir` — куда писать `transcripts/<name>.json` (по умолчанию `<video>/edit/`)
-- `--language` — ISO код (`en`, `ru`, `de`, ...). Без флага — auto-detect
-- `--num-speakers N` — точное число спикеров для лучшей диаризации
+| Флаг | Что делает |
+|---|---|
+| `<video>` | Путь к источнику (обязательно) |
+| `--edit-dir DIR` | Куда писать (default `<video_parent>/edit`) |
+| `--language` | ISO-код языка; без флага — авто-детект |
+| `--num-speakers N` | Подсказка по числу спикеров → точнее диаризация |
 
-### Batch
+### `transcribe_batch.py`
+
 ```bash
 python helpers/transcribe_batch.py <videos_dir>
 python helpers/transcribe_batch.py <videos_dir> --workers 4 --num-speakers 2 --language en
 ```
 
-### Что включено всегда
+| Флаг | Что делает |
+|---|---|
+| `--workers N` | Параллельные воркеры (default 4) |
+| `--edit-dir`, `--language`, `--num-speakers` | как в `transcribe.py` |
+
+### Что включено в каждый Scribe-вызов
+
 - `model_id: scribe_v1`
 - `diarize: true` — speaker labels (S0, S1, ...)
 - `tag_audio_events: true` — `(laughs)`, `(applause)`, `(sighs)` в выходе
 - `timestamps_granularity: word` — старт/конец на каждое слово
 
-### Кэширование (Hard Rule 9)
-Если `<edit>/transcripts/<name>.json` существует — **повторного вызова Scribe не будет**, экономит API-кредиты. Удалишь JSON — транскрибация повторится.
+### Кэш (Hard Rule 9)
 
-### Куда не лезет Scribe
-- Голосочистка / шумодав → **не делает**
-- Аудио-изоляция → **не делает** (это другой endpoint ElevenLabs, в пайплайне нет)
-- TTS (синтез голоса) → не нужно для редактуры
+Если `<edit>/transcripts/<name>.json` существует — повторного вызова Scribe нет. Удалишь JSON — транскрипция повторится.
 
 ### API key
-- `ELEVENLABS_API_KEY` в `~/repos/video-use/.env` (chmod 600)
-- Или в env var того же имени
-- Скоуп ключа: достаточно `speech_to_text`
+
+`ELEVENLABS_API_KEY` в `.env` в корне репо или в env var того же имени. Без ключа транскрипция не работает.
+
+### Hard Rules для ASR
+
+- Только **word-level verbatim** — никаких SRT/phrase-level (теряет sub-second gaps)
+- Никакого Whisper локально на CPU — нормализует филлеры и медленно. Только Scribe
+- Кэш на источник — пере-транскрибировать только если поменялся файл
 
 ---
 
-## 4. Pack transcripts (читаемая форма)
+## 4. Pack transcripts
 
 ```bash
-python helpers/pack_transcripts.py --edit-dir <edit_dir>
-python helpers/pack_transcripts.py --edit-dir <edit_dir> --silence-threshold 0.5
-python helpers/pack_transcripts.py --edit-dir <edit_dir> -o custom.md
+python helpers/pack_transcripts.py --edit-dir <dir>
+python helpers/pack_transcripts.py --edit-dir <dir> --silence-threshold 0.5
+python helpers/pack_transcripts.py --edit-dir <dir> -o custom.md
 ```
 
-### Параметры
-- `--edit-dir` — обязательно, папка где лежит `transcripts/*.json`
-- `--silence-threshold` — на каких паузах резать на фразы (по умолчанию 0.5s)
-- `-o`/`--output` — путь output (по умолчанию `<edit-dir>/takes_packed.md`)
+| Флаг | Что делает |
+|---|---|
+| `--edit-dir` | Папка с `transcripts/` (обязательно) |
+| `--silence-threshold` | Порог тишины для разрыва фразы (default 0.5s) |
+| `-o, --output` | Выходной .md (default `<edit-dir>/takes_packed.md`) |
 
 ### Что получается
-Markdown с группировкой по тейку, фразовый level, время `[start-end]` на каждой фразе. **Это — основной артефакт, который агент читает для выбора кадров.**
+
+Markdown с фразами, разбитыми на тишинах ≥ N сек **или** смене спикера. **Это primary reading view** — то, что агент читает для выбора кадров.
 
 ```
 ## C0103  (duration: 43.0s, 8 phrases)
@@ -108,257 +132,38 @@ python helpers/timeline_view.py <video> <start> <end> --n-frames 12
 python helpers/timeline_view.py <video> <start> <end> --transcript <path>
 ```
 
-Производит PNG: filmstrip из `--n-frames` кадров + waveform с пометками слов и серыми зонами тишин ≥400ms.
+PNG: filmstrip из `--n-frames` кадров + waveform с подписями слов и серыми зонами тишин ≥400ms.
 
-### Параметры
-- `start`, `end` — секунды
-- `-o` / `--output` — куда сохранять PNG (auto: `<video>/edit/verify/<name>_<start>-<end>.png`)
-- `--n-frames` — количество кадров в filmstrip (по умолчанию 10)
-- `--transcript` — путь к JSON для подписей слов (auto-резолв если есть кэш)
+| Флаг | Что делает |
+|---|---|
+| `start`, `end` | Секунды (обязательно) |
+| `-o, --output` | Куда сохранять PNG (default `<video>/edit/verify/<name>_<start>-<end>.png`) |
+| `--n-frames` | Кадров в filmstrip (default 10) |
+| `--transcript` | JSON для подписей слов (auto-резолв если есть кэш) |
 
-### Когда использовать
-- Self-eval после рендера — проверка cut boundaries (±1.5s окно)
+### Когда вызывать
+
+- Self-eval после рендера — каждый cut-edge ±1.5s
 - Disambiguate ambiguous pauses
 - Retake selection
-- Не вызывать в цикле по всем фразам — это on-demand drill-down
+- **Не вызывать в цикле по всем фразам** — это on-demand drill-down, не background index
 
 ---
 
-## 6. Cutting (EDL ranges) — hard rules
+## 6. Резка и EDL
+
+### Hard rules для cuts
 
 | Правило | Значение |
 |---|---|
 | Word boundary | Каждый cut-edge снаппится на границу слова из Scribe (Hard Rule 6) |
-| Padding | 30–200ms на head + tail (Hard Rule 7). Туже = быстрее монтаж, шире = кинематограф |
+| Padding | 30–200ms head + tail (Hard Rule 7). Туже = быстрее монтаж, шире = cinematic. Scribe-таймстемпы дрейфуют 50–100ms — паддинг компенсирует |
 | Cut targets | Тишины ≥ 400ms — самые чистые. 150–400ms — usable с визуальной проверкой. <150ms — небезопасно (mid-phrase) |
 | Speaker handoffs | 400–600ms воздуха между репликами (taste call) |
 | Audio events | `(laughs)`, `(sighs)` — расширять cut за них, реакция = beat |
 | Confirmation | Никаких разрезов до подтверждения стратегии (Hard Rule 11) |
 
----
-
-## 7. Грейдинг (color)
-
-### Через EDL (`grade` field)
-
-```json
-"grade": "subtle"                    // preset name
-"grade": "warm_cinematic"            // preset name
-"grade": "auto"                      // per-segment analysis (BROKEN on Windows)
-"grade": "eq=contrast=1.08:saturation=1.05,vignette=PI/5"  // raw ffmpeg filter
-```
-
-### Available presets
-
-| Preset | Что делает | Когда использовать |
-|---|---|---|
-| `subtle` | `eq=contrast=1.03:saturation=0.98` | Минимальная чистка, безопасно везде |
-| `neutral_punch` | `eq=contrast=1.06,curves=master='0/0 0.25/0.23 0.75/0.77 1/1'` | S-кривая + контраст, без цветовых сдвигов |
-| `warm_cinematic` | Teal/orange split, crushed blacks, -12% sat, warm shadows | Retro/cinematic talking heads, лаунч-видео |
-| `none` | Нет фильтра | Когда не просили грейдить |
-| `auto` | Анализ → bounded correction (±8%) | **Сломан на Windows** (path-escape bug) |
-
-### Standalone grade.py
-```bash
-python helpers/grade.py <input> -o <output>                   # auto mode
-python helpers/grade.py <input> -o <output> --preset warm_cinematic
-python helpers/grade.py <input> -o <output> --filter 'eq=contrast=1.1'
-python helpers/grade.py --print-preset warm_cinematic         # печатает фильтр
-python helpers/grade.py --analyze <input>                     # печатает auto-grade анализ
-```
-
-### ASC CDL ментальная модель (для своих фильтров)
-- `slope` → highlights
-- `offset` → shadows
-- `power` → midtones
-- Затем глобальная saturation
-- `out = (in * slope + offset) ** power`
-
-### Произвольные ffmpeg-фильтры в grade
-- `eq=contrast=X:brightness=X:saturation=X`
-- `curves=master='0/0 0.25/0.20 0.75/0.80 1/1'`
-- `colorbalance=rs=-0.1:gs=0:bs=0.1` (red shadows / blue shadows)
-- `vignette=PI/5` (мягкая) / `PI/4` (заметная) / `PI/3` (драматичная)
-- `eq=gamma_r=1.05:gamma_b=0.95` (warm/cool tilt)
-
-### Hard rule
-**Грейд применяется per-segment во время extract**, не post-concat. Иначе двойное re-encode.
-
----
-
-## 8. Виньетка (built-in ffmpeg filter)
-
-В EDL grade-цепочку:
-```json
-"grade": "eq=contrast=1.05,vignette=PI/5"
-```
-
-Параметры `vignette` filter:
-- `angle=PI/N` — ширина (бóльший N = шире, мягче)
-- `mode=backward` — пульсация
-- `eval=init` — статичный (по умолчанию)
-
----
-
-## 9. Субтитры (burn-in via libass)
-
-### Вкл/выкл при рендере
-
-```bash
-python helpers/render.py <edl> -o final.mp4 --build-subtitles
-python helpers/render.py <edl> -o final.mp4 --no-subtitles
-```
-
-- `--build-subtitles` — генерирует `master.srt` из транскриптов с output-timeline offsets
-- `--no-subtitles` — игнорирует subtitle поле в EDL
-- Нет флагов → берёт `subtitles` поле из EDL (если есть)
-
-### Built-in style (`bold-overlay`, для вертикали 1080×1920)
-
-```
-FontName=Helvetica
-FontSize=18
-Bold=1
-PrimaryColour=&H00FFFFFF (white)
-OutlineColour=&H00000000 (black)
-BorderStyle=1, Outline=2, Shadow=0
-Alignment=2 (bottom-center)
-MarginV=90  (~30% от низа — clear of TikTok/Reels/Shorts UI)
-```
-
-Стиль захардкожен в `SUB_FORCE_STYLE` константе `helpers/render.py`. Меняется правкой строки.
-
-### Группировка
-- 2-word chunks
-- UPPERCASE (после break на пунктуации)
-- Punctuation breaks: `.,!?;:`
-
-### Hard rules
-1. **Субтитры применяются ПОСЛЕДНИМИ** в filter chain (Hard Rule 1) — иначе оверлеи их прячут
-2. **Output-timeline offsets** (Hard Rule 5) — `output_time = word.start - segment_start + segment_offset`
-
----
-
-## 10. Анимации / overlays
-
-### Tool options
-- **PIL + PNG sequence + ffmpeg** — простые карточки, counters, typewriter, bar reveals
-- **Manim** — формальные диаграммы, equations, graph morphs (`skills/manim-video/SKILL.md`)
-- **Remotion** — typography-heavy, brand-aligned, web-adjacent layouts (React/CSS)
-
-### EDL overlay format
-
-```json
-"overlays": [
-  {
-    "file": "edit/animations/slot_1/render.mp4",
-    "start_in_output": 0.0,
-    "duration": 5.0
-  }
-]
-```
-
-### Duration heuristics
-- Sync-to-narration: 5–7s simple cards, 8–14s сложные диаграммы
-- Beat-synced accents: 0.5–2s
-- Hold final frame ≥ 1s before cut
-- Над voiceover: total ≥ `narration_length + 1s`
-- Никогда не parallel-reveal независимых элементов
-
-### Easing (universal — никогда `linear`)
-```python
-def ease_out_cubic(t):    return 1 - (1 - t) ** 3
-def ease_in_out_cubic(t):
-    if t < 0.5: return 4 * t ** 3
-    return 1 - (-2 * t + 2) ** 3 / 2
-```
-
-### Hard rules
-- **PTS shift**: `setpts=PTS-STARTPTS+T/TB` чтобы overlay's frame 0 → window start (Hard Rule 4)
-- **Parallel sub-agents** для нескольких анимаций (Hard Rule 10) — никогда не sequential
-
----
-
-## 11. Render — главный pipeline
-
-```bash
-python helpers/render.py <edl.json> -o final.mp4
-python helpers/render.py <edl.json> -o preview.mp4 --preview
-python helpers/render.py <edl.json> -o draft.mp4 --draft
-python helpers/render.py <edl.json> -o final.mp4 --build-subtitles
-python helpers/render.py <edl.json> -o final.mp4 --no-subtitles
-python helpers/render.py <edl.json> -o final.mp4 --no-loudnorm
-```
-
-### Quality ladder
-
-| Mode | Resolution | Preset | CRF | Use case |
-|---|---|---|---|---|
-| Default (final) | 1080p (или 1080×1920 vertical) | `fast` | 20 | Финал |
-| `--preview` | 1080p / 1080×1920 | `medium` | 22 | Self-eval, QC |
-| `--draft` | 720p / 720×1280 | `ultrafast` | 28 | Только cut-point check |
-
-### Что происходит внутри
-1. **Per-segment extract** с грейдом + 30ms audio fades (Hard Rule 3)
-2. **Lossless `-c copy` concat** в base.mp4 (Hard Rule 2)
-3. **HDR → SDR tone mapping** автоматически если source HLG/PQ (Hard Rule безопасности)
-4. **Final composite**: overlays (PTS-shifted) → subtitles ПОСЛЕДНИЕ → out
-5. **Loudness normalization** двухпроходный: -14 LUFS / -1 dBTP / LRA 11
-
-### Файловые артефакты
-- `clips_graded/` — финальные сегменты (или `clips_preview/` / `clips_draft/`)
-- `base.mp4` — concat без overlays/subs
-- `master.srt` — если `--build-subtitles`
-- `verify/` — debug PNG-кадры
-- `_concat.txt` — временный список (удаляется после)
-- `<output>.prenorm.mp4` — pre-loudnorm temp (удаляется после)
-
----
-
-## 12. Аудио
-
-### Loudness normalization (по умолчанию on)
-- Цель: -14 LUFS integrated, -1 dBTP true peak, LRA 11 LU
-- Стандарт: YouTube / IG / TikTok / X / LinkedIn
-- Двухпроходный: pass 1 measure, pass 2 normalize
-- В preview/draft режиме — однопроходный (быстрее, чуть менее точно)
-- Отключить: `--no-loudnorm`
-
-### Audio fades (всегда)
-- 30ms fade in + 30ms fade out на каждом сегменте (Hard Rule 3)
-- Без них слышны клики/попы на каждом cut
-
-### Что НЕ в пайплайне
-- Голосочистка (RNNoise, FFT denoise)
-- Audio Isolation (ElevenLabs separate product)
-- De-esser
-- Equalization (графический EQ, multi-band compression)
-- Music underbed / sidechain ducking
-
-Всё перечисленное **можно добавить** ffmpeg-фильтрами в `extract_segment` или новым шагом, но из коробки этого нет.
-
----
-
-## 13. Output формат
-
-### Common targets (произвольно меняются)
-- `1920×1080@24` — cinematic
-- `1920×1080@30` — screen content
-- `1080×1920@30` — vertical social ⭐ (default vertical)
-- `3840×2160@24` — 4K cinema
-- `1080×1080@30` — square
-
-### Default scale в render.py
-- Landscape source → `scale=1920:-2`
-- Portrait source → `scale=-2:1920` (после fix PR #23)
-- 24fps по умолчанию (libx264 -r 24)
-
-### 1440p / 4K / custom resolution
-**Не из коробки.** Чтобы получить — править `extract_segment` scale-фильтр или добавить аргумент `--height N`. Помни: апскейл (1080 source → 1440p output) реальной детализации не даст.
-
----
-
-## 14. EDL format
+### EDL format
 
 ```json
 {
@@ -386,43 +191,282 @@ python helpers/render.py <edl.json> -o final.mp4 --no-loudnorm
 }
 ```
 
-Поля:
-- `sources` — словарь `{name: abs_path}`. Имена используются в `ranges[].source`
-- `ranges` — список cut'ов в порядке итогового тайминга
-- `grade` — preset name / raw filter / `"auto"` / null
-- `overlays` — opt
-- `subtitles` — opt, путь к .srt
-- `total_duration_s` — для self-check
+### Архетипы структуры (для editor sub-agent)
+
+- Tech launch / demo: HOOK → PROBLEM → SOLUTION → BENEFIT → EXAMPLE → CTA
+- Tutorial: INTRO → SETUP → STEPS → GOTCHAS → RECAP
+- Interview: (QUESTION → ANSWER → FOLLOWUP) repeat
+- Travel / event: ARRIVAL → HIGHLIGHTS → QUIET MOMENTS → DEPARTURE
+- Documentary: THESIS → EVIDENCE → COUNTERPOINT → CONCLUSION
+- Music / performance: INTRO → VERSE → CHORUS → BRIDGE → OUTRO
+- Или придумать свой
 
 ---
 
-## 15. Project memory
+## 7. Грейдинг
 
-### `<edit>/project.md`
-Append-only лог сессий. После каждой работы агент дописывает блок:
-```markdown
-## Session N — YYYY-MM-DD
+### Через EDL (`grade` field)
 
-**Strategy:** ...
-**Decisions:** ...
-**Reasoning log:** ...
-**Outstanding:** ...
+```json
+"grade": "subtle"
+"grade": "warm_cinematic"
+"grade": "auto"
+"grade": "eq=contrast=1.08:saturation=1.05"
 ```
 
-При следующем заходе в ту же папку агент **читает project.md первым** и одной фразой суммирует прошлую сессию.
+### Пресеты (`helpers/grade.py`)
 
-### `<edit>/takes_packed.md` — primary reading view (см. §4)
-### `<edit>/transcripts/*.json` — Scribe кэш (никогда не пере-транскрибируется без удаления)
+| Имя | Filter | Назначение |
+|---|---|---|
+| `subtle` | `eq=contrast=1.03:saturation=0.98` | Минимальная коррекция, безопасная везде |
+| `neutral_punch` | `eq=contrast=1.06,curves=master='0/0 0.25/0.23 0.75/0.77 1/1'` | Контраст + S-кривая, без сдвигов оттенка |
+| `warm_cinematic` | `eq=contrast=1.12:brightness=-0.02:saturation=0.88, colorbalance=…, curves=…` | Retro/cinematic, teal/orange split. **Opt-in**, не дефолт |
+| `none` | `""` | Skip grading |
+
+### `auto` mode
+
+Анализирует клип (mean brightness, RMS contrast, saturation), эмитит bounded correction (±8% per axis). Не применяет creative LUT, teal/orange split, filmic curves. Цель: «look clean without looking graded». Для creative looks — `--preset warm_cinematic` явно.
+
+### Standalone `grade.py`
+
+```bash
+python helpers/grade.py <input> -o <output>                   # auto mode (default)
+python helpers/grade.py <input> -o <output> --preset warm_cinematic
+python helpers/grade.py <input> -o <output> --filter 'eq=contrast=1.1'
+python helpers/grade.py --print-preset warm_cinematic         # печатает фильтр
+python helpers/grade.py --analyze <input>                     # печатает auto-grade анализ
+```
+
+### Mental model: ASC CDL
+
+Per channel: `out = (in * slope + offset) ** power`, потом global saturation.
+- `slope` → highlights
+- `offset` → shadows
+- `power` → midtones
+
+### Custom-фильтры
+
+Любая ffmpeg-цепочка работает в `grade` поле EDL или в `--filter`: `eq=`, `curves=`, `colorbalance=`, `colorchannelmixer=`, `lutyuv=`, `lut3d=`, `tonemap=`, `vignette=` и т.д.
+
+### Hard rule
+
+Грейд применяется **per-segment во время extract**, не post-concat. Иначе двойное re-encode.
 
 ---
 
-## 16. Directory layout
+## 8. Субтитры (burn-in via libass)
+
+### Включение/выключение в `render.py`
+
+```bash
+python helpers/render.py <edl> -o final.mp4 --build-subtitles
+python helpers/render.py <edl> -o final.mp4 --no-subtitles
+```
+
+- `--build-subtitles` — генерит `master.srt` из транскриптов с output-timeline offsets перед композитингом
+- `--no-subtitles` — игнорит `subtitles` поле в EDL
+- Без флагов — берёт `subtitles` поле из EDL (если есть)
+
+### Built-in style (`bold-overlay`, для вертикали 1080×1920)
+
+Зашит в `SUB_FORCE_STYLE` константе `helpers/render.py`:
+
+```
+FontName=Helvetica,FontSize=18,Bold=1,
+PrimaryColour=&H00FFFFFF, OutlineColour=&H00000000, BackColour=&H00000000,
+BorderStyle=1, Outline=2, Shadow=0,
+Alignment=2, MarginV=90
+```
+
+`MarginV=90` — не вкус, а правило safe-zone: caption baseline ~30% от низа, чтобы не перекрывался UI TikTok / Reels / Shorts (caption + username + music + right-rail). Не опускать ниже ~75 без особой причины.
+
+### Группировка `bold-overlay`
+
+- 2-word chunks
+- UPPERCASE
+- Punctuation breaks: `.,!?;:`
+
+### `natural-sentence` (для documentary / education)
+
+4–7 слов, sentence case, разрыв на естественных паузах, `MarginV=60–80`, шрифт побольше. **Шипованного force_style нет** — придумать свой если нужно.
+
+### Три измерения стиля
+
+1. **Chunking** — 1 / 2 / 3 / sentence слов на строку
+2. **Case** — UPPER / Title / Natural
+3. **Placement** — `MarginV` от низа
+
+### Hard rules subtitles
+
+1. Субтитры применяются **ПОСЛЕДНИМИ** в filter chain (Hard Rule 1) — иначе оверлеи их прячут
+2. **Output-timeline offsets** (Hard Rule 5): `output_time = word.start - segment_start + segment_offset`
+
+---
+
+## 9. Анимации / overlays
+
+### Tool options
+
+| Tool | Когда |
+|---|---|
+| **PIL + PNG sequence + ffmpeg** | Простые карточки, counters, typewriter, bar reveals. Любая эстетика, быстрые итерации |
+| **Manim** | Формальные диаграммы, equations, graph morphs (`skills/manim-video/SKILL.md` для глубины) |
+| **Remotion** | Typography-heavy, brand-aligned, web-adjacent layouts (React/CSS) |
+
+### EDL overlay format
+
+```json
+"overlays": [
+  {
+    "file": "edit/animations/slot_1/render.mp4",
+    "start_in_output": 0.0,
+    "duration": 5.0
+  }
+]
+```
+
+### Duration heuristics (context-dependent)
+
+- **Sync-to-narration:** floor 3s, типично 5–7s simple cards, 8–14s complex diagrams
+- **Beat-synced accents** (music, fast montage): 0.5–2s
+- **Hold final frame** ≥ 1s before cut (universal)
+- **Над voiceover:** total ≥ `narration_length + 1s` (universal)
+- **Никогда не parallel-reveal** независимых элементов — глаз не отслеживает два новых одновременно
+
+### Animation payoff timing
+
+Получить timestamp payoff-слова. Стартовать оверлей `reveal_duration` секунд раньше, чтобы landing frame совпал со spoken payoff word.
+
+### Easing (universal — никогда `linear`)
+
+```python
+def ease_out_cubic(t):    return 1 - (1 - t) ** 3
+def ease_in_out_cubic(t):
+    if t < 0.5: return 4 * t ** 3
+    return 1 - (-2 * t + 2) ** 3 / 2
+```
+
+`ease_out_cubic` — single reveals (slow landing). `ease_in_out_cubic` — continuous draws.
+
+### Typing text anchor trick
+
+Центрировать на ширине **полной строки**, не partial. Иначе текст съезжает влево по мере роста.
+
+### Worked example palette (один из бесконечных)
+
+- BG `(10, 10, 10)` near-black
+- Accent `#FF5A00` / `(255, 90, 0)` orange
+- Labels `(110, 110, 110)` dim gray
+- Font: Menlo Bold (`/System/Library/Fonts/Menlo.ttc`, index 1)
+- ≤ 2 accent colors, ~40% empty space, minimal chrome
+
+### Sub-agent brief (для каждой анимации)
+
+10 пунктов на каждый параллельный sub-agent:
+1. One-sentence goal: «Build ONE animation: [spec]. Nothing else.»
+2. Absolute output path (`<edit>/animations/slot_<id>/render.mp4`)
+3. Тех-спек: разрешение, fps, codec, pix_fmt, CRF, duration
+4. Style palette (RGB tuples / hex)
+5. Font path с index
+6. Frame-by-frame timeline (что когда, с easing)
+7. Anti-list (без chrome / extras / titles если не указано)
+8. Code pattern reference (копировать helpers inline, не импортировать через slots)
+9. Deliverable checklist (script, render, ffprobe-verify duration, report)
+10. **«Do not ask questions. If anything is ambiguous, pick the most obvious interpretation and proceed.»**
+
+### Hard rules animations
+
+- **PTS shift**: `setpts=PTS-STARTPTS+T/TB` чтобы overlay's frame 0 → window start (Hard Rule 4)
+- **Parallel sub-agents** для нескольких анимаций (Hard Rule 10) — никогда sequential
+
+---
+
+## 10. Render
+
+```bash
+python helpers/render.py <edl.json> -o final.mp4
+python helpers/render.py <edl.json> -o preview.mp4 --preview
+python helpers/render.py <edl.json> -o draft.mp4 --draft
+python helpers/render.py <edl.json> -o final.mp4 --build-subtitles
+python helpers/render.py <edl.json> -o final.mp4 --no-subtitles
+python helpers/render.py <edl.json> -o final.mp4 --no-loudnorm
+```
+
+### Quality ladder
+
+| Mode | Resolution | Preset | CRF | Use case |
+|---|---|---|---|---|
+| Default (final) | 1080p | `fast` | 20 | Финал |
+| `--preview` | 1080p | `medium` | 22 | Self-eval, QC |
+| `--draft` | 720p | `ultrafast` | 28 | Только cut-point check |
+
+### Что происходит внутри
+
+1. **Per-segment extract** с грейдом + 30ms audio fades (Hard Rule 3)
+2. **Lossless `-c copy` concat** в base.mp4 (Hard Rule 2)
+3. **HDR → SDR tone mapping** автоматически если source HLG/PQ
+4. **Final composite**: overlays (PTS-shifted, Hard Rule 4) → subtitles ПОСЛЕДНИЕ (Hard Rule 1) → out
+5. **Loudness normalization** двухпроходный: -14 LUFS / -1 dBTP / LRA 11
+
+### Промежуточные файлы
+
+- `clips_graded/` — финальные сегменты (или `clips_preview/` / `clips_draft/`)
+- `base.mp4` — concat без overlays/subs (или `base_preview.mp4` / `base_draft.mp4`)
+- `master.srt` — если `--build-subtitles`
+- `_concat.txt` — временный список (удаляется)
+- `<output>.prenorm.mp4` — pre-loudnorm temp (удаляется)
+
+### Output scale
+
+`render.py` дефолтит scale на 1080p из любого источника. Для других целей — `--filter` или править extract-команду.
+
+---
+
+## 11. Аудио
+
+### Loudnorm (по умолчанию on)
+
+- Цель: **-14 LUFS integrated, -1 dBTP true peak, LRA 11 LU**
+- Стандарт: YouTube / IG / TikTok / X / LinkedIn
+- Двухпроходный: pass 1 measure, pass 2 normalize
+- В preview/draft режиме — однопроходный
+- Отключить: `--no-loudnorm`
+
+### Audio fades (Hard Rule 3)
+
+30ms fade in + 30ms fade out на каждом сегменте:
+```
+afade=t=in:st=0:d=0.03,afade=t=out:st={dur-0.03}:d=0.03
+```
+Без них — клики/попы на каждом cut.
+
+### Audio-events как сигналы
+
+`(laughs)`, `(sighs)`, `(applause)` от Scribe — beat-маркеры. Резать **после** них, не на них.
+
+---
+
+## 12. Output формат
+
+Common targets (произвольно меняются):
+
+- `1920×1080@24` — cinematic
+- `1920×1080@30` — screen content
+- `1080×1920@30` — vertical social
+- `3840×2160@24` — 4K cinema
+- `1080×1080@30` — square
+
+`render.py` дефолтит scale на 1080p; для других — `--filter` или править extract-команду.
+
+---
+
+## 13. Directory layout
 
 ```
 <videos_dir>/
-├── <source files>             ← твои сырьё
+├── <source files>             ← сырьё
 └── edit/                      ← всё, что генерит агент
-    ├── project.md             ← memory
+    ├── project.md             ← memory сессий
     ├── takes_packed.md        ← phrase-level view
     ├── edl.json               ← cut decisions
     ├── transcripts/<name>.json
@@ -437,102 +481,68 @@ Append-only лог сессий. После каждой работы агент
 
 ---
 
-## 17. Hard Rules (production correctness — non-negotiable)
+## 14. Memory — `project.md`
+
+Append-only лог сессий в `<edit>/project.md`. Один блок на сессию:
+
+```markdown
+## Session N — YYYY-MM-DD
+
+**Strategy:** one paragraph describing the approach
+**Decisions:** take choices, cuts, grades, animations + why
+**Reasoning log:** one-line rationale for non-obvious decisions
+**Outstanding:** deferred items
+```
+
+При следующем заходе в ту же папку — читать `project.md` первым делом, одной фразой суммировать прошлую сессию перед вопросом «продолжить?».
+
+---
+
+## 15. Hard Rules (production correctness — non-negotiable)
 
 | # | Правило |
 |---|---|
 | 1 | Subtitles в filter chain — ПОСЛЕДНИМИ |
-| 2 | Per-segment extract → lossless `-c copy` concat (НЕ single-pass) |
+| 2 | Per-segment extract → lossless `-c copy` concat (НЕ single-pass filtergraph) |
 | 3 | 30ms audio fades на каждом сегменте |
 | 4 | Overlays через `setpts=PTS-STARTPTS+T/TB` |
 | 5 | Master SRT через output-timeline offsets |
 | 6 | Cut только на word boundary |
 | 7 | Cut padding 30–200ms |
-| 8 | Word-level verbatim ASR only (не SRT-mode, не нормализация фиддлеров) |
+| 8 | Word-level verbatim ASR only (не SRT-mode, не нормализация филлеров) |
 | 9 | Cache transcripts per source — никогда не re-transcribe без причины |
 | 10 | Parallel sub-agents для нескольких анимаций (не sequential) |
 | 11 | Strategy confirmation **до** execution |
-| 12 | Все session outputs в `<videos_dir>/edit/`, не внутри репо |
+| 12 | Все session outputs в `<videos_dir>/edit/`, не внутри репо скилла |
 
 ---
 
-## 18. Anti-patterns (что НЕ делать)
+## 16. Anti-patterns
 
 - Hierarchical pre-computed codec formats / USABILITY-теги — over-engineering
-- Hand-tuned moment-scoring functions — LLM выбирает лучше
+- Hand-tuned moment-scoring functions — LLM выбирает лучше любого heuristic'а
 - Whisper SRT / phrase-level — теряет sub-second gap data
 - Whisper local на CPU — медленно, нормализует filler-words
-- Subs burned в base **до** overlays — overlays их перекроют
-- Single-pass filtergraph при overlays — двойной re-encode
+- Subs burned в base **до** overlays — overlays их перекроют (Hard Rule 1)
+- Single-pass filtergraph при overlays — двойной re-encode (Hard Rule 2)
 - Linear easing анимаций — выглядит роботно
-- Hard cuts без 30ms fades — клики
+- Hard cuts без 30ms fades — клики (Hard Rule 3)
 - Typing text centered на partial string — съезжает влево
-- Sequential sub-agents для анимаций — параллельность обязательна
-- Re-transcribing кэшированных source'ов
-- Editing до confirm стратегии
+- Sequential sub-agents для анимаций (Hard Rule 10)
+- Editing до confirm стратегии (Hard Rule 11)
+- Re-transcribing кэшированных source'ов (Hard Rule 9)
+- Assuming what kind of video it is — look first, ask second, edit last
 
 ---
 
-## 19. URL pulls (yt-dlp)
+## 17. Setup / окружение (на холодный старт)
 
-Не in pipeline by default. Если нужен — установить `yt-dlp` лениво на первое использование:
-```bash
-# Windows (нет brew/apt) — pip
-pip install yt-dlp
-```
-Скачанные файлы → `<edit>/downloads/`.
+Установка лежит в `install.md`. На холодный старт сессии — только верификация:
 
----
+- `ELEVENLABS_API_KEY` резолвится (env var или `.env` в корне репо). Если нет — попросить пользователя один раз и записать в `.env` (никогда не в `<videos_dir>`)
+- `ffmpeg` + `ffprobe` на PATH
+- Python deps установлены (`uv sync` или `pip install -e .` внутри репо)
+- `yt-dlp`, `manim`, Remotion ставятся **только при первом использовании**
+- Скилл vendoрит `skills/manim-video/` — читать его SKILL.md когда строишь Manim slot
 
-## 20. Что НЕ умеет из коробки (требует расширения)
-
-| Feature | Сложность | Куда добавлять |
-|---|---|---|
-| Background music + sidechain ducking | ~50 LOC | новое поле `music` в EDL, шаг в `render.py` после composite |
-| Voice denoise (RNNoise / arnndn) | ~10 LOC | в `extract_segment`, `-af` цепочка |
-| ElevenLabs Audio Isolation | ~30 LOC | новый шаг перед `transcribe.py` или в `extract_segment` |
-| Speed ramps / freeze frames | средне | новый range type в EDL + setpts/atempo в extract |
-| J-cuts / L-cuts (audio leads/trails video) | средне | разделить video range и audio range в EDL |
-| Dynamic crop / face tracking | сложно | внешний AI-инструмент |
-| Auto poster/thumbnail | ~5 LOC | один ffmpeg вызов после final |
-| Multi-camera sync | сложно | timecode-aware sync utility |
-| Custom resolution arg | ~10 LOC | флаг `--height N` в render.py |
-| Auto grade (Windows fix) | ~5 LOC | escape backslashes в filter string |
-
----
-
-## 21. Auto-update (this machine)
-
-Daily на твоей машине через Task Scheduler:
-- Task: **"Video-use Daily Update"**
-- Trigger: At log on, +10 min delay
-- Action: `wscript.exe "C:\Users\sidor\bin\video-use-update.vbs"` (silent, no console flash)
-- Скрипт: `git fetch origin → checkout main → pull --ff-only → checkout fix/vertical-source-scale → rebase main → uv sync`
-- Лог: `C:\Users\sidor\video-use-update.log`
-- При rebase-конфликте: aborts, логирует, ждёт ручного вмешательства
-
-После мерджа PR #23 fix-ветка станет no-op, можно удалить:
-```bash
-git branch -d fix/vertical-source-scale
-git push fork --delete fix/vertical-source-scale
-```
-
----
-
-## 22. Open issues / known bugs
-
-1. **`grade.py` auto mode** ломается на Windows из-за path-escape (`metadata=print:file=C:\...`) — workaround: использовать preset вместо `auto` в EDL
-2. **`pack_transcripts.py`** падал на Windows cp1251 codec при символе `≥` — workaround: `PYTHONUTF8=1 python helpers/pack_transcripts.py ...`
-3. **`render.py` vertical scale** — фикс отправлен в PR #23, локально применён через rebase
-
----
-
-## 23. Конфигурационные файлы
-
-| Файл | Что |
-|---|---|
-| `~/.claude/CLAUDE.md` | глобальные стандарты (язык, default grade, default vignette, output naming) |
-| `<videos_root>/CLAUDE.md` | per-folder стандарты (бренд-палитра, имена спикеров, шрифты) |
-| `<videos>/edit/project.md` | per-project memory + standing preferences |
-| `~/repos/video-use/.env` | ELEVENLABS_API_KEY |
-| `~/.claude/skills/video-use` | junction → `~/repos/video-use` |
+Хелперы (`helpers/transcribe.py`, etc.) живут рядом с этим SKILL.md. Резолвить пути относительно директории, содержащей этот файл — скилл обычно симлинкнут в `~/.claude/skills/video-use/` или `~/.codex/skills/video-use/`.
