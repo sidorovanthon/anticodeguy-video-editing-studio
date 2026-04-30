@@ -28,3 +28,14 @@ def find_raw_video(episode_dir: Path) -> Path:
             f"raw.<ext> ambiguous in {episode_dir}: matched {sorted(p.name for p in matches)}"
         )
     return matches[0]
+
+
+def audio_stream_has_clean_tag(ffprobe_json: dict) -> bool:
+    """Return True iff any audio stream carries ANTICODEGUY_AUDIO_CLEANED=elevenlabs-v1."""
+    for stream in ffprobe_json.get("streams", []):
+        if stream.get("codec_type") != "audio":
+            continue
+        tags = stream.get("tags") or {}
+        if tags.get(TAG_KEY) == TAG_VALUE:
+            return True
+    return False
