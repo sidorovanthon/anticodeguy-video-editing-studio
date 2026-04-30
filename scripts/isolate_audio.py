@@ -39,13 +39,17 @@ def find_raw_video(episode_dir: Path) -> Path:
     return matches[0]
 
 
-def audio_stream_has_clean_tag(ffprobe_json: dict) -> bool:
-    """Return True iff any audio stream carries ANTICODEGUY_AUDIO_CLEANED=elevenlabs-v1."""
-    for stream in ffprobe_json.get("streams", []):
-        if stream.get("codec_type") != "audio":
-            continue
-        tags = stream.get("tags") or {}
-        if tags.get(TAG_KEY) == TAG_VALUE:
+def container_has_clean_tag(ffprobe_json: dict) -> bool:
+    """Return True iff the container carries ANTICODEGUY_AUDIO_CLEANED=elevenlabs-v1.
+
+    The tag is stored at the container/format level (not on the audio stream)
+    because mp4 silently drops custom keys from per-stream metadata. mp4 also
+    lowercases container metadata keys (-> 'anticodeguy_audio_cleaned'), while
+    mkv preserves case — so the key match is case-insensitive.
+    """
+    tags = (ffprobe_json.get("format") or {}).get("tags") or {}
+    for k, v in tags.items():
+        if k.lower() == TAG_KEY.lower() and v == TAG_VALUE:
             return True
     return False
 
@@ -94,7 +98,12 @@ def extract_audio_cmd(src: Path, dst: Path) -> list[str]:
 
 
 def mux_cmd(src_video: Path, src_wav: Path, dst: Path, *, tag_value: str) -> list[str]:
-    """ffmpeg argv to mux src_video's video stream with src_wav's audio, stamping the tag."""
+    """ffmpeg argv to mux src_video's video stream with src_wav's audio, stamping the tag.
+
+    The tag is written at the **container/format** level (not per-stream) because mp4
+    silently drops custom per-stream metadata keys. -movflags use_metadata_tags is
+    required so mp4 preserves arbitrary keys like ANTICODEGUY_AUDIO_CLEANED.
+    """
     return [
         "ffmpeg", "-y",
         "-i", str(src_video),
@@ -104,7 +113,8 @@ def mux_cmd(src_video: Path, src_wav: Path, dst: Path, *, tag_value: str) -> lis
         "-c:v", "copy",
         "-c:a", "aac",
         "-b:a", "192k",
-        "-metadata:s:a:0", f"{TAG_KEY}={tag_value}",
+        "-movflags", "use_metadata_tags",
+        "-metadata", f"{TAG_KEY}={tag_value}",
         str(dst),
     ]
 
@@ -181,7 +191,7 @@ def _run(runner, cmd: list[str]) -> None:
 
 
 def _ffprobe_json(runner, video: Path) -> dict:
-    cmd = ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_streams", str(video)]
+    cmd = ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", str(video)]
     try:
         result = runner(cmd, capture_output=True, check=False)
     except FileNotFoundError as e:
@@ -209,7 +219,7 @@ def isolate(
 
     # Layer 1: tag check (full no-op).
     probe = _ffprobe_json(runner, raw)
-    if audio_stream_has_clean_tag(probe):
+    if container_has_clean_tag(probe):
         return IsolateResult(
             cached=True, api_called=False, raw_path=raw, wav_path=wav_path,
             reason="tag-present",

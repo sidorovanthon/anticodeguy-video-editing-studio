@@ -5,7 +5,7 @@ import json
 import pytest
 
 from scripts.isolate_audio import find_raw_video, IsolationError
-from scripts.isolate_audio import audio_stream_has_clean_tag
+from scripts.isolate_audio import container_has_clean_tag
 from scripts.isolate_audio import load_api_key
 from scripts.isolate_audio import extract_audio_cmd, mux_cmd
 from scripts.isolate_audio import call_isolation_api, ISOLATION_URL
@@ -36,37 +36,35 @@ def test_find_raw_video_errors_on_ambiguous(tmp_path: Path):
         find_raw_video(tmp_path)
 
 
-def test_tag_detected_when_present_on_audio_stream():
+def test_tag_detected_when_present_in_container():
     ffprobe_out = {
-        "streams": [
-            {"codec_type": "video"},
-            {"codec_type": "audio", "tags": {"ANTICODEGUY_AUDIO_CLEANED": "elevenlabs-v1"}},
-        ]
+        "format": {"tags": {"ANTICODEGUY_AUDIO_CLEANED": "elevenlabs-v1"}}
     }
-    assert audio_stream_has_clean_tag(ffprobe_out) is True
+    assert container_has_clean_tag(ffprobe_out) is True
+
+
+def test_tag_detected_case_insensitively():
+    """mp4 lowercases container metadata keys; mkv preserves case. Match either."""
+    ffprobe_out = {
+        "format": {"tags": {"anticodeguy_audio_cleaned": "elevenlabs-v1"}}
+    }
+    assert container_has_clean_tag(ffprobe_out) is True
 
 
 def test_tag_absent_when_no_tags_dict():
-    ffprobe_out = {"streams": [{"codec_type": "audio"}]}
-    assert audio_stream_has_clean_tag(ffprobe_out) is False
+    ffprobe_out = {"format": {}}
+    assert container_has_clean_tag(ffprobe_out) is False
 
 
 def test_tag_absent_when_wrong_value():
     ffprobe_out = {
-        "streams": [{"codec_type": "audio", "tags": {"ANTICODEGUY_AUDIO_CLEANED": "elevenlabs-v0"}}]
+        "format": {"tags": {"ANTICODEGUY_AUDIO_CLEANED": "elevenlabs-v0"}}
     }
-    assert audio_stream_has_clean_tag(ffprobe_out) is False
+    assert container_has_clean_tag(ffprobe_out) is False
 
 
-def test_tag_ignored_on_video_stream():
-    ffprobe_out = {
-        "streams": [{"codec_type": "video", "tags": {"ANTICODEGUY_AUDIO_CLEANED": "elevenlabs-v1"}}]
-    }
-    assert audio_stream_has_clean_tag(ffprobe_out) is False
-
-
-def test_tag_absent_when_no_streams_key():
-    assert audio_stream_has_clean_tag({}) is False
+def test_tag_absent_when_no_format_key():
+    assert container_has_clean_tag({}) is False
 
 
 def test_load_api_key_from_environ_when_no_files(tmp_path: Path):
@@ -158,10 +156,11 @@ def test_mux_cmd_includes_metadata_tag():
     # mapping: video from input 0, audio from input 1
     assert "0:v" in cmd_str
     assert "1:a" in cmd_str
-    # metadata tag
-    assert any(
-        x == "ANTICODEGUY_AUDIO_CLEANED=elevenlabs-v1" for x in cmd_str
-    ), f"tag missing in {cmd_str}"
+    # metadata tag at container level (not -metadata:s:a:0 — mp4 drops per-stream
+    # custom keys; format-level + -movflags use_metadata_tags is the cross-format trick)
+    assert "-movflags" in cmd_str and "use_metadata_tags" in cmd_str
+    tag_idx = cmd_str.index("ANTICODEGUY_AUDIO_CLEANED=elevenlabs-v1")
+    assert cmd_str[tag_idx - 1] == "-metadata", "tag must be container-level (-metadata), not -metadata:s:a:0"
     # output last
     assert cmd_str[-1] == str(dst)
 
@@ -258,7 +257,7 @@ def test_isolate_happy_path_calls_api_and_muxes(tmp_path: Path):
 
     fixture = (Path(__file__).parent / "fixtures" / "elevenlabs_response_tiny.wav").read_bytes()
     runner = _make_runner(
-        ffprobe_json={"streams": [{"codec_type": "audio"}]},  # no tag → must call API
+        ffprobe_json={"format": {}},  # no tag → must call API
         fixture_wav=fixture,
     )
 
@@ -310,11 +309,7 @@ def test_isolate_short_circuits_when_tag_present(tmp_path: Path):
     (ep / "raw.mp4").write_bytes(b"x")
 
     runner = _make_runner(
-        ffprobe_json={
-            "streams": [
-                {"codec_type": "audio", "tags": {"ANTICODEGUY_AUDIO_CLEANED": "elevenlabs-v1"}}
-            ]
-        },
+        ffprobe_json={"format": {"tags": {"ANTICODEGUY_AUDIO_CLEANED": "elevenlabs-v1"}}},
         fixture_wav=b"",
     )
 
@@ -347,7 +342,7 @@ def test_isolate_skips_api_when_wav_cached(tmp_path: Path):
     (audio_dir / "raw.cleaned.wav").write_bytes(fixture)
 
     runner = _make_runner(
-        ffprobe_json={"streams": [{"codec_type": "audio"}]},  # tag absent → mux still runs
+        ffprobe_json={"format": {}},  # tag absent → mux still runs
         fixture_wav=fixture,
     )
 
@@ -383,7 +378,7 @@ def test_isolate_raises_on_api_non_200(tmp_path: Path):
     (ep / "raw.mp4").write_bytes(b"x")
 
     runner = _make_runner(
-        ffprobe_json={"streams": [{"codec_type": "audio"}]},
+        ffprobe_json={"format": {}},
         fixture_wav=(Path(__file__).parent / "fixtures" / "elevenlabs_response_tiny.wav").read_bytes(),
     )
 
@@ -404,7 +399,7 @@ def test_isolate_raises_on_missing_api_key(tmp_path: Path):
     (ep / "raw.mp4").write_bytes(b"x")
 
     runner = _make_runner(
-        ffprobe_json={"streams": [{"codec_type": "audio"}]},
+        ffprobe_json={"format": {}},
         fixture_wav=b"",
     )
 
@@ -427,7 +422,7 @@ def test_isolate_raises_on_ffmpeg_failure(tmp_path: Path):
         if cmd[0] == "ffprobe":
             class R:
                 returncode = 0
-                stdout = b'{"streams":[{"codec_type":"audio"}]}'
+                stdout = b'{"format":{}}'
                 stderr = b""
             return R()
 
