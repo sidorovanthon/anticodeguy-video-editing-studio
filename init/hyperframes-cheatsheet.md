@@ -22,10 +22,11 @@ HTML-первый формат рендеринга видео: один `index.
 13. [Опции рендера](#опции-рендера)
 14. [Линтинг и валидация](#линтинг-и-валидация)
 15. [Скиллы (для AI-агентов)](#скиллы-для-ai-агентов)
-16. [Hard Rules](#hard-rules)
-17. [Anti-patterns](#anti-patterns)
-18. [Setup / окружение](#setup--окружение)
-19. [Quick Reference Card](#quick-reference-card)
+16. [Внутренние ресурсы скилла](#внутренние-ресурсы-скилла)
+17. [Hard Rules](#hard-rules)
+18. [Anti-patterns](#anti-patterns)
+19. [Setup / окружение](#setup--окружение)
+20. [Quick Reference Card](#quick-reference-card)
 
 ---
 
@@ -676,6 +677,148 @@ npx skills add heygen-com/hyperframes -y -g
 - На Windows у вас настроена локальная задача `HyperFrames Skills Update` через Task Scheduler — запускается при логине + 5 мин, тихо в фоне
 - Лог: `%USERPROFILE%\hf-skills-update.log`
 - Вручную: `npx skills add heygen-com/hyperframes -y -g`
+
+---
+
+## Внутренние ресурсы скилла
+
+Не CLI, а файлы внутри `~/.agents/skills/hyperframes/`. Полезно знать о них для глубоких задач (анализ композиции, выбор стиля, marker-highlight, custom-переходы).
+
+### `scripts/` — Node-инструменты для агента
+
+| Скрипт | Назначение |
+|---|---|
+| `animation-map.mjs` | «Рентген» композиции: семплит bbox каждого GSAP-tween в N точках, считает флаги (degenerate / offscreen / collision), детектит staggers, density, dead-zones, lifecycle элементов. Output — `animation-map.json`. |
+| `contrast-report.mjs` | Аудит контраста по WCAG 2.1: семплит N таймстемпов, замеряет ratio каждого текста против пикселей за ним. Output — `contrast-report.json` + **`contrast-overlay.png`** (sprite grid: magenta=fail AA, yellow=AA only, green=AAA). Гранулярнее, чем `validate`. |
+| `package-loader.mjs` | Внутренний bootstrap для пакетов `@hyperframes/*`. Не для пользователя. |
+
+Запуск:
+```bash
+node ~/.agents/skills/hyperframes/scripts/animation-map.mjs <comp-dir> \
+  [--frames 6] [--out .hyperframes/anim-map] \
+  [--min-duration 0.15] [--width 1920] [--height 1080] [--fps 30]
+
+node ~/.agents/skills/hyperframes/scripts/contrast-report.mjs <comp-dir> \
+  [--samples ...] [--out ...]
+```
+
+### `palettes/` — 9 готовых палитр
+
+Каждый файл — markdown с конкретными hex-значениями + рекомендациями (когда применять, какие шрифты сочетаются).
+
+| Палитра | Эстетика |
+|---|---|
+| `bold-energetic` | Высокая энергия, насыщенные цвета |
+| `clean-corporate` | Минимализм, B2B, читаемость |
+| `dark-premium` | Тёмные люкс-бренды, ювелирка, watch |
+| `jewel-rich` | Глубокие драгоценные тона |
+| `monochrome` | Ч/б + один акцент |
+| `nature-earth` | Тёплые земляные тона |
+| `neon-electric` | Кибер, gaming, EDM |
+| `pastel-soft` | Soft / lifestyle / kids |
+| `warm-editorial` | Журнальный, тёплый, тревел |
+
+### `visual-styles.md` — 8 named visual identities
+
+Готовые «дизайн-голоса» с целостным набором (palette + typography + motion). Если пользователь сказал «Swiss Pulse» / «luxury watch» / «dark techy» — берём отсюда напрямую без 3 вопросов.
+
+### `house-style.md` — мотион-дефолты
+
+Когда нет `DESIGN.md`/`visual-style.md` и пользователь не назвал стиль:
+- entrance-паттерны (fromLeft / fromBelow / scaleIn)
+- размеры по форматам (landscape / portrait / square)
+- easing defaults (`power3.out` для in, `power2.in` для out, etc.)
+- breathing / radial-glows для long-lived элементов
+
+### `data-in-motion.md` — гайд для data-viz
+
+Конкретные правила для чисел/графиков/счётчиков:
+- pair every metric with visual element (bar, ring, shape, color shift)
+- counter rules (easing, duration по разрядности)
+- chart entrances (axes first, bars staggered, labels last)
+- **антипаттерн**: число «висит в воздухе» без визуального якоря
+
+### `references/typography.md`
+
+- Список **embedded fonts** (компилируются автоматически — пишите `font-family` без `@font-face`)
+- Banned fonts (которые не embedded — упадут на рендере)
+- Typography guardrails (size scale, weight pairs, dark backgrounds)
+- OpenType features для data (`font-variant-numeric: tabular-nums`)
+- Selection thinking + similar-font pairing
+
+### `references/motion-principles.md`
+
+Глубокие принципы мотиона (не правила, эстетика):
+- Easing is emotion, not technique
+- Speed communicates weight
+- Build / breathe / resolve scene structure
+- Transitions are meaning
+- Choreography is hierarchy
+- Asymmetry правит симметрии
+- Visual composition rules
+
+### `references/css-patterns.md` — Marker Highlight (5 mode'ов)
+
+CSS+GSAP реализация (deterministic, без внешних библиотек):
+
+| Mode | Что выглядит как |
+|---|---|
+| **Highlight** | Маркер-плашка sweeps под текст |
+| **Circle** | Hand-drawn круг вокруг слова |
+| **Burst** | Лучи / звёздочки от слова |
+| **Scribble** | Wavy underline (или strikethrough) |
+| **Sketchout** | Зачёркивание скетч-линиями |
+
+Для каждого режима есть готовый код (HTML + CSS + GSAP `tl.fromTo`). Используется для emphasis в captions.
+
+### `references/transitions/` — каталог CSS-переходов (14 файлов)
+
+| Файл | Переходы |
+|---|---|
+| `catalog.md` | Master-список + matrix CSS vs Shader |
+| `css-3d.md` | 3D-flip, cube, fold |
+| `css-blur.md` | Blur / depth-of-field |
+| `css-cover.md` | Cover-wipe (вертикальный/горизонтальный) |
+| `css-destruction.md` | Glitch, VHS, chromatic, ripple |
+| `css-dissolve.md` | Dissolve, blurred dissolve |
+| `css-distortion.md` | Skew, oscillation |
+| `css-grid.md` | Grid-reveal, tile-flip |
+| `css-light.md` | Light leak, film burn, overexposure |
+| `css-mechanical.md` | Clock wipe, iris |
+| `css-other.md` | Circle-expand, color-dip-to-black |
+| `css-push.md` | Push (slide + replace) |
+| `css-radial.md` | Radial reveals |
+| `css-scale.md` | Zoom-through, zoom-out, gravity drop |
+
+### `references/dynamic-techniques.md`
+
+Karaoke + scatter exits + elastic + 3D rotation + emphasis-разрывы. Таблица «по энергии» с конкретными комбинациями (high/medium/low + entry+exit modes).
+
+### `references/audio-reactive.md`
+
+Полный гайд по audio-reactive:
+- bass / mid / high band → к чему привязывать
+- subtlety rules (3-6% scale, не больше)
+- известные баги (text-shadow + transform на parent — glow rectangle)
+- `extract-audio-data.py` — утилита для пред-извлечения per-frame RMS energy и частотных полос → JSON, грузится в timeline
+
+### Runtime helpers (`window.__hyperframes`)
+
+Доступны прямо в HTML, без импорта:
+
+| Helper | Назначение |
+|---|---|
+| `fitTextFontSize(text, opts)` | Находит максимальный font-size, который влезает в `maxWidth` одной строкой. Для overflow prevention в captions. Опции: `maxWidth`, `fontFamily`, `fontWeight`, `baseFontSize`, `minFontSize`, `step`. |
+| `pretext.prepare(text, font)` / `pretext.layout(prepared, maxWidth, lineHeight)` | Pure-arithmetic text measurement БЕЗ DOM reflow (~0.0002 ms/call). Для per-frame text reflow, shrinkwrap-контейнеров, расчёта layout до рендера. |
+
+### Audio data (extract once, use as JSON)
+
+```bash
+python ~/.agents/skills/hyperframes/scripts/extract-audio-data.py audio.mp3
+# или скрипт может лежать рядом — проверить наличие
+```
+
+Output — `audio-data.json` с per-frame RMS + frequency bands. Грузится в HTML inline или через `fetch("audio-data.json")` (НО fetch внутри runtime запрещён — inline'ить).
 
 ---
 
