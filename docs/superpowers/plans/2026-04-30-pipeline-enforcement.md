@@ -209,7 +209,7 @@ CYRILLIC_MAP = {
     "ъ": "", "ы": "y", "ь": "", "э": "e", "ю": "yu", "я": "ya",
 }
 
-TITLE_CAP = 60
+TITLE_CAP = 45
 
 
 def _transliterate(text: str) -> str:

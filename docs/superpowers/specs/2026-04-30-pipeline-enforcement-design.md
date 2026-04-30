@@ -54,7 +54,7 @@ When a script file is paired with the video, slug is derived deterministically:
 1. **Date prefix:** today's date in `YYYY-MM-DD` (PowerShell `Get-Date -Format 'yyyy-MM-dd'`).
 2. **Title source:** first sentence of the script — text up to the first `.`, `!`, or `?`. If none exist within the first paragraph, take the entire first non-empty line.
 3. **Slugify:** lowercase; transliterate non-ASCII (cyrillic, accents) to ASCII; replace runs of non-`[a-z0-9]` with `-`; trim leading/trailing `-`.
-4. **Cap:** truncate to 60 characters total *after* the date prefix and the joining `-`. If truncation falls inside a word, back up to the previous `-`.
+4. **Cap:** truncate the title portion (everything after `<date>-`) to **45 characters**. If truncation falls inside a word, back up to the previous `-`. Rationale: keeps `episodes/<slug>/hyperframes/...` paths short on Windows; the example slug below illustrates the cleanest stop point.
 5. **Collision:** if `episodes/<slug>/` already exists, append `-2`, `-3`, ... and retry. Increment until free.
 
 Example: script starts with `"Desktop software licensing, it turns out, is also a whole story."` on 2026-04-30 → slug `2026-04-30-desktop-software-licensing-it-turns-out-is`.
