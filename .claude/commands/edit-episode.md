@@ -183,6 +183,12 @@ Then invoke the `hyperframes` skill via the `Skill` tool with this verbatim brie
 > - **What NOT to Do** — 3–5 anti-patterns specific to this episode.
 > - **Beat→Visual Mapping** — from the multi-scene block above.
 >
+> **WCAG triage step (apply BEFORE canon's palette iteration).** If `npx hyperframes validate` reports contrast warnings, first check this triage:
+>
+> If ALL warnings have `fg: rgb(0,0,0)` AND elements set a visible color in CSS AND elements use `opacity: 0` in entrance `tl.fromTo()` / `gsap.fromTo()` — this is the headless-screenshot artifact (validator samples 5 static timestamps; GSAP `immediateRender: true` makes entrance-state opacity-0 elements transparent at sample time). Document in `DESIGN.md` → "WCAG Validator — Headless Artifact" with one-line rationale and proceed. Do NOT iterate palette — palette iteration cannot fix what is not broken.
+>
+> Otherwise (mixed warnings, real `fg` values, no opacity-0 entrance), apply canon's palette-family iteration per the next block.
+
 > **WCAG fail handling.** WCAG fails are resolved by adjusting hue within the palette family (HF SKILL.md §"Contrast": "On dark backgrounds: brighten until clears 4.5:1 ... Stay within palette family — don't invent a new color, adjust the existing one"). Try ≥ 2 darker/brighter variants of the same hue before considering structural changes. Removing color in favor of weight-only emphasis is a last resort and requires a one-line justification in `DESIGN.md`.
 >
 > **Multi-scene narrative composition (mandatory).** Read `<EPISODE_DIR>/script.txt` and identify ≥ 3 narrative beats. Compositions MUST be multi-scene with ≥ 3 beat-derived scenes. Apply Scene Transitions canon (`SKILL.md` §"Scene Transitions" — non-negotiable: always use transitions, every scene gets entrance animations, never exit animations except on the final scene).
@@ -218,6 +224,7 @@ Then invoke the `hyperframes` skill via the `Skill` tool with this verbatim brie
 >
 > 1. **Canonical layout audit at beat boundaries.** Run `npx hyperframes inspect --at <beat_timestamps>` from `<EPISODE_DIR>/hyperframes/`, where `<beat_timestamps>` are the comma-separated start times of each beat from the §"Beat→Visual Mapping" of `DESIGN.md`. Re-uses the canonical layout/overflow audit on the timestamps that matter narratively.
 > 2. **Canonical screenshots at beat boundaries.** Run `npx hyperframes snapshot --at <beat_timestamps>` (canonical PNG screenshots without full render — see `docs/cheatsheets/hyperframes.md` §"snapshot"). Include `1`, every beat boundary, and `<duration - 1>` in the timestamp list.
+> 2.5. **Interpret snapshots against Beat→Visual Mapping, not absolute presence.** An empty snapshot at a timestamp where `DESIGN.md` → `Beat→Visual Mapping` declares a visible element = composition is broken; do NOT proceed to studio launch. An empty snapshot in the first 0.3s of a beat-start is canonical entrance offset (HF SKILL.md §"Animation Guardrails" — first animation offset 0.1-0.3s) — not a bug. Snapshot is definitive only when checked against the expected-visible list, not in absolute terms.
 > 3. **Three explicit questions per snapshot** — answer in writing in your final report, before the studio launch:
 >    a. Is the expected beat element visible (registry block / scene card / overlay from §"Multi-scene narrative composition")?
 >    b. Any unintended z-overlap (caption covering a key element, scene exit leaving residue)?
@@ -226,6 +233,13 @@ Then invoke the `hyperframes` skill via the `Skill` tool with this verbatim brie
 >
 > **Project memory:** append a session block to `<EPISODE_DIR>/edit/project.md` with Strategy / Decisions / Outstanding for this composition.
 >
+> **Diagnostic entry-point — when Phase 4 output is unexpectedly empty or broken.** Before forming any hypothesis, run in this order:
+> 1. `cd <EPISODE_DIR>/hyperframes && npx hyperframes compositions` — verify each sub-composition listed via `data-composition-src` reports non-zero `elements` and matching `duration`. If any sub-comp shows `0 elements / 0.0s`, mounting failed — do NOT debug content, styles, or track-index. Investigate the mount path (file present? path correct? `<template>` wrapper structure per SKILL.md:165-183?).
+> 2. `npx hyperframes snapshot --at <beat_timestamps>` (timestamps from `DESIGN.md` → `Beat→Visual Mapping`) — verify expected-visible elements per the snapshot interpretation rule above.
+> 3. ONLY after (1) and (2) report definite results, form hypotheses about specific elements (z-overlap, malformed CSS, GSAP timing).
+>
+> Anti-pattern (verified retro 2026-05-01 §2.3, ~40 min wasted): gradient-descend through symptoms — track-index reshuffles, file rename, server restart, malformed div hunt — before running (1) and (2). The structural diagnostic ordering catches sub-comp mounting bugs in 30 seconds; symptom-chase takes 40 minutes and reaches the same conclusion.
+
 > **Studio launch:** after gates pass, launch the preview server in the background. Run from `<EPISODE_DIR>/hyperframes/`. Logs go to `.hyperframes/preview.log` (canonical scratch dir):
 > - Bash: `mkdir -p .hyperframes && npx hyperframes preview --port 3002 > .hyperframes/preview.log 2>&1 &`
 > - PowerShell: `New-Item -ItemType Directory -Force -Path .hyperframes | Out-Null; Start-Process npx -ArgumentList 'hyperframes','preview','--port','3002' -RedirectStandardOutput .hyperframes\preview.log -RedirectStandardError .hyperframes\preview.err.log -WindowStyle Hidden`
