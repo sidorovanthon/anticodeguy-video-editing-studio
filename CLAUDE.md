@@ -72,6 +72,12 @@ but the source of truth for canon checks is the SKILL.md itself. Never propose
 patches to upstream `video-use` or `hyperframes` repos; all glue lives in this
 orchestrator (`scripts/`, `.claude/commands/edit-episode.md`).
 
+### Investigation methodology — bare-repro before upstream-blame
+
+Before claiming any HF or `video-use` behavior is an upstream bug or doc-bug, reproduce in a bare scaffold (`npx hyperframes init` for HF; clean install for `video-use`). If bare-repro succeeds while our pipeline fails — the bug is orchestrator-side. Investigate `scripts/scaffold_*.py`, glue scripts, and brief deltas before opening an upstream issue.
+
+Verified necessary 2026-05-01: three suspected upstream bugs from retro 2026-05-01 (`data-composition-src` sub-comp loader, `gsap_infinite_repeat` lint regex on comments, `<template>` doc-bug) all required investigation before claim. Premature canonization of an "upstream bug" produces wrong memory entries, wrong brief workarounds, and stale GitHub issues — all of which corrupt future sessions.
+
 ### Skill copies: docs vs. runnable
 
 The global skill copies (`~/.agents/skills/hyperframes/`, `~/.claude/skills/video-use/`)
