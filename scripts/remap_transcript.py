@@ -43,6 +43,13 @@ def remap(*, raw: dict, edl: dict) -> list[dict]:
     return output
 
 
+def _edl_hash(edl: dict) -> str:
+    """Stable SHA-256 of the EDL dict (sort_keys for determinism)."""
+    import hashlib
+    blob = json.dumps(edl, sort_keys=True).encode("utf-8")
+    return hashlib.sha256(blob).hexdigest()
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Remap Scribe transcript to hyperframes captions schema.")
     parser.add_argument("--raw", type=Path, required=True, help="Path to edit/transcripts/raw.json")
@@ -52,10 +59,23 @@ def main(argv: list[str] | None = None) -> int:
 
     raw = json.loads(args.raw.read_text(encoding="utf-8"))
     edl = json.loads(args.edl.read_text(encoding="utf-8"))
-    result = remap(raw=raw, edl=edl)
+    edl_hash = _edl_hash(edl)
+
+    # Self-healing: if final.json exists and its edl_hash matches the current EDL, skip work.
+    if args.out.exists():
+        try:
+            existing = json.loads(args.out.read_text(encoding="utf-8"))
+            if isinstance(existing, dict) and existing.get("edl_hash") == edl_hash:
+                print(f"final.json up to date for current EDL (hash {edl_hash[:8]}) — skipping remap", file=sys.stderr)
+                return 0
+        except (json.JSONDecodeError, OSError):
+            pass  # fall through and regenerate
+
+    words = remap(raw=raw, edl=edl)
+    envelope = {"edl_hash": edl_hash, "words": words}
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"wrote {len(result)} word entries to {args.out}", file=sys.stderr)
+    args.out.write_text(json.dumps(envelope, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"wrote envelope with {len(words)} word entries to {args.out} (edl_hash {edl_hash[:8]})", file=sys.stderr)
     return 0
 
 
