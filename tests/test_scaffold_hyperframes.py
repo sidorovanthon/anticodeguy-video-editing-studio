@@ -92,10 +92,25 @@ def test_patch_index_html_injects_video_audio_pair():
     assert "Add your clips here" not in out
 
 
-def test_patch_index_html_no_data_has_audio():
-    """Canonical pattern uses two-element pair, NOT data-has-audio."""
+def test_patch_index_html_video_has_explicit_data_has_audio_false():
+    """Canonical two-element pair would trigger StaticGuard 'invalid contract' on muxed source.
+
+    HF compiler unconditionally injects data-has-audio="true" on every <video> without
+    an explicit attribute (timingCompiler.ts:104-106). Combined with `muted`, this trips
+    the StaticGuard rule (media.ts:274). Setting data-has-audio="false" blocks the
+    auto-injection (compiler condition is `!hasAttr(...)`) and audioMixer's strict
+    equality on "true" excludes this <video> from the mix — audio routes only through
+    the <audio> element.
+
+    Documented in HF CLI docs (packages/cli/src/docs/data-attributes.md) but not in
+    agent-facing SKILL.md canon. Upstream tracking: heygen-com/hyperframes#586.
+    """
     out = patch_index_html(DEFAULT_INDEX_HTML, width=1080, height=1920, duration=58.8, video_src="../edit/final.mp4")
-    assert "data-has-audio" not in out
+    # Explicit on the <video> element, blocking compiler auto-inject:
+    assert 'data-has-audio="false"' in out
+    # And NOT on the <audio> element (auto-inject only targets <video>, attribute would be meaningless):
+    audio_block = out[out.index("<audio"):out.index("</audio>") + len("</audio>") if "</audio>" in out else len(out)]
+    assert "data-has-audio" not in audio_block
 
 
 def test_patch_meta_json_overwrites_id_and_name():
@@ -168,7 +183,7 @@ def test_scaffold_end_to_end(tmp_path: Path):
     assert 'src="final.mp4"' in html
     # parent-dir path no longer used — sibling hardlink replaces it
     assert 'src="../edit/final.mp4"' not in html
-    assert "data-has-audio" not in html
+    assert 'data-has-audio="false"' in html
 
     meta = json.loads((hf / "meta.json").read_text(encoding="utf-8"))
     assert meta["id"] == "2026-04-30-test-episode"
