@@ -13,8 +13,19 @@ import subprocess
 import sys
 from pathlib import Path
 
+# `data-has-audio="false"` is required on the <video> element when both <video> and <audio>
+# share the same muxed `src`. Without it, HF's timingCompiler.ts:104-106 unconditionally
+# injects `data-has-audio="true"`, which combined with `muted` trips StaticGuard's
+# `invalid contract` rule (media.ts:274) and audioMixer.ts:55-56 picks the <video> up
+# as a second audio source, producing audible doubling/distortion in studio preview.
+#
+# The attribute is documented in HF CLI docs (`packages/cli/src/docs/data-attributes.md`)
+# and recognized by HF lint, but is NOT in agent-facing SKILL.md canon — this is an
+# orchestrator extension filling a documented HF lint contract gap.
+#
+# Upstream tracking: https://github.com/heygen-com/hyperframes/issues/586
 VIDEO_AUDIO_PAIR_TEMPLATE = """      <video id="el-video" class="clip" data-start="0" data-track-index="0"
-             src="{src}" muted playsinline></video>
+             src="{src}" data-has-audio="false" muted playsinline></video>
       <audio id="el-audio" class="clip" data-start="0" data-track-index="2"
              src="{src}" data-volume="1"></audio>"""
 
