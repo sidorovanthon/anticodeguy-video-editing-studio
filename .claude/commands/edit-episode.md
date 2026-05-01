@@ -92,7 +92,7 @@ Otherwise dispatch a sub-agent via the `Agent` tool with `subagent_type: general
 >
 > **Pacing target.** Aim for **25–35% runtime reduction** from source. Treat any inter-phrase silence > 300ms as a cut candidate (canon: silences ≥ 400ms are cleanest cut targets, 150–400ms usable with visual check, < 150ms unsafe — mid-phrase). Cut padding stays in 30–200ms (Hard Rule 7 — absorbs Scribe's 50–100ms drift; this rule is about cut-edge padding, NOT inter-phrase silence). Remove all retakes and false starts. If final runtime > 75% of source, append a one-line note in `project.md` explaining why tighter cuts were not possible.
 >
-> **Subtitles.** Do NOT burn subtitles into `final.mp4`. Omit the `subtitles` field from EDL **and** pass `--no-subtitles` to `helpers/render.py` (defense in depth — canon §8 of `docs/cheatsheets/video-use.md`). Do not pass `--build-subtitles`. Captions are produced downstream by Phase 4 (HyperFrames `references/captions.md`).
+> **Subtitles.** Do NOT burn subtitles into `final.mp4`. Omit the `subtitles` field from EDL **and** pass `--no-subtitles` to `helpers/render.py` (defense in depth — canon §8 of `docs/cheatsheets/video-use.md`). Do not pass `--build-subtitles`. Captions are produced by Phase 4 (HyperFrames `references/captions.md`) — they are **mandatory in this orchestrator** (see Phase 4 brief; the only acceptable reason to omit captions is an explicit user request, never a Skill-author decision).
 >
 > **Retake selection.** When the same beat is recorded multiple times (false-starts, retakes within a single take or across takes), pick the cleanest delivery — fewer slips, better energy, completed thought. If two takes are roughly equal, prefer the **later** one (the speaker is usually warmed up). Note the choice briefly in EDL `reason`, e.g. `"Last take, first had stutter"` (canon EDL example uses this `reason` shape).
 >
@@ -146,9 +146,23 @@ python -m scripts.scaffold_hyperframes \
 
 Then invoke the `hyperframes` skill via the `Skill` tool with this verbatim brief:
 
-> Read `~/.agents/skills/hyperframes/SKILL.md` first, then build a HyperFrames composition in `<EPISODE_DIR>/hyperframes/`. The project is **already scaffolded** — do not run `npx hyperframes init`. The scaffolded `index.html`, `package.json`, `hyperframes.json`, `meta.json` are in place. The video and audio are wired as a canonical `<video muted playsinline> + <audio>` pair both pointing at `../edit/final.mp4`. The word-level transcript (output-timeline, hyperframes captions schema) is at `hyperframes/transcript.json`.
+> Read `~/.agents/skills/hyperframes/SKILL.md` first, then build a HyperFrames composition in `<EPISODE_DIR>/hyperframes/`. The project is **already scaffolded** — do not run `npx hyperframes init`. The scaffolded `index.html`, `package.json`, `hyperframes.json`, `meta.json` are in place. The video and audio are wired as a canonical `<video muted playsinline data-has-audio="false"> + <audio>` pair both pointing at `final.mp4` (sibling hardlink). The word-level transcript (output-timeline, hyperframes captions schema) is at `hyperframes/transcript.json`.
 >
 > The author's script is at `<EPISODE_DIR>/script.txt` — use it as the source of truth for caption wording when it diverges from the transcript.
+>
+> **Required reading before composing — verbatim list.** Read these in order, then confirm in your first response which files were read. Empty confirmation = stop, do not proceed.
+> 1. `~/.agents/skills/hyperframes/SKILL.md` (you already opened this — re-confirm).
+> 2. `~/.agents/skills/hyperframes/references/video-composition.md` — *Always read* (canon).
+> 3. `~/.agents/skills/hyperframes/references/typography.md` — *Always read* (canon).
+> 4. `~/.agents/skills/hyperframes/references/motion-principles.md` — *Always read* (canon).
+> 5. `~/.agents/skills/hyperframes/references/beat-direction.md` — *Always read for multi-scene compositions* (canon).
+> 6. `~/.agents/skills/hyperframes/references/transitions.md` — *Always read for multi-scene compositions* (canon).
+> 7. `~/.agents/skills/hyperframes/references/captions.md` — orchestrator-house addition. Canon treats captions as conditional ("when adding any text synced to audio"); this orchestrator's pipeline always produces audio-synced text, so the conditional trigger always fires, making it effectively mandatory here.
+> 8. `~/.agents/skills/hyperframes/references/transcript-guide.md` — orchestrator-house addition for the same reason.
+>
+> **Step 2 — Prompt expansion (mandatory for multi-scene).** After reading the canon, run Step 2 per `references/prompt-expansion.md`. Output goes to `<EPISODE_DIR>/hyperframes/.hyperframes/expanded-prompt.md` (canonical path and name per `references/prompt-expansion.md:57-68`). This artifact MUST exist before any composition HTML is written. If it does not exist after Step 2, you have not run Step 2.
+>
+> **Catalog discovery — orchestrator-house gate.** Before writing any custom HTML for a beat, run `npx hyperframes catalog --json > .hyperframes/catalog.json` from `<EPISODE_DIR>/hyperframes/`. For each narrative beat, write one sentence in `DESIGN.md` → `Beat→Visual Mapping`: which catalog block was considered (or installed via `npx hyperframes add <name>`), and why custom HTML is justified. Empty per-beat justification list = stop. (Note: this is an orchestrator productivity rule, not HF canon — canon mentions `catalog` only in Step 1 / Design Picker context.)
 >
 > **Visual Identity Gate (canonical `<HARD-GATE>`).** Before writing any composition HTML, follow the canon's gate order in SKILL.md §"Visual Identity Gate". The user's named style is **"Liquid Glass / iOS frosted glass"** — start at gate step 3: read `~/.agents/skills/hyperframes/visual-styles.md` for a matching named preset and apply it. If no matching preset exists, generate a `DESIGN.md` per the canon's structure. Do not hardcode `#333` / `#3b82f6` / `Roboto`.
 >
@@ -165,11 +179,14 @@ Then invoke the `hyperframes` skill via the `Skill` tool with this verbatim brie
 >
 > **Multi-scene narrative composition (mandatory).** Read `<EPISODE_DIR>/script.txt` and identify ≥ 3 narrative beats. Compositions MUST be multi-scene with ≥ 3 beat-derived scenes. Apply Scene Transitions canon (HF SKILL.md §"Scene Transitions" — non-negotiable: always use transitions, every scene gets entrance animations, never exit animations except on the final scene). For each beat, choose either (a) a registry block (run `npx hyperframes catalog` to browse before authoring custom HTML; install via `npx hyperframes add <name>`) or (b) custom motion / overlay justified by the script content. Single-scene caption-only compositions are not acceptable. Document the beat→visual mapping in `DESIGN.md` alongside palette and typography decisions.
 >
+> **Captions track — orchestrator-mandatory.** A captions track is mandatory in every composition produced by this orchestrator. Use `hyperframes/transcript.json` (already prepared as the bare-array per-word schema HF expects) per `references/captions.md`. Caption styling adapts to the chosen visual identity. The only acceptable reason to omit captions is an explicit user request — never a Skill-author decision documented in `DESIGN.md` → "What NOT to Do". (Canon treats captions as conditional; this is an orchestrator-house rule because every episode here produces audio-synced text, so the conditional trigger always fires.)
+>
 > **Output Checklist (canonical):**
 > 1. `npx hyperframes lint` — passes.
 > 2. `npx hyperframes validate` — passes; built-in WCAG contrast audit produces no warnings.
 > 3. `npx hyperframes inspect` — passes, or every reported overflow is intentional and marked.
-> 4. `node <hyperframes-dir>/node_modules/hyperframes/dist/skills/hyperframes/scripts/animation-map.mjs <hyperframes-dir> --out <hyperframes-dir>/.hyperframes/anim-map` — required for new compositions per canon. Read the JSON. **Do not invoke `~/.agents/skills/hyperframes/scripts/animation-map.mjs`** — that copy is documentation-only and fails to bootstrap because its `package-loader.mjs` walks ancestors of the script's own location for a `hyperframes`/`@hyperframes/cli` `package.json`, which doesn't exist above the global skill dir. The bundled copy under the project's `node_modules/hyperframes/dist/...` resolves the version probe via the package's own manifest.
+> 4. **Captions track present.** `index.html` references `transcript.json` and renders captions via the `references/captions.md` canonical pattern. `grep -c "transcript.json" <EPISODE_DIR>/hyperframes/index.html` ≥ 1.
+> 5. `node <hyperframes-dir>/node_modules/hyperframes/dist/skills/hyperframes/scripts/animation-map.mjs <hyperframes-dir> --out <hyperframes-dir>/.hyperframes/anim-map` — required for new compositions per canon. Read the JSON. **Do not invoke `~/.agents/skills/hyperframes/scripts/animation-map.mjs`** — that copy is documentation-only and fails to bootstrap because its `package-loader.mjs` walks ancestors of the script's own location for a `hyperframes`/`@hyperframes/cli` `package.json`, which doesn't exist above the global skill dir. The bundled copy under the project's `node_modules/hyperframes/dist/...` resolves the version probe via the package's own manifest.
 >
 > **Extra check we add (not in canon — orchestrator-imposed):** run `node <hyperframes-dir>/node_modules/hyperframes/dist/skills/hyperframes/scripts/contrast-report.mjs <hyperframes-dir>` (same bundled-path rule as animation-map — never use the `~/.agents/skills/...` copy) and open the resulting `contrast-overlay.png` in the output dir. Fix any magenta regions; ideally clear yellow too. If absent or failing, do not block — log "extra check skipped/failed" and proceed.
 >
@@ -189,7 +206,21 @@ Then invoke the `hyperframes` skill via the `Skill` tool with this verbatim brie
 > - Bash: `mkdir -p .hyperframes && npx hyperframes preview --port 3002 > .hyperframes/preview.log 2>&1 &`
 > - PowerShell: `New-Item -ItemType Directory -Force -Path .hyperframes | Out-Null; Start-Process npx -ArgumentList 'hyperframes','preview','--port','3002' -RedirectStandardOutput .hyperframes\preview.log -RedirectStandardError .hyperframes\preview.err.log -WindowStyle Hidden`
 >
-> Report `http://localhost:3002` to the user.
+> **Post-launch StaticGuard check.** After the studio is up, tail `.hyperframes/preview.log` for the first 5 seconds. If any line matches the StaticGuard contract diagnostic, report it verbatim and **stop without handing off to the user** — a StaticGuard warning post-PR-1 indicates a real new contract violation, not the legacy doubling issue we already fixed.
+>
+> The pattern matches both forms observed from HF tooling: the `[StaticGuard]` prefix (verified from `validate` output) and the diagnostic text `Invalid HyperFrame contract` (engine-code emitted; resilient if HF changes the prefix). If the actual `preview` log format differs at implementation time, prefer the diagnostic text over the prefix.
+>
+> Bash:
+> ```bash
+> for i in 1 2 3 4 5; do sleep 1; if grep -qE '\[StaticGuard\]|Invalid HyperFrame contract' .hyperframes/preview.log 2>/dev/null; then echo "StaticGuard fired:"; grep -E '\[StaticGuard\]|Invalid HyperFrame contract' .hyperframes/preview.log; exit 1; fi; done
+> ```
+>
+> PowerShell:
+> ```powershell
+> 1..5 | ForEach-Object { Start-Sleep -Seconds 1; if (Select-String -Path .hyperframes\preview.log -Pattern '\[StaticGuard\]|Invalid HyperFrame contract' -Quiet -ErrorAction SilentlyContinue) { Write-Host 'StaticGuard fired:'; Select-String -Path .hyperframes\preview.log -Pattern '\[StaticGuard\]|Invalid HyperFrame contract'; exit 1 } }
+> ```
+>
+> Only if the 5-second window is clean, report `http://localhost:3002` to the user.
 
 ---
 
