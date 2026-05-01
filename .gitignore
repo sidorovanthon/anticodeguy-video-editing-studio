@@ -23,3 +23,5 @@ tests/__pycache__/
 
 # Session logs
 *.jsonl
+# ...except hermetic test fixtures
+!tests/fixtures/**/*.jsonl
