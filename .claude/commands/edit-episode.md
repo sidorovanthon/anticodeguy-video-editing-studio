@@ -128,7 +128,7 @@ python -m scripts.remap_transcript \
   --out <EPISODE_DIR>/edit/transcripts/final.json
 ```
 
-(Skip if `<EPISODE_DIR>/edit/transcripts/final.json` already exists — idempotent.)
+(Skip if `<EPISODE_DIR>/edit/transcripts/final.json` already exists AND its stored `edl_hash` matches the current `edl.json` content. `scripts/remap_transcript.py` self-checks and short-circuits on hash match, so calling it unconditionally is safe and idempotent.)
 
 ---
 
@@ -210,12 +210,12 @@ Announce: `Done. Studio: http://localhost:3002. Episode: <EPISODE_DIR>.`
 The command is safe to re-run on the same slug. Skip rules:
 1. `<EPISODE_DIR>/raw.<ext>` container tagged `ANTICODEGUY_AUDIO_CLEANED=elevenlabs-v1` → skip Phase 2 entirely.
 2. `<EPISODE_DIR>/edit/final.mp4` exists → skip Phase 3.
-3. `<EPISODE_DIR>/edit/transcripts/final.json` exists → skip glue remap.
+3. `<EPISODE_DIR>/edit/transcripts/final.json` exists **and its `edl_hash` matches the current `edl.json`** → skip glue remap. (The glue script self-checks this — calling it always is safe.)
 4. `<EPISODE_DIR>/hyperframes/index.html` exists → skip scaffold and Skill, only relaunch studio.
 
 Rebuild paths:
 
-- **Re-cut:** delete `<EPISODE_DIR>/edit/final.mp4` AND `<EPISODE_DIR>/hyperframes/`. `transcripts/raw.json` stays — **no Scribe re-spend**. The audio tag on `raw.<ext>` survives — **no Audio Isolation re-spend either**.
+- **Re-cut:** delete `<EPISODE_DIR>/edit/final.mp4` AND `<EPISODE_DIR>/hyperframes/`. `transcripts/raw.json` stays — **no Scribe re-spend**. The audio tag on `raw.<ext>` survives — **no Audio Isolation re-spend either**. `transcripts/final.json` does NOT need manual deletion — `scripts/remap_transcript.py` self-checks the EDL hash and regenerates automatically when EDL changes (per the envelope schema introduced in 2026-05-01).
 - **Re-compose only:** delete `<EPISODE_DIR>/hyperframes/`. Phase 3 skipped; `final.mp4` and transcripts preserved.
 - **Re-isolate audio:** delete `<EPISODE_DIR>/audio/raw.cleaned.wav` AND restore `raw.<ext>` to its un-tagged state (re-pickup from `inbox/`, or git/manual restore). Costs ElevenLabs Audio Isolation credits — almost never needed.
 
