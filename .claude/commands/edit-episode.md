@@ -146,9 +146,23 @@ python -m scripts.scaffold_hyperframes \
 
 Then invoke the `hyperframes` skill via the `Skill` tool with this verbatim brief:
 
-> Read `~/.agents/skills/hyperframes/SKILL.md` first, then build a HyperFrames composition in `<EPISODE_DIR>/hyperframes/`. The project is **already scaffolded** — do not run `npx hyperframes init`. The scaffolded `index.html`, `package.json`, `hyperframes.json`, `meta.json` are in place. The video and audio are wired as a canonical `<video muted playsinline> + <audio>` pair both pointing at `../edit/final.mp4`. The word-level transcript (output-timeline, hyperframes captions schema) is at `hyperframes/transcript.json`.
+> Read `~/.agents/skills/hyperframes/SKILL.md` first, then build a HyperFrames composition in `<EPISODE_DIR>/hyperframes/`. The project is **already scaffolded** — do not run `npx hyperframes init`. The scaffolded `index.html`, `package.json`, `hyperframes.json`, `meta.json` are in place. The video and audio are wired as a canonical `<video muted playsinline data-has-audio="false"> + <audio>` pair both pointing at `final.mp4` (sibling hardlink). The word-level transcript (output-timeline, hyperframes captions schema) is at `hyperframes/transcript.json`.
 >
 > The author's script is at `<EPISODE_DIR>/script.txt` — use it as the source of truth for caption wording when it diverges from the transcript.
+>
+> **Required reading before composing — verbatim list.** Read these in order, then confirm in your first response which files were read. Empty confirmation = stop, do not proceed.
+> 1. `~/.agents/skills/hyperframes/SKILL.md` (you already opened this — re-confirm).
+> 2. `~/.agents/skills/hyperframes/references/video-composition.md` — *Always read* (canon).
+> 3. `~/.agents/skills/hyperframes/references/typography.md` — *Always read* (canon).
+> 4. `~/.agents/skills/hyperframes/references/motion-principles.md` — *Always read* (canon).
+> 5. `~/.agents/skills/hyperframes/references/beat-direction.md` — *Always read for multi-scene compositions* (canon).
+> 6. `~/.agents/skills/hyperframes/references/transitions.md` — *Always read for multi-scene compositions* (canon).
+> 7. `~/.agents/skills/hyperframes/references/captions.md` — orchestrator-house addition. Canon treats captions as conditional ("when adding any text synced to audio"); this orchestrator's pipeline always produces audio-synced text, so the conditional trigger always fires, making it effectively mandatory here.
+> 8. `~/.agents/skills/hyperframes/references/transcript-guide.md` — orchestrator-house addition for the same reason.
+>
+> **Step 2 — Prompt expansion (mandatory for multi-scene).** After reading the canon, run Step 2 per `references/prompt-expansion.md`. Output goes to `<EPISODE_DIR>/hyperframes/.hyperframes/expanded-prompt.md` (canonical path and name per `references/prompt-expansion.md:57-68`). This artifact MUST exist before any composition HTML is written. If it does not exist after Step 2, you have not run Step 2.
+>
+> **Catalog discovery — orchestrator-house gate.** Before writing any custom HTML for a beat, run `npx hyperframes catalog --json > .hyperframes/catalog.json` from `<EPISODE_DIR>/hyperframes/`. For each narrative beat, write one sentence in `DESIGN.md` → `Beat→Visual Mapping`: which catalog block was considered (or installed via `npx hyperframes add <name>`), and why custom HTML is justified. Empty per-beat justification list = stop. (Note: this is an orchestrator productivity rule, not HF canon — canon mentions `catalog` only in Step 1 / Design Picker context.)
 >
 > **Visual Identity Gate (canonical `<HARD-GATE>`).** Before writing any composition HTML, follow the canon's gate order in SKILL.md §"Visual Identity Gate". The user's named style is **"Liquid Glass / iOS frosted glass"** — start at gate step 3: read `~/.agents/skills/hyperframes/visual-styles.md` for a matching named preset and apply it. If no matching preset exists, generate a `DESIGN.md` per the canon's structure. Do not hardcode `#333` / `#3b82f6` / `Roboto`.
 >
