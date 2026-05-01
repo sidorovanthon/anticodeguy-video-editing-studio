@@ -137,8 +137,31 @@ def _have_npx() -> bool:
 
 
 @pytest.mark.skipif(not _have_npx(), reason="npx not on PATH")
-def test_scaffold_end_to_end(tmp_path: Path):
-    """Calls real `npx hyperframes init`, applies patches, verifies all artifacts."""
+@pytest.mark.parametrize(
+    "final_json_content,case_id",
+    [
+        # Legacy bare-array shape (pre-PR #12). Exercises the
+        # `isinstance(envelope, dict)` backward-compat fallback at
+        # scripts/scaffold_hyperframes.py:211.
+        ('[{"text":"hi","start":0,"end":0.2}]', "legacy_bare_array"),
+        # Envelope shape (post-PR #12). Exercises the canonical
+        # `envelope["words"]` unwrap path. Without this case, the dict branch
+        # has no test coverage and could be silently broken by a future
+        # refactor that removes the `isinstance` guard as "dead code".
+        (
+            '{"edl_hash":"abc123def456","words":[{"text":"hi","start":0,"end":0.2}]}',
+            "envelope",
+        ),
+    ],
+    ids=lambda v: v if isinstance(v, str) and len(v) < 30 else None,
+)
+def test_scaffold_end_to_end(tmp_path: Path, final_json_content: str, case_id: str):
+    """Calls real `npx hyperframes init`, applies patches, verifies all artifacts.
+
+    Parametrized over both transcript shapes: legacy bare-array (back-compat
+    fallback) and envelope (canonical post-PR #12 shape). Both must unwrap to
+    the same bare-array `transcript.json` for the HF caption pipeline.
+    """
     from scripts.scaffold_hyperframes import scaffold
 
     episode_dir = tmp_path / "ep"
@@ -150,7 +173,7 @@ def test_scaffold_end_to_end(tmp_path: Path):
     # Place a fake remapped transcript.
     (episode_dir / "edit" / "transcripts").mkdir()
     (episode_dir / "edit" / "transcripts" / "final.json").write_text(
-        '[{"text":"hi","start":0,"end":0.2}]', encoding="utf-8"
+        final_json_content, encoding="utf-8"
     )
 
     scaffold(
