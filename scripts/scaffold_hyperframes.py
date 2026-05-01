@@ -203,9 +203,16 @@ def scaffold(
     pkg = build_package_json(slug=slug, hyperframes_version=hyperframes_version)
     (hf / "package.json").write_text(json.dumps(pkg, indent=2), encoding="utf-8")
 
-    # Copy transcript
+    # Copy transcript: final.json is an envelope ({edl_hash, words}); HF consumes a
+    # word-level array of {text, start, end} entries (per `references/transcript-guide.md`
+    # — the canonical caption transcript shape, sometimes called "Normalized word array").
     if final_json.exists():
-        shutil.copyfile(final_json, hf / "transcript.json")
+        envelope = json.loads(final_json.read_text(encoding="utf-8"))
+        words = envelope["words"] if isinstance(envelope, dict) else envelope
+        (hf / "transcript.json").write_text(
+            json.dumps(words, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
 
     return hf
 
