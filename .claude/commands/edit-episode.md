@@ -3,6 +3,14 @@ description: Run the video editing pipeline (pickup → audio-isolation → vide
 argument-hint: "[slug]"
 ---
 
+## Conventions
+
+Every directive in this brief is mandatory unless tagged `(optional, skip without consequence)`. Treat soft modals (`Consider`, `SHOULD`, `recommended`, `may`, `might`) as bugs to report — file an issue or open a PR rather than interpreting them as optional. The brief uses imperative voice deliberately; orchestrator-house mechanics are load-bearing even when phrased softly.
+
+This convention applies retroactively to all rules — including Output Checklist items, Visual Identity Gate steps, and Visual Verification gates.
+
+---
+
 You are orchestrating a four-phase video editing pipeline. Follow this recipe exactly. The skills `video-use` and `hyperframes` own all creative decisions; this command provides only structure, glue, and enforcement.
 
 ## Inputs
@@ -181,7 +189,9 @@ Then invoke the `hyperframes` skill via the `Skill` tool with this verbatim brie
 >
 > **Sub-composition split — strong recommendation.** Each beat ≥ 3 SHOULD live in `compositions/beat-{N}-{slug}.html`, mounted from the root via `<div data-composition-id data-composition-src="compositions/beat-N.html">` per `SKILL.md:149-185`. Root `index.html` SHOULD stay ≤ 100 lines (video + audio + captions + mount points). Basis: HF lint warning `composition_file_too_large` ("Agents produce better results when large scenes are split into smaller sub-compositions"). Treat the warning as real guidance, not cosmetic — the lint exists because authors produce better small files than big monoliths.
 >
-> **Parallel-agent dispatch — orchestrator pattern.** Beats are independent and parallelizable. Consider dispatching beat authoring to parallel sub-agents via the `superpowers:dispatching-parallel-agents` skill (this is an orchestrator pattern via superpowers, NOT HF canon).
+> **Beat authoring — parallel-agent dispatch (mandatory for ≥ 3 beats).** After DESIGN.md and `.hyperframes/expanded-prompt.md` exist, dispatch one sub-agent per beat via the `superpowers:dispatching-parallel-agents` skill. Each agent gets the beat's section from `expanded-prompt.md` and writes its `compositions/beat-{N}-{slug}.html` independently. Main session waits, then assembles the root `index.html`. Do not write beats sequentially in the main session — that path forfeits independently-testable artifacts and adds 2-5× wall-time.
+>
+> Canonical mirror: video-use SKILL.md Hard Rule 10 ("Parallel sub-agents for multiple animations. Never sequential."). HF Phase 4 beat authoring inherits the same rule applied to a different unit (beats instead of animations).
 >
 > **Per-beat transition mechanism — explicit choice required.** Scene Transitions canon requires entrance animations and forbids exit animations on non-final beats. With translucent overlays (e.g., glass panels), an entrance-only-cover does NOT visually clear the previous scene — the older scene shows through the new translucent panels. For each inter-beat boundary, document one mechanism in `DESIGN.md` → `Beat→Visual Mapping`:
 > - **CSS clip-path / mask transition** — canon-allowed, simpler (`transitions.md:85-95` — "CSS transitions are simpler... Choose based on the effect you want, not based on which is easier").
@@ -200,6 +210,7 @@ Then invoke the `hyperframes` skill via the `Skill` tool with this verbatim brie
 > 3. `npx hyperframes inspect` — passes, or every reported overflow is intentional and marked.
 > 4. **Captions track present.** `index.html` references `transcript.json` and renders captions via the `references/captions.md` canonical pattern. `grep -c "transcript.json" <EPISODE_DIR>/hyperframes/index.html` ≥ 1.
 > 5. `node <hyperframes-dir>/node_modules/hyperframes/dist/skills/hyperframes/scripts/animation-map.mjs <hyperframes-dir> --out <hyperframes-dir>/.hyperframes/anim-map` — required for new compositions per canon. Read the JSON. **Do not invoke `~/.agents/skills/hyperframes/scripts/animation-map.mjs`** — that copy is documentation-only and fails to bootstrap because its `package-loader.mjs` walks ancestors of the script's own location for a `hyperframes`/`@hyperframes/cli` `package.json`, which doesn't exist above the global skill dir. The bundled copy under the project's `node_modules/hyperframes/dist/...` resolves the version probe via the package's own manifest.
+> 6. **Beats authored by ≥ 3 parallel sub-agents — only when Phase 4 actually wrote a new `index.html` in this session.** Verifiable by checking session transcript for parallel `Agent` tool calls during Phase 4. If zero parallel dispatches occurred for a composition with ≥ 3 beats listed in `DESIGN.md` → `Beat→Visual Mapping`, Phase 4 is incomplete. (Skip this check on skip-build runs where `index.html` already existed.)
 >
 > **Extra check we add (not in canon — orchestrator-imposed):** run `node <hyperframes-dir>/node_modules/hyperframes/dist/skills/hyperframes/scripts/contrast-report.mjs <hyperframes-dir>` (same bundled-path rule as animation-map — never use the `~/.agents/skills/...` copy) and open the resulting `contrast-overlay.png` in the output dir. Fix any magenta regions; ideally clear yellow too. If absent or failing, do not block — log "extra check skipped/failed" and proceed.
 >
