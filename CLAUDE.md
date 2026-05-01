@@ -89,3 +89,5 @@ own `node_modules/<skill>/dist/...` layout.
 3. Before declaring a skill helper "broken", try at least: (a) the bundled in-project copy, (b) `npx <skill>` subcommand if the helper has been wrapped, (c) skim the package's `bin`/`scripts` map to see if there's a non-obvious entry point. Code-reading alone is insufficient evidence.
 
 This rule applies to *executable helpers*, not docs. `~/.agents/skills/hyperframes/SKILL.md`, `visual-styles.md`, `house-style.md` etc. should always be read from the global location — that's their canonical home.
+
+**Known Windows blocker:** both `animation-map.mjs` and `contrast-report.mjs` bootstrap `@hyperframes/producer` (and `sharp` for contrast-report) via `npm.cmd` `spawnSync`, which on Windows-Node yields `EINVAL` (a long-standing Node.js Windows quirk on `.cmd` shims). Workaround: once per project, `npm i -D @hyperframes/producer@<exact-version> sharp@<exact-version>` inside the `hyperframes/` project directory. The exact versions are taken from the script's missing-deps error message. After this one-time install, both helpers run without setting `HYPERFRAMES_SKILL_BOOTSTRAP_DEPS=1`. Refs: retro 2026-05-01 §2.7.
