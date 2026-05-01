@@ -757,7 +757,9 @@ Edit `scripts/scaffold_hyperframes.py`. Find lines 195-197:
 Replace with:
 
 ```python
-    # Copy transcript: final.json is an envelope ({edl_hash, words}); HF expects a bare array.
+    # Copy transcript: final.json is an envelope ({edl_hash, words}); HF consumes a
+    # word-level array of {text, start, end} entries (per `references/transcript-guide.md`
+    # — the canonical caption transcript shape, sometimes called "Normalized word array").
     if final_json.exists():
         envelope = json.loads(final_json.read_text(encoding="utf-8"))
         words = envelope["words"] if isinstance(envelope, dict) else envelope
@@ -1054,16 +1056,18 @@ Find the Studio launch block (currently around line 188-192). Find:
 Replace with:
 
 ```markdown
-> **Post-launch StaticGuard check.** After the studio is up, tail `.hyperframes/preview.log` for the first 5 seconds. If any line matches `[StaticGuard]`, report the message verbatim and **stop without handing off to the user** — a StaticGuard warning post-PR-1 indicates a real new contract violation, not the legacy doubling issue we already fixed.
+> **Post-launch StaticGuard check.** After the studio is up, tail `.hyperframes/preview.log` for the first 5 seconds. If any line matches the StaticGuard contract diagnostic, report it verbatim and **stop without handing off to the user** — a StaticGuard warning post-PR-1 indicates a real new contract violation, not the legacy doubling issue we already fixed.
+>
+> The pattern matches both forms observed from HF tooling: the `[StaticGuard]` prefix (verified from `validate` output) and the diagnostic text `Invalid HyperFrame contract` (engine-code emitted; resilient if HF changes the prefix). If the actual `preview` log format differs at implementation time, prefer the diagnostic text over the prefix.
 >
 > Bash:
 > ```bash
-> for i in 1 2 3 4 5; do sleep 1; if grep -q '\[StaticGuard\]' .hyperframes/preview.log 2>/dev/null; then echo "StaticGuard fired:"; grep '\[StaticGuard\]' .hyperframes/preview.log; exit 1; fi; done
+> for i in 1 2 3 4 5; do sleep 1; if grep -qE '\[StaticGuard\]|Invalid HyperFrame contract' .hyperframes/preview.log 2>/dev/null; then echo "StaticGuard fired:"; grep -E '\[StaticGuard\]|Invalid HyperFrame contract' .hyperframes/preview.log; exit 1; fi; done
 > ```
 >
 > PowerShell:
 > ```powershell
-> 1..5 | ForEach-Object { Start-Sleep -Seconds 1; if (Select-String -Path .hyperframes\preview.log -Pattern '\[StaticGuard\]' -Quiet -ErrorAction SilentlyContinue) { Write-Host 'StaticGuard fired:'; Select-String -Path .hyperframes\preview.log -Pattern '\[StaticGuard\]'; exit 1 } }
+> 1..5 | ForEach-Object { Start-Sleep -Seconds 1; if (Select-String -Path .hyperframes\preview.log -Pattern '\[StaticGuard\]|Invalid HyperFrame contract' -Quiet -ErrorAction SilentlyContinue) { Write-Host 'StaticGuard fired:'; Select-String -Path .hyperframes\preview.log -Pattern '\[StaticGuard\]|Invalid HyperFrame contract'; exit 1 } }
 > ```
 >
 > Only if the 5-second window is clean, report `http://localhost:3002` to the user.
