@@ -49,6 +49,30 @@ class ComposeState(TypedDict, total=False):
     index_html_path: str | None
 
 
+class PreScanState(TypedDict, total=False):
+    slips: list[dict]
+    source_path: str | None
+    skipped: bool
+    skip_reason: str | None
+
+
+class EditState(TypedDict, total=False):
+    pre_scan: PreScanState
+
+
+class LLMRunRecord(TypedDict, total=False):
+    node: str
+    backend: str
+    model: str
+    tier: str
+    success: bool
+    reason: str | None
+    wall_time_s: float | None
+    tokens_in: int | None
+    tokens_out: int | None
+    timestamp: str
+
+
 class GraphError(TypedDict):
     node: str
     message: str
@@ -62,5 +86,7 @@ class GraphState(TypedDict, total=False):
     audio: Annotated[AudioState, dict_merge]
     transcripts: Annotated[TranscriptsState, dict_merge]
     compose: Annotated[ComposeState, dict_merge]
+    edit: Annotated[EditState, dict_merge]
     errors: Annotated[list[GraphError], add]
     notices: Annotated[list[str], add]
+    llm_runs: Annotated[list[LLMRunRecord], add]
