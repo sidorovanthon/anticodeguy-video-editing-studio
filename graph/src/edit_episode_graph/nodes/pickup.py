@@ -24,14 +24,29 @@ def _cmd(state) -> list[str]:
     return cmd
 
 
+def _abs(p: str | None) -> str | None:
+    """Resolve `p` against PROJECT_ROOT if relative; pass through None.
+
+    `scripts/pickup.py` emits paths relative to the orchestrator root (its own
+    cwd at run time). Conditional-edge routing functions in `nodes/_routing.py`
+    run *in-process* inside `langgraph dev`, whose cwd is wherever the user
+    invoked it from — not necessarily PROJECT_ROOT. Absolutizing here makes
+    every downstream consumer (routing, subprocess wrappers) cwd-independent.
+    """
+    if p is None:
+        return None
+    pp = Path(p)
+    return str(pp if pp.is_absolute() else (PROJECT_ROOT / pp).resolve())
+
+
 def _parse(stdout: str) -> dict:
     parsed = json.loads(stdout)
     return {
         "slug": parsed["slug"],
-        "episode_dir": parsed["episode_dir"],
+        "episode_dir": _abs(parsed["episode_dir"]),
         "pickup": {
-            "raw_path": parsed.get("raw_path"),
-            "script_path": parsed.get("script_path"),
+            "raw_path": _abs(parsed.get("raw_path")),
+            "script_path": _abs(parsed.get("script_path")),
             "resumed": parsed.get("resumed", False),
             "idle": parsed.get("idle", False),
             "warning": parsed.get("warning"),
