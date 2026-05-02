@@ -4,16 +4,10 @@
 module rebuilds it; `langgraph dev` does so on every code change.
 """
 
-from pathlib import Path
-
-from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import END, StateGraph
 
 from .nodes.pickup import pickup_node
 from .state import GraphState
-
-_CHECKPOINT_DIR = Path(__file__).resolve().parent.parent.parent / ".langgraph_api"
-_CHECKPOINT_PATH = _CHECKPOINT_DIR / "checkpoints.sqlite"
 
 
 def _route_after_pickup(state) -> str:
@@ -26,14 +20,27 @@ def _route_after_pickup(state) -> str:
 
 
 def build_graph():
-    _CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
+    """Compile the v0 graph WITHOUT a checkpointer.
+
+    Spec §9.6 originally bound a `SqliteSaver` here, but the langgraph-api
+    runtime (used by `langgraph dev` and `langgraph up`) manages persistence
+    itself and rejects user-supplied checkpointers with a hard ValueError.
+
+    Direct invocation contexts (smoke tests, ad-hoc `graph.invoke()`) that
+    need persistence should pass a checkpointer at compile time:
+
+        from langgraph.checkpoint.memory import InMemorySaver
+        g = build_graph_uncompiled()
+        compiled = g.compile(checkpointer=InMemorySaver())
+
+    Switching the dev runtime to a real DB is configured via env vars
+    (`POSTGRES_URI`) — out of scope for v0.
+    """
     g = StateGraph(GraphState)
     g.add_node("pickup", pickup_node)
     g.set_entry_point("pickup")
     g.add_conditional_edges("pickup", _route_after_pickup)
-    return g.compile(
-        checkpointer=SqliteSaver.from_conn_string(str(_CHECKPOINT_PATH)),
-    )
+    return g.compile()
 
 
 graph = build_graph()
