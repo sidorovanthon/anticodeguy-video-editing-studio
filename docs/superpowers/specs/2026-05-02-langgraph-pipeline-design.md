@@ -57,6 +57,8 @@ START → pickup → idle? → END
 
 ### 4.2 Phase 3 — video-use, decomposed (canon §"The process" 1–8)
 
+**Orchestrator policy: animations and subtitles are produced in Phase 4 (hyperframes), NOT in Phase 3.** Video-use canon makes both opt-in (`## Animations (when requested)` line 195; `subtitles is optional` line 280). Our `p3_strategy` and `p3_edl_select` briefs honor this opt-out: strategy does not propose animations or subtitles; EDL emits `overlays: []` and omits `subtitles` entirely. As a result `p3_render_segments` is purely cuts + grade + concat — Hard Rules 1 (subtitles last) and 4 (overlay PTS-shift) are trivially satisfied because there are no subtitles or overlays to manage.
+
 ```
        skip_phase3?  ──yes──→  glue_remap_transcript
               │ no
@@ -65,25 +67,16 @@ START → pickup → idle? → END
               ▼
        p3_pre_scan           LLM cheap, has_tools — reads takes_packed.md → list of slips/avoid
               ▼
-       p3_strategy           LLM smart — proposes shape, take strategy, grade, pacing, length estimate
-              ▼               (or skips — orchestrator policy pre-resolves Hard Rule 11 unless mismatch)
-       p3_edl_select         LLM smart, has_tools — editor sub-agent brief from canon §"Editor sub-agent brief"
-              ▼
+       p3_strategy           LLM smart — proposes shape, take strategy, grade, pacing, length estimate.
+              ▼               Brief explicitly suppresses animation + subtitle planning (Phase 4 territory).
+       p3_edl_select         LLM smart, has_tools — editor sub-agent brief from canon §"Editor sub-agent brief".
+              ▼               Brief mandates `overlays: []` and omits `subtitles` field.
        gate:edl_ok           validates EDL schema, word-boundary cuts (HR 6), padding 30–200ms (HR 7),
-              ▼               pacing target 25–35%, no `subtitles` field
-       p3_animations_plan    LLM cheap — slot list + technique selection per slot (or skips if no overlays)
-              ▼
-       Send(slot_n) ─┐       fan-out per animation slot (Hard Rule 10)
-        ┌─────┐     │
-        │slot1│────►│       each: LLM smart, has_tools, brief from canon §"Animations"
-        │slot2│────►│       artifact: <edit>/animations/slot_N/render.mp4
-        │slotN│────►│
-        └─────┘     │
-              ▼ reduce
+              ▼               pacing target 25–35%, `overlays == []`, `subtitles` field absent
        p3_render_segments    deterministic: render.py extract per-segment + grade + 30ms fades (HR 3)
-              ▼               + concat -c copy (HR 2) + overlays PTS-shifted (HR 4) + subtitles LAST (HR 1)
+              ▼               + concat -c copy (HR 2). No overlays, no subtitles.
        p3_self_eval          LLM cheap, has_tools — timeline_view at cut boundaries ±1.5s,
-              ▼               check cuts/waveform/subs/overlay alignment
+              ▼               check cuts/waveform/grade alignment
        gate:eval_ok ─┐       fail + iter<3 → loop back to p3_render_segments
               │      │       fail + iter≥3 → interrupt() escalate to user
               ▼ pass
@@ -93,6 +86,8 @@ START → pickup → idle? → END
               ▼
        skip_phase4?
 ```
+
+Phase 3 LLM nodes: 5 (`p3_pre_scan`, `p3_strategy`, `p3_edl_select`, `p3_self_eval`, `p3_persist_session`). Plus 2 deterministic (`p3_inventory`, `p3_render_segments`). Animation fan-out (`p3_animations_plan`, `p3_animations_slot_<n>` Send) is removed entirely — that surface lives in Phase 4 hyperframes scenes.
 
 ### 4.3 Phase 4 — hyperframes, decomposed (canon §"Approach" Step 1/2/3 + Quality Checks)
 
@@ -272,7 +267,7 @@ Concrete gates:
 
 | Gate | Checks |
 |------|--------|
-| `gate:edl_ok` | EDL JSON schema; word-boundary cuts (HR 6); padding 30–200ms (HR 7); pacing 25–35%; absent `subtitles` field |
+| `gate:edl_ok` | EDL JSON schema; word-boundary cuts (HR 6); padding 30–200ms (HR 7); pacing 25–35%; `overlays == []`; absent `subtitles` field |
 | `gate:eval_ok` | ffprobe duration matches `total_duration_s` ±100ms; iteration < 3 |
 | `gate:design_ok` | DESIGN.md substance: ≥2 visual references, ≥1 alternative, ≥3 anti-patterns, populated Beat→Visual Mapping |
 | `gate:plan_ok` | ≥3 beats; per-boundary transition mechanism declared; per-beat catalog-vs-custom justification |
@@ -308,10 +303,8 @@ LLM nodes by phase:
 | Node | tier | needs_tools | output |
 |------|------|-------------|--------|
 | `p3_pre_scan` | cheap | yes | `PreScanReport(slips: list[Slip])` |
-| `p3_strategy` | smart | no | `Strategy(shape, takes, grade, pacing, length_estimate)` |
-| `p3_edl_select` | smart | yes | canonical `EDL` (no `subtitles` field) |
-| `p3_animations_plan` | cheap | no | `AnimationPlan(slots: list[SlotSpec])` |
-| `p3_animations_slot_<n>` (Send) | smart | yes | `SlotArtifact(render_mp4_path, duration)` |
+| `p3_strategy` | smart | no | `Strategy(shape, takes, grade, pacing, length_estimate)` — no animations, no subtitles |
+| `p3_edl_select` | smart | yes | canonical `EDL` with `overlays: []` and no `subtitles` field |
 | `p3_self_eval` | cheap | yes | `EvalReport(issues, pass)` |
 | `p3_persist_session` | cheap | yes | appends Session block to `<edit>/project.md` |
 | `p4_design_system` | cheap | yes | `DesignDoc(palette, typography, refs, alternatives, anti_patterns, beat_visual_mapping)` |
@@ -477,13 +470,12 @@ Each version is one feature branch + PR. A version is "closed" when it works end
 
 ### v3 — Full Phase 3 + first gates
 
-- LLM nodes: `p3_strategy`, `p3_edl_select`, `p3_animations_plan`, `p3_self_eval`, `p3_persist_session`
-- Deterministic: `p3_inventory`, `p3_render_segments`
-- Fan-out: `p3_animations_dispatch` via `Send`
-- Gates: `gate:edl_ok`, `gate:eval_ok` (loop ≤ 3 → escalate)
+- LLM nodes: `p3_strategy`, `p3_edl_select`, `p3_self_eval`, `p3_persist_session` (`p3_pre_scan` already shipped in v2)
+- Deterministic: `p3_inventory`, `p3_render_segments` (no overlays, no subtitles — those are Phase 4)
+- Gates: `gate:edl_ok` (validates `overlays: []` and absent `subtitles` field), `gate:eval_ok` (loop ≤ 3 → escalate)
 - `preflight_canon` v1: real memory-staleness check + bare-repro for known-blocked patterns
 
-**Replaces:** Phase 3 of `/edit-episode`. Output (EDL + final.mp4) parity with current pipeline.
+**Replaces:** Phase 3 of `/edit-episode`. Output (final.mp4 raw cut, no animations or subtitles) — animation/subtitle parity with the legacy pipeline is delegated to Phase 4 hyperframes.
 
 ### v4 — Phase 4 sans HITL
 
