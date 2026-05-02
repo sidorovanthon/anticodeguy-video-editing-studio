@@ -8,9 +8,18 @@ The factory handles subprocess execution + uniform error reporting:
   - Runs `cmd_factory(state)` via subprocess with optional `cwd`.
   - On non-zero exit: returns a state delta appending one `GraphError` to
     `state["errors"]` (the `add` reducer in `state.py` makes this append-only).
+    Both stdout and stderr are folded into the error message — many subprocess
+    callers write diagnostics to one or the other inconsistently.
     The graph's conditional edge then routes to END.
   - On success: delegates stdout parsing to the caller-supplied `parser`,
-    which returns the full state delta.
+    which returns the full state delta. Parser exceptions are caught and
+    converted to the same `GraphError` channel, so a malformed subprocess
+    payload cannot crash the graph.
+
+Out of scope: subprocess infrastructure failures (missing executable, OS-level
+spawn errors). `subprocess.run` may still raise `FileNotFoundError` /
+`OSError`; surfacing those as graph errors is deferred — they indicate an
+environment problem the user must fix, not a recoverable pipeline state.
 
 Validation strategy: `parser` may use Pydantic for strict schema enforcement,
 or plain `json.loads` while output contracts are still settling. The factory
@@ -46,6 +55,9 @@ def deterministic_node(
         A `node(state) -> dict` callable suitable for `StateGraph.add_node`.
     """
 
+    def _error(message: str) -> dict:
+        return {"errors": [{"node": name, "message": message, "timestamp": _now()}]}
+
     def node(state):
         result = subprocess.run(
             cmd_factory(state),
@@ -54,11 +66,11 @@ def deterministic_node(
             cwd=cwd,
         )
         if result.returncode != 0:
-            return {
-                "errors": [
-                    {"node": name, "message": result.stderr, "timestamp": _now()}
-                ]
-            }
-        return parser(result.stdout)
+            combined = "\n".join(s for s in (result.stderr, result.stdout) if s).strip()
+            return _error(combined or f"exit code {result.returncode}, no output")
+        try:
+            return parser(result.stdout)
+        except Exception as exc:
+            return _error(f"parser error: {exc!r}\n--- stdout ---\n{result.stdout}")
 
     return node
