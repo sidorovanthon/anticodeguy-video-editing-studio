@@ -569,7 +569,40 @@ graph/
 
 Skeletons for `gates/_base.py`, `briefs/`, `backends/*` are created with `pass`-bodies and module-level docstring describing intended responsibility. They anchor structure and make imports resolve. No functional code in v0.
 
-### 9.2 `langgraph.json`
+### 9.2 `pyproject.toml` (full)
+
+```toml
+[project]
+name = "edit-episode-graph"
+version = "0.0.1"
+description = "LangGraph orchestrator for the anticodeguy video editing pipeline"
+requires-python = ">=3.11"
+dependencies = [
+    "langgraph>=0.2.60",
+    "langgraph-checkpoint-sqlite>=2.0",
+    "pydantic>=2.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "langgraph-cli[inmem]>=0.1.55",   # provides `langgraph dev` + Studio
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/edit_episode_graph"]
+```
+
+Notes:
+- `langgraph` itself is the runtime. `langgraph-cli[inmem]` is the dev tool that provides the `langgraph dev` command and the Studio UI. We pin it under `[dev]` because production deployment (post-v7) won't need it.
+- `langgraph-checkpoint-sqlite` is the SqliteSaver used in §9.5. As of LangGraph 0.2.x it ships in a separate package, not in core.
+- Python 3.11+ — LangGraph requires it; this is also our project default.
+- Build backend is `hatchling` (lightweight, no extra dependencies). Could swap for `setuptools`; choice is non-load-bearing.
+
+### 9.3 `langgraph.json`
 
 ```json
 {
@@ -581,11 +614,13 @@ Skeletons for `gates/_base.py`, `briefs/`, `backends/*` are created with `pass`-
 }
 ```
 
-### 9.3 `state.py` (full)
+A minimal `.env` file (created empty in v0) is referenced — `langgraph dev` reads it to populate process env. Variables that v2+ may need (e.g., `ELEVENLABS_API_KEY` for `isolate_audio`) live there. v0 does not require any.
+
+### 9.4 `state.py` (full)
 
 See §5.3.
 
-### 9.4 `nodes/pickup.py`
+### 9.5 `nodes/pickup.py`
 
 ```python
 import json, subprocess, sys
@@ -620,7 +655,7 @@ def pickup_node(state):
     }
 ```
 
-### 9.5 `graph.py` (full)
+### 9.6 `graph.py` (full)
 
 ```python
 from langgraph.graph import StateGraph, END
@@ -655,20 +690,20 @@ graph = build_graph()
 
 Checkpointer location: `graph/.langgraph_api/checkpoints.sqlite` (isolated from repo root). Migrate to repo-root `.langgraph_api/` later only if multiple graphs appear.
 
-### 9.6 Run
+### 9.7 Run
 
 ```bash
 cd graph
 python -m venv .venv
 # PowerShell: .\.venv\Scripts\Activate.ps1
 # Bash: source .venv/Scripts/activate
-pip install -e .
-langgraph dev
+pip install -e ".[dev]"      # core deps + langgraph-cli[inmem] for `langgraph dev`
+langgraph dev                # starts API on :2024 + opens Studio URL in stdout
 ```
 
 Open the Studio URL printed to stdout. Create a new thread with arbitrary `thread_id` (or use slug). Run with input `{"slug": "<inbox-stem>"}` or `{}` for auto-pick.
 
-### 9.7 Definition of done for v0
+### 9.8 Definition of done for v0
 
 1. `langgraph dev` starts cleanly; Studio UI opens.
 2. Run on a real `inbox/<slug>.<ext>` produces `episodes/<slug>/raw.<ext>` (and `script.txt` if paired).
@@ -677,7 +712,7 @@ Open the Studio URL printed to stdout. Create a new thread with arbitrary `threa
 5. Failure case (e.g., two videos with same stem) → `errors[]` populated, run terminates, Studio shows error.
 6. SQLite checkpoint at `graph/.langgraph_api/checkpoints.sqlite` written; thread history visible in Studio.
 
-### 9.8 Out of scope for v0
+### 9.9 Out of scope for v0
 
 - No tests (deferred to v1, when 3+ nodes justify infra investment).
 - No real backend implementations (skeletons only).
