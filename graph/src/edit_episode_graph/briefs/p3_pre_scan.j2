@@ -1,0 +1,30 @@
+{# Pre-scan task descriptor — mirrors video-use SKILL.md §"The process" Step 2.
+   Kept short (≤25 lines): tells the executor where the input lives, what to
+   look for, and what shape to return. Hard Rules and forbidden-field
+   guarantees live in the schema (see schemas/p3_pre_scan.py), not in prose. #}
+You are running the **pre-scan** pass for an anticodeguy episode (`{{ slug }}`).
+
+Canon: `~/.claude/skills/video-use/SKILL.md` §"The process" — Step 2 ("Pre-scan
+for problems"). Read it once if you have not.
+
+Input: `{{ takes_packed_path }}` (a `takes_packed.md` produced by the inventory
+step). Read it via the `Read` tool. Walk through the takes once. Note:
+
+  - Verbal slips, mis-starts, false starts, words the speaker corrected.
+  - Obvious mis-speaks (wrong word, wrong number, swapped name).
+  - Phrasings the editor should avoid even if they parse cleanly (filler,
+    off-topic asides, things the speaker explicitly retracted).
+
+Return ONLY a JSON document matching this schema:
+
+```json
+{
+  "slips": [
+    {"quote": "<exact phrase>", "take_index": <int|null>, "reason": "<why>"}
+  ]
+}
+```
+
+If there are no slips worth flagging, return `{"slips": []}`. Do not include
+prose outside the JSON block. Do not invent slips — only flag what is in the
+file.
