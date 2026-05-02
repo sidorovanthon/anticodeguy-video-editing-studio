@@ -1,32 +1,31 @@
-"""Pickup node — wraps `scripts/pickup.py` via subprocess.
-
-v0's only functional node. Reads the inbox, moves the raw container into
-`episodes/<slug>/`, and records the resulting paths in graph state.
-"""
+"""Pickup node — wraps `scripts/pickup.py` via the deterministic-node factory."""
 
 import json
-import subprocess
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
+
+from ._deterministic import deterministic_node
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 
 
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
-
-def pickup_node(state):
-    cmd = [sys.executable, "-m", "scripts.pickup", "--inbox", "inbox", "--episodes", "episodes"]
+def _cmd(state) -> list[str]:
+    cmd = [
+        sys.executable,
+        "-m",
+        "scripts.pickup",
+        "--inbox",
+        "inbox",
+        "--episodes",
+        "episodes",
+    ]
     if state.get("slug"):
         cmd += ["--slug", state["slug"]]
+    return cmd
 
-    result = subprocess.run(cmd, capture_output=True, text=True, cwd=PROJECT_ROOT)
-    if result.returncode != 0:
-        return {"errors": [{"node": "pickup", "message": result.stderr, "timestamp": _now()}]}
 
-    parsed = json.loads(result.stdout)
+def _parse(stdout: str) -> dict:
+    parsed = json.loads(stdout)
     return {
         "slug": parsed["slug"],
         "episode_dir": parsed["episode_dir"],
@@ -38,3 +37,11 @@ def pickup_node(state):
             "warning": parsed.get("warning"),
         },
     }
+
+
+pickup_node = deterministic_node(
+    name="pickup",
+    cmd_factory=_cmd,
+    parser=_parse,
+    cwd=PROJECT_ROOT,
+)
