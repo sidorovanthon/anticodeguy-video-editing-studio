@@ -26,3 +26,4 @@ tests/__pycache__/
 # ...except hermetic test fixtures
 !tests/fixtures/**/*.jsonl
 tmp/
+graph/langgraph_dev_v1.log
