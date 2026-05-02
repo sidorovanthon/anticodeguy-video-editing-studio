@@ -19,6 +19,22 @@ def _route_after_pickup(state) -> str:
     return END
 
 
+def build_graph_uncompiled() -> StateGraph:
+    """Assemble the v0 graph topology without compiling.
+
+    Exposed so direct-invocation callers (smoke tests, ad-hoc scripts)
+    can attach their own checkpointer at compile time:
+
+        from langgraph.checkpoint.memory import InMemorySaver
+        compiled = build_graph_uncompiled().compile(checkpointer=InMemorySaver())
+    """
+    g = StateGraph(GraphState)
+    g.add_node("pickup", pickup_node)
+    g.set_entry_point("pickup")
+    g.add_conditional_edges("pickup", _route_after_pickup)
+    return g
+
+
 def build_graph():
     """Compile the v0 graph WITHOUT a checkpointer.
 
@@ -26,21 +42,10 @@ def build_graph():
     runtime (used by `langgraph dev` and `langgraph up`) manages persistence
     itself and rejects user-supplied checkpointers with a hard ValueError.
 
-    Direct invocation contexts (smoke tests, ad-hoc `graph.invoke()`) that
-    need persistence should pass a checkpointer at compile time:
-
-        from langgraph.checkpoint.memory import InMemorySaver
-        g = build_graph_uncompiled()
-        compiled = g.compile(checkpointer=InMemorySaver())
-
     Switching the dev runtime to a real DB is configured via env vars
     (`POSTGRES_URI`) — out of scope for v0.
     """
-    g = StateGraph(GraphState)
-    g.add_node("pickup", pickup_node)
-    g.set_entry_point("pickup")
-    g.add_conditional_edges("pickup", _route_after_pickup)
-    return g.compile()
+    return build_graph_uncompiled().compile()
 
 
 graph = build_graph()

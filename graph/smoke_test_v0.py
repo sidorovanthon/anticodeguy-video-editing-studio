@@ -11,15 +11,14 @@ which consumes the inbox video. Run from repo root with:
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
+
+from edit_episode_graph.nodes.pickup import pickup_node
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 INBOX = REPO_ROOT / "inbox"
 EPISODES = REPO_ROOT / "episodes"
-
-sys.path.insert(0, str((Path(__file__).resolve().parent / "src").resolve()))
-from edit_episode_graph.nodes.pickup import pickup_node
+SUPPORTED_EXTS = (".mp4", ".mov", ".mkv", ".webm")
 
 
 def _snapshot_inbox() -> dict[str, bytes]:
@@ -46,6 +45,15 @@ def main() -> int:
     EPISODES.mkdir(exist_ok=True)
     snapshot = _snapshot_inbox()
     print(f"inbox snapshot: {list(snapshot)} (sizes: {[len(v) for v in snapshot.values()]})")
+
+    # Fail fast: case 2 needs at least one video.
+    if not any(name.lower().endswith(SUPPORTED_EXTS) for name in snapshot):
+        print(
+            "\nFATAL: inbox/ has no supported video file "
+            f"({SUPPORTED_EXTS}). Case 2 cannot run; case 4/5 would cascade. "
+            "Drop a video into inbox/ (or restore from a previous run) and retry."
+        )
+        return 2
 
     failures: list[str] = []
 
@@ -105,28 +113,19 @@ def main() -> int:
         failures.append("case 5: skipped (no slug from case 2)")
 
     # --- Case 6: checkpointer integration ---
-    # NB: spec §9.8 case 6 originally said "SQLite at graph/.langgraph_api/
-    # checkpoints.sqlite". This conflicts with how `langgraph dev` works:
-    # the langgraph-api runtime supplies its own checkpointer and rejects
-    # user-bound ones. So `build_graph()` returns a checkpointer-free graph;
-    # case 6 here verifies the graph compiles cleanly *with* an explicit
-    # InMemorySaver attached at compile time (the path other deterministic
-    # callers will use). Studio thread persistence is a separate manual check.
-    print("\n=== Case 6: graph + explicit InMemorySaver ===")
+    # Spec §9.8 case 6 originally said "SQLite at graph/.langgraph_api/
+    # checkpoints.sqlite" — wrong. langgraph-api supplies its own checkpointer
+    # and rejects user-bound ones, so `build_graph()` returns a saver-free
+    # graph. Production callers that need persistence outside `langgraph dev`
+    # use `build_graph_uncompiled()` + their own checkpointer; this case
+    # exercises that exact path against the same topology.
+    print("\n=== Case 6: build_graph_uncompiled() + InMemorySaver ===")
     try:
         from langgraph.checkpoint.memory import InMemorySaver
 
-        from edit_episode_graph.graph import build_graph as _build
-        from edit_episode_graph.state import GraphState
-        from edit_episode_graph.nodes.pickup import pickup_node as _pn
-        from langgraph.graph import END, StateGraph
+        from edit_episode_graph.graph import build_graph_uncompiled
 
-        # Re-construct with checkpointer (build_graph() compiles without one).
-        g = StateGraph(GraphState)
-        g.add_node("pickup", _pn)
-        g.set_entry_point("pickup")
-        g.add_conditional_edges("pickup", lambda s: END)
-        compiled = g.compile(checkpointer=InMemorySaver())
+        compiled = build_graph_uncompiled().compile(checkpointer=InMemorySaver())
         cfg = {"configurable": {"thread_id": "smoke-test-case-6"}}
         for p in list(INBOX.iterdir()):
             if p.is_file():
@@ -136,7 +135,6 @@ def main() -> int:
         finally:
             _restore_inbox(snapshot)
         print(json.dumps({k: v for k, v in r6.items() if k != "errors"}, indent=2, default=str))
-        # Confirm checkpoint state was persisted under thread_id
         snapshot_state = compiled.get_state(cfg)
         if snapshot_state is None or snapshot_state.values is None:
             failures.append("case 6: get_state returned None — checkpointer not wired")

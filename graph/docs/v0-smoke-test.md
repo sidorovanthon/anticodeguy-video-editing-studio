@@ -72,13 +72,25 @@ A persistent SQLite (or Postgres) checkpointer is a v6+ concern, paired with the
 ## How to reproduce
 
 ```powershell
+# 1. One-time setup
 cd graph
-.\.venv\Scripts\python.exe smoke_test_v0.py        # cases 2,3,4,5,6 headless
-.\.venv\Scripts\langgraph.exe dev --no-browser     # case 1: Studio + boot
-# In another shell, drop a video into ../inbox/, then visit the Studio URL.
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+
+# 2. Drop a video into ../inbox/ (any .mp4/.mov/.mkv/.webm).
+
+# 3. Headless cases 2-6 (consumes the inbox video; see step 5 to restore)
+.\.venv\Scripts\python.exe smoke_test_v0.py
+
+# 4. Case 1 (manual): boot the dev server and visit the Studio URL it prints
+.\.venv\Scripts\langgraph.exe dev --no-browser
+
+# 5. To re-run, restore the inbox fixture:
+#    `mv episodes/raw-N/raw.mp4 inbox/raw.mp4 && rmdir episodes/raw-N`
+#    (raw-N is the slug created by the most recent case 2 run)
 ```
 
-The smoke test consumes `inbox/raw.mp4` for case 2; restore it from `episodes/raw-2/raw.mp4` (or whatever `raw-N` was created) before re-running.
+The smoke test fail-fasts if `inbox/` has no supported video at startup, so step 5 is enforced by the harness.
 
 ## Out of scope / known gaps
 
