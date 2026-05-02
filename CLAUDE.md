@@ -51,6 +51,10 @@ Trivial fixes (typo, single-line doc tweak) MAY land directly on main with the u
 
 If a session ends with uncommitted work or an unmerged branch, leave the branch as-is — never reset/discard to "tidy up" without explicit instruction.
 
+**Spec amendments ride along with the implementation PR.** When implementation work surfaces a contradiction or omission in a spec under `docs/superpowers/specs/`, amend the spec in the same PR (separate commit, clear message). Don't open a separate spec-PR unless the amendment is large enough to warrant its own review. Rationale: the contradiction's context is freshest in the implementation PR, and reviewers see the fix and the surfaced inconsistency together.
+
+**`gh pr merge` quirk on Windows worktrees.** If `main` exists as a separate git-worktree and you run `gh pr merge` from a feature worktree, the command exits with `failed to run git: fatal: 'main' is already used by worktree...`. **The remote merge succeeds anyway.** Verify via `gh pr view <n> --json state,mergedAt,mergeCommit` before assuming failure; pull main manually in the main worktree.
+
 ## External skill canon — non-negotiable
 
 `video-use` (`~/repos/video-use`, junctioned to `~/.claude/skills/video-use`) and
@@ -113,6 +117,8 @@ The earlier monolithic-agent model trusted one big agent with ~300 lines of cano
 orchestration. Empirically this produced canon deviations. The decomposed graph model
 trades looser intra-step canon-trust for structurally-enforced step boundaries plus
 deterministic gates between artifacts.
+
+**Definition of done for LLM-node tickets:** before opening the PR, run at least one real-CLI invocation through the cheapest available model (e.g. Haiku via per-node `model:` override in `graph/config.yaml`) end-to-end against a real episode in LangGraph Studio or via direct graph invocation. Mocked unit tests prove parser correctness; only a real subprocess invocation proves the integration (subprocess shape, stdout parsing, schema extraction, telemetry append) actually works. Cost is negligible (~$0.001 per smoke run on Haiku). Document the smoke result in the PR's Test plan.
 
 ### Investigation methodology — bare-repro before upstream-blame
 
