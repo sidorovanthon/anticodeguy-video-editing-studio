@@ -34,7 +34,7 @@ class NodeRequirements:
         return True
 
 
-@dataclass(frozen=True)
+@dataclass
 class ToolCall:
     name: str
     input: dict[str, Any]

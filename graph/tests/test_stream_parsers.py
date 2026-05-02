@@ -31,3 +31,22 @@ def test_claude_stream_garbage_lines_skipped():
     raw = "not-json\n" + '{"type":"result","subtype":"success","session_id":"x","model":"claude-sonnet-4-6","usage":{"input_tokens":1,"output_tokens":1},"result":"hi"}\n'
     parsed = parse_claude_stream_json(raw)
     assert parsed.assistant_text == "hi"
+
+
+def test_claude_repeated_identical_tool_calls():
+    raw = (
+        '{"type":"system","subtype":"init","model":"m"}\n'
+        '{"type":"assistant","message":{"content":['
+            '{"type":"tool_use","id":"t1","name":"Read","input":{"file_path":"/a"}},'
+            '{"type":"tool_use","id":"t2","name":"Read","input":{"file_path":"/a"}}'
+        ']}}\n'
+        '{"type":"user","message":{"content":['
+            '{"type":"tool_result","tool_use_id":"t1","content":"first"},'
+            '{"type":"tool_result","tool_use_id":"t2","content":"second"}'
+        ']}}\n'
+        '{"type":"result","subtype":"success","model":"m","usage":{"input_tokens":1,"output_tokens":1},"result":"ok"}\n'
+    )
+    parsed = parse_claude_stream_json(raw)
+    assert len(parsed.tool_calls) == 2
+    assert parsed.tool_calls[0].output_preview == "first"
+    assert parsed.tool_calls[1].output_preview == "second"

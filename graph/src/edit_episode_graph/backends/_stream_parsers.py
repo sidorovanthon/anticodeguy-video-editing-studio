@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 
 from ._types import ToolCall
 
+_TOOL_PREVIEW_CHARS = 200
+
 
 @dataclass
 class ParsedStream:
@@ -56,12 +58,7 @@ def parse_claude_stream_json(stdout: str) -> ParsedStream:
                         content = block.get("content") or ""
                         if isinstance(content, list):
                             content = " ".join(str(c) for c in content)
-                        idx = out.tool_calls.index(tc)
-                        out.tool_calls[idx] = ToolCall(
-                            name=tc.name,
-                            input=tc.input,
-                            output_preview=str(content)[:200],
-                        )
+                        tc.output_preview = str(content)[:_TOOL_PREVIEW_CHARS]
         elif otype == "result":
             out.assistant_text = obj.get("result", out.assistant_text) or ""
             usage = obj.get("usage") or {}
@@ -101,10 +98,5 @@ def parse_codex_json(stdout: str) -> ParsedStream:
         elif role == "tool":
             tc = pending_tools.get(msg.get("tool_call_id", ""))
             if tc is not None:
-                idx = out.tool_calls.index(tc)
-                out.tool_calls[idx] = ToolCall(
-                    name=tc.name,
-                    input=tc.input,
-                    output_preview=str(msg.get("content", ""))[:200],
-                )
+                tc.output_preview = str(msg.get("content", ""))[:_TOOL_PREVIEW_CHARS]
     return out
