@@ -32,3 +32,14 @@ def test_validation_error_includes_raw():
 def test_no_json_at_all_raises():
     with pytest.raises(SchemaValidationError):
         extract_structured("just prose", _Demo)
+
+
+class _Nested(BaseModel):
+    items: list[_Demo]
+
+
+def test_extracts_nested_object_from_fence():
+    raw = '```json\n{"items":[{"n":1,"label":"a"},{"n":2,"label":"b"}]}\n```'
+    out = extract_structured(raw, _Nested)
+    assert len(out.items) == 2
+    assert out.items[1].label == "b"

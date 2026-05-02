@@ -17,8 +17,8 @@ from ._types import SchemaValidationError
 
 T = TypeVar("T", bound=BaseModel)
 
-_FENCE_RE = re.compile(r"```(?:json)?\s*(\{.*?\}|\[.*?\])\s*```", re.DOTALL)
-_BARE_RE = re.compile(r"(\{.*\}|\[.*\])", re.DOTALL)
+_FENCE_RE = re.compile(r"```(?:json)?\s*([\s\S]+?)\s*```", re.DOTALL)
+_BARE_RE = re.compile(r"(\{[\s\S]*\}|\[[\s\S]*\])", re.DOTALL)
 
 
 def extract_structured(raw_text: str, schema: type[T]) -> T:
