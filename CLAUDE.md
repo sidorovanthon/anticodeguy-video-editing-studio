@@ -70,7 +70,49 @@ orchestrator-side proposal — new script, glue step, brief addition, naming con
 Cheatsheets in `docs/cheatsheets/` are reference summaries — useful for orientation,
 but the source of truth for canon checks is the SKILL.md itself. Never propose
 patches to upstream `video-use` or `hyperframes` repos; all glue lives in this
-orchestrator (`scripts/`, `.claude/commands/edit-episode.md`).
+orchestrator (`scripts/`, `.claude/commands/edit-episode.md`, `graph/`).
+
+### Decomposition via brief-references-canon (graph orchestration model)
+
+The LangGraph migration (see `docs/superpowers/specs/2026-05-02-langgraph-pipeline-design.md`)
+extracts canonical workflow steps from `video-use` and `hyperframes` into individual LLM
+nodes in `graph/src/edit_episode_graph/nodes/`. This model post-dates the rules above and
+amends them — the original "no pre-empting canonical executor" wording was written under
+the monolithic-agent model (`/edit-episode` brief) and does not directly apply to graph
+nodes that delegate canonical steps to dispatched sub-agents.
+
+**Decomposition is allowed (and is the chosen orchestration mechanism), provided that:**
+
+1. **Briefs reference canon, do not embed it.** Each LLM node's Jinja2 brief in
+   `graph/src/edit_episode_graph/briefs/` cites the canonical `SKILL.md` path
+   (e.g. "Canon: `~/.claude/skills/video-use/SKILL.md` §"The process" — Step 2") and
+   instructs the dispatched sub-agent to read it. Briefs MUST NOT pre-paraphrase canonical
+   instructions or hard-code canonical knowledge — that would fork canon into our brief and
+   rot the moment upstream updates. The agent reads canon at call time.
+2. **Canonical opt-outs are honored, not bypassed.** When a graph node's policy diverges
+   from canon defaults (e.g. "no animations in Phase 3 because Phase 4 produces them"),
+   the brief uses the canon's own opt-out mechanism — for video-use animations: "do not
+   propose animation plan in Step 4 strategy; emit `overlays: []` in EDL" — rather than
+   skipping a canonical step entirely or rewriting the canonical workflow.
+3. **Canonical sub-agent boundaries map to graph nodes 1:1.** Where canon explicitly
+   defines a sub-agent (video-use Hard Rule 10 animation sub-agents; video-use
+   §"Editor sub-agent brief" for EDL selection; hyperframes implicit scene sub-agents
+   per `references/prompt-expansion.md`) — those become natural LLM-node boundaries.
+   Where canon describes internal main-agent reasoning steps (pre-scan, strategy,
+   self-eval, persist) — extracting these into separate nodes IS the chosen orchestration
+   mechanism for control + visibility, motivated by empirical monolithic-agent canon
+   deviation (see retro-2026-05-02 family — agents skipped fan-out, drew monolithic HTML
+   instead of dispatching scene sub-agents, etc.).
+4. **The "no duplication" rule (item 1 above) still applies to canonical *content*.**
+   Don't generate `DESIGN.md` ourselves before HF Step 1 has run — that's content
+   duplication. But spawning an LLM node whose brief says "do canon Step 1 — here's the
+   SKILL.md path — produce design.md as your output" is fine; the canonical executor
+   still runs, just inside a graph-controlled sub-agent.
+
+The earlier monolithic-agent model trusted one big agent with ~300 lines of canon +
+orchestration. Empirically this produced canon deviations. The decomposed graph model
+trades looser intra-step canon-trust for structurally-enforced step boundaries plus
+deterministic gates between artifacts.
 
 ### Investigation methodology — bare-repro before upstream-blame
 
