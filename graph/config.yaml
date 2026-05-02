@@ -1,0 +1,21 @@
+# graph/config.yaml — read by build_graph() at startup. Restart `langgraph dev`
+# to pick up changes. Glob patterns supported in node_overrides keys (fnmatch).
+
+backend_preference: ["claude", "codex"]
+
+concurrency:
+  claude: 2
+  codex: 2
+  gemini: 3
+
+defaults:
+  timeout_s: 120
+
+node_overrides:
+  p3_pre_scan:
+    tier: cheap
+    backend_preference: ["claude", "codex"]
+    timeout_s: 90
+    # Real-CLI smoke test (Task 18) routes through Haiku for minimal subscription
+    # spend. Remove or change to a Sonnet/Opus ID for production use.
+    model: claude-haiku-4-5-20251001
