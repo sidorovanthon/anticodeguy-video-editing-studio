@@ -27,3 +27,8 @@ tests/__pycache__/
 !tests/fixtures/**/*.jsonl
 tmp/
 graph/langgraph_dev_v1.log
+graph/langgraph_dev.log
+graph/.langgraph_api/
+
+# Claude Code runtime artifacts
+.claude/scheduled_tasks.lock
