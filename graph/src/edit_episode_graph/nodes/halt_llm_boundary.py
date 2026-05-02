@@ -13,8 +13,12 @@ notice in `p4_scaffold.py` — a small marker, not an error.
 
 
 def halt_llm_boundary_node(state):
-    return {
-        "notices": [
-            "v1 halt: `final.mp4` missing; Phase 3 (`p3_inventory`+) requires LLM nodes (v3+)",
-        ],
-    }
+    pre_scan_state = (state.get("edit") or {}).get("pre_scan") or {}
+    if pre_scan_state.get("slips") is not None and not pre_scan_state.get("skipped"):
+        msg = (
+            "v2 halt: pre_scan ran ({n} slip(s) recorded); EDL + render require v3 LLM nodes"
+            .format(n=len(pre_scan_state.get("slips") or []))
+        )
+    else:
+        msg = "v1 halt: `final.mp4` missing; Phase 3 (`p3_inventory`+) requires LLM nodes (v3+)"
+    return {"notices": [msg]}
