@@ -14,11 +14,11 @@ import json
 from pathlib import Path
 
 from edit_episode_graph.nodes.pickup import pickup_node
+from scripts.pickup import SCRIPT_EXTS, SUPPORTED_EXTS
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 INBOX = REPO_ROOT / "inbox"
 EPISODES = REPO_ROOT / "episodes"
-SUPPORTED_EXTS = (".mp4", ".mov", ".mkv", ".webm")
 
 
 def _snapshot_inbox() -> dict[str, bytes]:
@@ -46,12 +46,15 @@ def main() -> int:
     snapshot = _snapshot_inbox()
     print(f"inbox snapshot: {list(snapshot)} (sizes: {[len(v) for v in snapshot.values()]})")
 
-    # Fail fast: case 2 needs at least one video.
-    if not any(name.lower().endswith(SUPPORTED_EXTS) for name in snapshot):
+    # Fail fast: case 2 needs a paired video + script (HOM-85: pickup now
+    # requires a script for slug derivation; video-only inbox errors out).
+    has_video = any(name.lower().endswith(SUPPORTED_EXTS) for name in snapshot)
+    has_script = any(name.lower().endswith(SCRIPT_EXTS) for name in snapshot)
+    if not (has_video and has_script):
         print(
-            "\nFATAL: inbox/ has no supported video file "
-            f"({SUPPORTED_EXTS}). Case 2 cannot run; case 4/5 would cascade. "
-            "Drop a video into inbox/ (or restore from a previous run) and retry."
+            "\nFATAL: inbox/ must contain a paired video + script for case 2. "
+            "Drop e.g. raw.mp4 + script.txt into inbox/ (or restore from a "
+            "previous run) and retry."
         )
         return 2
 

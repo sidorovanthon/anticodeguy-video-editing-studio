@@ -1,12 +1,17 @@
 """Episode pickup: pair video+script, derive slug, move to episodes/<slug>/.
 
-Per docs/superpowers/specs/2026-04-30-pipeline-enforcement-design.md §3.
+Pairing rules (HOM-85):
+* 0 files                       -> idle
+* videos > 0, scripts == 0      -> error (script required for slug derivation)
+* scripts > 0, videos == 0      -> error (orphan scripts)
+* exactly 1 video + 1 script    -> pair regardless of stem
+* multi-file, >=1 stem-pair     -> FIFO oldest pair; orphans warned, left in inbox
+* multi-file, no stem-pair      -> error
 """
 from __future__ import annotations
 
 import argparse
 import json
-import re
 import shutil
 import sys
 from dataclasses import dataclass, asdict
@@ -16,8 +21,8 @@ from pathlib import Path
 from scripts.slugify import derive_slug
 
 SUPPORTED_EXTS = (".mp4", ".mov", ".mkv", ".webm")
-SCRIPT_EXTS = (".txt", ".md")
-LEGACY_SLUG_RE = re.compile(r"^[a-z0-9._-]+$")
+# Order matters for stem-collision tie-breaking — keep .txt first.
+SCRIPT_EXTS = (".txt", ".md", ".srt", ".json")
 
 
 class PickupError(Exception):
@@ -45,18 +50,23 @@ class PickupResult:
 def _find_videos(inbox: Path) -> list[Path]:
     if not inbox.exists():
         return []
-    return [
-        p for p in inbox.iterdir()
-        if p.is_file() and p.suffix.lower() in SUPPORTED_EXTS
-    ]
+    return sorted(
+        (p for p in inbox.iterdir()
+         if p.is_file() and p.suffix.lower() in SUPPORTED_EXTS),
+        key=lambda p: p.stat().st_mtime,
+    )
 
 
-def _find_script_for(video: Path) -> Path | None:
-    for ext in SCRIPT_EXTS:
-        candidate = video.with_suffix(ext)
-        if candidate.exists():
-            return candidate
-    return None
+def _find_scripts(inbox: Path) -> list[Path]:
+    if not inbox.exists():
+        return []
+    # Sort by mtime, then by SCRIPT_EXTS index so same-mtime ties are
+    # deterministic (.txt wins over .md wins over .srt wins over .json).
+    return sorted(
+        (p for p in inbox.iterdir()
+         if p.is_file() and p.suffix.lower() in SCRIPT_EXTS),
+        key=lambda p: (p.stat().st_mtime, SCRIPT_EXTS.index(p.suffix.lower())),
+    )
 
 
 def _resolve_collision(episodes: Path, slug: str) -> str:
@@ -80,44 +90,16 @@ def _resume_existing(episodes: Path, slug: str) -> PickupResult:
     return PickupResult(slug=slug, episode_dir=ep_dir, raw_path=raw, script_path=script, resumed=True)
 
 
-def pick_episode(
+def _stage_pair(
     *,
-    inbox: Path,
+    video: Path,
+    script: Path,
     episodes: Path,
     today: str,
-    slug_arg: str | None = None,
+    warning: str | None,
 ) -> PickupResult:
-    """Resolve which episode to work on and stage its files.
-
-    Behavior matches §3.4 of the design spec exactly.
-    """
-    if slug_arg:
-        return _resume_existing(episodes, slug_arg)
-
-    videos = _find_videos(inbox)
-    if not videos:
-        return PickupResult(slug="", episode_dir=Path(), raw_path=None, script_path=None, idle=True)
-
-    # FIFO: oldest mtime first
-    videos.sort(key=lambda p: p.stat().st_mtime)
-    video = videos[0]
-    script = _find_script_for(video)
-
-    warning: str | None = None
-    if script is not None:
-        text = script.read_text(encoding="utf-8")
-        slug = derive_slug(text, date=today)
-    else:
-        stem = video.stem
-        if not LEGACY_SLUG_RE.match(stem):
-            raise PickupError(
-                f"invalid slug derived from filename {video.name!r} "
-                f"(legacy fallback expects ^[a-z0-9._-]+$). "
-                f"Either drop a paired script.txt next to it or rename the file to kebab-case."
-            )
-        slug = stem
-        warning = f"no script paired with {video.name!r} — using legacy stem-based slug"
-
+    text = script.read_text(encoding="utf-8")
+    slug = derive_slug(text, date=today)
     slug = _resolve_collision(episodes, slug)
     ep_dir = episodes / slug
     ep_dir.mkdir(parents=True, exist_ok=True)
@@ -125,10 +107,9 @@ def pick_episode(
     raw_dst = ep_dir / f"raw{video.suffix.lower()}"
     shutil.move(str(video), str(raw_dst))
 
-    script_dst: Path | None = None
-    if script is not None:
-        script_dst = ep_dir / "script.txt"
-        shutil.move(str(script), str(script_dst))
+    # script.txt is canonical — extension normalized regardless of source (.txt/.md/.srt/.json).
+    script_dst = ep_dir / "script.txt"
+    shutil.move(str(script), str(script_dst))
 
     return PickupResult(
         slug=slug,
@@ -136,6 +117,86 @@ def pick_episode(
         raw_path=raw_dst,
         script_path=script_dst,
         warning=warning,
+    )
+
+
+def pick_episode(
+    *,
+    inbox: Path,
+    episodes: Path,
+    today: str,
+    slug_arg: str | None = None,
+) -> PickupResult:
+    """Resolve which episode to work on and stage its files."""
+    if slug_arg:
+        return _resume_existing(episodes, slug_arg)
+
+    videos = _find_videos(inbox)
+    scripts = _find_scripts(inbox)
+
+    if not videos and not scripts:
+        return PickupResult(slug="", episode_dir=Path(), raw_path=None, script_path=None, idle=True)
+    if not videos:
+        raise PickupError(
+            f"missing video — orphan scripts: {[s.name for s in scripts]}"
+        )
+    if not scripts:
+        raise PickupError(
+            "missing script — pickup requires a paired script for slug derivation"
+        )
+
+    # 1+1 single-pair convenience: trust the user's intent regardless of stems.
+    if len(videos) == 1 and len(scripts) == 1:
+        return _stage_pair(
+            video=videos[0],
+            script=scripts[0],
+            episodes=episodes,
+            today=today,
+            warning=None,
+        )
+
+    # General path: stem-pair.
+    pairs: list[tuple[Path, Path]] = []
+    unpaired_videos: list[Path] = []
+    paired_script_names: set[str] = set()
+    for v in videos:
+        match = next(
+            (s for s in scripts
+             if s.stem == v.stem and s.name not in paired_script_names),
+            None,
+        )
+        if match:
+            pairs.append((v, match))
+            paired_script_names.add(match.name)
+        else:
+            unpaired_videos.append(v)
+    unpaired_scripts = [s for s in scripts if s.name not in paired_script_names]
+
+    if not pairs:
+        raise PickupError(
+            f"no video↔script pairs (stems must match): "
+            f"videos={[v.name for v in videos]}, scripts={[s.name for s in scripts]}"
+        )
+
+    video, script = pairs[0]
+    warning_parts: list[str] = []
+    if unpaired_videos:
+        warning_parts.append(
+            f"orphan video(s) left in inbox: {[v.name for v in unpaired_videos]}"
+        )
+    if unpaired_scripts:
+        warning_parts.append(
+            f"orphan script(s) left in inbox: {[s.name for s in unpaired_scripts]}"
+        )
+    leftover_pairs = pairs[1:]
+    if leftover_pairs:
+        warning_parts.append(
+            f"additional paired episode(s) left in inbox: "
+            f"{[v.name for v, _ in leftover_pairs]}"
+        )
+    warning = "; ".join(warning_parts) or None
+    return _stage_pair(
+        video=video, script=script, episodes=episodes, today=today, warning=warning,
     )
 
 

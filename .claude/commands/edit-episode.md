@@ -20,10 +20,10 @@ You are orchestrating a four-phase video editing pipeline. Follow this recipe ex
 ## Project layout (must hold)
 
 ```
-inbox/<stem>.<video-ext>      -> drop zone, paired with <stem>.txt or .md script
-inbox/<stem>.txt|.md          -> author script (optional but recommended)
+inbox/<video>.<video-ext>     -> drop zone; pairs with a script per Phase 1 rules
+inbox/<script>.<txt|md|srt|json> -> author script; mandatory — slug is derived from its content
 episodes/<slug>/raw.<ext>     -> moved here at Phase 1
-episodes/<slug>/script.txt    -> moved here at Phase 1 (always renamed to .txt)
+episodes/<slug>/script.txt    -> moved here at Phase 1 (always renamed to .txt regardless of source ext)
 episodes/<slug>/edit/         -> produced by video-use sub-agent (final.mp4 + raw.json + edl.json + project.md)
 episodes/<slug>/edit/transcripts/final.json  -> emitted by orchestrator glue (output-timeline, hyperframes captions schema)
 episodes/<slug>/hyperframes/  -> scaffolded by orchestrator + authored by hyperframes Skill
@@ -35,7 +35,22 @@ All paths passed to skills MUST be absolute. Substitute `<EPISODE_DIR>` etc. at 
 
 ## Phase 1 — Pickup
 
-Run `scripts/pickup.py` to pair video+script in `inbox/`, derive slug, and move files into `episodes/<slug>/`. Use the appropriate shell for the environment (Windows: PowerShell; otherwise Bash):
+Run `scripts/pickup.py` to pair video+script in `inbox/`, derive slug, and move files into `episodes/<slug>/`.
+
+**Pairing rules (HOM-85).** The script drives the slug, so a paired script is mandatory:
+
+| Inbox state | Behavior |
+| -- | -- |
+| 0 files | `idle: true` |
+| video(s), no script | error: `missing script — pickup requires a paired script for slug derivation` |
+| script(s), no video | error: `missing video — orphan scripts: <names>` |
+| **exactly** 1 video + 1 script (any names) | pair them regardless of stem; slug derived from script content |
+| multi-file, ≥1 valid stem-pair | FIFO oldest paired video; orphans on either side reported via `warning` and left in inbox |
+| multi-file, no stem-pair AND not the 1+1 case | error: `no video↔script pairs (stems must match): videos=<list>, scripts=<list>` |
+
+Supported script extensions: `.txt`, `.md`, `.srt`, `.json`. The episode-side script is always renamed to `script.txt` regardless of source extension.
+
+Use the appropriate shell for the environment (Windows: PowerShell; otherwise Bash):
 
 Use `python -m` invocation (not `python <path>`) because `scripts/pickup.py` does `from scripts.slugify import ...` — running it as a path bypasses the package machinery and breaks the import.
 
