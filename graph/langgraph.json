@@ -1,0 +1,7 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "edit_episode": "./src/edit_episode_graph/graph.py:graph"
+  },
+  "env": ".env"
+}
