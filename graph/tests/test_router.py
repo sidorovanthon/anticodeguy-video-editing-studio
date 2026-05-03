@@ -64,6 +64,7 @@ def test_auth_fail_advances_to_next_backend():
                              "t", cwd=Path.cwd(), timeout_s=5, output_schema=_Schema)
     assert a.calls == 1 and b.calls == 1
     assert attempts[0]["reason"] == "auth"
+    assert attempts[0]["exc_type"] == "AuthError"
     assert attempts[1]["success"] is True
 
 
