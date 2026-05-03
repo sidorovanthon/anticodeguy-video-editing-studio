@@ -58,6 +58,17 @@ class PreScanState(TypedDict, total=False):
     skip_reason: str | None
 
 
+class StrategyState(TypedDict, total=False):
+    shape: str
+    takes: list[str]
+    grade: str
+    pacing: str
+    length_estimate_s: float
+    source_path: str | None
+    skipped: bool
+    skip_reason: str | None
+
+
 class InventoryState(TypedDict, total=False):
     sources: list[dict]
     source_dir: str | None
@@ -68,6 +79,7 @@ class InventoryState(TypedDict, total=False):
 class EditState(TypedDict, total=False):
     inventory: InventoryState
     pre_scan: PreScanState
+    strategy: StrategyState
 
 
 class LLMRunRecord(TypedDict, total=False):
