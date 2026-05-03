@@ -121,7 +121,7 @@ class LLMNode:
         return update
 
     def _record(self, attempt: dict) -> dict:
-        return {
+        record = {
             "node": self.name,
             "backend": attempt.get("backend"),
             "model": attempt.get("model"),
@@ -133,3 +133,7 @@ class LLMNode:
             "tokens_out": attempt.get("tokens_out"),
             "timestamp": attempt.get("ts", _now()),
         }
+        for k in ("exc_type", "returncode", "stderr_preview"):
+            if k in attempt:
+                record[k] = attempt[k]
+        return record
