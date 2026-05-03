@@ -80,7 +80,7 @@ def route_after_pickup(state) -> str:
 
 
 def route_after_preflight(state) -> str:
-    """preflight_canon → glue_remap_transcript | p3_pre_scan | halt_llm_boundary (skip_phase3)."""
+    """preflight_canon -> glue_remap_transcript | p3_pre_scan | p3_inventory."""
     if state.get("errors"):
         return END
     episode_dir = state.get("episode_dir")
@@ -91,7 +91,7 @@ def route_after_preflight(state) -> str:
         return "glue_remap_transcript"
     if (edit_dir / "takes_packed.md").exists():
         return "p3_pre_scan"
-    return "halt_llm_boundary"
+    return "p3_inventory"
 
 
 def route_after_remap(state) -> str:
