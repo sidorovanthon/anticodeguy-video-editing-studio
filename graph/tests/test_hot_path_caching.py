@@ -82,5 +82,9 @@ def test_p3_pre_scan_does_not_reread_brief_per_call(tmp_path, monkeypatch):
     for _ in range(5):
         node_module.p3_pre_scan_node(state, router=router)
 
+    # Primary signal: the node actually reached _build_node and dispatched 5×.
+    # Without this, the brief_reads<=1 assertion could pass vacuously if an
+    # earlier failure (e.g. missing brief file in a CI checkout) short-circuits.
+    assert router.invoke.call_count == 5
     assert brief_reads <= 1, f"expected ≤1 brief read across 5 calls, got {brief_reads}"
     _load_brief.cache_clear()

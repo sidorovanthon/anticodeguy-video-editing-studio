@@ -23,6 +23,13 @@ from typing import Any, Callable
 from jinja2 import Template
 from pydantic import BaseModel
 
+from ..backends._router import BackendRouter
+from ..backends._types import (
+    AllBackendsExhausted,
+    InvokeResult,
+    NodeRequirements,
+)
+
 
 _BRIEFS_DIR = Path(__file__).resolve().parent.parent / "briefs"
 
@@ -34,13 +41,6 @@ def _load_brief(name: str) -> str:
     `_load_brief.cache_clear()`.
     """
     return (_BRIEFS_DIR / f"{name}.j2").read_text(encoding="utf-8")
-
-from ..backends._router import BackendRouter
-from ..backends._types import (
-    AllBackendsExhausted,
-    InvokeResult,
-    NodeRequirements,
-)
 
 
 def _now() -> str:

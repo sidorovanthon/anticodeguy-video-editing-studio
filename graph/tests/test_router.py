@@ -209,8 +209,9 @@ def test_unsupported_backend_skipped():
     assert a.calls == 0 and b.calls == 1
     # Per spec §7.4: unsupported attempts must be recorded with reason=unsupported
     # so telemetry surfaces *why* a preferred backend was skipped (not just success rates).
-    assert attempts[0] == {"backend": "a", "success": False, "reason": "unsupported",
-                           "ts": attempts[0]["ts"]}
+    expected_subset = {"backend": "a", "success": False, "reason": "unsupported"}
+    assert expected_subset.items() <= attempts[0].items()
+    assert "ts" in attempts[0]
     assert attempts[1]["backend"] == "b" and attempts[1]["success"] is True
 
 

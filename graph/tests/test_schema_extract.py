@@ -45,7 +45,7 @@ def test_extracts_nested_object_from_fence():
     assert out.items[1].label == "b"
 
 
-@pytest.mark.parametrize("tag", ["jsonl", "python", "JSON", "json5", "ndjson"])
+@pytest.mark.parametrize("tag", ["jsonl", "python", "JSON", "json5", "ndjson", "json-ld"])
 def test_extracts_from_fence_with_arbitrary_language_tag(tag):
     raw = f"prefix\n```{tag}\n{{\"n\": 3, \"label\": \"tagged\"}}\n```\nsuffix"
     out = extract_structured(raw, _Demo)
