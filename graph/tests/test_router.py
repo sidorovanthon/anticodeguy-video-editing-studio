@@ -204,6 +204,36 @@ def test_unsupported_backend_skipped():
     a = _NoTools()
     b = _StubBackend("b", lambda i: _ok())
     r = BackendRouter([a, b], BackendSemaphores({}))
-    r.invoke(NodeRequirements("cheap", True, ["a", "b"]),
-             "t", cwd=Path.cwd(), timeout_s=5, output_schema=_Schema)
+    res, attempts = r.invoke(NodeRequirements("cheap", True, ["a", "b"]),
+                             "t", cwd=Path.cwd(), timeout_s=5, output_schema=_Schema)
     assert a.calls == 0 and b.calls == 1
+    # Per spec §7.4: unsupported attempts must be recorded with reason=unsupported
+    # so telemetry surfaces *why* a preferred backend was skipped (not just success rates).
+    assert attempts[0] == {"backend": "a", "success": False, "reason": "unsupported",
+                           "ts": attempts[0]["ts"]}
+    assert attempts[1]["backend"] == "b" and attempts[1]["success"] is True
+
+
+def test_empty_preference_falls_back_to_all_registered_backends():
+    """req.backends=[] (or None) → router uses every registered backend in
+    insertion order. Guards against future refactors that might treat empty
+    list as 'none allowed'."""
+    a = _StubBackend("a", lambda i: (_ for _ in ()).throw(AuthError("nope")))
+    b = _StubBackend("b", lambda i: _ok())
+    r = BackendRouter([a, b], BackendSemaphores({}))
+    res, attempts = r.invoke(NodeRequirements("cheap", True, []),
+                             "t", cwd=Path.cwd(), timeout_s=5, output_schema=_Schema)
+    assert a.calls == 1 and b.calls == 1
+    assert [at["backend"] for at in attempts] == ["a", "b"]
+
+
+def test_unknown_backend_in_preference_recorded_as_unsupported():
+    """Preference may name a backend the router doesn't know about (e.g.
+    config.yaml has a typo). Should be recorded, not crash."""
+    a = _StubBackend("a", lambda i: _ok())
+    r = BackendRouter([a], BackendSemaphores({}))
+    res, attempts = r.invoke(NodeRequirements("cheap", True, ["nonexistent", "a"]),
+                             "t", cwd=Path.cwd(), timeout_s=5, output_schema=_Schema)
+    assert attempts[0]["backend"] == "nonexistent"
+    assert attempts[0]["reason"] == "unsupported"
+    assert attempts[1]["backend"] == "a" and attempts[1]["success"] is True

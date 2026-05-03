@@ -13,21 +13,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from jinja2 import Template
-
 from ..backends._router import BackendRouter
-from ..backends._types import AllBackendsExhausted, NodeRequirements
+from ..backends._types import NodeRequirements
 from ..schemas.p3_pre_scan import PreScanReport
-from ._llm import LLMNode
-
-_BRIEF_PATH = Path(__file__).resolve().parent.parent / "briefs" / "p3_pre_scan.j2"
+from ._llm import LLMNode, _load_brief
 
 
 def _build_node() -> LLMNode:
     return LLMNode(
         name="p3_pre_scan",
         requirements=NodeRequirements(tier="cheap", needs_tools=True, backends=["claude", "codex"]),
-        brief_template=_BRIEF_PATH.read_text(encoding="utf-8"),
+        brief_template=_load_brief("p3_pre_scan"),
         output_schema=PreScanReport,
         result_namespace="edit",
         result_key="pre_scan",

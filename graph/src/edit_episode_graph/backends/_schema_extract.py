@@ -17,7 +17,7 @@ from ._types import SchemaValidationError
 
 T = TypeVar("T", bound=BaseModel)
 
-_FENCE_RE = re.compile(r"```(?:json)?\s*([\s\S]+?)\s*```", re.DOTALL)
+_FENCE_RE = re.compile(r"```(?:[a-zA-Z0-9_+\-]+)?\s*([\s\S]+?)\s*```", re.DOTALL)
 _BARE_RE = re.compile(r"(\{[\s\S]*\}|\[[\s\S]*\])", re.DOTALL)
 
 
