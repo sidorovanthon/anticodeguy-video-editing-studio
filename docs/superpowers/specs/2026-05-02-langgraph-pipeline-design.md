@@ -405,7 +405,11 @@ Tool calls are streamed from the CLI (`--output-format stream-json` for Claude C
 2. **Rate limit** → 30s pause, retry once on same backend; if still rate-limited → next backend.
 3. **Schema validation failure** → retry on same backend up to 2 times with feedback message; on third failure → next backend.
 4. **Timeout** → next backend.
-5. **All backends exhausted** → `interrupt()` with choices: wait / change preference / abort.
+5. **CLI error** (generic non-zero exit, `BackendCLIError`) → next backend; attempt records `returncode` + `stderr_preview` (first 200 chars) for diagnosis.
+6. **Other `BackendError` / `OSError`** → next backend; attempt records `exc_type`.
+7. **All backends exhausted** → `interrupt()` with choices: wait / change preference / abort.
+
+Programmer errors (`AttributeError`, `TypeError`, etc. from a parser regression) are **not caught** by the router — they propagate to the calling node so the bug surfaces immediately rather than burning failover attempts under `reason: "other"`.
 
 All attempts logged to `state["llm_runs"][node_name]` (append-only): backend, model, wall_time, success/fail, reason. Visible per-thread in Studio.
 
