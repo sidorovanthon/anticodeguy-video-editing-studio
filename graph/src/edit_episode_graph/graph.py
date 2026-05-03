@@ -19,7 +19,8 @@ v1 topology (spec §4.1, §8 — LLM-free coverage):
                                           │
                                           ├─ takes_packed.md ─► p3_pre_scan ─► halt_llm_boundary ─► END (notice)
                                           │
-                                          └─ no inventory ─► p3_inventory ─► p3_pre_scan ─► halt_llm_boundary ─► END
+                                          └─ no inventory ─► p3_inventory ┬─ error ─► END
+                                                                          └─ ok ─► p3_pre_scan ─► halt_llm_boundary ─► END
 """
 
 from langgraph.graph import END, StateGraph
