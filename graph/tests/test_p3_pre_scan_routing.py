@@ -2,7 +2,7 @@ from pathlib import Path
 
 from langgraph.graph import END
 
-from edit_episode_graph.nodes._routing import route_after_preflight
+from edit_episode_graph.nodes._routing import route_after_inventory, route_after_preflight
 
 
 def test_routes_to_pre_scan_when_takes_packed_exists(tmp_path):
@@ -25,3 +25,12 @@ def test_routes_to_glue_when_final_exists(tmp_path):
 def test_routes_to_inventory_when_neither_exists(tmp_path):
     state = {"episode_dir": str(tmp_path)}
     assert route_after_preflight(state) == "p3_inventory"
+
+
+def test_routes_to_end_after_inventory_error():
+    state = {"errors": [{"node": "p3_inventory", "message": "boom", "timestamp": "now"}]}
+    assert route_after_inventory(state) == END
+
+
+def test_routes_to_pre_scan_after_inventory_success():
+    assert route_after_inventory({}) == "p3_pre_scan"
