@@ -43,3 +43,16 @@ def test_extracts_nested_object_from_fence():
     out = extract_structured(raw, _Nested)
     assert len(out.items) == 2
     assert out.items[1].label == "b"
+
+
+@pytest.mark.parametrize("tag", ["jsonl", "python", "JSON", "json5", "ndjson", "json-ld"])
+def test_extracts_from_fence_with_arbitrary_language_tag(tag):
+    raw = f"prefix\n```{tag}\n{{\"n\": 3, \"label\": \"tagged\"}}\n```\nsuffix"
+    out = extract_structured(raw, _Demo)
+    assert out.n == 3 and out.label == "tagged"
+
+
+def test_extracts_from_unfenced_triple_backtick_block():
+    raw = "intro\n```\n{\"n\": 9, \"label\": \"plain\"}\n```\nend"
+    out = extract_structured(raw, _Demo)
+    assert out.n == 9 and out.label == "plain"

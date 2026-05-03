@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from fnmatch import fnmatch
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -60,8 +61,15 @@ def load_config(path: Path) -> RouterConfig:
 _REPO_CONFIG_PATH = Path(__file__).resolve().parents[2] / "config.yaml"
 
 
+@lru_cache(maxsize=1)
 def load_default_config() -> RouterConfig:
-    """Loads `graph/config.yaml`. Returns a permissive default if file is absent."""
+    """Loads `graph/config.yaml`. Returns a permissive default if file is absent.
+
+    Cached: hot-path callers (`LLMNode.__call__`) hit this once per fan-out beat.
+    `langgraph dev`'s reload mechanism imports a fresh module on file change, so
+    config tunings take effect on dev restart. Tests that mutate the file should
+    call `load_default_config.cache_clear()`.
+    """
     if _REPO_CONFIG_PATH.exists():
         return load_config(_REPO_CONFIG_PATH)
     return RouterConfig(

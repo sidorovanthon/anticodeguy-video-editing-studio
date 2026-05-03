@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable
 
@@ -28,6 +29,18 @@ from ..backends._types import (
     InvokeResult,
     NodeRequirements,
 )
+
+
+_BRIEFS_DIR = Path(__file__).resolve().parent.parent / "briefs"
+
+
+@lru_cache(maxsize=None)
+def _load_brief(name: str) -> str:
+    """Load `briefs/<name>.j2` once per process. `langgraph dev` reload re-imports
+    the module, resetting the cache; tests mutating brief files should call
+    `_load_brief.cache_clear()`.
+    """
+    return (_BRIEFS_DIR / f"{name}.j2").read_text(encoding="utf-8")
 
 
 def _now() -> str:
