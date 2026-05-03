@@ -17,6 +17,7 @@ from ._stream_parsers import parse_codex_json
 from ._types import (
     AuthError,
     BackendCapabilities,
+    BackendCLIError,
     BackendTimeout,
     InvokeResult,
     NodeRequirements,
@@ -72,7 +73,7 @@ class CodexBackend:
                 raise AuthError(result.stderr.strip() or "codex auth failed")
             if any(sig in stderr_lc for sig in _RATE_SIGNALS):
                 raise RateLimitError(result.stderr.strip() or "codex rate limited")
-            raise RuntimeError(f"codex exit {result.returncode}: {result.stderr.strip()}")
+            raise BackendCLIError(returncode=result.returncode, stderr=result.stderr or "")
 
         parsed = parse_codex_json(result.stdout)
         structured = None

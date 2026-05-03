@@ -10,7 +10,9 @@ from edit_episode_graph.backends._router import BackendRouter
 from edit_episode_graph.backends._types import (
     AllBackendsExhausted,
     AuthError,
+    BackendCLIError,
     BackendCapabilities,
+    BackendError,
     BackendTimeout,
     InvokeResult,
     NodeRequirements,
@@ -62,6 +64,7 @@ def test_auth_fail_advances_to_next_backend():
                              "t", cwd=Path.cwd(), timeout_s=5, output_schema=_Schema)
     assert a.calls == 1 and b.calls == 1
     assert attempts[0]["reason"] == "auth"
+    assert attempts[0]["exc_type"] == "AuthError"
     assert attempts[1]["success"] is True
 
 
@@ -135,6 +138,60 @@ def test_all_exhausted_raises():
     with pytest.raises(AllBackendsExhausted):
         r.invoke(NodeRequirements("cheap", True, ["a", "b"]),
                  "t", cwd=Path.cwd(), timeout_s=5, output_schema=_Schema)
+
+
+def test_programmer_error_propagates_not_failed_over():
+    """AttributeError / TypeError from a parser regression must surface, not burn attempts."""
+    def boom(_): raise AttributeError("'NoneType' object has no attribute 'foo'")
+    a = _StubBackend("a", boom)
+    b = _StubBackend("b", lambda i: _ok())
+    r = BackendRouter([a, b], BackendSemaphores({}))
+    with pytest.raises(AttributeError):
+        r.invoke(NodeRequirements("cheap", True, ["a", "b"]),
+                 "t", cwd=Path.cwd(), timeout_s=5, output_schema=_Schema)
+    assert a.calls == 1 and b.calls == 0
+
+
+def test_backend_cli_error_records_returncode_and_stderr_preview():
+    long_stderr = "x" * 500
+    def boom(_): raise BackendCLIError(returncode=42, stderr=long_stderr)
+    a = _StubBackend("a", boom)
+    b = _StubBackend("b", lambda i: _ok())
+    r = BackendRouter([a, b], BackendSemaphores({}))
+    res, attempts = r.invoke(NodeRequirements("cheap", True, ["a", "b"]),
+                             "t", cwd=Path.cwd(), timeout_s=5, output_schema=_Schema)
+    assert attempts[0]["reason"] == "cli_error"
+    assert attempts[0]["returncode"] == 42
+    assert attempts[0]["stderr_preview"] == "x" * 200
+    assert attempts[0]["exc_type"] == "BackendCLIError"
+    assert b.calls == 1
+
+
+def test_other_backend_error_records_exc_type():
+    """Unmapped BackendError subclass falls under 'other' but records exc_type."""
+    class WeirdBackendError(BackendError):
+        pass
+    def boom(_): raise WeirdBackendError("something odd")
+    a = _StubBackend("a", boom)
+    b = _StubBackend("b", lambda i: _ok())
+    r = BackendRouter([a, b], BackendSemaphores({}))
+    res, attempts = r.invoke(NodeRequirements("cheap", True, ["a", "b"]),
+                             "t", cwd=Path.cwd(), timeout_s=5, output_schema=_Schema)
+    assert attempts[0]["reason"] == "other"
+    assert attempts[0]["exc_type"] == "WeirdBackendError"
+
+
+def test_oserror_caught_as_other():
+    """OSError (e.g. subprocess spawn failure) is classified, not propagated."""
+    def boom(_): raise OSError("no such executable")
+    a = _StubBackend("a", boom)
+    b = _StubBackend("b", lambda i: _ok())
+    r = BackendRouter([a, b], BackendSemaphores({}))
+    res, attempts = r.invoke(NodeRequirements("cheap", True, ["a", "b"]),
+                             "t", cwd=Path.cwd(), timeout_s=5, output_schema=_Schema)
+    assert attempts[0]["reason"] == "other"
+    assert attempts[0]["exc_type"] == "OSError"
+    assert b.calls == 1
 
 
 def test_unsupported_backend_skipped():

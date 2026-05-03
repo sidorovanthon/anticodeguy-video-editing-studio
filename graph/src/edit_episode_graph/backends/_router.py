@@ -26,6 +26,8 @@ from ._concurrency import BackendSemaphores
 from ._types import (
     AllBackendsExhausted,
     AuthError,
+    BackendCLIError,
+    BackendError,
     BackendTimeout,
     InvokeResult,
     NodeRequirements,
@@ -81,13 +83,17 @@ class BackendRouter:
                             allowed_tools=allowed_tools,
                             model_override=model_override,
                         )
+                # Order matters: more-specific BackendError subclasses must precede
+                # the (BackendError, OSError) catch-all below.
                 except AuthError as e:
                     attempts.append({"backend": name, "success": False, "reason": "auth",
-                                     "wall_time_s": time.monotonic() - t0, "message": str(e), "ts": _now()})
+                                     "wall_time_s": time.monotonic() - t0, "message": str(e),
+                                     "exc_type": type(e).__name__, "ts": _now()})
                     break  # next backend
                 except RateLimitError as e:
                     attempts.append({"backend": name, "success": False, "reason": "rate_limit",
-                                     "wall_time_s": time.monotonic() - t0, "message": str(e), "ts": _now()})
+                                     "wall_time_s": time.monotonic() - t0, "message": str(e),
+                                     "exc_type": type(e).__name__, "ts": _now()})
                     if not rate_retried:
                         rate_retried = True
                         time.sleep(_RATE_LIMIT_BACKOFF_S)
@@ -95,19 +101,30 @@ class BackendRouter:
                     break
                 except BackendTimeout as e:
                     attempts.append({"backend": name, "success": False, "reason": "timeout",
-                                     "wall_time_s": time.monotonic() - t0, "message": str(e), "ts": _now()})
+                                     "wall_time_s": time.monotonic() - t0, "message": str(e),
+                                     "exc_type": type(e).__name__, "ts": _now()})
                     break
                 except SchemaValidationError as e:
                     schema_failures += 1
                     attempts.append({"backend": name, "success": False, "reason": "schema",
                                      "wall_time_s": time.monotonic() - t0, "message": str(e),
+                                     "exc_type": type(e).__name__,
                                      "raw_preview": e.raw_text[:200], "ts": _now()})
                     if schema_failures <= _SCHEMA_RETRIES_PER_BACKEND:
                         continue
                     break
-                except Exception as e:
+                except BackendCLIError as e:
+                    attempts.append({"backend": name, "success": False, "reason": "cli_error",
+                                     "wall_time_s": time.monotonic() - t0, "message": str(e),
+                                     "exc_type": type(e).__name__,
+                                     "returncode": e.returncode,
+                                     "stderr_preview": (e.stderr or "")[:200],
+                                     "ts": _now()})
+                    break
+                except (BackendError, OSError) as e:
                     attempts.append({"backend": name, "success": False, "reason": "other",
-                                     "wall_time_s": time.monotonic() - t0, "message": str(e), "ts": _now()})
+                                     "wall_time_s": time.monotonic() - t0, "message": str(e),
+                                     "exc_type": type(e).__name__, "ts": _now()})
                     break
                 else:
                     attempts.append({"backend": name, "success": True, "model": res.model_used,
