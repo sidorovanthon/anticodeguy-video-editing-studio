@@ -1,0 +1,24 @@
+{# Strategy task descriptor. Brief references canon; it does not embed canon. #}
+You are running the **strategy** pass for an anticodeguy episode (`{{ slug }}`).
+
+Canon: `~/.claude/skills/video-use/SKILL.md` §"The process" Step 4
+("Strategy") and §"Cut craft". Read canon only if you need to resolve policy.
+
+Inputs:
+- Episode dir: `{{ episode_dir }}`
+- Packed transcript path: `{{ takes_packed_path }}`
+- Pre-scan slips/avoid list JSON: `{{ pre_scan_slips_json }}`
+- Packed transcript content:
+
+```text
+{{ takes_packed_text }}
+```
+
+Return ONLY JSON matching:
+
+```json
+{"shape":"...","takes":["..."],"grade":"...","pacing":"...","length_estimate_s":30.0}
+```
+
+Phase 3 is cuts + grade only. Animation and subtitles belong to Phase 4; the
+schema has no fields for them. Do not include prose outside the JSON.

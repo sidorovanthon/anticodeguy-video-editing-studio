@@ -78,6 +78,24 @@ def test_invoke_command_shape(monkeypatch, fixtures_dir):
     assert captured["kwargs"]["timeout"] == 30
 
 
+def test_empty_allowed_tools_disables_tools(monkeypatch, fixtures_dir):
+    raw = (fixtures_dir / "claude_stream_ok.jsonl").read_text(encoding="utf-8")
+    captured = {}
+
+    def fake_run(cmd, **kwargs):
+        captured["cmd"] = cmd
+        return SimpleNamespace(stdout=raw, stderr="", returncode=0)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    b = ClaudeCodeBackend()
+    b.invoke("hello", tier="smart", cwd=Path.cwd(), timeout_s=30, output_schema=None, allowed_tools=[])
+
+    cmd = captured["cmd"]
+    assert "--tools" in cmd
+    assert cmd[cmd.index("--tools") + 1] == ""
+    assert "--allowed-tools" not in cmd
+
+
 def test_auth_failure_raises(monkeypatch):
     monkeypatch.setattr(
         subprocess, "run",

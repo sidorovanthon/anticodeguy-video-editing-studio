@@ -2,7 +2,12 @@ from pathlib import Path
 
 from langgraph.graph import END
 
-from edit_episode_graph.nodes._routing import route_after_inventory, route_after_preflight
+from edit_episode_graph.nodes._routing import (
+    route_after_inventory,
+    route_after_pre_scan,
+    route_after_preflight,
+    route_after_strategy,
+)
 
 
 def test_routes_to_pre_scan_when_takes_packed_exists(tmp_path):
@@ -34,3 +39,21 @@ def test_routes_to_end_after_inventory_error():
 
 def test_routes_to_pre_scan_after_inventory_success():
     assert route_after_inventory({}) == "p3_pre_scan"
+
+
+def test_routes_to_end_after_pre_scan_error():
+    state = {"errors": [{"node": "p3_pre_scan", "message": "boom", "timestamp": "now"}]}
+    assert route_after_pre_scan(state) == END
+
+
+def test_routes_to_strategy_after_pre_scan_success():
+    assert route_after_pre_scan({}) == "p3_strategy"
+
+
+def test_routes_to_end_after_strategy_error():
+    state = {"errors": [{"node": "p3_strategy", "message": "boom", "timestamp": "now"}]}
+    assert route_after_strategy(state) == END
+
+
+def test_routes_to_halt_after_strategy_success():
+    assert route_after_strategy({}) == "halt_llm_boundary"

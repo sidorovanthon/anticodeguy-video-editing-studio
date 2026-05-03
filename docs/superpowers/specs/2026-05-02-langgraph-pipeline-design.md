@@ -57,6 +57,8 @@ START → pickup → idle? → END
 
 ### 4.2 Phase 3 — video-use, decomposed (canon §"The process" 1–8)
 
+**HR 11 deviation:** v3 intentionally does not interrupt for user strategy approval between `p3_strategy` and `p3_edl_select`; unattended graph runs match current `/edit-episode` automation, and a future `gate:strategy_confirmed` can add HITL if reliability requires it.
+
 **Orchestrator policy: animations and subtitles are produced in Phase 4 (hyperframes), NOT in Phase 3.** Video-use canon makes both opt-in (`## Animations (when requested)` line 195; `subtitles is optional` line 280). Our `p3_strategy` and `p3_edl_select` briefs honor this opt-out: strategy does not propose animations or subtitles; EDL emits `overlays: []` and omits `subtitles` entirely. As a result `p3_render_segments` is purely cuts + grade + concat — Hard Rules 1 (subtitles last) and 4 (overlay PTS-shift) are trivially satisfied because there are no subtitles or overlays to manage.
 
 ```

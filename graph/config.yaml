@@ -19,3 +19,7 @@ node_overrides:
     # Real-CLI smoke test (Task 18) routes through Haiku for minimal subscription
     # spend. Remove or change to a Sonnet/Opus ID for production use.
     model: claude-haiku-4-5-20251001
+  p3_strategy:
+    tier: smart
+    backend_preference: ["claude"]
+    timeout_s: 120

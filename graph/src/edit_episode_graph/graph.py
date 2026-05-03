@@ -17,10 +17,10 @@ v1 topology (spec §4.1, §8 — LLM-free coverage):
                                           │                 ▼
                                           │              p4_scaffold ─► END (notice)
                                           │
-                                          ├─ takes_packed.md ─► p3_pre_scan ─► halt_llm_boundary ─► END (notice)
+                                          ├─ takes_packed.md ─► p3_pre_scan ─► p3_strategy ─► halt_llm_boundary ─► END
                                           │
                                           └─ no inventory ─► p3_inventory ┬─ error ─► END
-                                                                          └─ ok ─► p3_pre_scan ─► halt_llm_boundary ─► END
+                                                                          └─ ok ─► p3_pre_scan ─► p3_strategy ─► halt_llm_boundary ─► END
 """
 
 from langgraph.graph import END, StateGraph
@@ -29,13 +29,16 @@ from .nodes._routing import (
     route_after_inventory,
     route_after_pickup,
     route_after_preflight,
+    route_after_pre_scan,
     route_after_remap,
+    route_after_strategy,
 )
 from .nodes.glue_remap_transcript import glue_remap_transcript_node
 from .nodes.halt_llm_boundary import halt_llm_boundary_node
 from .nodes.isolate_audio import isolate_audio_node
 from .nodes.p3_inventory import p3_inventory_node
 from .nodes.p3_pre_scan import p3_pre_scan_node
+from .nodes.p3_strategy import p3_strategy_node
 from .nodes.p4_scaffold import p4_scaffold_node
 from .nodes.pickup import pickup_node
 from .nodes.preflight_canon import preflight_canon_node
@@ -60,6 +63,7 @@ def build_graph_uncompiled() -> StateGraph:
     g.add_node("p4_scaffold", p4_scaffold_node)
     g.add_node("p3_inventory", p3_inventory_node)
     g.add_node("p3_pre_scan", p3_pre_scan_node)
+    g.add_node("p3_strategy", p3_strategy_node)
     g.add_node("halt_llm_boundary", halt_llm_boundary_node)
 
     g.set_entry_point("pickup")
@@ -102,7 +106,22 @@ def build_graph_uncompiled() -> StateGraph:
             "p3_pre_scan": "p3_pre_scan",
         },
     )
-    g.add_edge("p3_pre_scan", "halt_llm_boundary")
+    g.add_conditional_edges(
+        "p3_pre_scan",
+        route_after_pre_scan,
+        {
+            END: END,
+            "p3_strategy": "p3_strategy",
+        },
+    )
+    g.add_conditional_edges(
+        "p3_strategy",
+        route_after_strategy,
+        {
+            END: END,
+            "halt_llm_boundary": "halt_llm_boundary",
+        },
+    )
 
     # skip_phase4? lives inside route_after_remap.
     g.add_conditional_edges(

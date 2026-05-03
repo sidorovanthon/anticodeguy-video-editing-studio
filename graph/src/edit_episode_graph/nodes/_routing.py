@@ -101,6 +101,20 @@ def route_after_inventory(state) -> str:
     return "p3_pre_scan"
 
 
+def route_after_pre_scan(state) -> str:
+    """p3_pre_scan -> END on error | p3_strategy on success."""
+    if state.get("errors"):
+        return END
+    return "p3_strategy"
+
+
+def route_after_strategy(state) -> str:
+    """p3_strategy -> END on error | halt until p3_edl_select lands."""
+    if state.get("errors"):
+        return END
+    return "halt_llm_boundary"
+
+
 def route_after_remap(state) -> str:
     """glue_remap_transcript → END | p4_scaffold (skip_phase4 = idempotent)."""
     if state.get("errors"):

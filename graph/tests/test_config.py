@@ -67,3 +67,15 @@ def test_node_resolve_model_override():
         node_overrides={"p3_pre_scan": {"model": "claude-haiku-4-5-20251001"}},
     )
     assert cfg.resolve_node("p3_pre_scan").model == "claude-haiku-4-5-20251001"
+
+
+def test_node_resolve_p3_strategy_smart_override():
+    from edit_episode_graph.config import load_default_config
+    load_default_config.cache_clear()
+    try:
+        n = load_default_config().resolve_node("p3_strategy")
+        assert n.tier == "smart"
+        assert n.backend_preference == ["claude"]
+        assert n.timeout_s == 120
+    finally:
+        load_default_config.cache_clear()

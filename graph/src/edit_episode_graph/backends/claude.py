@@ -71,7 +71,9 @@ class ClaudeCodeBackend:
             "--verbose",
             "--model", model,
         ]
-        if allowed_tools:
+        if allowed_tools == []:
+            cmd += ["--tools", ""]
+        elif allowed_tools:
             cmd += ["--allowed-tools", ",".join(allowed_tools)]
 
         t0 = time.monotonic()
