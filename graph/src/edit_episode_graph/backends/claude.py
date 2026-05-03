@@ -23,6 +23,7 @@ from ._stream_parsers import parse_claude_stream_json
 from ._types import (
     AuthError,
     BackendCapabilities,
+    BackendCLIError,
     BackendTimeout,
     InvokeResult,
     NodeRequirements,
@@ -88,8 +89,7 @@ class ClaudeCodeBackend:
                 raise AuthError(result.stderr.strip() or "claude auth failed")
             if any(sig in stderr_lc for sig in _RATE_SIGNALS):
                 raise RateLimitError(result.stderr.strip() or "claude rate limited")
-            # generic non-zero — surface as auth-or-other; let router retry
-            raise RuntimeError(f"claude exit {result.returncode}: {result.stderr.strip()}")
+            raise BackendCLIError(returncode=result.returncode, stderr=result.stderr or "")
 
         parsed = parse_claude_stream_json(result.stdout)
         structured = None

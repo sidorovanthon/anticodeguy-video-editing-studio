@@ -69,6 +69,15 @@ class BackendTimeout(BackendError):
     """Subprocess exceeded `timeout_s`."""
 
 
+class BackendCLIError(BackendError):
+    """Backend CLI exited non-zero with no recognized auth/rate signal in stderr."""
+
+    def __init__(self, returncode: int, stderr: str):
+        super().__init__(f"backend CLI exit {returncode}: {stderr.strip()[:200]}")
+        self.returncode = returncode
+        self.stderr = stderr
+
+
 class SchemaValidationError(BackendError):
     """Final assistant text could not be parsed into the requested Pydantic schema."""
 

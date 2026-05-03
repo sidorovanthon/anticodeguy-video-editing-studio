@@ -26,6 +26,8 @@ from ._concurrency import BackendSemaphores
 from ._types import (
     AllBackendsExhausted,
     AuthError,
+    BackendCLIError,
+    BackendError,
     BackendTimeout,
     InvokeResult,
     NodeRequirements,
@@ -105,9 +107,18 @@ class BackendRouter:
                     if schema_failures <= _SCHEMA_RETRIES_PER_BACKEND:
                         continue
                     break
-                except Exception as e:
+                except BackendCLIError as e:
+                    attempts.append({"backend": name, "success": False, "reason": "cli_error",
+                                     "wall_time_s": time.monotonic() - t0, "message": str(e),
+                                     "exc_type": type(e).__name__,
+                                     "returncode": e.returncode,
+                                     "stderr_preview": (e.stderr or "")[:200],
+                                     "ts": _now()})
+                    break
+                except (BackendError, OSError) as e:
                     attempts.append({"backend": name, "success": False, "reason": "other",
-                                     "wall_time_s": time.monotonic() - t0, "message": str(e), "ts": _now()})
+                                     "wall_time_s": time.monotonic() - t0, "message": str(e),
+                                     "exc_type": type(e).__name__, "ts": _now()})
                     break
                 else:
                     attempts.append({"backend": name, "success": True, "model": res.model_used,
