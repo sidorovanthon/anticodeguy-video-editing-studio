@@ -42,6 +42,8 @@ class TranscriptsState(TypedDict, total=False):
     raw_json_path: str | None
     final_json_path: str | None
     edl_hash: str | None
+    raw_json_paths: list[str]
+    takes_packed_path: str | None
 
 
 class ComposeState(TypedDict, total=False):
@@ -56,7 +58,15 @@ class PreScanState(TypedDict, total=False):
     skip_reason: str | None
 
 
+class InventoryState(TypedDict, total=False):
+    sources: list[dict]
+    source_dir: str | None
+    transcript_json_paths: list[str]
+    takes_packed_path: str | None
+
+
 class EditState(TypedDict, total=False):
+    inventory: InventoryState
     pre_scan: PreScanState
 
 

@@ -19,7 +19,7 @@ v1 topology (spec §4.1, §8 — LLM-free coverage):
                                           │
                                           ├─ takes_packed.md ─► p3_pre_scan ─► halt_llm_boundary ─► END (notice)
                                           │
-                                          └─ no final.mp4 ─► halt_llm_boundary ─► END (notice)
+                                          └─ no inventory ─► p3_inventory ─► p3_pre_scan ─► halt_llm_boundary ─► END
 """
 
 from langgraph.graph import END, StateGraph
@@ -32,6 +32,7 @@ from .nodes._routing import (
 from .nodes.glue_remap_transcript import glue_remap_transcript_node
 from .nodes.halt_llm_boundary import halt_llm_boundary_node
 from .nodes.isolate_audio import isolate_audio_node
+from .nodes.p3_inventory import p3_inventory_node
 from .nodes.p3_pre_scan import p3_pre_scan_node
 from .nodes.p4_scaffold import p4_scaffold_node
 from .nodes.pickup import pickup_node
@@ -55,6 +56,7 @@ def build_graph_uncompiled() -> StateGraph:
     g.add_node("preflight_canon", preflight_canon_node)
     g.add_node("glue_remap_transcript", glue_remap_transcript_node)
     g.add_node("p4_scaffold", p4_scaffold_node)
+    g.add_node("p3_inventory", p3_inventory_node)
     g.add_node("p3_pre_scan", p3_pre_scan_node)
     g.add_node("halt_llm_boundary", halt_llm_boundary_node)
 
@@ -85,10 +87,12 @@ def build_graph_uncompiled() -> StateGraph:
         {
             END: END,
             "glue_remap_transcript": "glue_remap_transcript",
+            "p3_inventory": "p3_inventory",
             "p3_pre_scan": "p3_pre_scan",
             "halt_llm_boundary": "halt_llm_boundary",
         },
     )
+    g.add_edge("p3_inventory", "p3_pre_scan")
     g.add_edge("p3_pre_scan", "halt_llm_boundary")
 
     # skip_phase4? lives inside route_after_remap.

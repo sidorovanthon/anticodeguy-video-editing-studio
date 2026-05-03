@@ -22,6 +22,6 @@ def test_routes_to_glue_when_final_exists(tmp_path):
     assert route_after_preflight(state) == "glue_remap_transcript"
 
 
-def test_routes_to_halt_when_neither_exists(tmp_path):
+def test_routes_to_inventory_when_neither_exists(tmp_path):
     state = {"episode_dir": str(tmp_path)}
-    assert route_after_preflight(state) == "halt_llm_boundary"
+    assert route_after_preflight(state) == "p3_inventory"
