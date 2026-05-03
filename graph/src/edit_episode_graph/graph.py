@@ -25,6 +25,7 @@ v1 topology (spec §4.1, §8 — LLM-free coverage):
 from langgraph.graph import END, StateGraph
 
 from .nodes._routing import (
+    route_after_inventory,
     route_after_pickup,
     route_after_preflight,
     route_after_remap,
@@ -92,7 +93,14 @@ def build_graph_uncompiled() -> StateGraph:
             "halt_llm_boundary": "halt_llm_boundary",
         },
     )
-    g.add_edge("p3_inventory", "p3_pre_scan")
+    g.add_conditional_edges(
+        "p3_inventory",
+        route_after_inventory,
+        {
+            END: END,
+            "p3_pre_scan": "p3_pre_scan",
+        },
+    )
     g.add_edge("p3_pre_scan", "halt_llm_boundary")
 
     # skip_phase4? lives inside route_after_remap.

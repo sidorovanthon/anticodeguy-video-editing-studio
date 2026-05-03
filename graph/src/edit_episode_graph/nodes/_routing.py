@@ -94,6 +94,13 @@ def route_after_preflight(state) -> str:
     return "p3_inventory"
 
 
+def route_after_inventory(state) -> str:
+    """p3_inventory -> END on error | p3_pre_scan on success."""
+    if state.get("errors"):
+        return END
+    return "p3_pre_scan"
+
+
 def route_after_remap(state) -> str:
     """glue_remap_transcript → END | p4_scaffold (skip_phase4 = idempotent)."""
     if state.get("errors"):

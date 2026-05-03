@@ -23,7 +23,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[4]
 HELPERS_DIR = Path.home() / ".claude" / "skills" / "video-use" / "helpers"
 TRANSCRIBE_BATCH = HELPERS_DIR / "transcribe_batch.py"
 PACK_TRANSCRIPTS = HELPERS_DIR / "pack_transcripts.py"
-VIDEO_EXTS = {".mp4", ".mov", ".mkv", ".webm", ".avi", ".m4v"}
+# Keep aligned with video-use/helpers/transcribe_batch.py. Notably, raw .webm
+# is accepted earlier in the pipeline but is not transcribable by that helper.
+VIDEO_EXTS = {".mp4", ".mov", ".mkv", ".avi", ".m4v"}
+UNSUPPORTED_VIDEO_EXTS = {".webm"}
 
 
 def _now() -> str:
@@ -56,6 +59,13 @@ def _source_files(source_dir: Path) -> list[Path]:
     return sorted(
         p for p in source_dir.iterdir()
         if p.is_file() and p.suffix.lower() in VIDEO_EXTS
+    )
+
+
+def _unsupported_source_files(source_dir: Path) -> list[Path]:
+    return sorted(
+        p for p in source_dir.iterdir()
+        if p.is_file() and p.suffix.lower() in UNSUPPORTED_VIDEO_EXTS
     )
 
 
@@ -139,6 +149,13 @@ def p3_inventory_node(state, *, runner=_run):
     source_dir = _source_dir(episode_dir)
     if not source_dir.is_dir():
         return _error(f"source directory not found: {source_dir}")
+
+    unsupported = _unsupported_source_files(source_dir)
+    if unsupported:
+        return _error(
+            "unsupported source extension(s) for canonical transcribe_batch.py: "
+            + ", ".join(str(p) for p in unsupported)
+        )
 
     sources = _source_files(source_dir)
     if not sources:

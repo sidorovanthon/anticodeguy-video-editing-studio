@@ -112,3 +112,21 @@ def test_inventory_reports_missing_transcript_after_helper(tmp_path, monkeypatch
     update = p3_inventory_node({"episode_dir": str(episode)}, runner=runner)
 
     assert "missing transcript" in update["errors"][0]["message"]
+
+
+def test_inventory_rejects_webm_before_helpers(tmp_path, monkeypatch):
+    episode = tmp_path / "ep"
+    episode.mkdir()
+    (episode / "raw.webm").write_bytes(b"x")
+
+    monkeypatch.setattr(node_module, "_ensure_tools", lambda: None)
+    calls: list[list[str]] = []
+
+    def runner(cmd: list[str], *, cwd: Path) -> CompletedProcess[str]:
+        calls.append(cmd)
+        return _ok()
+
+    update = p3_inventory_node({"episode_dir": str(episode)}, runner=runner)
+
+    assert "unsupported source extension" in update["errors"][0]["message"]
+    assert calls == []
