@@ -26,18 +26,22 @@ v1 topology (spec §4.1, §8 — LLM-free coverage):
 from langgraph.graph import END, StateGraph
 
 from .gates.edl_ok import edl_ok_gate_node
+from .gates.eval_ok import eval_ok_gate_node
 from .nodes._routing import (
     route_after_edl_ok,
     route_after_edl_select,
+    route_after_eval_ok,
     route_after_inventory,
     route_after_pickup,
     route_after_preflight,
     route_after_pre_scan,
     route_after_remap,
     route_after_render_segments,
+    route_after_self_eval,
     route_after_strategy,
 )
 from .nodes.edl_failure_interrupt import edl_failure_interrupt_node
+from .nodes.eval_failure_interrupt import eval_failure_interrupt_node
 from .nodes.glue_remap_transcript import glue_remap_transcript_node
 from .nodes.halt_llm_boundary import halt_llm_boundary_node
 from .nodes.isolate_audio import isolate_audio_node
@@ -45,6 +49,7 @@ from .nodes.p3_edl_select import p3_edl_select_node
 from .nodes.p3_inventory import p3_inventory_node
 from .nodes.p3_pre_scan import p3_pre_scan_node
 from .nodes.p3_render_segments import p3_render_segments_node
+from .nodes.p3_self_eval import p3_self_eval_node
 from .nodes.p3_strategy import p3_strategy_node
 from .nodes.p4_scaffold import p4_scaffold_node
 from .nodes.pickup import pickup_node
@@ -74,7 +79,10 @@ def build_graph_uncompiled() -> StateGraph:
     g.add_node("p3_edl_select", p3_edl_select_node)
     g.add_node("gate_edl_ok", edl_ok_gate_node)
     g.add_node("p3_render_segments", p3_render_segments_node)
+    g.add_node("p3_self_eval", p3_self_eval_node)
+    g.add_node("gate_eval_ok", eval_ok_gate_node)
     g.add_node("edl_failure_interrupt", edl_failure_interrupt_node)
+    g.add_node("eval_failure_interrupt", eval_failure_interrupt_node)
     g.add_node("halt_llm_boundary", halt_llm_boundary_node)
 
     g.set_entry_point("pickup")
@@ -155,9 +163,29 @@ def build_graph_uncompiled() -> StateGraph:
         {
             END: END,
             "halt_llm_boundary": "halt_llm_boundary",
+            "p3_self_eval": "p3_self_eval",
+        },
+    )
+    g.add_conditional_edges(
+        "p3_self_eval",
+        route_after_self_eval,
+        {
+            END: END,
+            "halt_llm_boundary": "halt_llm_boundary",
+            "gate_eval_ok": "gate_eval_ok",
+        },
+    )
+    g.add_conditional_edges(
+        "gate_eval_ok",
+        route_after_eval_ok,
+        {
+            "halt_llm_boundary": "halt_llm_boundary",
+            "p3_render_segments": "p3_render_segments",
+            "eval_failure_interrupt": "eval_failure_interrupt",
         },
     )
     g.add_edge("edl_failure_interrupt", END)
+    g.add_edge("eval_failure_interrupt", END)
 
     # skip_phase4? lives inside route_after_remap.
     g.add_conditional_edges(

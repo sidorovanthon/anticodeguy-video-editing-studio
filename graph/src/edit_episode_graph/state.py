@@ -101,12 +101,22 @@ class RenderState(TypedDict, total=False):
     skip_reason: str | None
 
 
+class EvalState(TypedDict, total=False):
+    issues: list[dict]
+    passed: bool
+    final_mp4_path: str | None
+    raw_text: str | None
+    skipped: bool
+    skip_reason: str | None
+
+
 class EditState(TypedDict, total=False):
     inventory: InventoryState
     pre_scan: PreScanState
     strategy: StrategyState
     edl: EdlState
     render: RenderState
+    eval: EvalState
 
 
 class GateResult(TypedDict, total=False):
