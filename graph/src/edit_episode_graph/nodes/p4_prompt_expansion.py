@@ -119,6 +119,11 @@ def p4_prompt_expansion_node(state, *, router: BackendRouter | None = None):
     node = _build_node()
     update = node(state, router=router)
     expansion = (update.get("compose") or {}).get("expansion") or {}
-    if "skipped" not in expansion and "raw_text" not in expansion:
-        update.setdefault("compose", {})["expanded_prompt_path"] = expansion.get("expanded_prompt_path")
+    # Promote on positive signal — the structured path is populated. Avoids
+    # mis-promotion if the schema ever adds a `raw_text` field of its own
+    # and ensures the failure path (LLMNode falls back to {"raw_text": ...}
+    # on schema extraction failure) leaves the top-level mirror unset.
+    path = expansion.get("expanded_prompt_path")
+    if path:
+        update.setdefault("compose", {})["expanded_prompt_path"] = path
     return update

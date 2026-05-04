@@ -133,6 +133,14 @@ def test_brief_references_canon_paths_without_embedding():
     # those are canon's, not ours.
     assert "The quality gap between" not in brief
     assert "Do not skip. Do not pass through." not in brief
+    # The brief must NOT enumerate canon's six output sections — that would
+    # fork canon into our brief and rot the moment upstream renames or
+    # reorders. Defer entirely to the canon file (per the sibling
+    # `p4_design_system.j2` pattern, and per CLAUDE.md
+    # "Decomposition via brief-references-canon").
+    assert "Title + style block" not in brief
+    assert "Recurring motifs" not in brief
+    assert "Negative prompt" not in brief
 
 
 def test_design_md_path_falls_back_to_nested_design(tmp_path):

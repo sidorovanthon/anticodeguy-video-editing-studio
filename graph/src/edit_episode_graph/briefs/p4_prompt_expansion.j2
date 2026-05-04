@@ -34,12 +34,11 @@ Inputs:
 Outputs (BOTH are required):
 
 1. **Write the expansion to disk** at `{{ expanded_prompt_path }}` using the
-   `Write` tool. The file must contain the six canonical sections as defined
-   in `references/prompt-expansion.md` (Title + style block / Rhythm /
-   Global rules / Per-scene beats / Recurring motifs / Negative prompt) — in
-   that order, with those headings. Each per-scene block must follow
-   `references/beat-direction.md`'s format. Hundreds of lines is normal —
-   do NOT shorten for the chat; the file is the artifact.
+   `Write` tool. Section names, ordering, per-scene format, and length
+   guidance are defined in `references/prompt-expansion.md` and
+   `references/beat-direction.md` — follow them exactly as written there.
+   Do not rely on remembered structure; read the canon files. The file
+   itself is the artifact — do NOT dump its contents into the chat.
 
 2. **Return ONLY JSON** matching this shape (no prose outside the JSON):
 

@@ -44,8 +44,11 @@ EPISODE = REPO_ROOT / "episodes" / SLUG
 # by a hex/font reference as evidence the section exists. The other five
 # sections have explicit canonical names and are matched as headings.
 CANONICAL_SECTIONS = [
-    ("rhythm",     r"(?im)^#{1,6}.*\brhythm\b"),
-    ("global",     r"(?im)^#{1,6}.*\bglobal\b"),
+    ("rhythm",     r"(?im)^#{1,6}\s+\S*\s*rhythm\b"),
+    # "Global" is too generic alone — anchor it to the canonical "Global
+    # rules" / "Global guidelines" phrasing so a stray "Global Color Grade"
+    # heading doesn't false-positive the section check.
+    ("global",     r"(?im)^#{1,6}\s+\S*\s*global\s+(rules|guidelines)\b"),
     ("scenes",     r"(?im)^#{1,6}.*\b(scene|beat|per-scene)\b"),
     ("motifs",     r"(?im)^#{1,6}.*\bmotif"),
     ("negative",   r"(?im)^#{1,6}.*\bnegative\b"),
