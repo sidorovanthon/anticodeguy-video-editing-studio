@@ -120,19 +120,29 @@ def route_after_strategy(state) -> str:
     return "strategy_confirmed_interrupt"
 
 
-def route_after_strategy_confirmed(state) -> str:
-    """strategy_confirmed_interrupt -> END on error/skip | p3_edl_select otherwise.
+STRATEGY_REVISION_CAP = 3
 
-    Reaching this routing function means the interrupt either resumed (operator
-    approved) or was bypassed because strategy was already approved/skipped.
-    Either way, downstream is p3_edl_select unless errors landed.
+
+def route_after_strategy_confirmed(state) -> str:
+    """strategy_confirmed_interrupt -> p3_edl_select | p3_strategy | halt | END.
+
+    Three branches matching the interrupt node's three outcomes:
+      - approved → p3_edl_select (canon path forward)
+      - skipped or errors → END (defensive)
+      - otherwise (revision queued) → p3_strategy if cap not exceeded,
+        halt_llm_boundary if it has been (avoid infinite loop)
     """
     if state.get("errors"):
         return END
     strategy = (state.get("edit") or {}).get("strategy") or {}
     if strategy.get("skipped"):
         return END
-    return "p3_edl_select"
+    if strategy.get("approved"):
+        return "p3_edl_select"
+    revisions = state.get("strategy_revisions") or []
+    if len(revisions) >= STRATEGY_REVISION_CAP:
+        return "halt_llm_boundary"
+    return "p3_strategy"
 
 
 def route_after_edl_select(state) -> str:

@@ -26,10 +26,13 @@ def _pre_scan_slips(state: dict) -> list[dict]:
 
 def _render_ctx(state: dict) -> dict:
     takes = _takes_packed_path(state)
+    revisions = state.get("strategy_revisions") or []
     return {
         "takes_packed_path": str(takes),
         "takes_packed_text": takes.read_text(encoding="utf-8"),
         "pre_scan_slips_json": json.dumps(_pre_scan_slips(state), ensure_ascii=False),
+        "strategy_revisions": revisions,
+        "strategy_revisions_json": json.dumps(revisions, ensure_ascii=False),
     }
 
 

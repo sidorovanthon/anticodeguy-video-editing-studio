@@ -14,6 +14,17 @@ Inputs:
 {{ takes_packed_text }}
 ```
 
+{% if strategy_revisions and strategy_revisions|length > 0 %}
+**Operator revision feedback** — incorporate every item below into the new
+strategy. The previous strategy you proposed was reviewed by the operator
+who returned the following corrections (oldest → newest). The latest item
+takes precedence on any conflict:
+
+```json
+{{ strategy_revisions_json }}
+```
+{% endif %}
+
 Return ONLY JSON matching:
 
 ```json

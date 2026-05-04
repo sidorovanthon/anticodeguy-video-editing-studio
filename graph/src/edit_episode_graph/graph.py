@@ -155,6 +155,8 @@ def build_graph_uncompiled() -> StateGraph:
         {
             END: END,
             "p3_edl_select": "p3_edl_select",
+            "p3_strategy": "p3_strategy",
+            "halt_llm_boundary": "halt_llm_boundary",
         },
     )
     g.add_conditional_edges(
