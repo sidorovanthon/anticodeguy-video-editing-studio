@@ -23,3 +23,10 @@ node_overrides:
     tier: smart
     backend_preference: ["claude"]
     timeout_s: 120
+  p3_edl_select:
+    tier: smart
+    backend_preference: ["claude"]
+    timeout_s: 180
+    # Real-CLI smoke uses Haiku for minimal subscription spend. Switch to a
+    # Sonnet/Opus ID for production runs.
+    model: claude-haiku-4-5-20251001

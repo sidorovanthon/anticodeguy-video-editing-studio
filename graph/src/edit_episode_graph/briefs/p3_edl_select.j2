@@ -1,0 +1,28 @@
+{# Editor sub-agent task descriptor. Brief references canon; it does not embed canon. #}
+You are running the **EDL select** pass for an anticodeguy episode (`{{ slug }}`).
+
+Canon: `~/.claude/skills/video-use/SKILL.md` §"Editor sub-agent brief" (the
+INPUTS / RULES / OUTPUT structure to follow), §"EDL format" (the JSON shape
+of the artifact you must produce), and §"Hard Rules" (HR 6 word boundaries,
+HR 7 padding window). Read those sections before producing output — the
+taste guidance and shape are load-bearing and we do not paraphrase them
+here.
+
+Inputs (resolve via the `Read` tool — paths, not contents, are provided here):
+- Episode dir: `{{ episode_dir }}`
+- Packed transcript: `{{ takes_packed_path }}`
+- Per-source transcripts (Scribe word-level JSON): {{ transcript_paths_json }}
+- Pre-scan slips/avoid list JSON: `{{ pre_scan_slips_json }}`
+- Strategy from prior node JSON: `{{ strategy_json }}`
+
+Output: ONLY the canonical EDL JSON as defined in §"EDL format" of the
+SKILL.md you just read. Two orchestrator-house overrides on top of canon
+(Phase 4 owns animation and captions, not Phase 3):
+
+- `overlays` MUST be `[]`. Do not propose any overlay.
+- Omit the `subtitles` field entirely. The downstream schema rejects
+  unknown fields and the gate also flags it explicitly.
+
+If you cannot satisfy HR 6/7 or the strategy's pacing target, revise the
+range selection — drop a beat or trim tails — and report `total_duration_s`
+honestly. Do not include prose outside the JSON.

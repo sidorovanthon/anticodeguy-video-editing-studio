@@ -13,8 +13,13 @@ notice in `p4_scaffold.py` — a small marker, not an error.
 
 
 def halt_llm_boundary_node(state):
-    pre_scan_state = (state.get("edit") or {}).get("pre_scan") or {}
-    if pre_scan_state.get("slips") is not None and not pre_scan_state.get("skipped"):
+    edit = state.get("edit") or {}
+    edl_state = edit.get("edl") or {}
+    pre_scan_state = edit.get("pre_scan") or {}
+    if edl_state.get("ranges"):
+        n = len(edl_state.get("ranges") or [])
+        msg = f"v3 halt: EDL passed gate:edl_ok ({n} range(s)); render requires p3_render_segments (future)"
+    elif pre_scan_state.get("slips") is not None and not pre_scan_state.get("skipped"):
         msg = (
             "v2 halt: pre_scan ran ({n} slip(s) recorded); EDL + render require v3 LLM nodes"
             .format(n=len(pre_scan_state.get("slips") or []))

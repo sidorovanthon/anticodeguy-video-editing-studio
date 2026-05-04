@@ -55,5 +55,5 @@ def test_routes_to_end_after_strategy_error():
     assert route_after_strategy(state) == END
 
 
-def test_routes_to_halt_after_strategy_success():
-    assert route_after_strategy({}) == "halt_llm_boundary"
+def test_routes_to_edl_select_after_strategy_success():
+    assert route_after_strategy({}) == "p3_edl_select"
