@@ -42,6 +42,7 @@ from .nodes._routing import (
     route_after_render_segments,
     route_after_self_eval,
     route_after_strategy,
+    route_after_strategy_confirmed,
 )
 from .nodes.edl_failure_interrupt import edl_failure_interrupt_node
 from .nodes.eval_failure_interrupt import eval_failure_interrupt_node
@@ -58,6 +59,7 @@ from .nodes.p3_strategy import p3_strategy_node
 from .nodes.p4_scaffold import p4_scaffold_node
 from .nodes.pickup import pickup_node
 from .nodes.preflight_canon import preflight_canon_node
+from .nodes.strategy_confirmed_interrupt import strategy_confirmed_interrupt_node
 from .state import GraphState
 
 
@@ -80,6 +82,7 @@ def build_graph_uncompiled() -> StateGraph:
     g.add_node("p3_inventory", p3_inventory_node)
     g.add_node("p3_pre_scan", p3_pre_scan_node)
     g.add_node("p3_strategy", p3_strategy_node)
+    g.add_node("strategy_confirmed_interrupt", strategy_confirmed_interrupt_node)
     g.add_node("p3_edl_select", p3_edl_select_node)
     g.add_node("gate_edl_ok", edl_ok_gate_node)
     g.add_node("p3_render_segments", p3_render_segments_node)
@@ -143,7 +146,17 @@ def build_graph_uncompiled() -> StateGraph:
         route_after_strategy,
         {
             END: END,
+            "strategy_confirmed_interrupt": "strategy_confirmed_interrupt",
+        },
+    )
+    g.add_conditional_edges(
+        "strategy_confirmed_interrupt",
+        route_after_strategy_confirmed,
+        {
+            END: END,
             "p3_edl_select": "p3_edl_select",
+            "p3_strategy": "p3_strategy",
+            "halt_llm_boundary": "halt_llm_boundary",
         },
     )
     g.add_conditional_edges(

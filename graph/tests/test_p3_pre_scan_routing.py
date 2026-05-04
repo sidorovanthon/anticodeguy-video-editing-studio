@@ -7,6 +7,7 @@ from edit_episode_graph.nodes._routing import (
     route_after_pre_scan,
     route_after_preflight,
     route_after_strategy,
+    route_after_strategy_confirmed,
 )
 
 
@@ -55,5 +56,49 @@ def test_routes_to_end_after_strategy_error():
     assert route_after_strategy(state) == END
 
 
-def test_routes_to_edl_select_after_strategy_success():
-    assert route_after_strategy({}) == "p3_edl_select"
+def test_routes_to_strategy_confirmed_after_strategy_success():
+    """HR 11 — strategy approval comes between p3_strategy and p3_edl_select."""
+    assert route_after_strategy({}) == "strategy_confirmed_interrupt"
+
+
+def test_routes_to_edl_select_when_strategy_approved():
+    state = {"edit": {"strategy": {"approved": True}}}
+    assert route_after_strategy_confirmed(state) == "p3_edl_select"
+
+
+def test_routes_to_strategy_when_revision_pending():
+    """Revision intent — loop back to p3_strategy; the brief reads revisions."""
+    state = {
+        "edit": {"strategy": {"shape": "x"}},
+        "strategy_revisions": ["Target loudness = -14 LUFS"],
+    }
+    assert route_after_strategy_confirmed(state) == "p3_strategy"
+
+
+def test_routes_to_halt_when_revision_cap_exceeded():
+    state = {
+        "edit": {"strategy": {"shape": "x"}},
+        "strategy_revisions": ["a", "b", "c"],
+    }
+    assert route_after_strategy_confirmed(state) == "halt_llm_boundary"
+
+
+def test_routes_to_end_after_strategy_confirmed_error():
+    state = {"errors": [{"node": "x", "message": "boom", "timestamp": "now"}]}
+    assert route_after_strategy_confirmed(state) == END
+
+
+def test_routes_to_end_when_strategy_skipped():
+    state = {"edit": {"strategy": {"skipped": True, "skip_reason": "missing input"}}}
+    assert route_after_strategy_confirmed(state) == END
+
+
+def test_initial_entry_no_revisions_routes_to_strategy():
+    """Edge: empty state (no approved, no revisions yet) → loop to strategy.
+
+    This branch is the defensive fallback — in practice the interrupt() raise
+    suspends the graph and resume always comes with either approval or a
+    revision payload. Still, exercise the path so future refactors don't
+    accidentally route initial entries to END.
+    """
+    assert route_after_strategy_confirmed({}) == "p3_strategy"

@@ -9,6 +9,12 @@ dependencies = [
     "pydantic>=2.7",
     "jinja2>=3.1",
     "pyyaml>=6.0",
+    # Required by canon `timeline_view.py` invoked from p3_inventory (Step 1
+    # sampling) and p3_self_eval (Step 7 per-cut sampling). Canon helpers
+    # don't carry their own packaging — we install their deps in our venv
+    # per CLAUDE.md "Skill copies: docs vs runnable".
+    "numpy>=1.26",
+    "pillow>=10.0",
 ]
 
 [project.optional-dependencies]

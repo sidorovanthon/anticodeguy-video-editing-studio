@@ -1,10 +1,17 @@
-"""p3_inventory node - ffprobe + canon transcript helpers.
+"""p3_inventory node - ffprobe + canon transcript helpers + sample timeline_view.
 
 This is the deterministic half of video-use canon Step 1 (Inventory). It
 collects source media metadata, invokes the canonical Scribe batch helper, then
 packs cached/raw transcripts into `<edit>/takes_packed.md` for downstream LLM
 nodes. The helper owns transcript caching (HR 9), so re-runs do not re-upload
 sources whose `<edit>/transcripts/<stem>.json` already exists.
+
+Per canon §"The process" Step 1 — "Sample one or two `timeline_view`s for a
+visual first impression" — we also produce a single mid-source filmstrip+waveform
+PNG per source under `<edit>/verify/inventory/`. This is best-effort: if the
+helper fails (missing deps, etc.) the node logs a warning notice but does not
+fail the inventory step. Strategy/EDL nodes can read these PNGs via Read for
+visual context; self-eval (Step 7) produces the rigorous per-cut sampling.
 """
 
 from __future__ import annotations
@@ -23,10 +30,36 @@ PROJECT_ROOT = Path(__file__).resolve().parents[4]
 HELPERS_DIR = Path.home() / ".claude" / "skills" / "video-use" / "helpers"
 TRANSCRIBE_BATCH = HELPERS_DIR / "transcribe_batch.py"
 PACK_TRANSCRIPTS = HELPERS_DIR / "pack_transcripts.py"
+TIMELINE_VIEW = HELPERS_DIR / "timeline_view.py"
 # Keep aligned with video-use/helpers/transcribe_batch.py. Notably, raw .webm
 # is accepted earlier in the pipeline but is not transcribable by that helper.
 VIDEO_EXTS = {".mp4", ".mov", ".mkv", ".avi", ".m4v"}
 UNSUPPORTED_VIDEO_EXTS = {".webm"}
+# Sampling for the canon Step 1 visual first impression. Canon SKILL.md
+# §"The process" Step 1 says "Sample one or two `timeline_view`s for a
+# visual first impression" without specifying window size — the implied
+# intent is "see the whole video", which for a short source means rendering
+# the entire timeline. For long sources, a single full-length PNG would be
+# unreadably wide and slow, so we sample two representative windows.
+SHORT_SOURCE_THRESHOLD_S = 600.0  # ≤10 min: one full-overview window
+LONG_SOURCE_WINDOW_S = 120.0       # >10 min: two ±60s windows around quartiles
+
+
+def _inventory_windows(duration: float) -> list[tuple[float, float, str]]:
+    """Return list of (start, end, label) windows for canon Step 1 sampling.
+
+    label is appended to the output filename (`{stem}{label}.png`).
+    Empty label → `{stem}.png` (the single-window short-source case).
+    """
+    if duration <= SHORT_SOURCE_THRESHOLD_S:
+        return [(0.0, float(duration), "")]
+    half = LONG_SOURCE_WINDOW_S / 2.0
+    q1 = duration * 0.25
+    q3 = duration * 0.75
+    return [
+        (max(0.0, q1 - half), min(float(duration), q1 + half), "_q1"),
+        (max(0.0, q3 - half), min(float(duration), q3 + half), "_q3"),
+    ]
 
 
 def _now() -> str:
@@ -201,13 +234,22 @@ def p3_inventory_node(state, *, runner=_run):
     if not takes_packed.exists():
         return _error(f"takes_packed.md missing after pack_transcripts.py: {takes_packed}")
 
-    return {
+    sample_paths, sample_warnings = _sample_timeline_views(
+        sources=sources,
+        inventory_sources=inventory_sources,
+        edit_dir=edit_dir,
+        transcripts_dir=transcripts_dir,
+        runner=runner,
+    )
+
+    update: dict = {
         "edit": {
             "inventory": {
                 "source_dir": str(source_dir),
                 "sources": inventory_sources,
                 "transcript_json_paths": transcript_paths,
                 "takes_packed_path": str(takes_packed),
+                "timeline_view_samples": sample_paths,
             },
         },
         "transcripts": {
@@ -215,3 +257,74 @@ def p3_inventory_node(state, *, runner=_run):
             "takes_packed_path": str(takes_packed),
         },
     }
+    if sample_warnings:
+        update["notices"] = sample_warnings
+    return update
+
+
+def _sample_timeline_views(
+    *,
+    sources: list[Path],
+    inventory_sources: list[dict],
+    edit_dir: Path,
+    transcripts_dir: Path,
+    runner,
+) -> tuple[list[str], list[str]]:
+    """Generate one timeline_view PNG per source. Best-effort, never fatal.
+
+    Returns (paths, warnings). Paths are absolute strings of generated PNGs;
+    warnings are human-readable notices when sampling failed for any source.
+    """
+    if not TIMELINE_VIEW.exists():
+        return [], [f"timeline_view sampling skipped: helper missing at {TIMELINE_VIEW}"]
+
+    verify_dir = edit_dir / "verify" / "inventory"
+    verify_dir.mkdir(parents=True, exist_ok=True)
+
+    duration_by_stem = {
+        s["stem"]: s.get("duration_s") for s in inventory_sources
+    }
+    paths: list[str] = []
+    warnings: list[str] = []
+    for source in sources:
+        duration = duration_by_stem.get(source.stem)
+        if not isinstance(duration, (int, float)) or duration <= 0:
+            warnings.append(
+                f"timeline_view skipped for {source.name}: unknown or zero duration"
+            )
+            continue
+        if duration < 0.5:
+            warnings.append(
+                f"timeline_view skipped for {source.name}: source too short ({duration:.2f}s)"
+            )
+            continue
+        for start, end, label in _inventory_windows(duration):
+            if end - start < 0.5:
+                continue
+            out_png = verify_dir / f"{source.stem}{label}.png"
+            cmd = [
+                sys.executable,
+                str(TIMELINE_VIEW),
+                str(source),
+                f"{start:.3f}",
+                f"{end:.3f}",
+                "-o",
+                str(out_png),
+            ]
+            transcript = transcripts_dir / f"{source.stem}.json"
+            if transcript.is_file():
+                cmd += ["--transcript", str(transcript)]
+            try:
+                result = runner(cmd, cwd=HELPERS_DIR)
+            except OSError as exc:
+                warnings.append(f"timeline_view failed for {source.name}{label}: {exc}")
+                continue
+            if result.returncode != 0 or not out_png.exists():
+                preview = (_combined_output(result) or "")[:200]
+                warnings.append(
+                    f"timeline_view failed for {source.name}{label}: "
+                    f"rc={result.returncode} {preview}"
+                )
+                continue
+            paths.append(str(out_png))
+    return paths, warnings

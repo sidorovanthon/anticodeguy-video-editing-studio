@@ -109,10 +109,40 @@ def route_after_pre_scan(state) -> str:
 
 
 def route_after_strategy(state) -> str:
-    """p3_strategy -> END on error | p3_edl_select on success."""
+    """p3_strategy -> END on error | strategy_confirmed_interrupt on success.
+
+    Inserts canon HR 11 approval gate before EDL selection. The interrupt
+    node short-circuits if strategy was skipped upstream (no plan to confirm)
+    or if the operator already approved on a prior turn.
+    """
     if state.get("errors"):
         return END
-    return "p3_edl_select"
+    return "strategy_confirmed_interrupt"
+
+
+STRATEGY_REVISION_CAP = 3
+
+
+def route_after_strategy_confirmed(state) -> str:
+    """strategy_confirmed_interrupt -> p3_edl_select | p3_strategy | halt | END.
+
+    Three branches matching the interrupt node's three outcomes:
+      - approved → p3_edl_select (canon path forward)
+      - skipped or errors → END (defensive)
+      - otherwise (revision queued) → p3_strategy if cap not exceeded,
+        halt_llm_boundary if it has been (avoid infinite loop)
+    """
+    if state.get("errors"):
+        return END
+    strategy = (state.get("edit") or {}).get("strategy") or {}
+    if strategy.get("skipped"):
+        return END
+    if strategy.get("approved"):
+        return "p3_edl_select"
+    revisions = state.get("strategy_revisions") or []
+    if len(revisions) >= STRATEGY_REVISION_CAP:
+        return "halt_llm_boundary"
+    return "p3_strategy"
 
 
 def route_after_edl_select(state) -> str:

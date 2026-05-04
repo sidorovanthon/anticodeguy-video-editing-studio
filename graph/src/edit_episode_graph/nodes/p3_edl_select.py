@@ -87,5 +87,17 @@ def p3_edl_select_node(state, *, router: BackendRouter | None = None):
     edl = (update.get("edit") or {}).get("edl") or {}
     if "skipped" not in edl and "raw_text" not in edl:
         edl["source_path"] = str(takes)
+        # Persist EDL to disk so the deterministic render step (canon `render.py`)
+        # can consume it. Without this, p3_render_segments fails with
+        # "edl.json not found" — the LLM produces an in-state EDL but render.py
+        # only reads from a path. Writing it here keeps p3_edl_select the sole
+        # owner of EDL persistence (one writer per artifact).
+        edl_path = Path(episode_dir) / "edit" / "edl.json"
+        edl_path.parent.mkdir(parents=True, exist_ok=True)
+        # Strip orchestrator-only fields before serializing — they confuse
+        # canon helpers that don't expect them.
+        on_disk = {k: v for k, v in edl.items() if k != "source_path"}
+        edl_path.write_text(json.dumps(on_disk, indent=2, ensure_ascii=False), encoding="utf-8")
+        edl["edl_path"] = str(edl_path)
     update.setdefault("edit", {})["edl"] = edl
     return update

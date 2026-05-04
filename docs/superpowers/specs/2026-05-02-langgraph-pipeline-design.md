@@ -57,24 +57,31 @@ START → pickup → idle? → END
 
 ### 4.2 Phase 3 — video-use, decomposed (canon §"The process" 1–8)
 
-**HR 11 deviation:** v3 intentionally does not interrupt for user strategy approval between `p3_strategy` and `p3_edl_select`; unattended graph runs match current `/edit-episode` automation, and a future `gate:strategy_confirmed` can add HITL if reliability requires it.
+**HR 11 (strategy approval) — restored as `strategy_confirmed_interrupt` in v3.1.** The original v3 design deferred HR 11 (canon: *"Strategy confirmation before execution. Never touch the cut until the user has approved the plain-English plan."*) on the grounds that `/edit-episode` did not interrupt either. Empirically that was a wrong call: the slash command was already violating canon, and the graph runs in LangGraph Studio where the operator is in-the-loop by design. v3.1 inserts `strategy_confirmed_interrupt` between `p3_strategy` and `p3_edl_select`. The node calls `langgraph.types.interrupt({...})` with the strategy summary; on `Command(resume=…)` it sets `state.edit.strategy.approved = true` and proceeds to EDL select. Idempotent — re-entry on a subsequent run after `approved=true` short-circuits without re-prompting. (Source: HOM-107 amendment, 2026-05-04.)
 
 **Orchestrator policy: animations and subtitles are produced in Phase 4 (hyperframes), NOT in Phase 3.** Video-use canon makes both opt-in (`## Animations (when requested)` line 195; `subtitles is optional` line 280). Our `p3_strategy` and `p3_edl_select` briefs honor this opt-out: strategy does not propose animations or subtitles; EDL emits `overlays: []` and omits `subtitles` entirely. As a result `p3_render_segments` is purely cuts + grade + concat — Hard Rules 1 (subtitles last) and 4 (overlay PTS-shift) are trivially satisfied because there are no subtitles or overlays to manage.
+
+**Step 1 sampling: timeline_view PNGs (v3.1).** Canon Step 1 calls for *"one or two timeline_view samples for a visual first impression."* The v3 deterministic `p3_inventory` originally produced none (text-only). v3.1 adds best-effort midpoint sampling — one filmstrip+waveform PNG per source written to `<edit>/verify/inventory/<stem>_mid.png`. Failure is non-fatal (notice + empty `timeline_view_samples` list). Per-cut waveform sampling at decision time still belongs to canon Step 7 (`p3_self_eval`).
 
 ```
        skip_phase3?  ──yes──→  glue_remap_transcript
               │ no
               ▼
        p3_inventory          deterministic: ffprobe + transcribe_batch (ElevenLabs) + pack_transcripts
-              ▼
+              ▼               + best-effort timeline_view PNG per source under <edit>/verify/inventory/
        p3_pre_scan           LLM cheap, has_tools — reads takes_packed.md → list of slips/avoid
               ▼
        p3_strategy           LLM smart — proposes shape, take strategy, grade, pacing, length estimate.
               ▼               Brief explicitly suppresses animation + subtitle planning (Phase 4 territory).
+       strategy_confirmed_interrupt   HITL — interrupt() with strategy summary; resumes on Command(resume=...).
+              ▼               Idempotent: state.edit.strategy.approved short-circuits re-entry.
        p3_edl_select         LLM smart, has_tools — editor sub-agent brief from canon §"Editor sub-agent brief".
-              ▼               Brief mandates `overlays: []` and omits `subtitles` field.
-       gate:edl_ok           validates EDL schema, word-boundary cuts (HR 6), padding 30–200ms (HR 7),
-              ▼               pacing target 25–35%, `overlays == []`, `subtitles` field absent
+              ▼               Brief mandates `overlays: []` and omits `subtitles` field; HR 7 reminder
+              ▼               for trailing edge (never copy a Scribe word-end timestamp as range end).
+       gate:edl_ok           validates EDL schema, word-boundary cuts (HR 6), padding 30–200ms (HR 7) on
+              ▼               BOTH edges, adaptive final-cut length (see §6.2 — anchored on
+              ▼               strategy.length_estimate_s ±20% with a wide fallback when no estimate
+              ▼               is available), `overlays == []`, `subtitles` field absent
        p3_render_segments    deterministic: render.py extract per-segment + grade + 30ms fades (HR 3)
               ▼               + concat -c copy (HR 2). No overlays, no subtitles.
        p3_self_eval          LLM cheap, has_tools — timeline_view at cut boundaries ±1.5s,
@@ -89,7 +96,7 @@ START → pickup → idle? → END
        skip_phase4?
 ```
 
-Phase 3 LLM nodes: 5 (`p3_pre_scan`, `p3_strategy`, `p3_edl_select`, `p3_self_eval`, `p3_persist_session`). Plus 2 deterministic (`p3_inventory`, `p3_render_segments`). Animation fan-out (`p3_animations_plan`, `p3_animations_slot_<n>` Send) is removed entirely — that surface lives in Phase 4 hyperframes scenes.
+Phase 3 LLM nodes: 5 (`p3_pre_scan`, `p3_strategy`, `p3_edl_select`, `p3_self_eval`, `p3_persist_session`). Plus 2 deterministic (`p3_inventory`, `p3_render_segments`) and 1 HITL interrupt (`strategy_confirmed_interrupt`). Animation fan-out (`p3_animations_plan`, `p3_animations_slot_<n>` Send) is removed entirely — that surface lives in Phase 4 hyperframes scenes.
 
 ### 4.3 Phase 4 — hyperframes, decomposed (canon §"Approach" Step 1/2/3 + Quality Checks)
 
@@ -269,7 +276,14 @@ Concrete gates:
 
 | Gate | Checks |
 |------|--------|
-| `gate:edl_ok` | EDL JSON schema; word-boundary cuts (HR 6); padding 30–200ms (HR 7); pacing 25–35%; `overlays == []`; absent `subtitles` field |
+| `gate:edl_ok` | EDL JSON schema; word-boundary cuts (HR 6); padding 30–200ms (HR 7) on BOTH edges; adaptive final-cut length (see below); `overlays == []`; absent `subtitles` field |
+
+**Adaptive length check (v3.1, supersedes original fixed 25–35% pacing).** The original spec hard-coded `cut_total / source_total ∈ [0.25, 0.35]`. Canon does NOT specify a fixed fraction — Step 4 strategy emits `length_estimate_s` derived from the material itself, and the editor sub-agent brief takes a `Target runtime` parameter. The fixed bound failed empirically on a 70-second talking-head explainer where the LLM correctly produced a ~56s cut against a 62s estimate (80% retention) — gate rejected a correct EDL. v3.1 replaces the fixed bound with:
+
+- **Strategy-anchored mode** (default, when `state.edit.strategy.length_estimate_s` is set): cut length must lie within ±20% of the estimate. Tolerance constant `LENGTH_TOLERANCE = 0.20` lives in `gates/edl_ok.py`.
+- **Fallback mode** (no estimate available): cut/source ratio must lie in the wide window `[0.10, 0.95]`. Catches degenerate cases (empty EDL, unmodified passthrough) without blocking legitimate explainer cuts.
+
+The `p3_edl_select` brief calls out HR 7 explicitly for the trailing edge — common failure mode was using a Scribe word-end timestamp as the final range's `end`, giving 0ms padding. (Source: HOM-107 retro on episode `2026-05-04-desktop-software-licensing-...`.)
 | `gate:eval_ok` | ffprobe duration matches `total_duration_s` ±100ms; iteration < 3 |
 | `gate:design_ok` | DESIGN.md substance: ≥2 visual references, ≥1 alternative, ≥3 anti-patterns, populated Beat→Visual Mapping |
 | `gate:plan_ok` | ≥3 beats; per-boundary transition mechanism declared; per-beat catalog-vs-custom justification |

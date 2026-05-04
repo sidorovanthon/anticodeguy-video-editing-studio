@@ -67,6 +67,9 @@ class StrategyState(TypedDict, total=False):
     source_path: str | None
     skipped: bool
     skip_reason: str | None
+    # HR 11 — set by strategy_confirmed_interrupt after operator approval.
+    approved: bool
+    approval_payload: object
 
 
 class InventoryState(TypedDict, total=False):
@@ -84,6 +87,7 @@ class EdlState(TypedDict, total=False):
     overlays: list[dict]
     total_duration_s: float
     source_path: str | None
+    edl_path: str | None
     raw_text: str | None
     skipped: bool
     skip_reason: str | None
@@ -183,3 +187,8 @@ class GraphState(TypedDict, total=False):
     notices: Annotated[list[str], add]
     llm_runs: Annotated[list[LLMRunRecord], add]
     gate_results: Annotated[list[GateResult], add]
+    # Append-only operator feedback collected by strategy_confirmed_interrupt
+    # when the resume payload is a revision rather than approval. p3_strategy
+    # reads this list on each re-entry to refine the strategy. Top-level so
+    # it survives strategy regeneration via dict_merge on `edit`.
+    strategy_revisions: Annotated[list[str], add]

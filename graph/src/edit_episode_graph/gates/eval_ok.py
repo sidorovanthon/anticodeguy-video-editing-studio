@@ -3,7 +3,9 @@
 Per spec §6.2 / canon §"The process" Step 7:
   - `state.edit.eval.passed == true` (the LLM verdict).
   - No `blocker`-severity issues remain.
-  - ffprobe duration of `final.mp4` matches EDL `total_duration_s` ±100ms.
+  - ffprobe duration of `final.mp4` matches EDL `total_duration_s` within
+    `_render_constants.duration_tolerance_ms(n_segments)` (24fps frame-snap
+    drift; shared with p3_render_segments).
 
 Iteration cap (3) is enforced by the routing helper, not by the gate
 itself — the gate stays pure (state-update only) so Studio always sees
@@ -18,9 +20,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from .._render_constants import duration_tolerance_ms
 from ._base import Gate
-
-DURATION_TOLERANCE_MS = 100
 
 
 def _probe_duration_s(path: Path) -> float | None:
@@ -94,11 +95,13 @@ class EvalOkGate(Gate):
                 violations.append(f"ffprobe failed on {final_mp4}")
             else:
                 delta_ms = int(round(abs(duration - expected_f) * 1000))
-                if delta_ms > DURATION_TOLERANCE_MS:
+                n_segments = len(edl.get("ranges") or [])
+                tolerance_ms = duration_tolerance_ms(n_segments)
+                if delta_ms > tolerance_ms:
                     violations.append(
                         f"final.mp4 duration {duration:.3f}s deviates from EDL "
                         f"total_duration_s {expected_f:.3f}s by {delta_ms}ms "
-                        f"(tolerance {DURATION_TOLERANCE_MS}ms)"
+                        f"(tolerance {tolerance_ms}ms for {n_segments} segments)"
                     )
 
         return violations

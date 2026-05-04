@@ -2,7 +2,12 @@
 You are running the **strategy** pass for an anticodeguy episode (`{{ slug }}`).
 
 Canon: `~/.claude/skills/video-use/SKILL.md` §"The process" Step 4
-("Strategy") and §"Cut craft". Read canon only if you need to resolve policy.
+("Strategy"), §"Cut craft", and §"Color grade". Read those sections before
+producing output — the shape of the strategy, what counts as a cut
+candidate, and the meaning of `grade` (image/CDL direction, NOT audio or
+codec settings; loudnorm/codec/fps live entirely in canon `render.py` and
+are not operator-tunable through strategy) are all load-bearing and we do
+not paraphrase them here.
 
 Inputs:
 - Episode dir: `{{ episode_dir }}`
@@ -13,6 +18,17 @@ Inputs:
 ```text
 {{ takes_packed_text }}
 ```
+
+{% if strategy_revisions and strategy_revisions|length > 0 %}
+**Operator revision feedback** — incorporate every item below into the new
+strategy. The previous strategy you proposed was reviewed by the operator
+who returned the following corrections (oldest → newest). The latest item
+takes precedence on any conflict:
+
+```json
+{{ strategy_revisions_json }}
+```
+{% endif %}
 
 Return ONLY JSON matching:
 

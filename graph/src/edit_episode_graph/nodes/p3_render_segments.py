@@ -27,12 +27,10 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .._render_constants import duration_tolerance_ms
+
 HELPERS_DIR = Path.home() / ".claude" / "skills" / "video-use" / "helpers"
 RENDER_PY = HELPERS_DIR / "render.py"
-
-# ±100ms tolerance per HOM-103 DoD. Loudnorm + lossless concat can drift the
-# final container duration relative to the sum of EDL ranges by a frame or two.
-DURATION_TOLERANCE_MS = 100
 
 
 def _now() -> str:
@@ -146,11 +144,12 @@ def p3_render_segments_node(state, *, runner=_run):
     delta_ms: int | None = None
     if expected_f is not None:
         delta_ms = int(round(abs(duration - expected_f) * 1000))
-        if delta_ms > DURATION_TOLERANCE_MS:
+        tolerance_ms = duration_tolerance_ms(n_segments)
+        if delta_ms > tolerance_ms:
             return _error(
                 f"final.mp4 duration {duration:.3f}s deviates from EDL "
                 f"total_duration_s {expected_f:.3f}s by {delta_ms}ms "
-                f"(tolerance {DURATION_TOLERANCE_MS}ms)"
+                f"(tolerance {tolerance_ms}ms for {n_segments} segments)"
             )
 
     return {

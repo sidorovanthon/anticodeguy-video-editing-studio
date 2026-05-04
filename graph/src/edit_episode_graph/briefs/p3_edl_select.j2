@@ -23,6 +23,7 @@ SKILL.md you just read. Two orchestrator-house overrides on top of canon
 - Omit the `subtitles` field entirely. The downstream schema rejects
   unknown fields and the gate also flags it explicitly.
 
-If you cannot satisfy HR 6/7 or the strategy's pacing target, revise the
-range selection — drop a beat or trim tails — and report `total_duration_s`
+If you cannot satisfy HR 6/7 or the strategy's `length_estimate_s` (target
+final-cut length, validated downstream within ±20%), revise the range
+selection — drop a beat or trim tails — and report `total_duration_s`
 honestly. Do not include prose outside the JSON.
