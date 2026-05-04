@@ -185,16 +185,30 @@ def main() -> int:
     overall_timeout_s = 60.0
     if "--timeout-s" in sys.argv:
         idx = sys.argv.index("--timeout-s")
-        overall_timeout_s = float(sys.argv[idx + 1])
+        if idx + 1 >= len(sys.argv):
+            print("--timeout-s requires a numeric value", file=sys.stderr)
+            return 2
+        try:
+            overall_timeout_s = float(sys.argv[idx + 1])
+        except ValueError:
+            print(f"--timeout-s value must be numeric: {sys.argv[idx + 1]!r}", file=sys.stderr)
+            return 2
 
     if not _npx_cmd():
         print("npx not found on PATH; skipping bare-repro.", file=sys.stderr)
         return 2
 
+    # Split the budget across the two subprocess phases so the SUM stays
+    # under overall_timeout_s — otherwise the caller's outer wall-clock
+    # buffer (typically overall + 15s) fires before both can complete on
+    # a cold npm cache, producing spurious `inconclusive` verdicts.
+    scaffold_budget_s = overall_timeout_s * 0.65
+    compositions_budget_s = overall_timeout_s * 0.35
+
     with tempfile.TemporaryDirectory(prefix="hf-bare-repro-") as tmp:
         workdir = Path(tmp)
         try:
-            project = _scaffold(workdir, timeout_s=overall_timeout_s)
+            project = _scaffold(workdir, timeout_s=scaffold_budget_s)
         except subprocess.TimeoutExpired:
             print("hyperframes init timed out", file=sys.stderr)
             return 2
@@ -208,7 +222,7 @@ def main() -> int:
             cli = _run(
                 [*_npx_cmd(), "hyperframes", "compositions"],
                 cwd=project,
-                timeout_s=overall_timeout_s,
+                timeout_s=compositions_budget_s,
             )
         except subprocess.TimeoutExpired:
             print("hyperframes compositions timed out", file=sys.stderr)

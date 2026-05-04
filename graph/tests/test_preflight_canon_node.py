@@ -187,6 +187,7 @@ def test_missing_script_surfaces_notice(tmp_path):
         {},
         runner=runner,
         state_path=sidecar,
+        repros_dir=tmp_path,
         watchlist=[("bug-x", "nope.py")],
     )
 

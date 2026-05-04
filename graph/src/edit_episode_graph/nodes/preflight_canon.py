@@ -158,7 +158,13 @@ def _run_one(
     try:
         result = runner(
             [sys.executable, str(script_path), "--timeout-s", str(timeout_s)],
-            timeout_s + 15.0,  # outer wall-clock buffer over the script's own deadline
+            # Outer wall-clock buffer. Bare-repro scripts internally budget
+            # the inner subprocesses to SUM under their --timeout-s argument
+            # (see scaffold_budget_s / compositions_budget_s in the HF
+            # sub-comp script), so timeout_s + a Python-overhead headroom
+            # is sufficient. Going to 2× would compound across watchlist
+            # entries and stall the graph unnecessarily.
+            timeout_s + 30.0,
         )
         exit_code = result.returncode
         message_tail = (result.stderr or result.stdout or "")[-400:].strip() or None
