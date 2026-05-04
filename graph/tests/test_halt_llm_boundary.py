@@ -63,3 +63,62 @@ def test_v3_halt_marks_cached_render():
     }
     msg = halt_llm_boundary_node(state)["notices"][0]
     assert "[cached]" in msg
+
+
+def test_v4_halt_after_plan_gate_pass():
+    state = {
+        "compose": {"plan": {"beats": [{}, {}, {}]}},
+        "gate_results": [
+            {"gate": "gate:plan_ok", "passed": True, "iteration": 1,
+             "violations": [], "timestamp": "now"},
+        ],
+    }
+    msg = halt_llm_boundary_node(state)["notices"][0]
+    assert msg.startswith("v4 halt: gate:plan_ok passed")
+    assert "p4_catalog_scan" in msg
+
+
+def test_v4_halt_after_catalog_scan():
+    """Catalog scanned but assembly hasn't run — notice names catalog as latest reachable."""
+    state = {
+        "compose": {
+            "catalog": {"blocks": [{}, {}], "components": [{}], "fetched_at": "now"},
+        },
+        "gate_results": [
+            {"gate": "gate:plan_ok", "passed": True, "iteration": 1,
+             "violations": [], "timestamp": "now"},
+        ],
+    }
+    msg = halt_llm_boundary_node(state)["notices"][0]
+    assert "catalog scanned" in msg
+    assert "2 block" in msg
+    assert "1 component" in msg
+    assert "p4_assemble_index" in msg
+
+
+def test_v4_halt_after_assemble_skip():
+    state = {
+        "compose": {
+            "catalog": {"blocks": [{}], "components": [], "fetched_at": "now"},
+            "assemble": {"skipped": True, "skip_reason": "no beats in state"},
+        },
+    }
+    msg = halt_llm_boundary_node(state)["notices"][0]
+    assert "p4_assemble_index skipped" in msg
+    assert "no beats" in msg
+
+
+def test_v4_halt_after_assemble_success():
+    state = {
+        "compose": {
+            "assemble": {
+                "assembled_at": "now",
+                "beat_names": ["HOOK", "PAYOFF"],
+                "captions_included": True,
+            },
+        },
+    }
+    msg = halt_llm_boundary_node(state)["notices"][0]
+    assert "index.html assembled" in msg
+    assert "2 beat" in msg
+

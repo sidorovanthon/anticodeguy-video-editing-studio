@@ -67,6 +67,26 @@ class ExpansionState(TypedDict, total=False):
     skip_reason: str | None
 
 
+class CatalogReport(TypedDict, total=False):
+    blocks: list[dict]
+    components: list[dict]
+    fetched_at: str
+
+
+class BeatArtifact(TypedDict, total=False):
+    name: str
+    html_path: str
+    duration_s: float
+
+
+class AssembleState(TypedDict, total=False):
+    assembled_at: str
+    beat_names: list[str]
+    captions_included: bool
+    skipped: bool
+    skip_reason: str | None
+
+
 class ComposeState(TypedDict, total=False):
     hyperframes_dir: str | None
     index_html_path: str | None
@@ -75,6 +95,10 @@ class ComposeState(TypedDict, total=False):
     style_request: str | None
     expansion: ExpansionState
     expanded_prompt_path: str | None
+    catalog: CatalogReport
+    beats: list[BeatArtifact]
+    captions_block_path: str | None
+    assemble: AssembleState
 
 
 class PreScanState(TypedDict, total=False):

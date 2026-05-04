@@ -5,6 +5,8 @@ from __future__ import annotations
 from langgraph.graph import END
 
 from edit_episode_graph.nodes._routing import (
+    route_after_assemble_index,
+    route_after_catalog_scan,
     route_after_design_ok,
     route_after_design_system,
     route_after_plan,
@@ -83,16 +85,47 @@ def test_route_after_plan_pass_to_gate():
     assert route_after_plan({"compose": {"plan": {"beats": []}}}) == "gate_plan_ok"
 
 
-def test_route_after_plan_ok_always_halts():
-    """v4-sans-HITL: pass and fail both surface through halt_llm_boundary
-    until downstream P4 nodes (catalog scan, beat fan-out) are wired."""
+def test_route_after_plan_ok_pass_to_catalog_scan():
+    """HOM-121 wires gate:plan_ok pass → p4_catalog_scan."""
     pass_state = {"gate_results": [
         {"gate": "gate:plan_ok", "passed": True, "iteration": 1,
          "violations": [], "timestamp": "now"},
     ]}
+    assert route_after_plan_ok(pass_state) == "p4_catalog_scan"
+
+
+def test_route_after_plan_ok_fail_to_halt():
+    """v4-sans-HITL: gate fail surfaces through halt_llm_boundary."""
     fail_state = {"gate_results": [
         {"gate": "gate:plan_ok", "passed": False, "iteration": 1,
          "violations": ["x"], "timestamp": "now"},
     ]}
-    assert route_after_plan_ok(pass_state) == "halt_llm_boundary"
     assert route_after_plan_ok(fail_state) == "halt_llm_boundary"
+
+
+def test_route_after_plan_ok_no_record_to_halt():
+    assert route_after_plan_ok({}) == "halt_llm_boundary"
+
+
+def test_route_after_catalog_scan_error_to_end():
+    state = {"errors": [{"node": "p4_catalog_scan", "message": "x", "timestamp": "now"}]}
+    assert route_after_catalog_scan(state) == END
+
+
+def test_route_after_catalog_scan_default_to_assemble():
+    assert route_after_catalog_scan({}) == "p4_assemble_index"
+
+
+def test_route_after_assemble_index_error_to_end():
+    state = {"errors": [{"node": "p4_assemble_index", "message": "x", "timestamp": "now"}]}
+    assert route_after_assemble_index(state) == END
+
+
+def test_route_after_assemble_index_default_to_halt():
+    assert route_after_assemble_index({}) == "halt_llm_boundary"
+
+
+def test_route_after_assemble_index_skip_to_halt():
+    """Skip case (no beats yet) still routes to halt so the notice surfaces."""
+    state = {"compose": {"assemble": {"skipped": True, "skip_reason": "no beats"}}}
+    assert route_after_assemble_index(state) == "halt_llm_boundary"

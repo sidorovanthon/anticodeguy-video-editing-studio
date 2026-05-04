@@ -22,17 +22,47 @@ def halt_llm_boundary_node(state):
     plan_state = compose_state.get("plan") or {}
     expansion_state = compose_state.get("expansion") or {}
     design_state = compose_state.get("design") or {}
+    catalog_state = compose_state.get("catalog") or {}
+    assemble_state = compose_state.get("assemble") or {}
     gate_results = state.get("gate_results") or []
     plan_record = next(
         (r for r in reversed(gate_results) if r.get("gate") == "gate:plan_ok"),
         None,
     )
+    # Order matters: assemble runs after catalog runs after plan-gate. Check
+    # the latest reachable artifact first so the notice always names the most
+    # advanced phase actually completed. We gate on the two known terminal
+    # markers (skipped or assembled_at) rather than dict truthiness so a
+    # future partial-write that leaves an unrecognized assemble shape doesn't
+    # silently format a misleading "assembled" notice.
+    if assemble_state.get("skipped") or assemble_state.get("assembled_at"):
+        if assemble_state.get("skipped"):
+            reason = assemble_state.get("skip_reason") or "no reason given"
+            msg = (
+                f"v4 halt: p4_assemble_index skipped: {reason}; per-beat fan-out + "
+                "captions block are future tickets (HOM-122..HOM-123)"
+            )
+        else:
+            n = len(assemble_state.get("beat_names") or [])
+            msg = (
+                f"v4 halt: index.html assembled ({n} beat(s)); next is preview/render "
+                "(future tickets HOM-124+)"
+            )
+        return {"notices": [msg]}
+    if catalog_state:
+        n_b = len(catalog_state.get("blocks") or [])
+        n_c = len(catalog_state.get("components") or [])
+        msg = (
+            f"v4 halt: catalog scanned ({n_b} block(s), {n_c} component(s)); next is "
+            "p4_assemble_index"
+        )
+        return {"notices": [msg]}
     if plan_record is not None:
         n_beats = len(plan_state.get("beats") or [])
         if plan_record.get("passed"):
             msg = (
                 f"v4 halt: gate:plan_ok passed ({n_beats} beat(s)); next is "
-                "p4_catalog_scan + per-beat fan-out (future tickets HOM-12X)"
+                "p4_catalog_scan + p4_assemble_index"
             )
         else:
             n_v = len(plan_record.get("violations") or [])
