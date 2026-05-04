@@ -18,6 +18,39 @@ def halt_llm_boundary_node(state):
     render_state = edit.get("render") or {}
     eval_state = edit.get("eval") or {}
     pre_scan_state = edit.get("pre_scan") or {}
+    compose_state = state.get("compose") or {}
+    plan_state = compose_state.get("plan") or {}
+    expansion_state = compose_state.get("expansion") or {}
+    design_state = compose_state.get("design") or {}
+    gate_results = state.get("gate_results") or []
+    plan_record = next(
+        (r for r in reversed(gate_results) if r.get("gate") == "gate:plan_ok"),
+        None,
+    )
+    if plan_record is not None:
+        n_beats = len(plan_state.get("beats") or [])
+        if plan_record.get("passed"):
+            msg = (
+                f"v4 halt: gate:plan_ok passed ({n_beats} beat(s)); next is "
+                "p4_catalog_scan + per-beat fan-out (future tickets HOM-12X)"
+            )
+        else:
+            n_v = len(plan_record.get("violations") or [])
+            msg = (
+                f"v4 halt: gate:plan_ok FAILED ({n_v} violation(s)); see gate_results — "
+                "v4-sans-HITL routes failures here, retry-with-violations is HOM-77"
+            )
+        return {"notices": [msg]}
+    if expansion_state.get("expanded_prompt_path") and not plan_state:
+        # Reached when p4_plan was skipped (e.g. missing inputs). Without
+        # the gate record the run would otherwise look identical to a
+        # design_ok pass — surface the skip reason instead.
+        reason = plan_state.get("skip_reason") or "p4_plan did not run"
+        msg = f"v4 halt: prompt_expansion ok but p4_plan skipped: {reason}"
+        return {"notices": [msg]}
+    if design_state.get("design_md_path") and not expansion_state:
+        msg = "v4 halt: design_ok passed but p4_prompt_expansion did not run (skip)"
+        return {"notices": [msg]}
     if eval_state.get("passed") and render_state.get("final_mp4"):
         n = render_state.get("n_segments") or 0
         n_issues = len(eval_state.get("issues") or [])

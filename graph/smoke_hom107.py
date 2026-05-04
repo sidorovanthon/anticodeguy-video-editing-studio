@@ -72,10 +72,13 @@ EXPECTED_NODES = {
     "halt_llm_boundary",
     "p4_scaffold",
     # Phase 4 LLM chain — extend as new P4 nodes wire into topology
-    # (HOM-129 wired design_system / gate_design_ok / prompt_expansion).
+    # (HOM-129 wired design_system / gate_design_ok / prompt_expansion;
+    # HOM-120 wired p4_plan + gate_plan_ok).
     "p4_design_system",
     "gate_design_ok",
     "p4_prompt_expansion",
+    "p4_plan",
+    "gate_plan_ok",
 }
 
 HAIKU_MODEL = "claude-haiku-4-5-20251001"

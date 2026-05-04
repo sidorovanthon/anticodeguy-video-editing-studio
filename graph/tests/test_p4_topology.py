@@ -22,7 +22,14 @@ def _compiled_graph_repr():
 
 def test_phase4_nodes_present_in_compiled_graph():
     nodes = set(_compiled_graph_repr().nodes.keys())
-    expected = {"p4_scaffold", "p4_design_system", "gate_design_ok", "p4_prompt_expansion"}
+    expected = {
+        "p4_scaffold",
+        "p4_design_system",
+        "gate_design_ok",
+        "p4_prompt_expansion",
+        "p4_plan",
+        "gate_plan_ok",
+    }
     missing = expected - nodes
     assert not missing, f"Phase 4 nodes missing from compiled graph: {sorted(missing)}"
 
@@ -36,7 +43,9 @@ def test_phase4_chain_edges_wired():
       p4_scaffold → p4_design_system
       p4_design_system → gate_design_ok
       gate_design_ok → p4_prompt_expansion
-      p4_prompt_expansion → halt_llm_boundary
+      p4_prompt_expansion → p4_plan
+      p4_plan → gate_plan_ok
+      gate_plan_ok → halt_llm_boundary
     """
     graph = _compiled_graph_repr()
     edges = {(e.source, e.target) for e in graph.edges}
@@ -45,7 +54,9 @@ def test_phase4_chain_edges_wired():
         ("p4_scaffold", "p4_design_system"),
         ("p4_design_system", "gate_design_ok"),
         ("gate_design_ok", "p4_prompt_expansion"),
-        ("p4_prompt_expansion", "halt_llm_boundary"),
+        ("p4_prompt_expansion", "p4_plan"),
+        ("p4_plan", "gate_plan_ok"),
+        ("gate_plan_ok", "halt_llm_boundary"),
     }
     missing = expected_edges - edges
     assert not missing, (

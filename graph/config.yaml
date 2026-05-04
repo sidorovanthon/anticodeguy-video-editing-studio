@@ -66,3 +66,11 @@ node_overrides:
     # from this step." Highest-leverage creative node in Phase 4. tier=smart
     # resolves to Opus 4.7 in backends/claude.py. See memory
     # `feedback_creative_nodes_flagship_tier` and HOM-119.
+  p4_plan:
+    tier: smart
+    backend_preference: ["claude"]
+    timeout_s: 240
+    # Plan determines pacing, energy peaks, scene rhythm, per-boundary
+    # transition mechanism — creative direction, not mechanical translation.
+    # Spec §6.3 originally `cheap`; HOM-120 amends to `smart` (memory
+    # `feedback_creative_nodes_flagship_tier`).
