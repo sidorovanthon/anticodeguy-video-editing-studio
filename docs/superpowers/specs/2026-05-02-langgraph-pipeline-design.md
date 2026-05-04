@@ -112,7 +112,7 @@ Phase 3 LLM nodes: 5 (`p3_pre_scan`, `p3_strategy`, `p3_edl_select`, `p3_self_ev
               ▼                  Beat→Visual Mapping populated, visual-styles preset matched if named
        p4_prompt_expansion      LLM cheap, has_tools — Step 2: writes .hyperframes/expanded-prompt.md
               ▼
-       p4_plan                  LLM cheap, has_tools — Step 3: narrative beats, rhythm, beat→visual
+       p4_plan                  LLM smart, has_tools — Step 3: narrative beats, rhythm, beat→visual
               ▼                  mapping, transition mechanism per boundary
        gate:plan_ok             ≥3 beats, transition mechanism explicit per boundary (CSS / shader / final-fade),
               ▼                  catalog-vs-custom justification per beat
@@ -325,7 +325,7 @@ LLM nodes by phase:
 | `p3_persist_session` | cheap | yes | appends Session block to `<edit>/project.md` |
 | `p4_design_system` | smart | yes | `DesignDoc(palette, typography, refs, alternatives, anti_patterns, beat_visual_mapping)` — amended cheap → smart in HOM-118 (visual identity is brand-defining creative work; cheap models empirically hollow it out — see `feedback_creative_nodes_flagship_tier`) |
 | `p4_prompt_expansion` | smart | yes | `ExpandedPrompt(expanded_prompt_path)` — amended cheap → smart in HOM-119. Canon `references/prompt-expansion.md`: *"the quality gap between a single-pass composition and a multi-scene-pipeline composition comes from this step."* Highest-leverage creative node in Phase 4 — see `feedback_creative_nodes_flagship_tier` |
-| `p4_plan` | cheap | yes | `CompositionPlan(beats, rhythm, transitions)` |
+| `p4_plan` | smart | yes | `CompositionPlan(narrative_arc, rhythm, beats, transitions)` — amended cheap → smart in HOM-120. Plan determines pacing, energy peaks, scene rhythm, and per-boundary transition mechanism — all creative direction. See `feedback_creative_nodes_flagship_tier` |
 | `p4_beat_<n>` (Send) | smart | yes | `BeatArtifact(html_path, beat_id, duration)` |
 | `p4_captions_layer` | cheap | yes | `CaptionsBlock(html, css)` |
 | `p4_persist_session` | cheap | yes | appends Phase 4 Session block to `<edit>/project.md` |

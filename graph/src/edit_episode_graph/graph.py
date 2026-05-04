@@ -30,6 +30,7 @@ from langgraph.graph import END, StateGraph
 from .gates.design_ok import design_ok_gate_node
 from .gates.edl_ok import edl_ok_gate_node
 from .gates.eval_ok import eval_ok_gate_node
+from .gates.plan_ok import plan_ok_gate_node
 from .nodes._routing import (
     route_after_design_ok,
     route_after_design_system,
@@ -39,6 +40,8 @@ from .nodes._routing import (
     route_after_inventory,
     route_after_persist_session,
     route_after_pickup,
+    route_after_plan,
+    route_after_plan_ok,
     route_after_preflight,
     route_after_pre_scan,
     route_after_prompt_expansion,
@@ -62,6 +65,7 @@ from .nodes.p3_persist_session import p3_persist_session_node
 from .nodes.p3_self_eval import p3_self_eval_node
 from .nodes.p3_strategy import p3_strategy_node
 from .nodes.p4_design_system import p4_design_system_node
+from .nodes.p4_plan import p4_plan_node
 from .nodes.p4_prompt_expansion import p4_prompt_expansion_node
 from .nodes.p4_scaffold import p4_scaffold_node
 from .nodes.pickup import pickup_node
@@ -89,6 +93,8 @@ def build_graph_uncompiled() -> StateGraph:
     g.add_node("p4_design_system", p4_design_system_node)
     g.add_node("gate_design_ok", design_ok_gate_node)
     g.add_node("p4_prompt_expansion", p4_prompt_expansion_node)
+    g.add_node("p4_plan", p4_plan_node)
+    g.add_node("gate_plan_ok", plan_ok_gate_node)
     g.add_node("p3_inventory", p3_inventory_node)
     g.add_node("p3_pre_scan", p3_pre_scan_node)
     g.add_node("p3_strategy", p3_strategy_node)
@@ -266,6 +272,21 @@ def build_graph_uncompiled() -> StateGraph:
         route_after_prompt_expansion,
         {
             END: END,
+            "p4_plan": "p4_plan",
+        },
+    )
+    g.add_conditional_edges(
+        "p4_plan",
+        route_after_plan,
+        {
+            END: END,
+            "gate_plan_ok": "gate_plan_ok",
+        },
+    )
+    g.add_conditional_edges(
+        "gate_plan_ok",
+        route_after_plan_ok,
+        {
             "halt_llm_boundary": "halt_llm_boundary",
         },
     )

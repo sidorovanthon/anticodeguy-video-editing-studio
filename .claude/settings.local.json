@@ -2,5 +2,11 @@
   "env": {
     "PYTHONUTF8": "1",
     "PYTHONIOENCODING": "utf-8"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p C:/Users/sidor/repos/anticodeguy-video-editing-studio/.worktrees/hooks-parallel-dispatch-detector/tests/fixtures/transcripts)",
+      "Bash(mkdir -p C:/Users/sidor/repos/anticodeguy-video-editing-studio/.worktrees/hooks-parallel-dispatch-detector/.claude)"
+    ]
   }
 }

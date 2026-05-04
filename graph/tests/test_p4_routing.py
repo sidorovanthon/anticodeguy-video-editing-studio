@@ -7,6 +7,8 @@ from langgraph.graph import END
 from edit_episode_graph.nodes._routing import (
     route_after_design_ok,
     route_after_design_system,
+    route_after_plan,
+    route_after_plan_ok,
     route_after_prompt_expansion,
     route_after_scaffold,
 )
@@ -63,6 +65,34 @@ def test_route_after_prompt_expansion_error_to_end():
     assert route_after_prompt_expansion(state) == END
 
 
-def test_route_after_prompt_expansion_default_to_halt():
+def test_route_after_prompt_expansion_default_to_plan():
     state = {"compose": {"expansion": {"expanded_prompt_path": "/x"}}}
-    assert route_after_prompt_expansion(state) == "halt_llm_boundary"
+    assert route_after_prompt_expansion(state) == "p4_plan"
+
+
+def test_route_after_plan_skip_to_end():
+    assert route_after_plan({"compose": {"plan": {"skipped": True}}}) == END
+
+
+def test_route_after_plan_error_to_end():
+    state = {"errors": [{"node": "p4_plan", "message": "x", "timestamp": "now"}]}
+    assert route_after_plan(state) == END
+
+
+def test_route_after_plan_pass_to_gate():
+    assert route_after_plan({"compose": {"plan": {"beats": []}}}) == "gate_plan_ok"
+
+
+def test_route_after_plan_ok_always_halts():
+    """v4-sans-HITL: pass and fail both surface through halt_llm_boundary
+    until downstream P4 nodes (catalog scan, beat fan-out) are wired."""
+    pass_state = {"gate_results": [
+        {"gate": "gate:plan_ok", "passed": True, "iteration": 1,
+         "violations": [], "timestamp": "now"},
+    ]}
+    fail_state = {"gate_results": [
+        {"gate": "gate:plan_ok", "passed": False, "iteration": 1,
+         "violations": ["x"], "timestamp": "now"},
+    ]}
+    assert route_after_plan_ok(pass_state) == "halt_llm_boundary"
+    assert route_after_plan_ok(fail_state) == "halt_llm_boundary"

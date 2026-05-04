@@ -1,0 +1,133 @@
+{# Composition plan (Step 3) task descriptor. Brief references canon; it does not embed canon. #}
+You are running the **plan** pass for an anticodeguy episode (`{{ slug }}`).
+
+Canon to read BEFORE producing output (use the `Read` tool — do NOT rely on
+remembered structure; the framing, terminology, and per-section rules are
+load-bearing and we do not paraphrase them here):
+
+- `~/.agents/skills/hyperframes/SKILL.md` §"Step 3: Plan" — the canonical
+  workflow: WHAT (narrative arc) → STRUCTURE → RHYTHM (named pattern) →
+  TIMING → LAYOUT → ANIMATE. Plan stops at RHYTHM; layout + animation are
+  later graph nodes.
+- `~/.agents/skills/hyperframes/references/beat-direction.md` — per-beat
+  format (Concept / Mood direction / Animation choreography). Each beat in
+  your output's `beats[]` corresponds to ONE scene; concept and mood drive
+  what downstream beat sub-agents will animate.
+- `~/.agents/skills/hyperframes/references/transitions.md` — the canonical
+  Energy→Primary table, Mood→Transition table, and the three transition
+  mechanisms: CSS keyframes / shader / final-fade. Every interior beat
+  boundary needs ONE explicit transition; the final scene MAY have a
+  final-fade exit (and only the final scene).
+
+Inputs:
+- Episode dir: `{{ episode_dir }}`
+- DESIGN.md path (read it; concept and mood for each beat must align with
+  the visual identity and beat_visual_mapping it defines): `{{ design_md_path }}`
+- expanded-prompt.md path (read it; the per-scene specs already produced by
+  Step 2 — your beats[] MUST cover the same scene set, with the same
+  ordering, and your transitions[] MUST honor the same energy bands the
+  expansion declared): `{{ expanded_prompt_path }}`
+- Strategy from Phase 3 (shape / takes / grade / pacing / length): `{{ strategy_json }}`
+- EDL beats already chosen for the cut (these are the beat labels you MUST
+  use verbatim in `beats[].beat` and the boundary list): `{{ edl_beats_json }}`
+
+Output: **return ONLY JSON** matching the `CompositionPlan` schema shown
+below. Do not write to disk; the plan is consumed through state by
+downstream beat sub-agents (it is "thinking", not a downstream-readable
+artifact). Do not include prose outside the JSON.
+
+Substance bounds — the deterministic gate `gate:plan_ok` rejects anything
+below them and re-dispatches you with the violation list:
+
+- `beats` ≥ 3 entries, one per EDL beat, in EDL order.
+- For every interior beat boundary (n-1 transitions for n beats), there
+  is an explicit `BeatTransition` entry with `mechanism ∈ {css, shader,
+  final-fade}` and a specific transition `name` from canon
+  `references/transitions.md` (e.g. "blur crossfade", "cinematic zoom").
+  `final-fade` is only valid as the terminal exit on the last beat.
+- Per beat: `catalog_or_custom` must be set with a concrete one-sentence
+  `justification` (orchestrator-house catalog-scan gate per memory
+  `feedback_hf_catalog_orchestrator_gate`).
+
+```json
+{
+  "narrative_arc": "Hook on the licensing surprise; tension builds through the broken assumption; payoff lands the stat.",
+  "rhythm": "fast-SLOW-fast",
+  "beats": [
+    {
+      "beat": "HOOK",
+      "concept": "Camera is mid-flight over a dark editorial canvas; a single oversized stat is about to slam into existence.",
+      "mood": "Editorial restraint, Stripe Press energy — analytical not festive.",
+      "energy": "medium",
+      "duration_s": 6.9,
+      "catalog_or_custom": "custom",
+      "justification": "Catalog hero blocks all use centered headlines; this beat needs an off-axis layout to carry the surprise."
+    },
+    {
+      "beat": "PROBLEM",
+      "concept": "The stat dominates the frame at 7rem; foreground tints toward accent at 8% to sustain tension.",
+      "mood": "Quiet weight, like Müller-Brockmann grid pages.",
+      "energy": "calm",
+      "duration_s": 10.5,
+      "catalog_or_custom": "catalog",
+      "justification": "Catalog stat-hold block matches DESIGN.md typography and saves authoring time."
+    },
+    {
+      "beat": "PAYOFF",
+      "concept": "Wide reveal with hairline rules; staggered entrance lands the conclusion with editorial calm.",
+      "mood": "Cinematic title sequence — lean-forward moment.",
+      "energy": "high",
+      "duration_s": 8.4,
+      "catalog_or_custom": "custom",
+      "justification": "No catalog block carries the staggered hairline-rule motif this episode established."
+    }
+  ],
+  "transitions": [
+    {
+      "from_beat": "HOOK",
+      "to_beat": "PROBLEM",
+      "mechanism": "css",
+      "name": "blur crossfade",
+      "duration_s": 0.6,
+      "easing": "sine.inOut",
+      "why": "Medium → calm handoff; blur softens the shift without breaking editorial restraint."
+    },
+    {
+      "from_beat": "PROBLEM",
+      "to_beat": "PAYOFF",
+      "mechanism": "shader",
+      "name": "cinematic zoom",
+      "duration_s": 0.4,
+      "easing": "power3.out",
+      "why": "Calm → high escalation; shader zoom carries the energy lift cleanly."
+    },
+    {
+      "from_beat": "PAYOFF",
+      "to_beat": "END",
+      "mechanism": "final-fade",
+      "name": "fade-to-black",
+      "duration_s": 0.5,
+      "easing": "power2.in",
+      "why": "Final scene exit per canon §Animation Rules — only the last scene may exit-animate."
+    }
+  ]
+}
+```
+
+Hard constraints:
+
+- `beats[].beat` values MUST exactly match the EDL beats provided above
+  (including casing). The downstream beat sub-agents key off these labels.
+- `transitions[].from_beat` / `to_beat` MUST reference labels that appear in
+  `beats[]` (or `to_beat = "END"` paired with `mechanism = "final-fade"`).
+- `mechanism = "final-fade"` is ONLY valid on the last beat's outgoing
+  transition (canon: exit animations BANNED except final scene). Use it
+  there OR omit a final transition entirely.
+- Transition durations must fall within the canon Energy→Primary band for
+  the source beat's `energy` (calm 0.5-0.8s, medium 0.3-0.5s, high
+  0.15-0.3s). The gate does NOT enforce this exactly (canon guidance is a
+  band, not a hard rule), but landing far outside it is a smell.
+
+Canonical opt-out honored: this node produces the plan only. Do NOT
+generate composition HTML, scene sub-agents, or DESIGN.md here — those are
+upstream/downstream graph nodes. Stop after returning the JSON.

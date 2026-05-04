@@ -271,16 +271,38 @@ def route_after_design_ok(state) -> str:
 
 
 def route_after_prompt_expansion(state) -> str:
-    """p4_prompt_expansion → END on error/skip | halt_llm_boundary otherwise.
+    """p4_prompt_expansion → END on error/skip | p4_plan otherwise.
 
-    Until later P4 nodes (`p4_plan`, `p4_catalog_scan`, `p4_beats`, ...) are
-    wired into topology, expansion is currently the last LLM step. We route
-    to `halt_llm_boundary` rather than END so the boundary's notice surfaces
-    in Studio — same pattern as `route_after_persist_session`.
+    HOM-120 wires `p4_plan` after the expansion step (spec §4.3 ordering:
+    design → gate:design_ok → prompt_expansion → plan → gate:plan_ok). The
+    plan node consumes both DESIGN.md and the just-written
+    `.hyperframes/expanded-prompt.md`, so it must run downstream of both.
     """
     if state.get("errors"):
         return END
     expansion = (state.get("compose") or {}).get("expansion") or {}
     if expansion.get("skipped"):
         return END
+    return "p4_plan"
+
+
+def route_after_plan(state) -> str:
+    """p4_plan → END on error/skip | gate:plan_ok on success."""
+    if state.get("errors"):
+        return END
+    plan = (state.get("compose") or {}).get("plan") or {}
+    if plan.get("skipped"):
+        return END
+    return "gate_plan_ok"
+
+
+def route_after_plan_ok(state) -> str:
+    """gate:plan_ok → halt_llm_boundary on pass OR fail.
+
+    v4-sans-HITL routing per spec §"v4 — Phase 4 sans HITL": gate failures
+    surface as a halt rather than a HITL retry loop (same pattern as
+    `route_after_design_ok`). Pass-side currently also halts because the
+    next nodes (`p4_catalog_scan`, beat fan-out, ...) are not yet wired —
+    extend this routing in the next P4 ticket.
+    """
     return "halt_llm_boundary"
