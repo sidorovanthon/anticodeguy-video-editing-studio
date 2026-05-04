@@ -36,6 +36,22 @@ def test_skips_when_edl_explicitly_skipped(tmp_path):
     assert update["edit"]["persist"]["skipped"] is True
 
 
+def test_skips_when_eval_did_not_pass(tmp_path):
+    """Defense-in-depth: refuse to persist a Session block claiming success
+    the run did not earn, even if upstream routing landed us here by mistake."""
+    state = {
+        "slug": "demo",
+        "episode_dir": str(tmp_path),
+        "edit": {
+            "edl": {"ranges": [{"source": "C0", "start": 0, "end": 1}]},
+            "eval": {"passed": False, "issues": [{"kind": "audio_pop", "severity": "blocker"}]},
+        },
+    }
+    update = p3_persist_session_node(state, router=MagicMock())
+    assert update["edit"]["persist"]["skipped"] is True
+    assert "did not pass" in update["edit"]["persist"]["skip_reason"]
+
+
 def test_skips_when_eval_skipped(tmp_path):
     state = {
         "slug": "demo",
@@ -108,7 +124,7 @@ def test_runs_with_tools_and_embeds_inputs(tmp_path):
     kwargs = router.invoke.call_args.kwargs
     assert req.tier == "cheap"
     assert req.needs_tools is True
-    assert kwargs["allowed_tools"] == ["Read", "Edit", "Write"]
+    assert kwargs["allowed_tools"] == ["Read", "Write"]
     assert '"shape": "hook"' in task
     assert '"grade": "neutral"' in task
     assert '"passed": true' in task

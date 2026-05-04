@@ -63,7 +63,7 @@ def _build_node() -> LLMNode:
         result_namespace="edit",
         result_key="persist",
         timeout_s=120,
-        allowed_tools=["Read", "Edit", "Write"],
+        allowed_tools=["Read", "Write"],
         extra_render_ctx=_render_ctx,
     )
 
@@ -90,6 +90,19 @@ def p3_persist_session_node(state, *, router: BackendRouter | None = None):
                 "persist": {
                     "skipped": True,
                     "skip_reason": f"upstream eval skipped: {eval_report.get('skip_reason') or 'unknown'}",
+                },
+            },
+        }
+    # Defense-in-depth: in normal flow `route_after_eval_ok` only routes here
+    # when `gate:eval_ok` passed, but direct invocation or a future routing
+    # change could land us with a failed eval. Refuse to persist a Session
+    # block that would advertise success the run did not earn.
+    if eval_report.get("passed") is False:
+        return {
+            "edit": {
+                "persist": {
+                    "skipped": True,
+                    "skip_reason": "eval did not pass — refusing to persist Session block",
                 },
             },
         }
