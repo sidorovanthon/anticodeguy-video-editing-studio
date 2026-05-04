@@ -167,16 +167,29 @@ def route_after_self_eval(state) -> str:
 
 
 def route_after_eval_ok(state) -> str:
-    """gate:eval_ok -> halt on pass | p3_render_segments on fail+iter<3 | escalate."""
+    """gate:eval_ok -> p3_persist_session on pass | p3_render_segments on fail+iter<3 | escalate."""
     from ..gates._base import latest_gate_result
     record = latest_gate_result(state, "gate:eval_ok")
     if record is None:
         return "eval_failure_interrupt"
     if record.get("passed"):
-        return "halt_llm_boundary"
+        return "p3_persist_session"
     if (record.get("iteration") or 0) < 3:
         return "p3_render_segments"
     return "eval_failure_interrupt"
+
+
+def route_after_persist_session(state) -> str:
+    """p3_persist_session -> END on hard error | halt_llm_boundary otherwise.
+
+    A persist skip or sub-agent failure is non-fatal — the Session block is
+    a memory aid for the next run, not load-bearing for Phase 4. Errors
+    surfaced into `state['errors']` (e.g. AllBackendsExhausted) still END
+    the graph; otherwise we continue to halt_llm_boundary.
+    """
+    if state.get("errors"):
+        return END
+    return "halt_llm_boundary"
 
 
 def route_after_remap(state) -> str:
