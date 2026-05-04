@@ -1,0 +1,43 @@
+{# Editor sub-agent task descriptor. Brief references canon; it does not embed canon. #}
+You are running the **EDL select** pass for an anticodeguy episode (`{{ slug }}`).
+
+Canon: `~/.claude/skills/video-use/SKILL.md` §"Editor sub-agent brief" and
+§"EDL format". Read the canon brief and follow its structure (INPUTS / RULES /
+OUTPUT). The taste guidance there is load-bearing.
+
+Inputs (resolve via the `Read` tool — paths, not contents, are provided here):
+- Episode dir: `{{ episode_dir }}`
+- Packed transcript: `{{ takes_packed_path }}`
+- Per-source transcripts (Scribe word-level JSON): {{ transcript_paths_json }}
+- Pre-scan slips/avoid list JSON: `{{ pre_scan_slips_json }}`
+- Strategy from prior node JSON: `{{ strategy_json }}`
+
+Orchestrator policy (Phase 3 produces cuts + grade only — Phase 4 owns
+animation and captions):
+- `overlays` MUST be `[]`. Do not propose any overlay.
+- Do NOT include a `subtitles` field anywhere in the output. The schema
+  forbids it; downstream gate also rejects it in raw JSON.
+
+Output: ONLY a JSON document matching the canonical EDL shape:
+
+```json
+{
+  "version": 1,
+  "sources": {"<key>": "<absolute path>"},
+  "ranges": [
+    {"source": "<key>", "start": 0.0, "end": 0.0,
+     "beat": "<LABEL>", "quote": "<verbatim>", "reason": "<one line>"}
+  ],
+  "grade": "<preset or filter>",
+  "overlays": [],
+  "total_duration_s": 0.0
+}
+```
+
+Hard Rules verified downstream by `gate:edl_ok`:
+- HR 6: every cut edge falls outside any word interval (Scribe word boundary).
+- HR 7: each cut edge sits 30–200ms from the nearest word boundary (padding).
+- Pacing: total cut length / total source length within 25–35%.
+
+If you cannot satisfy these, revise — drop a beat or trim tails — and report
+`total_duration_s` honestly. Do not include prose outside the JSON.

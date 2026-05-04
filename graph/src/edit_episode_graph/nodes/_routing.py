@@ -109,10 +109,29 @@ def route_after_pre_scan(state) -> str:
 
 
 def route_after_strategy(state) -> str:
-    """p3_strategy -> END on error | halt until p3_edl_select lands."""
+    """p3_strategy -> END on error | p3_edl_select on success."""
     if state.get("errors"):
         return END
-    return "halt_llm_boundary"
+    return "p3_edl_select"
+
+
+def route_after_edl_select(state) -> str:
+    """p3_edl_select -> END on error/skip | gate:edl_ok on success."""
+    if state.get("errors"):
+        return END
+    edl = (state.get("edit") or {}).get("edl") or {}
+    if edl.get("skipped"):
+        return END
+    return "gate_edl_ok"
+
+
+def route_after_edl_ok(state) -> str:
+    """gate:edl_ok -> halt_llm_boundary on pass | END on fail (notice in state)."""
+    from ..gates._base import latest_gate_result
+    result = latest_gate_result(state, "gate:edl_ok")
+    if result and result.get("passed"):
+        return "halt_llm_boundary"
+    return END
 
 
 def route_after_remap(state) -> str:

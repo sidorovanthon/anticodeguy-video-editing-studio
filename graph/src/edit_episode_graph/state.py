@@ -76,10 +76,32 @@ class InventoryState(TypedDict, total=False):
     takes_packed_path: str | None
 
 
+class EdlState(TypedDict, total=False):
+    version: int
+    sources: dict[str, str]
+    ranges: list[dict]
+    grade: str
+    overlays: list[dict]
+    total_duration_s: float
+    source_path: str | None
+    raw_text: str | None
+    skipped: bool
+    skip_reason: str | None
+
+
 class EditState(TypedDict, total=False):
     inventory: InventoryState
     pre_scan: PreScanState
     strategy: StrategyState
+    edl: EdlState
+
+
+class GateResult(TypedDict, total=False):
+    gate: str
+    passed: bool
+    violations: list[str]
+    iteration: int
+    timestamp: str
 
 
 class LLMRunRecord(TypedDict, total=False):
@@ -112,3 +134,4 @@ class GraphState(TypedDict, total=False):
     errors: Annotated[list[GraphError], add]
     notices: Annotated[list[str], add]
     llm_runs: Annotated[list[LLMRunRecord], add]
+    gate_results: Annotated[list[GateResult], add]
