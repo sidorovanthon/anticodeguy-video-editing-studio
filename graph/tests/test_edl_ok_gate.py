@@ -28,14 +28,22 @@ def episode(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def _state(episode: Path, edl: dict, source_duration_s: float = 5.0) -> dict:
-    return {
-        "episode_dir": str(episode),
-        "edit": {
-            "edl": edl,
-            "inventory": {"sources": [{"stem": "raw", "duration_s": source_duration_s}]},
-        },
+def _state(
+    episode: Path,
+    edl: dict,
+    source_duration_s: float = 5.0,
+    length_estimate_s: float | None = 2.05,
+) -> dict:
+    """Default fixture provides a strategy.length_estimate_s matching the
+    canonical cut total (~2.05s for `_good_edl()`). Pass `length_estimate_s=None`
+    to exercise the upstream-contract-violation branch."""
+    edit = {
+        "edl": edl,
+        "inventory": {"sources": [{"stem": "raw", "duration_s": source_duration_s}]},
     }
+    if length_estimate_s is not None:
+        edit["strategy"] = {"length_estimate_s": length_estimate_s}
+    return {"episode_dir": str(episode), "edit": edit}
 
 
 def _good_edl() -> dict:
@@ -110,36 +118,34 @@ def test_fails_when_padding_too_large(episode: Path):
     assert any("padding" in v for v in update["gate_results"][0]["violations"])
 
 
-def test_fails_when_pacing_outside_fallback_window(episode: Path):
-    """Without strategy.length_estimate_s, gate falls back to wide [0.10, 0.95]."""
-    # cut total 2.2 with source 100s → ratio 2.2% < 10%
-    state = _state(episode, _good_edl(), source_duration_s=100.0)
+def test_fails_when_strategy_estimate_missing(episode: Path):
+    """`schemas.p3_strategy.Strategy` requires `length_estimate_s` (Field(gt=0)).
+    If it's missing at the gate, the upstream contract was violated; gate
+    hard-fails rather than fall back to a one-artifact ratio."""
+    state = _state(episode, _good_edl(), source_duration_s=100.0, length_estimate_s=None)
     update = edl_ok_gate_node(state)
     assert not update["gate_results"][0]["passed"]
     violations = update["gate_results"][0]["violations"]
-    assert any("pacing" in v and "fallback" in v for v in violations), violations
+    assert any("pacing unverifiable" in v and "length_estimate_s" in v for v in violations), violations
 
 
 def test_passes_when_length_matches_strategy_estimate(episode: Path):
     """Strategy-anchored: 2.2s cut vs 2.2s estimate → exact match."""
-    state = _state(episode, _good_edl(), source_duration_s=100.0)
-    state["edit"]["strategy"] = {"length_estimate_s": 2.2}
+    state = _state(episode, _good_edl(), source_duration_s=100.0, length_estimate_s=2.2)
     update = edl_ok_gate_node(state)
     assert update["gate_results"][0]["passed"], update["gate_results"][0]["violations"]
 
 
 def test_passes_when_length_within_tolerance(episode: Path):
     """Cut at 2.2s with estimate 2.5s → 12% off, within ±20%."""
-    state = _state(episode, _good_edl(), source_duration_s=100.0)
-    state["edit"]["strategy"] = {"length_estimate_s": 2.5}
+    state = _state(episode, _good_edl(), source_duration_s=100.0, length_estimate_s=2.5)
     update = edl_ok_gate_node(state)
     assert update["gate_results"][0]["passed"], update["gate_results"][0]["violations"]
 
 
 def test_fails_when_length_outside_tolerance(episode: Path):
     """Cut at 2.2s with estimate 5.0s → 56% off, outside ±20%."""
-    state = _state(episode, _good_edl(), source_duration_s=100.0)
-    state["edit"]["strategy"] = {"length_estimate_s": 5.0}
+    state = _state(episode, _good_edl(), source_duration_s=100.0, length_estimate_s=5.0)
     update = edl_ok_gate_node(state)
     assert not update["gate_results"][0]["passed"]
     violations = update["gate_results"][0]["violations"]
@@ -173,6 +179,7 @@ def test_falls_back_to_ffprobe_when_inventory_missing(tmp_path: Path, monkeypatc
         "edit": {
             # inventory deliberately absent — mirrors skip-inventory routing
             "edl": _good_edl(),
+            "strategy": {"length_estimate_s": 2.05},
         },
     }
     record = edl_ok_gate_node(state)["gate_results"][0]
@@ -292,6 +299,7 @@ def test_long_silence_cut_passes_when_close_to_neighbor(tmp_path: Path):
         "edit": {
             "edl": edl,
             "inventory": {"sources": [{"stem": "raw", "duration_s": 4.0}]},
+            "strategy": {"length_estimate_s": 1.20},
         },
     }
     record = edl_ok_gate_node(state)["gate_results"][0]

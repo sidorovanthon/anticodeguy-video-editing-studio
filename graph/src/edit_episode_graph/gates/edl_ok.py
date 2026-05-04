@@ -7,11 +7,13 @@ Per spec §6.2 / canon HR 6+7:
   - Every cut edge falls outside word intervals (HR 6) — no cut inside a word.
   - Each cut edge sits 30–200ms from the nearest word boundary (HR 7 padding).
   - Final-cut length matches the strategy's `length_estimate_s` within
-    ±LENGTH_TOLERANCE; if no strategy estimate is available, the cut/source
-    ratio must fall in the wide fallback window. Canon does NOT specify a
-    fixed pacing fraction — Step 4 strategy emits a length estimate from
-    the material itself, and the gate validates against THAT, not a
-    hard-coded ratio.
+    ±LENGTH_TOLERANCE. Canon does NOT specify a fixed pacing fraction —
+    Step 4 strategy emits a length estimate from the material itself,
+    and the gate validates against THAT, not a hard-coded ratio.
+    `length_estimate_s` is required by `schemas.p3_strategy` (Pydantic
+    `Field(gt=0)`); if it is missing here, the upstream contract was
+    violated and the gate hard-fails rather than fall back to a
+    one-artifact ratio that pretends to validate intent.
   - `overlays == []` (Phase-3 orchestrator policy; Phase 4 owns animation).
   - `subtitles` field absent at dict level.
 """
@@ -28,8 +30,6 @@ from ._base import Gate
 PADDING_MIN_S = 0.030
 PADDING_MAX_S = 0.200
 LENGTH_TOLERANCE = 0.20  # ±20% of strategy.length_estimate_s
-FALLBACK_PACING_MIN = 0.10
-FALLBACK_PACING_MAX = 0.95
 EPSILON_S = 1e-6
 
 
@@ -239,7 +239,18 @@ class EdlOkGate(Gate):
             )
         else:
             estimate = _strategy_length_estimate(state)
-            if estimate is not None:
+            if estimate is None:
+                # schemas.p3_strategy.Strategy declares length_estimate_s
+                # as required (Field(gt=0)). Reaching this branch means
+                # the upstream contract was violated — surface it loudly
+                # rather than fall back to a one-artifact ratio that
+                # pretends to validate strategy intent.
+                violations.append(
+                    "pacing unverifiable: strategy.length_estimate_s "
+                    "missing — required by schemas.p3_strategy "
+                    "(upstream contract violation)"
+                )
+            else:
                 target_min = estimate * (1.0 - LENGTH_TOLERANCE)
                 target_max = estimate * (1.0 + LENGTH_TOLERANCE)
                 if cut_total < target_min - EPSILON_S or cut_total > target_max + EPSILON_S:
@@ -248,17 +259,6 @@ class EdlOkGate(Gate):
                         f"{target_min:.2f}–{target_max:.2f}s "
                         f"(strategy.length_estimate_s={estimate:.2f}s "
                         f"±{int(LENGTH_TOLERANCE*100)}%)"
-                    )
-            else:
-                ratio = cut_total / source_total
-                if (
-                    ratio < FALLBACK_PACING_MIN - EPSILON_S
-                    or ratio > FALLBACK_PACING_MAX + EPSILON_S
-                ):
-                    violations.append(
-                        f"pacing {ratio:.2%} outside fallback "
-                        f"{FALLBACK_PACING_MIN:.0%}–{FALLBACK_PACING_MAX:.0%} "
-                        f"(no strategy.length_estimate_s — using wide fallback)"
                     )
 
         return violations
