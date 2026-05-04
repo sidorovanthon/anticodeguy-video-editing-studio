@@ -16,23 +16,21 @@ provided here):
 - Source-time cut boundaries per range: {{ source_cut_boundaries_json }}
 - timeline_view.py helper: `{{ timeline_view_path }}`
 
-Procedure:
+Follow the inspection procedure described in canon Step 7 — what to
+sample, where to run `timeline_view`, and what visual/audio cues to
+look for are all defined there. Use the cut boundaries above as the
+±1.5s anchor points; invoke `timeline_view.py` via Bash at the path
+above.
 
-1. For each cut boundary in the **rendered output**, invoke
-   `timeline_view.py {{ final_mp4_path }} <t-1.5> <t+1.5>` to render a
-   ±1.5s window filmstrip+waveform PNG. Inspect the PNG (read it as an
-   image) for visual discontinuity / flash / jump and for waveform
-   spikes that suggest the 30ms audio fade did not absorb the cut.
-2. Sample first 2s, last 2s, and 2–3 mid-points to check grade
-   consistency across the rendered output.
+Two orchestrator-house overrides on top of canon Step 7 (because Phase
+4 owns overlays + captions, not Phase 3):
 
-Phase 3 orchestrator policy: this episode has **no overlays** and **no
-subtitles** in the cut (those land in Phase 4). Skip canon's Hard Rule 1
-(subtitle-behind-overlay) and Hard Rule 4 (overlay misalignment) checks
-— they do not apply here.
-
-ffprobe duration vs EDL `total_duration_s` is enforced deterministically
-by the downstream `gate:eval_ok`; you do **not** need to run ffprobe.
+- Skip Hard Rule 1 (subtitle-behind-overlay) checks — no subtitles in
+  this cut.
+- Skip Hard Rule 4 (overlay misalignment) checks — no overlays in
+  this cut.
+- Do **not** run `ffprobe` for duration verification; the downstream
+  `gate:eval_ok` does that deterministically and re-flags any drift.
 
 Output: ONLY a JSON document matching this schema. Do not include prose
 outside the JSON block.
