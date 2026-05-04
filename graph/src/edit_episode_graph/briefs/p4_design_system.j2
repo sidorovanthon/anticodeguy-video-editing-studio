@@ -1,0 +1,84 @@
+{# Visual identity (Step 1) task descriptor. Brief references canon; it does not embed canon. #}
+You are running the **design system** pass for an anticodeguy episode (`{{ slug }}`).
+
+Canon to read BEFORE producing output:
+- `~/.agents/skills/hyperframes/SKILL.md` §"Step 1: Design system" — the canonical
+  workflow, the design.md-vs-composition-rules separation, and the HARD-GATE that
+  fires if you reach for `#333` / `#3b82f6` / `Roboto`.
+- `~/.agents/skills/hyperframes/visual-styles.md` — the 8 named presets (Swiss
+  Pulse, Velvet Standard, Deconstructed, Maximalist Type, Data Drift, Soft
+  Signal, Folk Frequency, Shadow Cut). If one fits, name it as `style_name` and
+  base the YAML on its tokens.
+- `~/.agents/skills/hyperframes/references/design-picker.md` — the spec-format
+  for a design.md (YAML frontmatter + Overview / Colors / Typography / Layout /
+  Elevation / Components / Do's and Don'ts prose sections).
+- `~/.agents/skills/hyperframes/house-style.md` §"Lazy Defaults to Question" —
+  the AI design tells you must NOT default to.
+
+Read those sections via the `Read` tool. The shape, naming, and avoidance rules
+are load-bearing and we do not paraphrase them here.
+
+Inputs:
+- Episode dir: `{{ episode_dir }}`
+- Strategy from Phase 3 (shape / takes / grade / pacing / length): `{{ strategy_json }}`
+- EDL beats already chosen for the cut (use these as `beat_visual_mapping` keys): `{{ edl_beats_json }}`
+
+Outputs (BOTH are required):
+
+1. **Write `DESIGN.md` to disk** at `{{ design_md_path }}` using the `Write` tool.
+   Format: design-picker-spec — YAML frontmatter (`name`, `colors`, `typography`,
+   `rounded`, `spacing`, `motion`) followed by `## Overview`, `## Colors`,
+   `## Typography`, `## Layout`, `## Elevation`, `## Components`,
+   `## Do's and Don'ts` prose sections. The downstream beat sub-agents will
+   read this file as their source of truth — make every section operational,
+   not aspirational.
+
+2. **Return ONLY JSON** matching the `DesignDoc` schema shown below. Substance
+   bounds are non-negotiable — the deterministic gate `gate:design_ok` rejects
+   anything below them and re-dispatches you with the violation list:
+   - `refs` ≥ 2 (named designers, brands, or movements with the specific aspect
+     being referenced)
+   - `alternatives` ≥ 1 (a real direction you considered and rejected, with a
+     concrete reason — not a strawman)
+   - `anti_patterns` ≥ 3 (specific don'ts for THIS brand, not generic
+     "avoid neon")
+   - `beat_visual_mapping` ≥ 1 entry per beat in the EDL — the beat label and a
+     one-sentence treatment (palette emphasis, type scale, motion intensity,
+     decoratives).
+
+```json
+{
+  "style_name": "Swiss Pulse",
+  "palette": [
+    {"role": "background", "hex": "#0a0a0a"},
+    {"role": "foreground", "hex": "#f0f0f0"},
+    {"role": "accent",     "hex": "#0066FF"}
+  ],
+  "typography": [
+    {"role": "headline", "family": "Helvetica Neue", "weight": 700, "size": "5rem"},
+    {"role": "body",     "family": "Inter",          "weight": 400, "size": "1rem"}
+  ],
+  "refs": [
+    {"label": "Josef Müller-Brockmann", "description": "Grid-locked compositions; numeric stats dominate the frame."},
+    {"label": "Stripe Press",            "description": "Editorial restraint — large headlines, generous gutters, no decoration for decoration's sake."}
+  ],
+  "alternatives": [
+    {"name": "Folk Frequency", "rejected_because": "Tone is festive/community; this episode reads as analytical and would feel trivialized."}
+  ],
+  "anti_patterns": [
+    "No gradient text — looks like every AI-generated landing page.",
+    "No cyan-on-dark or purple-to-blue gradients — neon AI default.",
+    "No equal-weight centered layouts — must lead the eye to the stat."
+  ],
+  "beat_visual_mapping": [
+    {"beat": "HOOK",     "treatment": "Tight typographic close-up, accent at full saturation, ambient grid lines breathing."},
+    {"beat": "PROBLEM",  "treatment": "Stat at 7rem dominates frame; foreground tinted toward accent at 8% opacity."},
+    {"beat": "PAYOFF",   "treatment": "Wide reveal with hairline rules; entrance staggered 120ms; no exit tween, transition handles."}
+  ],
+  "design_md_path": "{{ design_md_path }}"
+}
+```
+
+Do not include prose outside the JSON. Hex colors must be CSS-valid (`#RGB`,
+`#RRGGBB`, or `#RRGGBBAA`). The HARD-GATE in the canon you just read is real —
+if you write `#333` or `Roboto` you have skipped it.
