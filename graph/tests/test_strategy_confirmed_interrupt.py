@@ -111,3 +111,18 @@ def test_dict_with_extra_keys_treated_as_revision(monkeypatch):
     update = strategy_confirmed_interrupt_node(_strategy_state())
     assert "edit" not in update
     assert len(update["strategy_revisions"]) == 1
+
+
+def test_empty_payloads_count_as_approval(monkeypatch):
+    """Regression: a Studio resume with an empty YAML editor sends None.
+
+    First end-to-end run: user hit Submit on an empty resume box expecting
+    "approve as shown"; old logic treated None as a revision with empty
+    string, appended [] to strategy_revisions, and routed back to p3_strategy
+    — producing an infinite re-plan loop. Empty payload now counts as
+    approval (most ergonomic UX gesture for "I'm fine with what I see").
+    """
+    for empty in (None, "", "   ", {}):
+        _stub_interrupt(monkeypatch, empty)
+        update = strategy_confirmed_interrupt_node(_strategy_state())
+        assert update["edit"]["strategy"]["approved"] is True, empty
