@@ -130,6 +130,27 @@ deterministic gates between artifacts.
 
 End-to-end-on-a-real-episode smoke (Studio invoke from `pickup` through Phase 4 with a stable fixture episode) is HOM-127's responsibility — the per-ticket DoD does NOT require it, because no stable fixture episode is checked in (`episodes/` is gitignored). But the topology check and the per-ticket node smoke together cover the regressions that matter day-to-day.
 
+### LangGraph primitives — search docs before rolling custom
+
+For any LangGraph orchestration concept (idempotent re-run by slug, midpoint dispatch on injected state, per-node caching, conditional retry, durability/persistence tier, fan-out via `Send`, time-travel through thread checkpoints), **search the live LangGraph docs for the native primitive BEFORE designing custom code or scripts**.
+
+Acceptable doc sources: `docs.langchain.com/oss/python/langgraph/*`, `langchain-ai.github.io/langgraph/`, `changelog.langchain.com`. The JS docs (`langchain-ai.lang.chat/langgraphjs/...`) often mirror the Python API and are useful when Python pages 404/redirect.
+
+Concrete primitives that have already covered cases we tried to hand-roll:
+
+- **Idempotent re-run (cache hits across threads/processes):** `langgraph.types.CachePolicy(ttl=…, key_func=…)` per node + `builder.compile(cache=SqliteCache(path=…))`. Hand-rolled "check artifact on disk and skip" was the wrong instinct. (HOM-132 epic adopts this.)
+- **Dispatch from the middle of the graph (skip already-completed phases without re-running them):** `client.threads.update_state(thread_id, values=…, as_node="<previous_node>")` + `client.runs.create(thread_id, assistant_id, input=None)`. Graph treats that node as just-completed and follows its outgoing edge. Writing a Python script that imports `_build_node()` and bypasses the runtime is the wrong instinct — it fragments observability (no Trace, no Memory, no replay in Studio).
+- **Pause/resume for human input:** `langgraph.types.interrupt({...})` + `Command(resume=...)`. We already use this for `strategy_confirmed_interrupt`.
+- **Parallel beat dispatch:** `Send` API with `add_conditional_edges`. Spec §6.4 wires this for fan-out; don't implement parallelism by hand.
+
+**Rules:**
+
+- When you catch yourself thinking "we'd just need to add a check that…", "let me write a small helper that dispatches just this node…", "I'll script around the runtime…" — STOP and WebFetch the docs first. Those phrasings are the smell.
+- Cite the specific primitive (with doc URL) in any design note / Linear ticket / PR description that uses it.
+- If the docs genuinely don't cover the case, say so explicitly: "Checked $URL — no native primitive for X; rolling custom because Y." That sentence makes future-you not re-burn the cycle.
+
+Burned 2026-05-04 in HOM-120 follow-up: proposed file-system idempotency, then wrote a one-off invocation script — both bypassed native LangGraph mechanisms. Memory `feedback_langgraph_native_primitives` carries the full retro.
+
 ### Investigation methodology — bare-repro before upstream-blame
 
 Before claiming any HF or `video-use` behavior is an upstream bug or doc-bug, reproduce in a bare scaffold (`npx hyperframes init` for HF; clean install for `video-use`). If bare-repro succeeds while our pipeline fails — the bug is orchestrator-side. Investigate `scripts/scaffold_*.py`, glue scripts, and brief deltas before opening an upstream issue.
