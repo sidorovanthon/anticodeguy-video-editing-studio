@@ -114,6 +114,86 @@ def test_inventory_reports_missing_transcript_after_helper(tmp_path, monkeypatch
     assert "missing transcript" in update["errors"][0]["message"]
 
 
+def test_inventory_runs_timeline_view_and_records_path(tmp_path, monkeypatch):
+    """Canon Step 1 sampling: 1 timeline_view PNG per source under verify/inventory/."""
+    episode = tmp_path / "ep"
+    episode.mkdir()
+    (episode / "raw.mp4").write_bytes(b"x")
+    transcripts = episode / "edit" / "transcripts"
+    transcripts.mkdir(parents=True)
+    (transcripts / "raw.json").write_text(json.dumps({"words": []}), encoding="utf-8")
+
+    fake_helper = tmp_path / "timeline_view.py"
+    fake_helper.write_text("# stub", encoding="utf-8")
+    monkeypatch.setattr(node_module, "_ensure_tools", lambda: None)
+    monkeypatch.setattr(node_module, "TIMELINE_VIEW", fake_helper)
+    timeline_calls: list[list[str]] = []
+
+    def runner(cmd: list[str], *, cwd: Path) -> CompletedProcess[str]:
+        if cmd[0] == "ffprobe":
+            return _ok(json.dumps({
+                "format": {"duration": "30.0"},
+                "streams": [{"codec_type": "video", "duration": "30.0"}],
+            }))
+        if cmd[0] == sys.executable and str(fake_helper) in cmd:
+            timeline_calls.append(cmd)
+            # Helper writes the PNG via -o argument.
+            out_idx = cmd.index("-o") + 1
+            Path(cmd[out_idx]).parent.mkdir(parents=True, exist_ok=True)
+            Path(cmd[out_idx]).write_bytes(b"\x89PNG")
+            return _ok()
+        if cmd[0] == sys.executable and str(node_module.PACK_TRANSCRIPTS) in cmd:
+            (episode / "edit" / "takes_packed.md").write_text("# t\n", encoding="utf-8")
+            return _ok()
+        return _ok()
+
+    update = p3_inventory_node({"episode_dir": str(episode)}, runner=runner)
+
+    assert "errors" not in update
+    samples = update["edit"]["inventory"]["timeline_view_samples"]
+    assert len(samples) == 1
+    assert samples[0].endswith("raw_mid.png")
+    assert Path(samples[0]).exists()
+    # Window centered on midpoint with SAMPLE_WINDOW_S clamping.
+    cmd = timeline_calls[0]
+    start = float(cmd[cmd.index(str(episode / "raw.mp4")) + 1])
+    end = float(cmd[cmd.index(str(episode / "raw.mp4")) + 2])
+    assert 12.0 <= start <= 13.0  # ~mid - 2.5s on a 30s source
+    assert 17.0 <= end <= 18.0
+    # Transcript path forwarded when available.
+    assert "--transcript" in cmd
+
+
+def test_inventory_warns_when_timeline_view_helper_missing(tmp_path, monkeypatch):
+    episode = tmp_path / "ep"
+    episode.mkdir()
+    (episode / "raw.mp4").write_bytes(b"x")
+    transcripts = episode / "edit" / "transcripts"
+    transcripts.mkdir(parents=True)
+    (transcripts / "raw.json").write_text(json.dumps({"words": []}), encoding="utf-8")
+
+    monkeypatch.setattr(node_module, "_ensure_tools", lambda: None)
+    monkeypatch.setattr(node_module, "TIMELINE_VIEW", tmp_path / "does-not-exist.py")
+
+    def runner(cmd: list[str], *, cwd: Path) -> CompletedProcess[str]:
+        if cmd[0] == "ffprobe":
+            return _ok(json.dumps({
+                "format": {"duration": "10.0"},
+                "streams": [{"codec_type": "video", "duration": "10.0"}],
+            }))
+        if cmd[0] == sys.executable and str(node_module.PACK_TRANSCRIPTS) in cmd:
+            (episode / "edit" / "takes_packed.md").write_text("# t\n", encoding="utf-8")
+            return _ok()
+        return _ok()
+
+    update = p3_inventory_node({"episode_dir": str(episode)}, runner=runner)
+
+    assert "errors" not in update
+    assert update["edit"]["inventory"]["timeline_view_samples"] == []
+    notices = update.get("notices") or []
+    assert any("timeline_view sampling skipped" in n for n in notices)
+
+
 def test_inventory_rejects_webm_before_helpers(tmp_path, monkeypatch):
     episode = tmp_path / "ep"
     episode.mkdir()
