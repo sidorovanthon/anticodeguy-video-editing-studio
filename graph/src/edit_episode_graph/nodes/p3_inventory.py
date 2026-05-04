@@ -35,10 +35,31 @@ TIMELINE_VIEW = HELPERS_DIR / "timeline_view.py"
 # is accepted earlier in the pipeline but is not transcribable by that helper.
 VIDEO_EXTS = {".mp4", ".mov", ".mkv", ".avi", ".m4v"}
 UNSUPPORTED_VIDEO_EXTS = {".webm"}
-# Sampling window for the canon Step 1 visual first impression: 5s slice
-# centered on source midpoint. Wide enough to show waveform shape and a few
-# frames; narrow enough to render fast.
-SAMPLE_WINDOW_S = 5.0
+# Sampling for the canon Step 1 visual first impression. Canon SKILL.md
+# §"The process" Step 1 says "Sample one or two `timeline_view`s for a
+# visual first impression" without specifying window size — the implied
+# intent is "see the whole video", which for a short source means rendering
+# the entire timeline. For long sources, a single full-length PNG would be
+# unreadably wide and slow, so we sample two representative windows.
+SHORT_SOURCE_THRESHOLD_S = 600.0  # ≤10 min: one full-overview window
+LONG_SOURCE_WINDOW_S = 120.0       # >10 min: two ±60s windows around quartiles
+
+
+def _inventory_windows(duration: float) -> list[tuple[float, float, str]]:
+    """Return list of (start, end, label) windows for canon Step 1 sampling.
+
+    label is appended to the output filename (`{stem}{label}.png`).
+    Empty label → `{stem}.png` (the single-window short-source case).
+    """
+    if duration <= SHORT_SOURCE_THRESHOLD_S:
+        return [(0.0, float(duration), "")]
+    half = LONG_SOURCE_WINDOW_S / 2.0
+    q1 = duration * 0.25
+    q3 = duration * 0.75
+    return [
+        (max(0.0, q1 - half), min(float(duration), q1 + half), "_q1"),
+        (max(0.0, q3 - half), min(float(duration), q3 + half), "_q3"),
+    ]
 
 
 def _now() -> str:
@@ -272,39 +293,38 @@ def _sample_timeline_views(
                 f"timeline_view skipped for {source.name}: unknown or zero duration"
             )
             continue
-        # Center a SAMPLE_WINDOW_S window on the midpoint, clamped to source.
-        half = SAMPLE_WINDOW_S / 2.0
-        mid = duration / 2.0
-        start = max(0.0, mid - half)
-        end = min(float(duration), start + SAMPLE_WINDOW_S)
-        if end - start < 0.5:
+        if duration < 0.5:
             warnings.append(
                 f"timeline_view skipped for {source.name}: source too short ({duration:.2f}s)"
             )
             continue
-        out_png = verify_dir / f"{source.stem}_mid.png"
-        cmd = [
-            sys.executable,
-            str(TIMELINE_VIEW),
-            str(source),
-            f"{start:.3f}",
-            f"{end:.3f}",
-            "-o",
-            str(out_png),
-        ]
-        transcript = transcripts_dir / f"{source.stem}.json"
-        if transcript.is_file():
-            cmd += ["--transcript", str(transcript)]
-        try:
-            result = runner(cmd, cwd=HELPERS_DIR)
-        except OSError as exc:
-            warnings.append(f"timeline_view failed for {source.name}: {exc}")
-            continue
-        if result.returncode != 0 or not out_png.exists():
-            preview = (_combined_output(result) or "")[:200]
-            warnings.append(
-                f"timeline_view failed for {source.name}: rc={result.returncode} {preview}"
-            )
-            continue
-        paths.append(str(out_png))
+        for start, end, label in _inventory_windows(duration):
+            if end - start < 0.5:
+                continue
+            out_png = verify_dir / f"{source.stem}{label}.png"
+            cmd = [
+                sys.executable,
+                str(TIMELINE_VIEW),
+                str(source),
+                f"{start:.3f}",
+                f"{end:.3f}",
+                "-o",
+                str(out_png),
+            ]
+            transcript = transcripts_dir / f"{source.stem}.json"
+            if transcript.is_file():
+                cmd += ["--transcript", str(transcript)]
+            try:
+                result = runner(cmd, cwd=HELPERS_DIR)
+            except OSError as exc:
+                warnings.append(f"timeline_view failed for {source.name}{label}: {exc}")
+                continue
+            if result.returncode != 0 or not out_png.exists():
+                preview = (_combined_output(result) or "")[:200]
+                warnings.append(
+                    f"timeline_view failed for {source.name}{label}: "
+                    f"rc={result.returncode} {preview}"
+                )
+                continue
+            paths.append(str(out_png))
     return paths, warnings

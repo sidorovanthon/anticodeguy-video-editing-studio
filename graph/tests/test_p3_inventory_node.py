@@ -114,8 +114,8 @@ def test_inventory_reports_missing_transcript_after_helper(tmp_path, monkeypatch
     assert "missing transcript" in update["errors"][0]["message"]
 
 
-def test_inventory_runs_timeline_view_and_records_path(tmp_path, monkeypatch):
-    """Canon Step 1 sampling: 1 timeline_view PNG per source under verify/inventory/."""
+def test_inventory_runs_timeline_view_full_overview_for_short_source(tmp_path, monkeypatch):
+    """Canon Step 1 sampling: ≤10min source → single full-length overview PNG."""
     episode = tmp_path / "ep"
     episode.mkdir()
     (episode / "raw.mp4").write_bytes(b"x")
@@ -152,16 +152,66 @@ def test_inventory_runs_timeline_view_and_records_path(tmp_path, monkeypatch):
     assert "errors" not in update
     samples = update["edit"]["inventory"]["timeline_view_samples"]
     assert len(samples) == 1
-    assert samples[0].endswith("raw_mid.png")
+    assert samples[0].endswith("raw.png")  # short source: bare {stem}.png, no suffix
     assert Path(samples[0]).exists()
-    # Window centered on midpoint with SAMPLE_WINDOW_S clamping.
+    # Window covers the entire 30s source — canon's "visual first impression".
     cmd = timeline_calls[0]
     start = float(cmd[cmd.index(str(episode / "raw.mp4")) + 1])
     end = float(cmd[cmd.index(str(episode / "raw.mp4")) + 2])
-    assert 12.0 <= start <= 13.0  # ~mid - 2.5s on a 30s source
-    assert 17.0 <= end <= 18.0
+    assert start == 0.0
+    assert 29.5 <= end <= 30.0
     # Transcript path forwarded when available.
     assert "--transcript" in cmd
+
+
+def test_inventory_runs_two_timeline_views_for_long_source(tmp_path, monkeypatch):
+    """Canon Step 1: >10min source → two ±60s windows around the quartiles."""
+    episode = tmp_path / "ep"
+    episode.mkdir()
+    (episode / "raw.mp4").write_bytes(b"x")
+    transcripts = episode / "edit" / "transcripts"
+    transcripts.mkdir(parents=True)
+    (transcripts / "raw.json").write_text(json.dumps({"words": []}), encoding="utf-8")
+
+    fake_helper = tmp_path / "timeline_view.py"
+    fake_helper.write_text("# stub", encoding="utf-8")
+    monkeypatch.setattr(node_module, "_ensure_tools", lambda: None)
+    monkeypatch.setattr(node_module, "TIMELINE_VIEW", fake_helper)
+    timeline_calls: list[list[str]] = []
+
+    def runner(cmd: list[str], *, cwd: Path) -> CompletedProcess[str]:
+        if cmd[0] == "ffprobe":
+            return _ok(json.dumps({
+                "format": {"duration": "1800.0"},  # 30 min
+                "streams": [{"codec_type": "video", "duration": "1800.0"}],
+            }))
+        if cmd[0] == sys.executable and str(fake_helper) in cmd:
+            timeline_calls.append(cmd)
+            out_idx = cmd.index("-o") + 1
+            Path(cmd[out_idx]).parent.mkdir(parents=True, exist_ok=True)
+            Path(cmd[out_idx]).write_bytes(b"\x89PNG")
+            return _ok()
+        if cmd[0] == sys.executable and str(node_module.PACK_TRANSCRIPTS) in cmd:
+            (episode / "edit" / "takes_packed.md").write_text("# t\n", encoding="utf-8")
+            return _ok()
+        return _ok()
+
+    update = p3_inventory_node({"episode_dir": str(episode)}, runner=runner)
+
+    samples = update["edit"]["inventory"]["timeline_view_samples"]
+    assert len(samples) == 2
+    assert samples[0].endswith("raw_q1.png")
+    assert samples[1].endswith("raw_q3.png")
+    # Window 1: ±60s around 1800*0.25 = 450s → [390, 510]
+    cmd1 = timeline_calls[0]
+    s1 = float(cmd1[cmd1.index(str(episode / "raw.mp4")) + 1])
+    e1 = float(cmd1[cmd1.index(str(episode / "raw.mp4")) + 2])
+    assert 389 <= s1 <= 391 and 509 <= e1 <= 511
+    # Window 2: ±60s around 1800*0.75 = 1350s → [1290, 1410]
+    cmd2 = timeline_calls[1]
+    s2 = float(cmd2[cmd2.index(str(episode / "raw.mp4")) + 1])
+    e2 = float(cmd2[cmd2.index(str(episode / "raw.mp4")) + 2])
+    assert 1289 <= s2 <= 1291 and 1409 <= e2 <= 1411
 
 
 def test_inventory_warns_when_timeline_view_helper_missing(tmp_path, monkeypatch):
