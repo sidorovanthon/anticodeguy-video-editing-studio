@@ -23,6 +23,15 @@ from pathlib import Path
 
 from ._base import Gate
 
+# Threshold below which a DESIGN.md is treated as suspiciously small. Set so a
+# skeleton document — all canonical YAML keys at one-word values plus all the
+# canonical prose section headers with no body content — slips above 200B but
+# is still rejected here. Empirically a minimal but operationally complete
+# DESIGN.md (one sentence per section) is ~600–800B, so 500B is the smallest
+# threshold that catches the failure mode without flagging real-but-terse
+# documents.
+DESIGN_MD_MIN_BYTES = 500
+
 _VISUAL_STYLES = (
     "Swiss Pulse",
     "Velvet Standard",
@@ -88,11 +97,11 @@ class DesignOkGate(Gate):
             path = Path(path_str)
             if not path.is_file():
                 violations.append(f"DESIGN.md not on disk at {path_str} (Write tool did not fire)")
-            elif path.stat().st_size < 200:
+            elif path.stat().st_size < DESIGN_MD_MIN_BYTES:
                 violations.append(
-                    f"DESIGN.md at {path_str} is suspiciously small ({path.stat().st_size}B); "
-                    "expected YAML frontmatter + Overview/Colors/Typography/Layout/Elevation/"
-                    "Components/Don'ts sections"
+                    f"DESIGN.md at {path_str} is suspiciously small ({path.stat().st_size}B "
+                    f"< {DESIGN_MD_MIN_BYTES}B); a skeleton with all canonical headers + "
+                    "single-word YAML values would land in this range"
                 )
 
         refs = design.get("refs") or []

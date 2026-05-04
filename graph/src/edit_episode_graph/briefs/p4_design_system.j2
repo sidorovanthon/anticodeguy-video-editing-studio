@@ -26,12 +26,11 @@ Inputs:
 Outputs (BOTH are required):
 
 1. **Write `DESIGN.md` to disk** at `{{ design_md_path }}` using the `Write` tool.
-   Format: design-picker-spec — YAML frontmatter (`name`, `colors`, `typography`,
-   `rounded`, `spacing`, `motion`) followed by `## Overview`, `## Colors`,
-   `## Typography`, `## Layout`, `## Elevation`, `## Components`,
-   `## Do's and Don'ts` prose sections. The downstream beat sub-agents will
-   read this file as their source of truth — make every section operational,
-   not aspirational.
+   The spec format (YAML frontmatter keys + prose section names) is defined
+   in `references/design-picker.md` — follow it exactly as written there. Do
+   not rely on remembered structure; read the canon file. The downstream beat
+   sub-agents will consume this file as their source of truth — make every
+   section operational, not aspirational.
 
 2. **Return ONLY JSON** matching the `DesignDoc` schema shown below. Substance
    bounds are non-negotiable — the deterministic gate `gate:design_ok` rejects
