@@ -128,6 +128,21 @@ class EditState(TypedDict, total=False):
     persist: PersistState
 
 
+class BugCheck(TypedDict, total=False):
+    bug_slug: str
+    # "still_broken" | "no_longer_reproducible" | "inconclusive" | "fresh" | "missing_script"
+    status: str
+    last_verified: str | None
+    repro_exit_code: int | None
+    duration_s: float | None
+    message: str | None
+
+
+class PreflightState(TypedDict, total=False):
+    checked: list[BugCheck]
+    state_path: str | None
+
+
 class GateResult(TypedDict, total=False):
     gate: str
     passed: bool
@@ -163,6 +178,7 @@ class GraphState(TypedDict, total=False):
     transcripts: Annotated[TranscriptsState, dict_merge]
     compose: Annotated[ComposeState, dict_merge]
     edit: Annotated[EditState, dict_merge]
+    preflight: Annotated[PreflightState, dict_merge]
     errors: Annotated[list[GraphError], add]
     notices: Annotated[list[str], add]
     llm_runs: Annotated[list[LLMRunRecord], add]
