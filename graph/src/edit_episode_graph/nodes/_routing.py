@@ -142,16 +142,41 @@ def route_after_edl_ok(state) -> str:
 
 
 def route_after_render_segments(state) -> str:
-    """p3_render_segments -> END on error | halt_llm_boundary on success.
+    """p3_render_segments -> END on error | p3_self_eval | halt on render-skip.
 
-    Downstream of render the spec calls for `p3_self_eval` → `p3_persist_session`
-    → `glue_remap_transcript`; those are future tickets (HOM-104..107). Until
-    they land we route to the existing `halt_llm_boundary` so Studio surfaces
-    a clean stop with a notice rather than an unexplained terminal.
+    HOM-104 wires the canon Step 7 self-eval pass downstream. If render was
+    skipped (e.g., upstream EDL skip), there is nothing to check; route to
+    halt_llm_boundary so the existing skip-notice surfaces.
     """
     if state.get("errors"):
         return END
-    return "halt_llm_boundary"
+    render = (state.get("edit") or {}).get("render") or {}
+    if render.get("skipped"):
+        return "halt_llm_boundary"
+    return "p3_self_eval"
+
+
+def route_after_self_eval(state) -> str:
+    """p3_self_eval -> END on error/skip | gate_eval_ok on success."""
+    if state.get("errors"):
+        return END
+    report = (state.get("edit") or {}).get("eval") or {}
+    if report.get("skipped"):
+        return "halt_llm_boundary"
+    return "gate_eval_ok"
+
+
+def route_after_eval_ok(state) -> str:
+    """gate:eval_ok -> halt on pass | p3_render_segments on fail+iter<3 | escalate."""
+    from ..gates._base import latest_gate_result
+    record = latest_gate_result(state, "gate:eval_ok")
+    if record is None:
+        return "eval_failure_interrupt"
+    if record.get("passed"):
+        return "halt_llm_boundary"
+    if (record.get("iteration") or 0) < 3:
+        return "p3_render_segments"
+    return "eval_failure_interrupt"
 
 
 def route_after_remap(state) -> str:

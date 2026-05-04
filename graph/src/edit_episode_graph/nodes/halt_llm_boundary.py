@@ -16,7 +16,16 @@ def halt_llm_boundary_node(state):
     edit = state.get("edit") or {}
     edl_state = edit.get("edl") or {}
     render_state = edit.get("render") or {}
+    eval_state = edit.get("eval") or {}
     pre_scan_state = edit.get("pre_scan") or {}
+    if eval_state.get("passed") and render_state.get("final_mp4"):
+        n = render_state.get("n_segments") or 0
+        n_issues = len(eval_state.get("issues") or [])
+        msg = (
+            f"v3 halt: self-eval passed ({n} segment(s), {n_issues} note(s)); "
+            "downstream persist/glue are future tickets (HOM-105..107)"
+        )
+        return {"notices": [msg]}
     if render_state.get("final_mp4"):
         n = render_state.get("n_segments") or 0
         delta = render_state.get("delta_ms")

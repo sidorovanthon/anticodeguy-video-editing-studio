@@ -1,0 +1,50 @@
+{# Self-eval task descriptor. References canon — does NOT embed canon prose.
+   The dispatched sub-agent reads SKILL.md at call time. #}
+You are running the **self-eval** pass for an anticodeguy episode (`{{ slug }}`).
+
+Canon: `~/.claude/skills/video-use/SKILL.md` §"The process" — Step 7
+("Self-eval (before showing the user)") and Hard Rule 3 (audio-pop /
+30ms fade). Read those sections before evaluating — the check list and
+threshold guidance are load-bearing and we do not paraphrase them here.
+
+Inputs (resolve via the `Read` / `Bash` tool — paths, not contents, are
+provided here):
+- Episode dir: `{{ episode_dir }}`
+- Rendered output: `{{ final_mp4_path }}`
+- EDL JSON: `{{ edl_path }}`
+- Cut boundaries (output-time seconds where adjacent ranges meet): {{ cut_boundaries_json }}
+- Source-time cut boundaries per range: {{ source_cut_boundaries_json }}
+- timeline_view.py helper: `{{ timeline_view_path }}`
+
+Follow the inspection procedure described in canon Step 7 — what to
+sample, where to run `timeline_view`, and what visual/audio cues to
+look for are all defined there. Use the cut boundaries above as the
+±1.5s anchor points; invoke `timeline_view.py` via Bash at the path
+above.
+
+Two orchestrator-house overrides on top of canon Step 7 (because Phase
+4 owns overlays + captions, not Phase 3):
+
+- Skip Hard Rule 1 (subtitle-behind-overlay) checks — no subtitles in
+  this cut.
+- Skip Hard Rule 4 (overlay misalignment) checks — no overlays in
+  this cut.
+- Do **not** run `ffprobe` for duration verification; the downstream
+  `gate:eval_ok` does that deterministically and re-flags any drift.
+
+Output: ONLY a JSON document matching this schema. Do not include prose
+outside the JSON block.
+
+```json
+{
+  "issues": [
+    {"kind": "visual_discontinuity|audio_pop|grade_drift|other",
+     "location": "cut[<i>]@<output_time_s>",
+     "severity": "blocker|note",
+     "note": "<one-line description>"}
+  ],
+  "passed": <true if no blocker-severity issues, else false>
+}
+```
+
+If everything looks clean, return `{"issues": [], "passed": true}`.
