@@ -60,12 +60,21 @@ class DesignState(TypedDict, total=False):
     skip_reason: str | None
 
 
+class ExpansionState(TypedDict, total=False):
+    expanded_prompt_path: str | None
+    raw_text: str | None
+    skipped: bool
+    skip_reason: str | None
+
+
 class ComposeState(TypedDict, total=False):
     hyperframes_dir: str | None
     index_html_path: str | None
     design: DesignState
     design_md_path: str | None
     style_request: str | None
+    expansion: ExpansionState
+    expanded_prompt_path: str | None
 
 
 class PreScanState(TypedDict, total=False):

@@ -57,3 +57,12 @@ node_overrides:
     # backends/claude.py. See memory `feedback_creative_nodes_flagship_tier`
     # and HOM-118 for rationale (cheap models hollow out brand-defining
     # creative work).
+  p4_prompt_expansion:
+    tier: smart
+    backend_preference: ["claude"]
+    timeout_s: 300
+    # Per canon `references/prompt-expansion.md`: "the quality gap between a
+    # single-pass composition and a multi-scene-pipeline composition comes
+    # from this step." Highest-leverage creative node in Phase 4. tier=smart
+    # resolves to Opus 4.7 in backends/claude.py. See memory
+    # `feedback_creative_nodes_flagship_tier` and HOM-119.

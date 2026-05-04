@@ -1,0 +1,52 @@
+{# Prompt-expansion (Step 2) task descriptor. Brief references canon; it does not embed canon. #}
+You are running the **prompt expansion** pass for an anticodeguy episode (`{{ slug }}`).
+
+Canon to read BEFORE producing output (use the `Read` tool — do NOT rely on
+remembered structure; the section names, ordering, and per-scene format are
+load-bearing and we do not paraphrase them here):
+
+- `~/.agents/skills/hyperframes/SKILL.md` §"Step 2: Prompt expansion" — the
+  canonical workflow and the contract that this step is *never pass-through*.
+- `~/.agents/skills/hyperframes/references/prompt-expansion.md` — the six
+  required output sections, the per-scene format, the "atmosphere /
+  secondary motion / micro-details / object-level transitions" rules.
+- `~/.agents/skills/hyperframes/references/beat-direction.md` — per-beat
+  planning format (concept / mood / depth layers / choreography verbs /
+  transition out) you must use for each scene.
+- `~/.agents/skills/hyperframes/references/video-composition.md` — density,
+  scale, and color-presence rules for the video medium (8–10 elements per
+  scene, etc.).
+- `~/.agents/skills/hyperframes/house-style.md` — Background Layer,
+  typography, color, motion rules that apply to every scene.
+
+Inputs:
+- Episode dir: `{{ episode_dir }}`
+- DESIGN.md path (read it; cite its EXACT hex values, font names, and tokens —
+  do NOT invent palette or typography): `{{ design_md_path }}`
+- User prompt seed (the original brief; enrichment must preserve everything in
+  it — atmosphere, ambient motion, micro-details are added on top, never as
+  replacement): `{{ style_request_json }}`
+- Strategy from Phase 3 (shape / takes / grade / pacing / length): `{{ strategy_json }}`
+- EDL beats already chosen for the cut — these are the SCENES the expansion
+  must produce per-scene specs for: `{{ edl_beats_json }}`
+- Transcript JSON path (per-word timing for pacing references): `{{ transcript_json_path }}`
+
+Outputs (BOTH are required):
+
+1. **Write the expansion to disk** at `{{ expanded_prompt_path }}` using the
+   `Write` tool. Section names, ordering, per-scene format, and length
+   guidance are defined in `references/prompt-expansion.md` and
+   `references/beat-direction.md` — follow them exactly as written there.
+   Do not rely on remembered structure; read the canon files. The file
+   itself is the artifact — do NOT dump its contents into the chat.
+
+2. **Return ONLY JSON** matching this shape (no prose outside the JSON):
+
+```json
+{ "expanded_prompt_path": "{{ expanded_prompt_path }}" }
+```
+
+Canonical opt-out honored: this node produces the expansion only. Do NOT
+generate composition HTML, scene sub-agents, or DESIGN.md here — those are
+later graph nodes (`p4_beats`, etc.). Stop after writing the file and
+returning the JSON.
