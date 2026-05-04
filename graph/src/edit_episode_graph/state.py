@@ -67,6 +67,9 @@ class StrategyState(TypedDict, total=False):
     source_path: str | None
     skipped: bool
     skip_reason: str | None
+    # HR 11 — set by strategy_confirmed_interrupt after operator approval.
+    approved: bool
+    approval_payload: object
 
 
 class InventoryState(TypedDict, total=False):

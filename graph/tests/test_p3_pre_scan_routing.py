@@ -7,6 +7,7 @@ from edit_episode_graph.nodes._routing import (
     route_after_pre_scan,
     route_after_preflight,
     route_after_strategy,
+    route_after_strategy_confirmed,
 )
 
 
@@ -55,5 +56,20 @@ def test_routes_to_end_after_strategy_error():
     assert route_after_strategy(state) == END
 
 
-def test_routes_to_edl_select_after_strategy_success():
-    assert route_after_strategy({}) == "p3_edl_select"
+def test_routes_to_strategy_confirmed_after_strategy_success():
+    """HR 11 — strategy approval comes between p3_strategy and p3_edl_select."""
+    assert route_after_strategy({}) == "strategy_confirmed_interrupt"
+
+
+def test_routes_to_edl_select_after_strategy_confirmed():
+    assert route_after_strategy_confirmed({}) == "p3_edl_select"
+
+
+def test_routes_to_end_after_strategy_confirmed_error():
+    state = {"errors": [{"node": "x", "message": "boom", "timestamp": "now"}]}
+    assert route_after_strategy_confirmed(state) == END
+
+
+def test_routes_to_end_when_strategy_skipped():
+    state = {"edit": {"strategy": {"skipped": True, "skip_reason": "missing input"}}}
+    assert route_after_strategy_confirmed(state) == END
