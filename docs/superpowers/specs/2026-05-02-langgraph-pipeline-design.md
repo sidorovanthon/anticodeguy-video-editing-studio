@@ -324,7 +324,7 @@ LLM nodes by phase:
 | `p3_self_eval` | cheap | yes | `EvalReport(issues, pass)` |
 | `p3_persist_session` | cheap | yes | appends Session block to `<edit>/project.md` |
 | `p4_design_system` | smart | yes | `DesignDoc(palette, typography, refs, alternatives, anti_patterns, beat_visual_mapping)` — amended cheap → smart in HOM-118 (visual identity is brand-defining creative work; cheap models empirically hollow it out — see `feedback_creative_nodes_flagship_tier`) |
-| `p4_prompt_expansion` | cheap | yes | `ExpandedPrompt(path)` |
+| `p4_prompt_expansion` | smart | yes | `ExpandedPrompt(expanded_prompt_path)` — amended cheap → smart in HOM-119. Canon `references/prompt-expansion.md`: *"the quality gap between a single-pass composition and a multi-scene-pipeline composition comes from this step."* Highest-leverage creative node in Phase 4 — see `feedback_creative_nodes_flagship_tier` |
 | `p4_plan` | cheap | yes | `CompositionPlan(beats, rhythm, transitions)` |
 | `p4_beat_<n>` (Send) | smart | yes | `BeatArtifact(html_path, beat_id, duration)` |
 | `p4_captions_layer` | cheap | yes | `CaptionsBlock(html, css)` |
