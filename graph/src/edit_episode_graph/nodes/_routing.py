@@ -232,3 +232,55 @@ def route_after_remap(state) -> str:
     if (Path(episode_dir) / "hyperframes" / "index.html").exists():
         return END
     return "p4_scaffold"
+
+
+def route_after_scaffold(state) -> str:
+    """p4_scaffold → END on error/skip | p4_design_system on success.
+
+    The scaffold node creates the hyperframes/ project skeleton; the design
+    system pass that follows consumes it and writes DESIGN.md alongside.
+    """
+    if state.get("errors"):
+        return END
+    return "p4_design_system"
+
+
+def route_after_design_system(state) -> str:
+    """p4_design_system → END on error/skip | gate:design_ok on success."""
+    if state.get("errors"):
+        return END
+    design = (state.get("compose") or {}).get("design") or {}
+    if design.get("skipped"):
+        return END
+    return "gate_design_ok"
+
+
+def route_after_design_ok(state) -> str:
+    """gate:design_ok → p4_prompt_expansion on pass | halt_llm_boundary on fail.
+
+    v4-sans-HITL routing per spec §"v4 — Phase 4 sans HITL": gate failures
+    surface as a halt rather than a HITL retry loop. The retry-with-violations
+    re-dispatch (analogous to gate:eval_ok's iter<3 re-render) is a v5 concern
+    tracked under HOM-77.
+    """
+    from ..gates._base import latest_gate_result
+    record = latest_gate_result(state, "gate:design_ok")
+    if record and record.get("passed"):
+        return "p4_prompt_expansion"
+    return "halt_llm_boundary"
+
+
+def route_after_prompt_expansion(state) -> str:
+    """p4_prompt_expansion → END on error/skip | halt_llm_boundary otherwise.
+
+    Until later P4 nodes (`p4_plan`, `p4_catalog_scan`, `p4_beats`, ...) are
+    wired into topology, expansion is currently the last LLM step. We route
+    to `halt_llm_boundary` rather than END so the boundary's notice surfaces
+    in Studio — same pattern as `route_after_persist_session`.
+    """
+    if state.get("errors"):
+        return END
+    expansion = (state.get("compose") or {}).get("expansion") or {}
+    if expansion.get("skipped"):
+        return END
+    return "halt_llm_boundary"

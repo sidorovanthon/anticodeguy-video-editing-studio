@@ -27,9 +27,12 @@ v1 topology (spec §4.1, §8 — LLM-free coverage):
 
 from langgraph.graph import END, StateGraph
 
+from .gates.design_ok import design_ok_gate_node
 from .gates.edl_ok import edl_ok_gate_node
 from .gates.eval_ok import eval_ok_gate_node
 from .nodes._routing import (
+    route_after_design_ok,
+    route_after_design_system,
     route_after_edl_ok,
     route_after_edl_select,
     route_after_eval_ok,
@@ -38,8 +41,10 @@ from .nodes._routing import (
     route_after_pickup,
     route_after_preflight,
     route_after_pre_scan,
+    route_after_prompt_expansion,
     route_after_remap,
     route_after_render_segments,
+    route_after_scaffold,
     route_after_self_eval,
     route_after_strategy,
     route_after_strategy_confirmed,
@@ -56,6 +61,8 @@ from .nodes.p3_render_segments import p3_render_segments_node
 from .nodes.p3_persist_session import p3_persist_session_node
 from .nodes.p3_self_eval import p3_self_eval_node
 from .nodes.p3_strategy import p3_strategy_node
+from .nodes.p4_design_system import p4_design_system_node
+from .nodes.p4_prompt_expansion import p4_prompt_expansion_node
 from .nodes.p4_scaffold import p4_scaffold_node
 from .nodes.pickup import pickup_node
 from .nodes.preflight_canon import preflight_canon_node
@@ -79,6 +86,9 @@ def build_graph_uncompiled() -> StateGraph:
     g.add_node("preflight_canon", preflight_canon_node)
     g.add_node("glue_remap_transcript", glue_remap_transcript_node)
     g.add_node("p4_scaffold", p4_scaffold_node)
+    g.add_node("p4_design_system", p4_design_system_node)
+    g.add_node("gate_design_ok", design_ok_gate_node)
+    g.add_node("p4_prompt_expansion", p4_prompt_expansion_node)
     g.add_node("p3_inventory", p3_inventory_node)
     g.add_node("p3_pre_scan", p3_pre_scan_node)
     g.add_node("p3_strategy", p3_strategy_node)
@@ -222,7 +232,43 @@ def build_graph_uncompiled() -> StateGraph:
             "p4_scaffold": "p4_scaffold",
         },
     )
-    g.add_edge("p4_scaffold", END)
+    # Phase 4 LLM chain. New P4 LLM-node tickets MUST extend this chain in
+    # their own PR (per CLAUDE.md "Topology wiring is part of node DoD") —
+    # do NOT defer wiring to HOM-127. The compiled-graph topology smoke
+    # (smoke_hom107.py Case 1 + tests/test_p4_topology.py) catches "node
+    # added but edges not wired" regressions for free.
+    g.add_conditional_edges(
+        "p4_scaffold",
+        route_after_scaffold,
+        {
+            END: END,
+            "p4_design_system": "p4_design_system",
+        },
+    )
+    g.add_conditional_edges(
+        "p4_design_system",
+        route_after_design_system,
+        {
+            END: END,
+            "gate_design_ok": "gate_design_ok",
+        },
+    )
+    g.add_conditional_edges(
+        "gate_design_ok",
+        route_after_design_ok,
+        {
+            "p4_prompt_expansion": "p4_prompt_expansion",
+            "halt_llm_boundary": "halt_llm_boundary",
+        },
+    )
+    g.add_conditional_edges(
+        "p4_prompt_expansion",
+        route_after_prompt_expansion,
+        {
+            END: END,
+            "halt_llm_boundary": "halt_llm_boundary",
+        },
+    )
     g.add_edge("halt_llm_boundary", END)
 
     return g
