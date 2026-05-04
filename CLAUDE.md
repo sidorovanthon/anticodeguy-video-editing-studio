@@ -118,7 +118,15 @@ orchestration. Empirically this produced canon deviations. The decomposed graph 
 trades looser intra-step canon-trust for structurally-enforced step boundaries plus
 deterministic gates between artifacts.
 
-**Definition of done for LLM-node tickets:** before opening the PR, run at least one real-CLI invocation through the cheapest available model (e.g. Haiku via per-node `model:` override in `graph/config.yaml`) end-to-end against a real episode in LangGraph Studio or via direct graph invocation. Mocked unit tests prove parser correctness; only a real subprocess invocation proves the integration (subprocess shape, stdout parsing, schema extraction, telemetry append) actually works. Cost is negligible (~$0.001 per smoke run on Haiku). Document the smoke result in the PR's Test plan.
+**Definition of done for LLM-node tickets:** before opening the PR, the node MUST satisfy all three of:
+
+1. **Real-CLI smoke.** Run at least one real-CLI invocation through the cheapest available model (e.g. Haiku via per-node `model:` override in `graph/config.yaml`) — a `smoke_<ticket>.py` that synthesizes minimal state and dispatches the node. Mocked unit tests prove parser correctness; only a real subprocess invocation proves the integration (subprocess shape, stdout parsing, schema extraction, telemetry append) actually works. Cost is negligible (~$0.001 per smoke run on Haiku). Document the smoke result in the PR's Test plan.
+
+2. **Topology wiring in the same PR — no deferring to "the integration ticket".** The node MUST be added to `graph.py` (`g.add_node(...)` + conditional/static edges connecting it to the chain) and reachable from the entry point. Defer-until-HOM-127 was the original plan and it bit us: HOM-118 and HOM-119 both shipped un-wired, which meant a re-run on the same slug couldn't actually pick up where it left off. The whole idempotency story is "re-run with same slug → graph resumes from first missing artifact"; that only works if the new node is in the graph. Add a routing helper to `nodes/_routing.py` if a conditional edge is needed; extend `tests/test_p4_topology.py`'s `expected_edges` set with the new edges; extend `smoke_hom107.py`'s `EXPECTED_NODES` set.
+
+3. **Topology check (free, deterministic).** `tests/test_p4_topology.py` (compiled-graph node-set + edge-set assertions) must turn green with the new node added to its `expected_edges`. This is the cheapest gate — it catches "node added but edge not wired" without spending any LLM tokens.
+
+End-to-end-on-a-real-episode smoke (Studio invoke from `pickup` through Phase 4 with a stable fixture episode) is HOM-127's responsibility — the per-ticket DoD does NOT require it, because no stable fixture episode is checked in (`episodes/` is gitignored). But the topology check and the per-ticket node smoke together cover the regressions that matter day-to-day.
 
 ### Investigation methodology — bare-repro before upstream-blame
 
