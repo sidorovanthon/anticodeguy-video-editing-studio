@@ -106,7 +106,7 @@ Phase 3 LLM nodes: 5 (`p3_pre_scan`, `p3_strategy`, `p3_edl_select`, `p3_self_ev
               ▼
        p4_scaffold              deterministic: scripts/scaffold_hyperframes.py
               ▼
-       p4_design_system         LLM cheap, has_tools — Step 1 visual identity gate, generates DESIGN.md
+       p4_design_system         LLM smart, has_tools — Step 1 visual identity gate, generates DESIGN.md
               ▼
        gate:design_ok           DESIGN.md substance: ≥2 visual references, ≥1 alternative, ≥3 anti-patterns,
               ▼                  Beat→Visual Mapping populated, visual-styles preset matched if named
@@ -323,7 +323,7 @@ LLM nodes by phase:
 | `p3_edl_select` | smart | yes | canonical `EDL` with `overlays: []` and no `subtitles` field |
 | `p3_self_eval` | cheap | yes | `EvalReport(issues, pass)` |
 | `p3_persist_session` | cheap | yes | appends Session block to `<edit>/project.md` |
-| `p4_design_system` | cheap | yes | `DesignDoc(palette, typography, refs, alternatives, anti_patterns, beat_visual_mapping)` |
+| `p4_design_system` | smart | yes | `DesignDoc(palette, typography, refs, alternatives, anti_patterns, beat_visual_mapping)` — amended cheap → smart in HOM-118 (visual identity is brand-defining creative work; cheap models empirically hollow it out — see `feedback_creative_nodes_flagship_tier`) |
 | `p4_prompt_expansion` | cheap | yes | `ExpandedPrompt(path)` |
 | `p4_plan` | cheap | yes | `CompositionPlan(beats, rhythm, transitions)` |
 | `p4_beat_<n>` (Send) | smart | yes | `BeatArtifact(html_path, beat_id, duration)` |
@@ -441,8 +441,8 @@ backend_preference: ["claude", "codex"]   # global default failover order
 
 node_overrides:
   p4_design_system:
-    tier: cheap
-    backend_preference: ["codex"]          # always try codex first for this node
+    tier: smart                            # amended HOM-118 — visual identity is creative
+    backend_preference: ["claude"]         # prefer Opus 4.7 for brand-defining work
   "p4_beat_*":                             # glob-pattern for all beat nodes
     tier: smart
     backend_preference: ["claude"]         # creative — prefer Opus
