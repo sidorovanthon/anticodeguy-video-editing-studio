@@ -96,7 +96,11 @@ class PlanOkGate(Gate):
                     f"transitions[{i}] mechanism={mech!r}; must be one of "
                     f"{sorted(_VALID_MECHANISMS)}"
                 )
-            # final-fade is only valid as terminal exit on the last beat.
+            # final-fade is only valid as terminal exit on the last beat,
+            # going to the synthetic "END" target. Both shape constraints
+            # MUST hold — a self-loop final-fade on the last beat
+            # (`from_beat=last, to_beat=last`) is schema-valid and would
+            # otherwise pass the from_beat check, which is wrong.
             if mech == "final-fade":
                 if not beat_labels:
                     continue
@@ -106,6 +110,12 @@ class PlanOkGate(Gate):
                         f"transitions[{i}] mechanism=final-fade but from_beat="
                         f"{t.get('from_beat')!r}; final-fade is only valid on the last beat "
                         f"(last={last!r}) — canon `references/transitions.md` §Animation Rules"
+                    )
+                if t.get("to_beat") != "END":
+                    violations.append(
+                        f"transitions[{i}] mechanism=final-fade but to_beat="
+                        f"{t.get('to_beat')!r}; must be 'END' (final-fade exits the "
+                        "composition; it is not a beat-to-beat transition)"
                     )
 
         edl_beats = _edl_beats(state)

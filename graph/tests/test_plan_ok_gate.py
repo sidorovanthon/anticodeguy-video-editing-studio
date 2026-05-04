@@ -100,6 +100,27 @@ def test_fails_when_final_fade_not_on_last_beat():
     assert any("final-fade" in v and "last beat" in v for v in record["violations"])
 
 
+def test_fails_when_final_fade_to_beat_not_end():
+    """Self-loop or beat-label `to_beat` on a final-fade must fail.
+
+    Regression: an LLM that put final-fade on the last beat with
+    to_beat=last (or any beat label) would otherwise pass the from_beat
+    check and slip through. The schema permits any string, so the gate is
+    the only enforcement point.
+    """
+    plan = _good_plan()
+    plan["transitions"][2] = {
+        "from_beat": "PAYOFF", "to_beat": "PAYOFF",
+        "mechanism": "final-fade", "name": "fade-to-black",
+        "duration_s": 0.5, "easing": "power2.in", "why": ".",
+    }
+    state = _state_with_edl(plan, ["HOOK", "PROBLEM", "PAYOFF"])
+    record = plan_ok_gate_node(state)["gate_results"][0]
+    assert not record["passed"]
+    assert any("final-fade" in v and "to_beat" in v and "'END'" in v
+               for v in record["violations"])
+
+
 def test_fails_when_catalog_or_custom_missing():
     plan = _good_plan()
     plan["beats"][0]["catalog_or_custom"] = None

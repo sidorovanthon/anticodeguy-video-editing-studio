@@ -41,15 +41,20 @@ def halt_llm_boundary_node(state):
                 "v4-sans-HITL routes failures here, retry-with-violations is HOM-77"
             )
         return {"notices": [msg]}
-    if expansion_state.get("expanded_prompt_path") and not plan_state:
-        # Reached when p4_plan was skipped (e.g. missing inputs). Without
-        # the gate record the run would otherwise look identical to a
-        # design_ok pass — surface the skip reason instead.
-        reason = plan_state.get("skip_reason") or "p4_plan did not run"
-        msg = f"v4 halt: prompt_expansion ok but p4_plan skipped: {reason}"
+    if plan_state.get("skipped"):
+        # Reached when p4_plan emitted a skip dict (missing inputs). Surface
+        # the skip reason directly — without this branch the notice would
+        # fall through to v3/v1 messages, masking the Phase 4 progress.
+        reason = plan_state.get("skip_reason") or "no reason given"
+        msg = f"v4 halt: p4_plan skipped: {reason}"
         return {"notices": [msg]}
-    if design_state.get("design_md_path") and not expansion_state:
-        msg = "v4 halt: design_ok passed but p4_prompt_expansion did not run (skip)"
+    if expansion_state.get("skipped"):
+        reason = expansion_state.get("skip_reason") or "no reason given"
+        msg = f"v4 halt: p4_prompt_expansion skipped: {reason}"
+        return {"notices": [msg]}
+    if design_state.get("skipped"):
+        reason = design_state.get("skip_reason") or "no reason given"
+        msg = f"v4 halt: p4_design_system skipped: {reason}"
         return {"notices": [msg]}
     if eval_state.get("passed") and render_state.get("final_mp4"):
         n = render_state.get("n_segments") or 0
