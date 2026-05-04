@@ -17,7 +17,9 @@ v1 topology (spec §4.1, §8 — LLM-free coverage):
                                           │                 ▼
                                           │              p4_scaffold ─► END (notice)
                                           │
-                                          ├─ takes_packed.md ─► p3_pre_scan ─► p3_strategy ─► p3_edl_select ─► gate_edl_ok ┬─ pass ─► p3_render_segments ─► halt_llm_boundary ─► END
+                                          ├─ takes_packed.md ─► p3_pre_scan ─► p3_strategy ─► p3_edl_select ─► gate_edl_ok ┬─ pass ─► p3_render_segments ─► p3_self_eval ─► gate_eval_ok ┬─ pass ─► p3_persist_session ─► halt_llm_boundary ─► END
+                                          │                                                                                   │                                                              ├─ fail+iter<3 ─► p3_render_segments
+                                          │                                                                                   │                                                              └─ fail+iter≥3 ─► eval_failure_interrupt (HITL) ─► END
                                           │                                                                                   └─ fail ─► edl_failure_interrupt (HITL suspend) ─► END
                                           └─ no inventory ─► p3_inventory ┬─ error ─► END
                                                                           └─ ok ─► p3_pre_scan ─► p3_strategy ─► p3_edl_select ─► gate_edl_ok ─► …
@@ -32,6 +34,7 @@ from .nodes._routing import (
     route_after_edl_select,
     route_after_eval_ok,
     route_after_inventory,
+    route_after_persist_session,
     route_after_pickup,
     route_after_preflight,
     route_after_pre_scan,
@@ -49,6 +52,7 @@ from .nodes.p3_edl_select import p3_edl_select_node
 from .nodes.p3_inventory import p3_inventory_node
 from .nodes.p3_pre_scan import p3_pre_scan_node
 from .nodes.p3_render_segments import p3_render_segments_node
+from .nodes.p3_persist_session import p3_persist_session_node
 from .nodes.p3_self_eval import p3_self_eval_node
 from .nodes.p3_strategy import p3_strategy_node
 from .nodes.p4_scaffold import p4_scaffold_node
@@ -81,6 +85,7 @@ def build_graph_uncompiled() -> StateGraph:
     g.add_node("p3_render_segments", p3_render_segments_node)
     g.add_node("p3_self_eval", p3_self_eval_node)
     g.add_node("gate_eval_ok", eval_ok_gate_node)
+    g.add_node("p3_persist_session", p3_persist_session_node)
     g.add_node("edl_failure_interrupt", edl_failure_interrupt_node)
     g.add_node("eval_failure_interrupt", eval_failure_interrupt_node)
     g.add_node("halt_llm_boundary", halt_llm_boundary_node)
@@ -179,9 +184,17 @@ def build_graph_uncompiled() -> StateGraph:
         "gate_eval_ok",
         route_after_eval_ok,
         {
-            "halt_llm_boundary": "halt_llm_boundary",
+            "p3_persist_session": "p3_persist_session",
             "p3_render_segments": "p3_render_segments",
             "eval_failure_interrupt": "eval_failure_interrupt",
+        },
+    )
+    g.add_conditional_edges(
+        "p3_persist_session",
+        route_after_persist_session,
+        {
+            END: END,
+            "halt_llm_boundary": "halt_llm_boundary",
         },
     )
     g.add_edge("edl_failure_interrupt", END)

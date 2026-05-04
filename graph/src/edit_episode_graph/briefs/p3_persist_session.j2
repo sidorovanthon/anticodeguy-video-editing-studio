@@ -1,0 +1,51 @@
+{# Persist-session task descriptor. References canon — does NOT embed the
+   block format (heading shape, bullet field names, field semantics). The
+   dispatched sub-agent reads SKILL.md at call time. #}
+You are running the **persist-session** pass for an anticodeguy episode (`{{ slug }}`).
+
+Canon: `~/.claude/skills/video-use/SKILL.md` §"Memory — `project.md`".
+Read that section before writing — the Session block format (heading shape,
+bullet field names, what each field contains) is load-bearing and we do
+not paraphrase it here.
+
+Target file: `{{ project_md_path }}`
+
+Inputs from this run (already-decided artifacts; map them into the canon
+fields per your reading of the §Memory format — do not re-derive):
+
+- Strategy JSON: {{ strategy_json }}
+- EDL JSON: {{ edl_json }}
+- Self-eval report JSON: {{ eval_report_json }}
+- Retry iteration count (1 = clean first pass; >1 = re-rendered after
+  self-eval failures): {{ iteration }}
+- Today's date (UTC, YYYY-MM-DD): {{ today }}
+
+Procedure:
+
+1. Read `{{ project_md_path }}` if it exists (use the Read tool). If it
+   does not exist, treat as empty.
+2. Determine the next session number `N` by scanning existing
+   `## Session <N> — <date>` headings (per canon shape) and incrementing
+   past the highest. If no prior Session blocks exist, `N = 1`. This is
+   monotonic across the file's lifetime — re-runs do not overwrite or
+   merge prior Session blocks.
+3. Append one new Session block dated `{{ today }}` per canon §Memory.
+   Source the field contents from the inputs above. If `iteration > 1`,
+   surface that fact in the appropriate canon field (it's a non-obvious
+   detail about this run).
+4. Compose the new file contents as `<existing project.md text, if any>`
+   + a blank line + `<your new Session block>`, then write the full
+   result back with the Write tool. (Do not use Edit-with-old_string for
+   end-of-file appends — matching the trailing content is fragile;
+   Write-after-Read is the reliable pattern.) Preserve every byte of
+   pre-existing content above your appended block.
+5. Return JSON only:
+
+```json
+{
+  "persisted_at": "{{ project_md_path }}",
+  "session_n": <N>
+}
+```
+
+Do not include prose outside the JSON block.

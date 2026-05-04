@@ -110,6 +110,14 @@ class EvalState(TypedDict, total=False):
     skip_reason: str | None
 
 
+class PersistState(TypedDict, total=False):
+    persisted_at: str | None
+    session_n: int | None
+    raw_text: str | None
+    skipped: bool
+    skip_reason: str | None
+
+
 class EditState(TypedDict, total=False):
     inventory: InventoryState
     pre_scan: PreScanState
@@ -117,6 +125,7 @@ class EditState(TypedDict, total=False):
     edl: EdlState
     render: RenderState
     eval: EvalState
+    persist: PersistState
 
 
 class GateResult(TypedDict, total=False):

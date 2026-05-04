@@ -42,8 +42,9 @@ def test_self_eval_success_routes_to_gate():
     assert _routing.route_after_self_eval(state) == "gate_eval_ok"
 
 
-def test_eval_ok_pass_routes_to_halt():
-    assert _routing.route_after_eval_ok(_gate_record(True, 1)) == "halt_llm_boundary"
+def test_eval_ok_pass_routes_to_persist_session():
+    """HOM-105 inserts p3_persist_session between gate:eval_ok and halt."""
+    assert _routing.route_after_eval_ok(_gate_record(True, 1)) == "p3_persist_session"
 
 
 def test_eval_ok_fail_iter1_routes_to_render():

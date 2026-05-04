@@ -37,3 +37,10 @@ node_overrides:
     # Real-CLI smoke (HOM-104) routes through Haiku for minimal subscription
     # spend. Switch to a Sonnet ID for production use.
     model: claude-haiku-4-5-20251001
+  p3_persist_session:
+    tier: cheap
+    backend_preference: ["claude", "codex"]
+    timeout_s: 120
+    # Real-CLI smoke (HOM-105) routes through Haiku for minimal subscription
+    # spend. Switch to a Sonnet ID for production use.
+    model: claude-haiku-4-5-20251001
