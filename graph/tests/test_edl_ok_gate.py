@@ -146,6 +146,39 @@ def test_fails_when_length_outside_tolerance(episode: Path):
     assert any("length" in v and "outside target" in v for v in violations), violations
 
 
+def test_falls_back_to_ffprobe_when_inventory_missing(tmp_path: Path, monkeypatch):
+    """Skip-inventory path leaves edit.inventory empty; gate must ffprobe.
+
+    Regression: real run on a cached episode (takes_packed.md present, so
+    p3_inventory was skipped by route_after_preflight) hit "pacing
+    unverifiable: source durations missing" because the gate read only
+    inventory.sources. ffprobe fallback over edl.sources paths fixes it.
+    """
+    transcripts = tmp_path / "edit" / "transcripts"
+    transcripts.mkdir(parents=True)
+    words = [
+        {"text": "alpha", "start": 1.0, "end": 1.5, "type": "word"},
+        {"text": "beta",  "start": 2.0, "end": 2.5, "type": "word"},
+        {"text": "gamma", "start": 3.0, "end": 3.5, "type": "word"},
+    ]
+    (transcripts / "raw.json").write_text(json.dumps({"words": words}), encoding="utf-8")
+
+    # Stub ffprobe by monkeypatching the helper directly. Avoids needing
+    # a real video file on disk.
+    from edit_episode_graph.gates import edl_ok as gate_module
+    monkeypatch.setattr(gate_module, "_ffprobe_duration_s", lambda p: 7.0)
+
+    state = {
+        "episode_dir": str(tmp_path),
+        "edit": {
+            # inventory deliberately absent — mirrors skip-inventory routing
+            "edl": _good_edl(),
+        },
+    }
+    record = edl_ok_gate_node(state)["gate_results"][0]
+    assert record["passed"], record["violations"]
+
+
 def test_strategy_estimate_supersedes_fallback(tmp_path: Path):
     """Empirical case from real run: 70s source, 56s cut, estimate 62s.
 
