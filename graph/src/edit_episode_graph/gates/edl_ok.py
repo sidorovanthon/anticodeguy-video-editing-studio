@@ -6,7 +6,12 @@ Per spec §6.2 / canon HR 6+7:
     level as defense-in-depth and emits a concrete violation if missed).
   - Every cut edge falls outside word intervals (HR 6) — no cut inside a word.
   - Each cut edge sits 30–200ms from the nearest word boundary (HR 7 padding).
-  - Total cut runtime / total source runtime in [0.25, 0.35] (pacing).
+  - Final-cut length matches the strategy's `length_estimate_s` within
+    ±LENGTH_TOLERANCE; if no strategy estimate is available, the cut/source
+    ratio must fall in the wide fallback window. Canon does NOT specify a
+    fixed pacing fraction — Step 4 strategy emits a length estimate from
+    the material itself, and the gate validates against THAT, not a
+    hard-coded ratio.
   - `overlays == []` (Phase-3 orchestrator policy; Phase 4 owns animation).
   - `subtitles` field absent at dict level.
 """
@@ -20,8 +25,9 @@ from ._base import Gate
 
 PADDING_MIN_S = 0.030
 PADDING_MAX_S = 0.200
-PACING_MIN = 0.25
-PACING_MAX = 0.35
+LENGTH_TOLERANCE = 0.20  # ±20% of strategy.length_estimate_s
+FALLBACK_PACING_MIN = 0.10
+FALLBACK_PACING_MAX = 0.95
 EPSILON_S = 1e-6
 
 
@@ -95,6 +101,14 @@ def _source_duration_map(state: dict) -> dict[str, float]:
 def _transcript_dir(state: dict) -> Path:
     episode_dir = state.get("episode_dir")
     return Path(episode_dir) / "edit" / "transcripts"
+
+
+def _strategy_length_estimate(state: dict) -> float | None:
+    strategy = (state.get("edit") or {}).get("strategy") or {}
+    estimate = strategy.get("length_estimate_s")
+    if isinstance(estimate, (int, float)) and estimate > 0:
+        return float(estimate)
+    return None
 
 
 class EdlOkGate(Gate):
@@ -175,12 +189,28 @@ class EdlOkGate(Gate):
                 "pacing unverifiable: source durations missing from state.edit.inventory.sources"
             )
         else:
-            ratio = cut_total / source_total
-            if ratio < PACING_MIN - EPSILON_S or ratio > PACING_MAX + EPSILON_S:
-                violations.append(
-                    f"pacing {ratio:.2%} outside {PACING_MIN:.0%}–{PACING_MAX:.0%} "
-                    f"(cut {cut_total:.2f}s of {source_total:.2f}s)"
-                )
+            estimate = _strategy_length_estimate(state)
+            if estimate is not None:
+                target_min = estimate * (1.0 - LENGTH_TOLERANCE)
+                target_max = estimate * (1.0 + LENGTH_TOLERANCE)
+                if cut_total < target_min - EPSILON_S or cut_total > target_max + EPSILON_S:
+                    violations.append(
+                        f"length {cut_total:.2f}s outside target "
+                        f"{target_min:.2f}–{target_max:.2f}s "
+                        f"(strategy.length_estimate_s={estimate:.2f}s "
+                        f"±{int(LENGTH_TOLERANCE*100)}%)"
+                    )
+            else:
+                ratio = cut_total / source_total
+                if (
+                    ratio < FALLBACK_PACING_MIN - EPSILON_S
+                    or ratio > FALLBACK_PACING_MAX + EPSILON_S
+                ):
+                    violations.append(
+                        f"pacing {ratio:.2%} outside fallback "
+                        f"{FALLBACK_PACING_MIN:.0%}–{FALLBACK_PACING_MAX:.0%} "
+                        f"(no strategy.length_estimate_s — using wide fallback)"
+                    )
 
         return violations
 
