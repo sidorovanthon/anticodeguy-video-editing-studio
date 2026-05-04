@@ -126,6 +126,8 @@ deterministic gates between artifacts.
 
 3. **Topology check (free, deterministic).** `tests/test_p4_topology.py` (compiled-graph node-set + edge-set assertions) must turn green with the new node added to its `expected_edges`. This is the cheapest gate — it catches "node added but edge not wired" without spending any LLM tokens.
 
+4. **Update `halt_llm_boundary` notice text.** Whenever you wire a new node into the Phase 4 chain, the `halt_llm_boundary_node` notice currently advertises the old "latest reachable" artifact (e.g. it still says "render requires p3_render_segments (future)" even though we now reach `p4_prompt_expansion`). Update the notice string to mention the newly-reachable artifact and what comes next. The notice is the operator's only signal in Studio about why the run halted — stale text actively misleads.
+
 End-to-end-on-a-real-episode smoke (Studio invoke from `pickup` through Phase 4 with a stable fixture episode) is HOM-127's responsibility — the per-ticket DoD does NOT require it, because no stable fixture episode is checked in (`episodes/` is gitignored). But the topology check and the per-ticket node smoke together cover the regressions that matter day-to-day.
 
 ### Investigation methodology — bare-repro before upstream-blame
