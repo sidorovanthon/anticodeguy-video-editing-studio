@@ -17,10 +17,10 @@ v1 topology (spec §4.1, §8 — LLM-free coverage):
                                           │                 ▼
                                           │              p4_scaffold ─► END (notice)
                                           │
-                                          ├─ takes_packed.md ─► p3_pre_scan ─► p3_strategy ─► p3_edl_select ─► gate:edl_ok ┬─ pass ─► halt_llm_boundary ─► END
-                                          │                                                                                   └─ fail ─► END (notice)
+                                          ├─ takes_packed.md ─► p3_pre_scan ─► p3_strategy ─► p3_edl_select ─► gate_edl_ok ┬─ pass ─► halt_llm_boundary ─► END
+                                          │                                                                                   └─ fail ─► edl_failure_interrupt (HITL suspend) ─► END
                                           └─ no inventory ─► p3_inventory ┬─ error ─► END
-                                                                          └─ ok ─► p3_pre_scan ─► p3_strategy ─► p3_edl_select ─► gate:edl_ok ─► …
+                                                                          └─ ok ─► p3_pre_scan ─► p3_strategy ─► p3_edl_select ─► gate_edl_ok ─► …
 """
 
 from langgraph.graph import END, StateGraph
@@ -36,6 +36,7 @@ from .nodes._routing import (
     route_after_remap,
     route_after_strategy,
 )
+from .nodes.edl_failure_interrupt import edl_failure_interrupt_node
 from .nodes.glue_remap_transcript import glue_remap_transcript_node
 from .nodes.halt_llm_boundary import halt_llm_boundary_node
 from .nodes.isolate_audio import isolate_audio_node
@@ -70,6 +71,7 @@ def build_graph_uncompiled() -> StateGraph:
     g.add_node("p3_strategy", p3_strategy_node)
     g.add_node("p3_edl_select", p3_edl_select_node)
     g.add_node("gate_edl_ok", edl_ok_gate_node)
+    g.add_node("edl_failure_interrupt", edl_failure_interrupt_node)
     g.add_node("halt_llm_boundary", halt_llm_boundary_node)
 
     g.set_entry_point("pickup")
@@ -140,10 +142,11 @@ def build_graph_uncompiled() -> StateGraph:
         "gate_edl_ok",
         route_after_edl_ok,
         {
-            END: END,
             "halt_llm_boundary": "halt_llm_boundary",
+            "edl_failure_interrupt": "edl_failure_interrupt",
         },
     )
+    g.add_edge("edl_failure_interrupt", END)
 
     # skip_phase4? lives inside route_after_remap.
     g.add_conditional_edges(

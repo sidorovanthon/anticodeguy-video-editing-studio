@@ -84,6 +84,14 @@ def case_real_cli() -> dict:
     gate_update = edl_ok_gate_node(state)
     record = gate_update["gate_results"][0]
     print(f"  gate:edl_ok passed={record['passed']} violations={record['violations']}")
+    # Real-CLI smoke is allowed to fail the pacing check on single-source
+    # tutorial content (canon EDL on disk hits ~76% too) — that's a known
+    # spec-vs-content mismatch tracked separately. We assert only the
+    # structural invariants: EDL is parseable, overlays empty, no subtitles.
+    assert "raw_text" not in edl, "schema parse failed on real CLI"
+    assert edl.get("overlays") == [], "LLM smuggled overlays past brief"
+    assert "subtitles" not in edl, "LLM smuggled subtitles past schema"
+    print("  ✓ structural invariants intact (parseable, overlays==[], no subtitles)")
     return state
 
 

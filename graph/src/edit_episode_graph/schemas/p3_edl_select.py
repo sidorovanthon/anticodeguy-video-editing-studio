@@ -11,7 +11,7 @@ HR 6 (word-boundary cuts) and HR 7 (30–200ms padding) are validated by
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class Overlay(BaseModel):
@@ -31,6 +31,12 @@ class Range(BaseModel):
     beat: str = Field(min_length=1, description="Narrative beat label, e.g. HOOK / SOLUTION.")
     quote: str = Field(min_length=1, description="Verbatim transcript phrase used by this range.")
     reason: str = Field(min_length=1, description="One-line rationale for take selection.")
+
+    @model_validator(mode="after")
+    def _end_after_start(self) -> "Range":
+        if self.end <= self.start:
+            raise ValueError(f"end ({self.end}) must be greater than start ({self.start})")
+        return self
 
 
 class EDL(BaseModel):

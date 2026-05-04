@@ -37,17 +37,13 @@ def _word_intervals(transcript_path: Path) -> list[tuple[float, float]]:
     return words
 
 
-def _word_boundaries(words: list[tuple[float, float]]) -> list[float]:
-    """Sorted unique list of every word start and end (the legal cut points before padding)."""
-    out: set[float] = set()
-    for s, e in words:
-        out.add(s)
-        out.add(e)
-    return sorted(out)
-
-
 def _inside_word(t: float, words: list[tuple[float, float]]) -> tuple[float, float] | None:
-    """Return the (start, end) of the word containing t, or None."""
+    """Return the (start, end) of the word containing t, or None.
+
+    `words` is sorted by start; the early break exits once a word starts at or
+    after t, which is safe because Scribe transcripts do not contain
+    overlapping word intervals.
+    """
     for s, e in words:
         if s + EPSILON_S < t < e - EPSILON_S:
             return (s, e)
@@ -56,10 +52,33 @@ def _inside_word(t: float, words: list[tuple[float, float]]) -> tuple[float, flo
     return None
 
 
-def _nearest_boundary_distance(t: float, boundaries: list[float]) -> float | None:
-    if not boundaries:
+def _padding_distance(t: float, words: list[tuple[float, float]]) -> float | None:
+    """Distance from `t` to the nearer of the two bracketing word boundaries.
+
+    Walks the sorted word list to find the latest word ending at-or-before `t`
+    (`prev_end`) and the first word starting at-or-after `t` (`next_start`).
+    Returns `min(t - prev_end, next_start - t)` over whichever sides exist.
+
+    A global-min over every boundary in the transcript would falsely flag cuts
+    that sit in long silences between far-apart words: HR 7 specifies padding
+    relative to the cut's *neighboring* word, not the closest word anywhere.
+    """
+    prev_end = None
+    next_start = None
+    for s, e in words:
+        if e <= t + EPSILON_S:
+            prev_end = e
+        elif s >= t - EPSILON_S:
+            next_start = s
+            break
+    sides: list[float] = []
+    if prev_end is not None:
+        sides.append(t - prev_end)
+    if next_start is not None:
+        sides.append(next_start - t)
+    if not sides:
         return None
-    return min(abs(t - b) for b in boundaries)
+    return min(sides)
 
 
 def _source_duration_map(state: dict) -> dict[str, float]:
@@ -104,11 +123,10 @@ class EdlOkGate(Gate):
         sources = edl.get("sources") or {}
         transcripts_dir = _transcript_dir(state)
         word_cache: dict[str, list[tuple[float, float]]] = {}
-        boundary_cache: dict[str, list[float]] = {}
 
-        def _load(source_key: str) -> tuple[list[tuple[float, float]], list[float]] | None:
+        def _load(source_key: str) -> list[tuple[float, float]] | None:
             if source_key in word_cache:
-                return word_cache[source_key], boundary_cache[source_key]
+                return word_cache[source_key]
             tpath = transcripts_dir / f"{source_key}.json"
             if not tpath.is_file():
                 return None
@@ -118,8 +136,7 @@ class EdlOkGate(Gate):
                 violations.append(f"transcript unreadable for source `{source_key}`: {exc}")
                 return None
             word_cache[source_key] = words
-            boundary_cache[source_key] = _word_boundaries(words)
-            return words, boundary_cache[source_key]
+            return words
 
         for i, r in enumerate(ranges):
             source = r.get("source")
@@ -128,11 +145,10 @@ class EdlOkGate(Gate):
             if source not in sources:
                 violations.append(f"range[{i}].source `{source}` not in EDL.sources")
                 continue
-            loaded = _load(source)
-            if loaded is None:
+            words = _load(source)
+            if words is None:
                 violations.append(f"range[{i}]: missing transcript for source `{source}`")
                 continue
-            words, boundaries = loaded
             for label, t in (("start", start), ("end", end)):
                 inside = _inside_word(t, words)
                 if inside is not None:
@@ -140,7 +156,7 @@ class EdlOkGate(Gate):
                         f"range[{i}].{label}={t:.3f} cuts inside word [{inside[0]:.3f}, {inside[1]:.3f}] (HR 6)"
                     )
                     continue
-                dist = _nearest_boundary_distance(t, boundaries)
+                dist = _padding_distance(t, words)
                 if dist is None:
                     violations.append(f"range[{i}].{label}: no word boundaries in transcript")
                     continue

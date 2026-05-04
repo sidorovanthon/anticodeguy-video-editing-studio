@@ -126,12 +126,19 @@ def route_after_edl_select(state) -> str:
 
 
 def route_after_edl_ok(state) -> str:
-    """gate:edl_ok -> halt_llm_boundary on pass | END on fail (notice in state)."""
+    """gate:edl_ok -> halt_llm_boundary on pass | edl_failure_interrupt on fail.
+
+    The interrupt node suspends the graph (HITL) so an operator can inspect
+    `state["gate_results"]`, fix the EDL, and resume. Per spec §6.2 the gate
+    itself stays pure (state-update only); routing decides what to do with
+    the recorded outcome. The retry-loop variant (re-call p3_edl_select with
+    violations fed back into the brief) is tracked separately under HOM-75.
+    """
     from ..gates._base import latest_gate_result
     result = latest_gate_result(state, "gate:edl_ok")
     if result and result.get("passed"):
         return "halt_llm_boundary"
-    return END
+    return "edl_failure_interrupt"
 
 
 def route_after_remap(state) -> str:

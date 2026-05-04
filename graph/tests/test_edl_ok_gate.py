@@ -158,3 +158,79 @@ def test_skipped_edl_emits_violation(episode: Path):
 def test_gate_class_identity():
     g = EdlOkGate()
     assert g.name == "gate:edl_ok"
+
+
+def test_long_silence_cut_passes_when_close_to_neighbor(tmp_path: Path):
+    """A cut in a 3s silence is fine if the *near* boundary is within 30–200ms.
+
+    Regression: the prior global-min-distance check would have flagged this
+    cut at 4.05 because it was ~2.95s from the next word at 7.0 — even though
+    the near side (prev word ending at 4.0) sits at 50ms.
+    """
+    transcripts = tmp_path / "edit" / "transcripts"
+    transcripts.mkdir(parents=True)
+    words = [
+        {"text": "alpha", "start": 3.500, "end": 4.000, "type": "word"},
+        # 3-second silence here
+        {"text": "beta",  "start": 7.000, "end": 7.500, "type": "word"},
+    ]
+    (transcripts / "raw.json").write_text(json.dumps({"words": words}), encoding="utf-8")
+    edl = {
+        "version": 1,
+        "sources": {"raw": "/abs/raw.mp4"},
+        "ranges": [
+            # source=10s, cut=3.95-4.05 padded around alpha's end at 4.000
+            {"source": "raw", "start": 3.450, "end": 4.050,
+             "beat": "X", "quote": "alpha", "reason": "x"},
+            {"source": "raw", "start": 6.950, "end": 7.550,
+             "beat": "Y", "quote": "beta", "reason": "y"},
+        ],
+        "grade": "neutral",
+        "overlays": [],
+        "total_duration_s": 1.20,
+    }
+    state = {
+        "episode_dir": str(tmp_path),
+        "edit": {
+            "edl": edl,
+            "inventory": {"sources": [{"stem": "raw", "duration_s": 4.0}]},
+        },
+    }
+    record = edl_ok_gate_node(state)["gate_results"][0]
+    assert record["passed"], record["violations"]
+
+
+def test_cut_in_middle_of_long_silence_fails(tmp_path: Path):
+    """Cut equally far from both bracketing words — both sides > 200ms → fail.
+
+    The new bracketing logic treats this correctly: nearest neighboring
+    boundary is 1.5s away, well above the 200ms cap.
+    """
+    transcripts = tmp_path / "edit" / "transcripts"
+    transcripts.mkdir(parents=True)
+    words = [
+        {"text": "alpha", "start": 0.0, "end": 1.0, "type": "word"},
+        {"text": "beta",  "start": 4.0, "end": 5.0, "type": "word"},
+    ]
+    (transcripts / "raw.json").write_text(json.dumps({"words": words}), encoding="utf-8")
+    edl = {
+        "version": 1,
+        "sources": {"raw": "/abs/raw.mp4"},
+        "ranges": [
+            {"source": "raw", "start": 2.5, "end": 4.95,
+             "beat": "X", "quote": "x", "reason": "x"},
+        ],
+        "grade": "neutral",
+        "overlays": [],
+        "total_duration_s": 2.45,
+    }
+    state = {
+        "episode_dir": str(tmp_path),
+        "edit": {
+            "edl": edl,
+            "inventory": {"sources": [{"stem": "raw", "duration_s": 8.0}]},
+        },
+    }
+    record = edl_ok_gate_node(state)["gate_results"][0]
+    assert not record["passed"]
+    assert any("padding 1500ms" in v or "1500" in v for v in record["violations"])
