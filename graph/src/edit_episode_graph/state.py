@@ -46,9 +46,26 @@ class TranscriptsState(TypedDict, total=False):
     takes_packed_path: str | None
 
 
+class DesignState(TypedDict, total=False):
+    style_name: str
+    palette: list[dict]
+    typography: list[dict]
+    refs: list[dict]
+    alternatives: list[dict]
+    anti_patterns: list[str]
+    beat_visual_mapping: list[dict]
+    design_md_path: str | None
+    raw_text: str | None
+    skipped: bool
+    skip_reason: str | None
+
+
 class ComposeState(TypedDict, total=False):
     hyperframes_dir: str | None
     index_html_path: str | None
+    design: DesignState
+    design_md_path: str | None
+    style_request: str | None
 
 
 class PreScanState(TypedDict, total=False):

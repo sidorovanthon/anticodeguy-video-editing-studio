@@ -48,3 +48,12 @@ node_overrides:
     # Real-CLI smoke (HOM-105) routes through Haiku for minimal subscription
     # spend. Switch to a Sonnet ID for production use.
     model: claude-haiku-4-5-20251001
+  p4_design_system:
+    tier: smart
+    backend_preference: ["claude"]
+    timeout_s: 240
+    # Visual identity is creative — palette, typography, references,
+    # alternatives, anti-patterns. tier=smart resolves to Opus 4.7 in
+    # backends/claude.py. See memory `feedback_creative_nodes_flagship_tier`
+    # and HOM-118 for rationale (cheap models hollow out brand-defining
+    # creative work).
