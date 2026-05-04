@@ -6,7 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from edit_episode_graph.gates.design_ok import DesignOkGate, design_ok_gate_node
+from edit_episode_graph.gates.design_ok import (
+    DESIGN_MD_MIN_BYTES,
+    DesignOkGate,
+    design_ok_gate_node,
+)
 
 
 def _good_design(design_md_path: str) -> dict:
@@ -35,13 +39,15 @@ def _good_design(design_md_path: str) -> dict:
 
 @pytest.fixture()
 def design_md_on_disk(tmp_path: Path) -> Path:
+    """A DESIGN.md whose size sits comfortably above DESIGN_MD_MIN_BYTES."""
     p = tmp_path / "hyperframes" / "DESIGN.md"
     p.parent.mkdir(parents=True)
     p.write_text(
         "---\nname: Swiss Pulse\ncolors:\n  primary: '#0a0a0a'\n---\n"
-        "## Overview\n\n" + ("body content " * 30) + "\n",
+        "## Overview\n\n" + ("body content " * 60) + "\n",
         encoding="utf-8",
     )
+    assert p.stat().st_size > DESIGN_MD_MIN_BYTES
     return p
 
 
@@ -81,6 +87,54 @@ def test_fails_when_design_md_too_small(tmp_path: Path):
     update = design_ok_gate_node(state)
     assert not update["gate_results"][0]["passed"]
     assert any("suspiciously small" in v for v in update["gate_results"][0]["violations"])
+
+
+def test_fails_at_threshold_minus_one_byte(tmp_path: Path):
+    """Boundary: a file exactly one byte below the threshold must fail."""
+    p = tmp_path / "boundary-low.md"
+    p.write_text("a" * (DESIGN_MD_MIN_BYTES - 1), encoding="utf-8")
+    assert p.stat().st_size == DESIGN_MD_MIN_BYTES - 1
+    state = _state_with_edl_beats(_good_design(str(p)), ["HOOK"])
+    update = design_ok_gate_node(state)
+    assert not update["gate_results"][0]["passed"]
+    assert any("suspiciously small" in v for v in update["gate_results"][0]["violations"])
+
+
+def test_passes_at_threshold(tmp_path: Path):
+    """Boundary: a file at exactly the threshold must NOT fire the size check.
+
+    Other gate checks may still fail unrelated to size — we assert the
+    specific 'suspiciously small' violation does not appear, not that the
+    gate as a whole passes.
+    """
+    p = tmp_path / "boundary-at.md"
+    p.write_text("a" * DESIGN_MD_MIN_BYTES, encoding="utf-8")
+    assert p.stat().st_size == DESIGN_MD_MIN_BYTES
+    state = _state_with_edl_beats(_good_design(str(p)), ["HOOK"])
+    record = design_ok_gate_node(state)["gate_results"][0]
+    assert not any("suspiciously small" in v for v in record["violations"])
+
+
+def test_skeleton_design_md_with_all_headers_fails(tmp_path: Path):
+    """Regression check: a YAML-frontmatter + 7 empty-section skeleton must
+    be rejected. This is the exact failure mode the threshold raise targets —
+    on the original 200B threshold, a document like this slipped past."""
+    p = tmp_path / "skeleton.md"
+    p.write_text(
+        "---\nname: x\ncolors:\n  a: b\ntypography:\n  a: b\n"
+        "rounded:\n  a: b\nspacing:\n  a: b\nmotion:\n  a: b\n---\n"
+        "## Overview\n\n## Colors\n\n## Typography\n\n## Layout\n\n"
+        "## Elevation\n\n## Components\n\n## Do's and Don'ts\n",
+        encoding="utf-8",
+    )
+    assert p.stat().st_size < DESIGN_MD_MIN_BYTES, (
+        f"skeleton size {p.stat().st_size}B should be below {DESIGN_MD_MIN_BYTES}B "
+        "or the regression check tests nothing"
+    )
+    state = _state_with_edl_beats(_good_design(str(p)), ["HOOK"])
+    record = design_ok_gate_node(state)["gate_results"][0]
+    assert not record["passed"]
+    assert any("suspiciously small" in v for v in record["violations"])
 
 
 def test_fails_on_substance_underflow(design_md_on_disk: Path):

@@ -126,10 +126,13 @@ def main() -> int:
     for v in record.get("violations") or []:
         print(f"    * {v}")
     if not record.get("passed"):
-        # Surface but don't fail — the gate's purpose is to report violations
-        # for retry; the smoke validates the integration shape, not Opus's
-        # taste. A fail surfaces what the retry loop would feed back in.
-        print("SMOKE NOTE: gate did not pass — would re-dispatch in production")
+        # Retry semantics belong to the LangGraph runtime (gate fail →
+        # re-dispatch with violations injected). An isolated smoke run
+        # has no retry loop, so a gate failure here is a real regression
+        # and must surface as non-zero exit — otherwise CI silently
+        # ships a broken integration.
+        print("SMOKE FAIL: gate did not pass; see violations above", file=sys.stderr)
+        return 1
 
     print("\nSMOKE OK: real Opus invocation + DESIGN.md written + gate evaluated")
     print("Output preview (first 600 chars of DESIGN.md):\n")
