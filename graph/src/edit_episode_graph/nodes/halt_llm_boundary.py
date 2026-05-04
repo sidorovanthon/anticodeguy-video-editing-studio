@@ -15,8 +15,19 @@ notice in `p4_scaffold.py` — a small marker, not an error.
 def halt_llm_boundary_node(state):
     edit = state.get("edit") or {}
     edl_state = edit.get("edl") or {}
+    render_state = edit.get("render") or {}
     pre_scan_state = edit.get("pre_scan") or {}
-    if edl_state.get("ranges"):
+    if render_state.get("final_mp4"):
+        n = render_state.get("n_segments") or 0
+        delta = render_state.get("delta_ms")
+        cached = render_state.get("cached")
+        delta_part = f" (Δ {delta}ms vs EDL)" if delta is not None else ""
+        cached_part = " [cached]" if cached else ""
+        msg = (
+            f"v3 halt: final.mp4 rendered ({n} segment(s)){cached_part}{delta_part}; "
+            "downstream self_eval/persist/glue are future tickets (HOM-104..107)"
+        )
+    elif edl_state.get("ranges"):
         n = len(edl_state.get("ranges") or [])
         msg = f"v3 halt: EDL passed gate:edl_ok ({n} range(s)); render requires p3_render_segments (future)"
     elif pre_scan_state.get("slips") is not None and not pre_scan_state.get("skipped"):

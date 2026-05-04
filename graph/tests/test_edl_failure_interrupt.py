@@ -37,7 +37,7 @@ def test_routing_fail_goes_to_interrupt():
 
 def test_routing_pass_skips_interrupt():
     state = _state_with_gate(True)
-    assert route_after_edl_ok(state) == "halt_llm_boundary"
+    assert route_after_edl_ok(state) == "p3_render_segments"
 
 
 def test_routing_no_record_treated_as_fail():
@@ -105,7 +105,7 @@ def test_compiled_minigraph_suspends_on_gate_failure(tmp_path):
         "gate_edl_ok",
         route_after_edl_ok,
         {
-            "halt_llm_boundary": END,  # placeholder for the pass branch
+            "p3_render_segments": END,  # placeholder for the pass branch
             "edl_failure_interrupt": "edl_failure_interrupt",
         },
     )

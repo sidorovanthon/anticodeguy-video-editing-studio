@@ -126,7 +126,7 @@ def route_after_edl_select(state) -> str:
 
 
 def route_after_edl_ok(state) -> str:
-    """gate:edl_ok -> halt_llm_boundary on pass | edl_failure_interrupt on fail.
+    """gate:edl_ok -> p3_render_segments on pass | edl_failure_interrupt on fail.
 
     The interrupt node suspends the graph (HITL) so an operator can inspect
     `state["gate_results"]`, fix the EDL, and resume. Per spec §6.2 the gate
@@ -137,8 +137,21 @@ def route_after_edl_ok(state) -> str:
     from ..gates._base import latest_gate_result
     result = latest_gate_result(state, "gate:edl_ok")
     if result and result.get("passed"):
-        return "halt_llm_boundary"
+        return "p3_render_segments"
     return "edl_failure_interrupt"
+
+
+def route_after_render_segments(state) -> str:
+    """p3_render_segments -> END on error | halt_llm_boundary on success.
+
+    Downstream of render the spec calls for `p3_self_eval` → `p3_persist_session`
+    → `glue_remap_transcript`; those are future tickets (HOM-104..107). Until
+    they land we route to the existing `halt_llm_boundary` so Studio surfaces
+    a clean stop with a notice rather than an unexplained terminal.
+    """
+    if state.get("errors"):
+        return END
+    return "halt_llm_boundary"
 
 
 def route_after_remap(state) -> str:

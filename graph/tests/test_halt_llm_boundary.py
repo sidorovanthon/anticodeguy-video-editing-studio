@@ -34,3 +34,32 @@ def test_v2_halt_with_zero_slips_still_v2():
     state = {"edit": {"pre_scan": {"slips": []}}}
     update = halt_llm_boundary_node(state)
     assert update["notices"][0].startswith("v2 halt: pre_scan ran")
+
+
+def test_v3_halt_when_render_completed():
+    state = {
+        "edit": {
+            "edl": {"ranges": [{}, {}, {}]},
+            "render": {
+                "final_mp4": "/x/edit/final.mp4",
+                "n_segments": 3,
+                "delta_ms": 12,
+                "cached": False,
+            },
+        },
+    }
+    msg = halt_llm_boundary_node(state)["notices"][0]
+    assert msg.startswith("v3 halt: final.mp4 rendered")
+    assert "3 segment" in msg
+    assert "12ms" in msg
+
+
+def test_v3_halt_marks_cached_render():
+    state = {
+        "edit": {
+            "edl": {"ranges": [{}]},
+            "render": {"final_mp4": "/x/edit/final.mp4", "n_segments": 1, "cached": True},
+        },
+    }
+    msg = halt_llm_boundary_node(state)["notices"][0]
+    assert "[cached]" in msg
