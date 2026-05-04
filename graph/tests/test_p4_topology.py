@@ -29,6 +29,8 @@ def test_phase4_nodes_present_in_compiled_graph():
         "p4_prompt_expansion",
         "p4_plan",
         "gate_plan_ok",
+        "p4_catalog_scan",
+        "p4_assemble_index",
     }
     missing = expected - nodes
     assert not missing, f"Phase 4 nodes missing from compiled graph: {sorted(missing)}"
@@ -57,6 +59,9 @@ def test_phase4_chain_edges_wired():
         ("p4_prompt_expansion", "p4_plan"),
         ("p4_plan", "gate_plan_ok"),
         ("gate_plan_ok", "halt_llm_boundary"),
+        ("gate_plan_ok", "p4_catalog_scan"),
+        ("p4_catalog_scan", "p4_assemble_index"),
+        ("p4_assemble_index", "halt_llm_boundary"),
     }
     missing = expected_edges - edges
     assert not missing, (

@@ -297,12 +297,36 @@ def route_after_plan(state) -> str:
 
 
 def route_after_plan_ok(state) -> str:
-    """gate:plan_ok → halt_llm_boundary on pass OR fail.
+    """gate:plan_ok → p4_catalog_scan on pass | halt_llm_boundary on fail.
 
     v4-sans-HITL routing per spec §"v4 — Phase 4 sans HITL": gate failures
     surface as a halt rather than a HITL retry loop (same pattern as
-    `route_after_design_ok`). Pass-side currently also halts because the
-    next nodes (`p4_catalog_scan`, beat fan-out, ...) are not yet wired —
-    extend this routing in the next P4 ticket.
+    `route_after_design_ok`). Pass-side advances to catalog scan
+    (HOM-121); the per-beat fan-out and captions nodes that populate
+    `compose.beats` / `compose.captions_block_path` are future tickets,
+    so `p4_assemble_index` currently skips and the run halts there.
     """
+    from ..gates._base import latest_gate_result
+    record = latest_gate_result(state, "gate:plan_ok")
+    if record and record.get("passed"):
+        return "p4_catalog_scan"
+    return "halt_llm_boundary"
+
+
+def route_after_catalog_scan(state) -> str:
+    """p4_catalog_scan → END on error | p4_assemble_index on success."""
+    if state.get("errors"):
+        return END
+    return "p4_assemble_index"
+
+
+def route_after_assemble_index(state) -> str:
+    """p4_assemble_index → END on error | halt_llm_boundary otherwise.
+
+    Both the pass case (assembly produced patched index.html) and the
+    skip case (no beats yet — future fan-out ticket) route to halt so
+    the boundary's notice surfaces in Studio.
+    """
+    if state.get("errors"):
+        return END
     return "halt_llm_boundary"
