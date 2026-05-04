@@ -89,11 +89,24 @@ class EdlState(TypedDict, total=False):
     skip_reason: str | None
 
 
+class RenderState(TypedDict, total=False):
+    final_mp4: str | None
+    clips_dir: str | None
+    duration_s: float | None
+    expected_duration_s: float | None
+    delta_ms: int | None
+    n_segments: int | None
+    cached: bool
+    skipped: bool
+    skip_reason: str | None
+
+
 class EditState(TypedDict, total=False):
     inventory: InventoryState
     pre_scan: PreScanState
     strategy: StrategyState
     edl: EdlState
+    render: RenderState
 
 
 class GateResult(TypedDict, total=False):

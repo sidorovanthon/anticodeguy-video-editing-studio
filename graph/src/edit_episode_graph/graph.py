@@ -17,7 +17,7 @@ v1 topology (spec §4.1, §8 — LLM-free coverage):
                                           │                 ▼
                                           │              p4_scaffold ─► END (notice)
                                           │
-                                          ├─ takes_packed.md ─► p3_pre_scan ─► p3_strategy ─► p3_edl_select ─► gate_edl_ok ┬─ pass ─► halt_llm_boundary ─► END
+                                          ├─ takes_packed.md ─► p3_pre_scan ─► p3_strategy ─► p3_edl_select ─► gate_edl_ok ┬─ pass ─► p3_render_segments ─► halt_llm_boundary ─► END
                                           │                                                                                   └─ fail ─► edl_failure_interrupt (HITL suspend) ─► END
                                           └─ no inventory ─► p3_inventory ┬─ error ─► END
                                                                           └─ ok ─► p3_pre_scan ─► p3_strategy ─► p3_edl_select ─► gate_edl_ok ─► …
@@ -34,6 +34,7 @@ from .nodes._routing import (
     route_after_preflight,
     route_after_pre_scan,
     route_after_remap,
+    route_after_render_segments,
     route_after_strategy,
 )
 from .nodes.edl_failure_interrupt import edl_failure_interrupt_node
@@ -43,6 +44,7 @@ from .nodes.isolate_audio import isolate_audio_node
 from .nodes.p3_edl_select import p3_edl_select_node
 from .nodes.p3_inventory import p3_inventory_node
 from .nodes.p3_pre_scan import p3_pre_scan_node
+from .nodes.p3_render_segments import p3_render_segments_node
 from .nodes.p3_strategy import p3_strategy_node
 from .nodes.p4_scaffold import p4_scaffold_node
 from .nodes.pickup import pickup_node
@@ -71,6 +73,7 @@ def build_graph_uncompiled() -> StateGraph:
     g.add_node("p3_strategy", p3_strategy_node)
     g.add_node("p3_edl_select", p3_edl_select_node)
     g.add_node("gate_edl_ok", edl_ok_gate_node)
+    g.add_node("p3_render_segments", p3_render_segments_node)
     g.add_node("edl_failure_interrupt", edl_failure_interrupt_node)
     g.add_node("halt_llm_boundary", halt_llm_boundary_node)
 
@@ -142,8 +145,16 @@ def build_graph_uncompiled() -> StateGraph:
         "gate_edl_ok",
         route_after_edl_ok,
         {
-            "halt_llm_boundary": "halt_llm_boundary",
+            "p3_render_segments": "p3_render_segments",
             "edl_failure_interrupt": "edl_failure_interrupt",
+        },
+    )
+    g.add_conditional_edges(
+        "p3_render_segments",
+        route_after_render_segments,
+        {
+            END: END,
+            "halt_llm_boundary": "halt_llm_boundary",
         },
     )
     g.add_edge("edl_failure_interrupt", END)
