@@ -116,6 +116,13 @@ def test_phase4_chain_edges_wired():
         ("p4_persist_session", "studio_launch"),
         ("studio_launch", "gate_static_guard"),
         ("gate_static_guard", "halt_llm_boundary"),
+        # HOM-130: failure interrupts are resumable. After resume, routing
+        # either re-runs the originating gate (retry) or halts with a notice
+        # (abort). Replaces the previous unconditional add_edge to END.
+        ("edl_failure_interrupt", "gate_edl_ok"),
+        ("edl_failure_interrupt", "halt_llm_boundary"),
+        ("eval_failure_interrupt", "gate_eval_ok"),
+        ("eval_failure_interrupt", "halt_llm_boundary"),
     }
     missing = expected_edges - edges
     assert not missing, (

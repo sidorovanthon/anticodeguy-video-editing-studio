@@ -100,6 +100,43 @@ def halt_llm_boundary_node(state):
         or (cluster_failure.get("timestamp") or "")
         > (static_guard_record.get("timestamp") or "")
     )
+    # HOM-130: Phase 3 failure interrupts (edl + eval) are now resumable.
+    # On abort, routing lands here so the operator sees an explicit notice
+    # instead of a silent END. Token list mirrors `_routing._ABORT_TOKENS`.
+    _ABORT_TOKENS = {"abort", "stop", "end", "give_up", "give up", "no", "n"}
+
+    def _resume_aborted(failure_state: dict) -> bool:
+        action = (failure_state.get("failure_resume") or {}).get("action")
+        if isinstance(action, str):
+            return action.strip().lower() in _ABORT_TOKENS
+        if isinstance(action, dict):
+            return action.get("abort") is True
+        return False
+
+    if _resume_aborted(edl_state):
+        record = next(
+            (r for r in reversed(gate_results) if r.get("gate") == "gate:edl_ok"),
+            None,
+        )
+        n_v = len(record.get("violations") or []) if record else 0
+        iter_n = (record or {}).get("iteration")
+        msg = (
+            f"v3 halt: gate:edl_ok FAILED (iter {iter_n}, {n_v} violation(s)) — "
+            "operator aborted the resume-loop; see gate_results"
+        )
+        return {"notices": [msg]}
+    if _resume_aborted(eval_state):
+        record = next(
+            (r for r in reversed(gate_results) if r.get("gate") == "gate:eval_ok"),
+            None,
+        )
+        n_v = len(record.get("violations") or []) if record else 0
+        iter_n = (record or {}).get("iteration")
+        msg = (
+            f"v3 halt: gate:eval_ok FAILED (iter {iter_n}, {n_v} violation(s)) — "
+            "operator aborted the resume-loop; see gate_results"
+        )
+        return {"notices": [msg]}
     if cluster_supersedes_static_guard:
         n_v = len(cluster_failure.get("violations") or [])
         gate_name = cluster_failure.get("gate")
