@@ -49,7 +49,11 @@ def test_phase4_chain_edges_wired():
       gate_design_ok → p4_prompt_expansion
       p4_prompt_expansion → p4_plan
       p4_plan → gate_plan_ok
-      gate_plan_ok → halt_llm_boundary
+      gate_plan_ok → {p4_catalog_scan, halt_llm_boundary}
+      p4_catalog_scan → p4_dispatch_beats
+      p4_dispatch_beats → {p4_beat (Send fan-out), p4_assemble_index (skip)}
+      p4_beat → p4_assemble_index (static fan-in)
+      p4_assemble_index → halt_llm_boundary
     """
     graph = _compiled_graph_repr()
     edges = {(e.source, e.target) for e in graph.edges}

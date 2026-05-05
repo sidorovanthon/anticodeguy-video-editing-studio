@@ -39,8 +39,9 @@ def halt_llm_boundary_node(state):
         if assemble_state.get("skipped"):
             reason = assemble_state.get("skip_reason") or "no reason given"
             msg = (
-                f"v4 halt: p4_assemble_index skipped: {reason}; per-beat fan-out + "
-                "captions block are future tickets (HOM-122..HOM-123)"
+                f"v4 halt: p4_assemble_index skipped: {reason}; "
+                "p4_dispatch_beats + p4_beat (HOM-133/134) populate "
+                "compositions/<scene>.html; captions block ships in HOM-123"
             )
         else:
             n = len(assemble_state.get("beat_names") or [])

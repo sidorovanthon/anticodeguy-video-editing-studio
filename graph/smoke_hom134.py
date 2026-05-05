@@ -36,7 +36,7 @@ from edit_episode_graph.backends._concurrency import BackendSemaphores
 from edit_episode_graph.backends._router import BackendRouter
 from edit_episode_graph.backends.claude import ClaudeCodeBackend
 from edit_episode_graph.graph import build_graph_uncompiled
-from edit_episode_graph.nodes.p4_beat import _build_node, _render_ctx
+from edit_episode_graph.nodes.p4_beat import _build_node, _render_ctx, p4_beat_node
 
 
 HAIKU_MODEL = "claude-haiku-4-5-20251001"
@@ -146,6 +146,13 @@ def case_real_cli_haiku() -> int:
         sems = BackendSemaphores({b.name: b.capabilities.max_concurrent for b in backends})
         router = BackendRouter(backends, sems)
 
+        # Smoke pins Haiku via _invoke_with's model_override (matches the
+        # established pattern in smoke_hom107/118; the production
+        # entrypoint p4_beat_node → __call__ goes through
+        # load_default_config().resolve_node(), which we cover separately
+        # via the unit tests on config + the topology smoke). Using
+        # model_override here keeps the cost at ~$0.001 without having
+        # to mutate config.yaml during the run.
         node = _build_node()
         ctx = {"slug": state["slug"], "episode_dir": state["episode_dir"], **_render_ctx(state)}
         update = node._invoke_with(
@@ -153,6 +160,14 @@ def case_real_cli_haiku() -> int:
             timeout_s=300,
             model_override=HAIKU_MODEL,
         )
+
+        # Also exercise the production entrypoint once on the now-cached
+        # fragment — this proves p4_beat_node's cached-skip path works
+        # without spending another LLM call.
+        cached_update = p4_beat_node(state, router=router)
+        if not any("cached" in n for n in (cached_update.get("notices") or [])):
+            print("SMOKE FAIL: production entrypoint did not honour cached-skip", file=sys.stderr)
+            return 1
 
         runs = update.get("llm_runs") or []
         print(f"  attempts: {len(runs)}")

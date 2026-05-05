@@ -38,7 +38,7 @@ Output shape — Pattern A scene fragment, ONE `<div>` written to `{{ scene_html
      data-width="{{ data_width }}" data-height="{{ data_height }}">
   <style>
     /* EVERY rule prefixed with #scene-{{ scene_id }} — no bare `.title` etc. */
-    #scene-{{ scene_id }} { position: absolute; inset: 0; {% if beat_index > 0 and not is_final %}opacity: 0;{% else %}opacity: 1;{% endif %} }
+    #scene-{{ scene_id }} { position: absolute; inset: 0; {% if beat_index > 0 %}opacity: 0;{% else %}opacity: 1;{% endif %} }
     /* …per-element rules… */
   </style>
   <div class="scene-content">
