@@ -347,20 +347,34 @@ def route_after_captions_layer(state) -> str:
 
 
 def route_after_assemble_index(state) -> str:
-    """p4_assemble_index → END on error | studio_launch | halt_llm_boundary.
+    """p4_assemble_index → END on error | p4_persist_session | halt_llm_boundary.
 
     A successful assemble (patched index.html on disk) advances to
-    `studio_launch` (HOM-125). A skipped assemble (e.g. missing scenes)
-    routes to halt so the boundary's notice surfaces — there is nothing
-    to preview. HOM-127 inserts the gate cluster (lint/validate/inspect
-    /design_adherence/animation_map/snapshot/captions_track) + p4_persist_session
-    between assemble and studio_launch.
+    `p4_persist_session` (HOM-126), which appends a Phase 4 Session block
+    to `<edit>/project.md` before the run reaches `studio_launch`. A skipped
+    assemble (e.g. missing scenes) routes to halt so the boundary's notice
+    surfaces — there is nothing to persist or preview. HOM-127 inserts the
+    gate cluster (lint/validate/inspect/design_adherence/animation_map/
+    snapshot/captions_track) between assemble and persist.
     """
     if state.get("errors"):
         return END
     assemble = (state.get("compose") or {}).get("assemble") or {}
     if assemble.get("skipped"):
         return "halt_llm_boundary"
+    return "p4_persist_session"
+
+
+def route_after_p4_persist_session(state) -> str:
+    """p4_persist_session → END on hard error | studio_launch otherwise.
+
+    A persist skip or sub-agent failure is non-fatal — the Session block is
+    a memory aid for the next run, not load-bearing for the preview. Errors
+    surfaced into `state['errors']` (e.g. AllBackendsExhausted) END the graph;
+    otherwise we continue to `studio_launch`.
+    """
+    if state.get("errors"):
+        return END
     return "studio_launch"
 
 

@@ -1,0 +1,69 @@
+{# Phase 4 persist-session task descriptor. References canon — does NOT embed
+   the Session block format (heading shape, bullet field names, semantics).
+   The dispatched sub-agent reads canon at call time. #}
+You are running the **Phase 4 persist-session** pass for an anticodeguy
+episode (`{{ slug }}`). This appends a Phase 4 Session block to the same
+`project.md` file Phase 3 writes to — session numbering is monotonic across
+the file regardless of which phase produced the block.
+
+Canon (format — mandatory read): `~/.claude/skills/video-use/SKILL.md`
+§"Memory — `project.md`". The Session block heading shape, bullet field
+names, and field semantics are load-bearing; we do not paraphrase canon
+in this brief.
+
+Phase 4 context: this run produced a HyperFrames composition (DESIGN.md,
+expanded prompt, plan with beats, captions block, assembled root
+`index.html`). Read `~/.agents/skills/hyperframes/SKILL.md` if you need
+context on what those artifacts are; the field shape you write into
+`project.md` still comes from the video-use §Memory canon above.
+
+Target file: `{{ project_md_path }}`
+
+Inputs from this run (already-decided artifacts; map them into the canon
+fields per your reading of §Memory — do not re-derive):
+
+- DESIGN.md path: `{{ design_md_path }}`
+- Expanded prompt path: `{{ expanded_prompt_path }}`
+- Plan JSON: {{ plan_json }}
+- Beats summary JSON (one entry per assembled scene): {{ beats_json }}
+- Captions block path (may be empty if captions skipped): `{{ captions_block_path }}`
+- Assembled index.html path: `{{ index_html_path }}`
+- Gate results JSON (only Phase 4 records — gate:design_ok, gate:plan_ok,
+  gate:static_guard, etc.): {{ gate_results_json }}
+- Today's date (UTC, YYYY-MM-DD): {{ today }}
+
+Procedure:
+
+1. Read `{{ project_md_path }}` if it exists (use the Read tool). If it
+   does not exist, treat as empty.
+2. Determine the next session number `N` by scanning existing
+   `## Session <N> — <date>` headings (per canon shape) and incrementing
+   past the highest. If no prior Session blocks exist, `N = 1`. This is
+   monotonic across the file's lifetime — re-runs do not overwrite or
+   merge prior blocks, and Phase 3 + Phase 4 share the same numbering
+   space.
+3. Append one new Session block dated `{{ today }}` per canon §Memory.
+   Source the field contents from the Phase 4 inputs above. Mark this
+   block clearly as a Phase 4 (composition) session — e.g., in the
+   block's primary descriptor field per canon, mention Phase 4 / HF
+   composition so a future reader can distinguish it from Phase 3 edit
+   sessions. Where canon's field names imply edit-phase semantics (EDL
+   ranges, render iterations), substitute the Phase 4 analogues you can
+   read from the inputs (beats, gates) — preserve canon's *field shape*
+   while adapting the *content domain*.
+4. Compose the new file contents as `<existing project.md text, if any>`
+   + a blank line + `<your new Session block>`, then write the full
+   result back with the Write tool. (Do not use Edit-with-old_string for
+   end-of-file appends — matching trailing content is fragile;
+   Write-after-Read is the reliable pattern.) Preserve every byte of
+   pre-existing content above your appended block.
+5. Return JSON only:
+
+```json
+{
+  "persisted_at": "{{ project_md_path }}",
+  "session_n": <N>
+}
+```
+
+Do not include prose outside the JSON block.

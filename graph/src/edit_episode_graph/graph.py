@@ -42,6 +42,7 @@ from .nodes._routing import (
     route_after_edl_select,
     route_after_eval_ok,
     route_after_inventory,
+    route_after_p4_persist_session,
     route_after_persist_session,
     route_after_pickup,
     route_after_plan,
@@ -77,6 +78,7 @@ from .nodes.p4_captions_layer import p4_captions_layer_node
 from .nodes.p4_dispatch_beats import p4_dispatch_beats_node
 from .nodes.p4_design_system import p4_design_system_node
 from .nodes.p4_plan import p4_plan_node
+from .nodes.p4_persist_session import p4_persist_session_node
 from .nodes.p4_prompt_expansion import p4_prompt_expansion_node
 from .nodes.p4_scaffold import p4_scaffold_node
 from .nodes.pickup import pickup_node
@@ -121,6 +123,7 @@ def build_graph_uncompiled() -> StateGraph:
     )
     g.add_node("p4_beat", p4_beat_node)
     g.add_node("p4_assemble_index", p4_assemble_index_node)
+    g.add_node("p4_persist_session", p4_persist_session_node)
     g.add_node("studio_launch", studio_launch_node)
     g.add_node("gate_static_guard", static_guard_gate_node)
     g.add_node("p3_inventory", p3_inventory_node)
@@ -346,14 +349,27 @@ def build_graph_uncompiled() -> StateGraph:
         {
             END: END,
             "halt_llm_boundary": "halt_llm_boundary",
+            "p4_persist_session": "p4_persist_session",
+        },
+    )
+    # HOM-126: p4_persist_session appends a Phase 4 Session block to
+    # <edit>/project.md (canon §"Memory" format, monotonic N across phases),
+    # then advances to studio_launch. A persist skip / sub-agent failure is
+    # non-fatal — preview still happens — but a hard `errors[]` entry ENDs
+    # the graph.
+    g.add_conditional_edges(
+        "p4_persist_session",
+        route_after_p4_persist_session,
+        {
+            END: END,
             "studio_launch": "studio_launch",
         },
     )
     # HOM-125: studio_launch spawns `hyperframes preview --port 3002` in the
     # background, then gate:static_guard sleeps 5s and scans the preview log.
     # HOM-127 will insert the lint/validate/inspect/design_adherence/animation_map/
-    # snapshot/captions_track gate cluster + p4_persist_session between
-    # p4_assemble_index and studio_launch.
+    # snapshot/captions_track gate cluster between p4_assemble_index and
+    # p4_persist_session.
     g.add_conditional_edges(
         "studio_launch",
         route_after_studio_launch,
