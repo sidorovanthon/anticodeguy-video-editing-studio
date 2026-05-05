@@ -38,6 +38,7 @@ import os
 import sys
 from pathlib import Path
 
+from edit_episode_graph._paths import repo_root
 from edit_episode_graph.gates.animation_map import animation_map_gate_node
 from edit_episode_graph.gates.captions_track import captions_track_gate_node
 from edit_episode_graph.gates.design_adherence import design_adherence_gate_node
@@ -48,7 +49,7 @@ from edit_episode_graph.gates.validate import validate_gate_node
 
 
 DEFAULT_EPISODE = (
-    Path(__file__).resolve().parents[1]
+    repo_root()
     / "episodes"
     / "2026-05-05-desktop-software-licensing-it-turns-out-is"
 )

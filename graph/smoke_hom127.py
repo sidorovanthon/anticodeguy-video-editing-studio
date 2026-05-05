@@ -34,6 +34,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from edit_episode_graph._paths import repo_root
 from edit_episode_graph.gates.captions_track import captions_track_gate_node
 from edit_episode_graph.gates.design_adherence import design_adherence_gate_node
 from edit_episode_graph.gates.lint import lint_gate_node
@@ -41,17 +42,9 @@ from edit_episode_graph.graph import build_graph_uncompiled
 from edit_episode_graph.nodes.halt_llm_boundary import halt_llm_boundary_node
 
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = repo_root()
 SLUG = "2026-05-05-desktop-software-licensing-it-turns-out-is"
-# `episodes/` is gitignored; in a worktree the dir is empty. Fall back to
-# the primary worktree's episodes/ path so the smoke can run against the
-# real fixture from any worktree.
-_PRIMARY_EPISODES = Path(r"C:/Users/sidor/repos/anticodeguy-video-editing-studio/episodes")
 EPISODE = REPO_ROOT / "episodes" / SLUG
-if not (EPISODE / "hyperframes" / "index.html").is_file():
-    fallback = _PRIMARY_EPISODES / SLUG
-    if (fallback / "hyperframes" / "index.html").is_file():
-        EPISODE = fallback
 
 
 GATE_CLUSTER = (

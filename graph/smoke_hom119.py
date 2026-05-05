@@ -27,9 +27,10 @@ from pathlib import Path
 from edit_episode_graph.backends._concurrency import BackendSemaphores
 from edit_episode_graph.backends._router import BackendRouter
 from edit_episode_graph.backends.claude import ClaudeCodeBackend
+from edit_episode_graph._paths import repo_root
 from edit_episode_graph.nodes.p4_prompt_expansion import _build_node, _render_ctx
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = repo_root()
 SLUG = "smoke-hom119-prompt-expansion"
 EPISODE = REPO_ROOT / "episodes" / SLUG
 
