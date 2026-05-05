@@ -62,10 +62,54 @@ def halt_llm_boundary_node(state):
             return f"Phase 4 Session block skipped ({reason})"
         return "Phase 4 Session block: not yet persisted"
 
+    # HOM-127: post-assemble gate cluster (lint → validate → inspect →
+    # design_adherence → animation_map → snapshot → captions_track) sits
+    # between p4_assemble_index and p4_persist_session. A failure on any
+    # of these halts the run before studio_launch fires; surface which
+    # gate failed and how many violations so the operator sees the
+    # specific blocker without digging into gate_results.
+    _POST_ASSEMBLE_GATES = (
+        "gate:lint",
+        "gate:validate",
+        "gate:inspect",
+        "gate:design_adherence",
+        "gate:animation_map",
+        "gate:snapshot",
+        "gate:captions_track",
+    )
+    cluster_failure = next(
+        (
+            r for r in reversed(gate_results)
+            if r.get("gate") in _POST_ASSEMBLE_GATES and not r.get("passed")
+        ),
+        None,
+    )
+
     static_guard_record = next(
         (r for r in reversed(gate_results) if r.get("gate") == "gate:static_guard"),
         None,
     )
+    # On a fresh thread (the v4-sans-HITL norm) `static_guard_record` is
+    # None whenever a cluster gate halts the run — the cluster sits
+    # upstream of studio_launch. On a reused thread a prior run's
+    # static_guard record can survive into a re-run that fails earlier;
+    # compare ISO timestamps so the cluster failure only wins when it's
+    # genuinely the more recent halt cause.
+    cluster_supersedes_static_guard = cluster_failure is not None and (
+        static_guard_record is None
+        or (cluster_failure.get("timestamp") or "")
+        > (static_guard_record.get("timestamp") or "")
+    )
+    if cluster_supersedes_static_guard:
+        n_v = len(cluster_failure.get("violations") or [])
+        gate_name = cluster_failure.get("gate")
+        msg = (
+            f"v4 halt: {gate_name} FAILED ({n_v} violation(s)) — see gate_results; "
+            f"{_persist_summary()}; "
+            "v4-sans-HITL routes post-assemble gate failures here, "
+            "retry-with-feedback is HOM-77/v5"
+        )
+        return {"notices": [msg]}
     if static_guard_record is not None:
         port = compose_state.get("preview_port")
         port_part = f" on port {port}" if port else ""

@@ -7,10 +7,12 @@ from langgraph.graph import END
 from edit_episode_graph.nodes import _routing
 
 
-def test_assemble_success_routes_to_persist():
-    """HOM-126: assemble success leg now hops through persist before studio_launch."""
+def test_assemble_success_routes_to_gate_lint():
+    """HOM-127: assemble success leg now enters the post-assemble gate cluster
+    at gate_lint. The persist hop happens at the tail of the cluster after
+    gate:captions_track passes."""
     state = {"compose": {"assemble": {"assembled_at": "/tmp/index.html"}}}
-    assert _routing.route_after_assemble_index(state) == "p4_persist_session"
+    assert _routing.route_after_assemble_index(state) == "gate_lint"
 
 
 def test_assemble_skip_still_routes_to_halt():
