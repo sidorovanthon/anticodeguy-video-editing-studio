@@ -7,6 +7,7 @@ from pathlib import Path
 from edit_episode_graph.nodes.p4_assemble_index import (
     _SHIM_BEGIN_MARKER,
     _SHIM_END_MARKER,
+    _ensure_scene_clip_class,
     assemble_html,
     build_visibility_shim,
     p4_assemble_index_node,
@@ -31,7 +32,7 @@ SCAFFOLDED_INDEX = """\
 # wrapped in <template>, no data-composition-id (root has it).
 def _pattern_a_fragment(scene_id: str, body: str = "X") -> str:
     return (
-        f'<div id="scene-{scene_id}" class="scene" '
+        f'<div id="scene-{scene_id}" class="scene clip" '
         f'data-start="0" data-duration="3" data-track-index="1">'
         f"<style>#scene-{scene_id} {{ position: absolute; }}</style>"
         f'<div class="scene-content">{body}</div>'
@@ -313,6 +314,56 @@ def test_node_supports_captions_path(tmp_path):
     assert update["compose"]["assemble"]["captions_included"] is True
     on_disk = Path(state["compose"]["index_html_path"]).read_text(encoding="utf-8")
     assert 'data-composition-id="captions"' in on_disk
+
+
+# ---- HOM-142: scene `class="clip"` enforcement ----
+
+def test_ensure_scene_clip_class_appends_to_existing_class():
+    frag = (
+        '<div id="scene-hook" class="scene" data-start="0" data-duration="3">'
+        "<style></style></div>"
+    )
+    out = _ensure_scene_clip_class(frag)
+    assert 'class="scene clip"' in out
+
+
+def test_ensure_scene_clip_class_is_idempotent():
+    frag = (
+        '<div id="scene-hook" class="scene clip" data-start="0" data-duration="3">'
+        "</div>"
+    )
+    assert _ensure_scene_clip_class(frag) == frag
+
+
+def test_ensure_scene_clip_class_handles_single_quoted_attrs():
+    frag = (
+        "<div id='scene-hook' class='scene' data-start='0' data-duration='3'>"
+        "</div>"
+    )
+    out = _ensure_scene_clip_class(frag)
+    assert "class='scene clip'" in out
+
+
+def test_ensure_scene_clip_class_injects_when_no_class_attr():
+    frag = '<div id="scene-hook" data-start="0" data-duration="3"></div>'
+    out = _ensure_scene_clip_class(frag)
+    assert 'class="clip"' in out
+    assert 'id="scene-hook"' in out
+
+
+def test_assemble_html_injects_clip_class_into_fragments_missing_it(tmp_path):
+    """Defensive post-process: brief drift shouldn't leave lint-broken HTML."""
+    bad_frag = (
+        '<div id="scene-hook" class="scene" data-start="0" data-duration="3">'
+        "<style>#scene-hook { position: absolute; }</style>"
+        '<div class="scene-content">x</div></div>'
+    )
+    out = assemble_html(
+        root_html=SCAFFOLDED_INDEX,
+        beat_html_fragments=[("hook", bad_frag)],
+        captions_html=None,
+    )
+    assert 'class="scene clip"' in out
 
 
 def test_node_errors_when_captions_path_missing(tmp_path):

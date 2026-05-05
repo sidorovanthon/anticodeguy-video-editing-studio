@@ -53,6 +53,27 @@ def patch_index_html(html: str, *, width: int, height: int, duration: float, vid
         html,
         flags=re.DOTALL,
     )
+    # 5. canonicalize root composition id from `npx hyperframes init`'s default
+    # ("main") to "root" so it matches `p4_assemble_index`'s shim and
+    # `p4_captions_layer`'s nesting (both reference `__timelines["root"]`).
+    # Without this, HF lint trips `timeline_id_mismatch` because the registered
+    # id ("main") and the id our injected scripts read ("root") diverge.
+    # See HOM-142.
+    html = re.sub(
+        r'data-composition-id="main"',
+        'data-composition-id="root"',
+        html,
+        count=1,
+    )
+    # Narrow to the assignment form so a future template that mentions
+    # `__timelines["main"]` in a comment / instructional string isn't
+    # silently rewritten — only the actual registration is renamed.
+    html = re.sub(
+        r'__timelines\["main"\]\s*=',
+        '__timelines["root"] =',
+        html,
+        count=1,
+    )
     return html
 
 
