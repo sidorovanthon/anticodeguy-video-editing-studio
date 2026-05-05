@@ -230,6 +230,12 @@ def test_brief_references_canon_paths_without_embedding():
     # Avoid the literal substring `repeat: -1` even in our brief —
     # HF lint regex false-positive (memory `feedback_lint_regex_repeat_minus_one_in_comments`).
     assert "repeat: -1" not in brief
+    # HOM-145: brief MUST forbid infinite repeats with the canonical replacement
+    # formula, citing canon (SKILL.md §Animation Guardrails). Without this rule
+    # smart agents emit `repeat: -1` and gate:lint blocks Phase 4 (HOM-76 verify).
+    assert "infinite repeats" in brief.lower() or "infinite-repeat" in brief.lower()
+    assert "Math.ceil" in brief
+    assert "Animation Guardrails" in brief
     # The brief must NOT lift canonical paragraphs verbatim.
     assert "Layout Before Animation" in brief  # section reference is OK
     # Sanity: the brief stays compact (path-references, ~70 lines target).
