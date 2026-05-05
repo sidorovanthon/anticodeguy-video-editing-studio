@@ -50,6 +50,18 @@ def halt_llm_boundary_node(state):
             return "captions written but not inlined"
         return "captions absent"
 
+    persist_state = compose_state.get("persist") or {}
+
+    def _persist_summary() -> str:
+        if compose_state.get("session_persisted"):
+            n = persist_state.get("session_n")
+            n_part = f" #{n}" if n else ""
+            return f"Phase 4 Session block persisted{n_part}"
+        if persist_state.get("skipped"):
+            reason = persist_state.get("skip_reason") or "no reason given"
+            return f"Phase 4 Session block skipped ({reason})"
+        return "Phase 4 Session block: not yet persisted"
+
     static_guard_record = next(
         (r for r in reversed(gate_results) if r.get("gate") == "gate:static_guard"),
         None,
@@ -63,12 +75,14 @@ def halt_llm_boundary_node(state):
                 extra = " (canon Video/Audio artifact — apply data-has-audio=\"false\")"
             msg = (
                 f"v4 halt: studio launched{port_part}, gate:static_guard PASSED{extra}; "
+                f"{_persist_summary()}; "
                 "next is HITL user_review (HOM-78/v6) → p4_final_render"
             )
         else:
             n_v = len(static_guard_record.get("violations") or [])
             msg = (
                 f"v4 halt: gate:static_guard FAILED ({n_v} violation(s)) — see gate_results; "
+                f"{_persist_summary()}; "
                 "v4-sans-HITL routes failures here, retry-with-feedback is HOM-78/v6"
             )
         return {"notices": [msg]}

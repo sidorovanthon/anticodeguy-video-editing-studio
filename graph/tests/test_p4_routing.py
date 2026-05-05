@@ -152,10 +152,11 @@ def test_route_after_assemble_index_error_to_end():
     assert route_after_assemble_index(state) == END
 
 
-def test_route_after_assemble_index_default_to_studio_launch():
-    """HOM-125: a successful assemble (no error, no skip flag) advances to
-    studio_launch — the empty state stands in for "happy path" here."""
-    assert route_after_assemble_index({}) == "studio_launch"
+def test_route_after_assemble_index_default_to_persist_session():
+    """HOM-126: a successful assemble (no error, no skip flag) advances to
+    p4_persist_session before studio_launch — empty state stands in for
+    "happy path"."""
+    assert route_after_assemble_index({}) == "p4_persist_session"
 
 
 def test_route_after_assemble_index_skip_to_halt():

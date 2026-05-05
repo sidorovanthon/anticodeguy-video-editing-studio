@@ -48,6 +48,14 @@ node_overrides:
     # Real-CLI smoke (HOM-105) routes through Haiku for minimal subscription
     # spend. Switch to a Sonnet ID for production use.
     model: claude-haiku-4-5-20251001
+  p4_persist_session:
+    tier: cheap
+    backend_preference: ["claude", "codex"]
+    timeout_s: 120
+    # Mechanical structured-write — sole Phase 4 LLM node that legitimately
+    # stays cheap (per memory `feedback_creative_nodes_flagship_tier`
+    # exception list). Real-CLI smoke (HOM-126) routes through Haiku.
+    model: claude-haiku-4-5-20251001
   p4_design_system:
     tier: smart
     backend_preference: ["claude"]

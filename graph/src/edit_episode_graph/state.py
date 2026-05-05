@@ -95,6 +95,16 @@ class AssembleState(TypedDict, total=False):
     skip_reason: str | None
 
 
+# PersistState is shared by EditState (Phase 3) and ComposeState (Phase 4);
+# defined here so ComposeState can reference it without a forward decl.
+class PersistState(TypedDict, total=False):
+    persisted_at: str | None
+    session_n: int | None
+    raw_text: str | None
+    skipped: bool
+    skip_reason: str | None
+
+
 class ComposeState(TypedDict, total=False):
     hyperframes_dir: str | None
     index_html_path: str | None
@@ -116,6 +126,11 @@ class ComposeState(TypedDict, total=False):
     captions: CaptionsState
     captions_block_path: str | None
     assemble: AssembleState
+    # p4_persist_session (HOM-126): Phase 4 Session block appended to
+    # <edit>/project.md. Shape mirrors EditState.persist; same PersistState
+    # type. `session_persisted` is set true on a structured success.
+    persist: PersistState
+    session_persisted: bool
     # studio_launch (HOM-125): backgrounded `hyperframes preview` server.
     studio_pid: int | None
     preview_log_path: str | None
@@ -182,14 +197,6 @@ class EvalState(TypedDict, total=False):
     issues: list[dict]
     passed: bool
     final_mp4_path: str | None
-    raw_text: str | None
-    skipped: bool
-    skip_reason: str | None
-
-
-class PersistState(TypedDict, total=False):
-    persisted_at: str | None
-    session_n: int | None
     raw_text: str | None
     skipped: bool
     skip_reason: str | None
