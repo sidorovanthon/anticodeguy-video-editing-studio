@@ -95,7 +95,7 @@ async def _poll_run(client, thread_id: str, run_id: str) -> str:
 
 def _verify_artefacts(slug: str) -> int:
     print("\n=== Verify on-disk artefacts ===")
-    hf = REPO_ROOT / "episodes" / slug / "edit" / "hyperframes"
+    hf = REPO_ROOT / "episodes" / slug / "hyperframes"
     comps_dir = hf / "compositions"
     index_html = hf / "index.html"
 
