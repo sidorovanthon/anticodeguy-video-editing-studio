@@ -65,6 +65,7 @@ Hard rules (orchestrator-house, derived from canon — surfaced so you don't mis
 - **No `data-composition-id` on the scene div** — that attribute belongs to the root composition only (Pattern A; see catalog.md L13).
 - **No `<template>` wrapper.** Pattern B (sub-compositions) is broken upstream; this fragment is inlined as-is.
 - **No `<script src=".../gsap...">`** — root scaffold supplies GSAP once.
+- **IIFE-wrap the entire script body** (exactly as in the output shape above). All scenes are inlined into the same root `index.html`, and HTML `<script>` blocks share one script-lexical environment — an un-IIFE'd `const tl` collides with the scaffold's top-level `const tl` and every other scene, halting `hyperframes validate` with `Identifier 'tl' has already been declared`. The `__sceneTimelines["…"] = tl` registration MUST live inside the IIFE.
 - **Density floor**: ≥ 8 elements visible at the hero frame, ≥ 2 BG decoratives with ambient motion (`tl.to()` on the seekable `tl`, never bare `gsap.to()`).
 - **≥ 3 distinct eases** (Animation Guardrails); first entrance offset 0.1–0.3s.
 - **Final-fade (HR 4)**: permitted iff `is_final == True`. Otherwise NO `tl.to(..., {opacity: 0})` on the scene container — scene-to-scene transitions are root-scope and authored elsewhere.
