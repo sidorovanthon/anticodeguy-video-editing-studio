@@ -68,6 +68,7 @@ from .nodes.p3_self_eval import p3_self_eval_node
 from .nodes.p3_strategy import p3_strategy_node
 from .nodes.p4_assemble_index import p4_assemble_index_node
 from .nodes.p4_catalog_scan import p4_catalog_scan_node
+from .nodes.p4_dispatch_beats import p4_dispatch_beats_node
 from .nodes.p4_design_system import p4_design_system_node
 from .nodes.p4_plan import p4_plan_node
 from .nodes.p4_prompt_expansion import p4_prompt_expansion_node
@@ -100,6 +101,16 @@ def build_graph_uncompiled() -> StateGraph:
     g.add_node("p4_plan", p4_plan_node)
     g.add_node("gate_plan_ok", plan_ok_gate_node)
     g.add_node("p4_catalog_scan", p4_catalog_scan_node)
+    # p4_dispatch_beats returns Command(goto=...) — either a list of Send
+    # objects (fan-out to p4_beat, wired in HOM-134) or a string node name
+    # for the skip paths. The `destinations=` tuple makes those static
+    # destinations visible to LangGraph Studio's graph view (and to the
+    # topology test). `END` is included for the empty-plan branch.
+    g.add_node(
+        "p4_dispatch_beats",
+        p4_dispatch_beats_node,
+        destinations=("p4_assemble_index", END),
+    )
     g.add_node("p4_assemble_index", p4_assemble_index_node)
     g.add_node("p3_inventory", p3_inventory_node)
     g.add_node("p3_pre_scan", p3_pre_scan_node)
@@ -302,6 +313,7 @@ def build_graph_uncompiled() -> StateGraph:
         route_after_catalog_scan,
         {
             END: END,
+            "p4_dispatch_beats": "p4_dispatch_beats",
             "p4_assemble_index": "p4_assemble_index",
         },
     )

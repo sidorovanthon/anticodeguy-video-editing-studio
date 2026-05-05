@@ -30,6 +30,7 @@ def test_phase4_nodes_present_in_compiled_graph():
         "p4_plan",
         "gate_plan_ok",
         "p4_catalog_scan",
+        "p4_dispatch_beats",
         "p4_assemble_index",
     }
     missing = expected - nodes
@@ -60,7 +61,12 @@ def test_phase4_chain_edges_wired():
         ("p4_plan", "gate_plan_ok"),
         ("gate_plan_ok", "halt_llm_boundary"),
         ("gate_plan_ok", "p4_catalog_scan"),
-        ("p4_catalog_scan", "p4_assemble_index"),
+        ("p4_catalog_scan", "p4_dispatch_beats"),
+        # HOM-133: dispatcher can either fan-out (Send → p4_beat, wired in
+        # HOM-134) or skip straight to assemble (or END if plan empty).
+        # `p4_beat` itself is NOT in this PR — its edge appears once
+        # HOM-134 lands. The skip + END edges are wired now.
+        ("p4_dispatch_beats", "p4_assemble_index"),
         ("p4_assemble_index", "halt_llm_boundary"),
     }
     missing = expected_edges - edges
