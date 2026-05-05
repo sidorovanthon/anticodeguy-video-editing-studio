@@ -116,6 +116,12 @@ class ComposeState(TypedDict, total=False):
     captions: CaptionsState
     captions_block_path: str | None
     assemble: AssembleState
+    # studio_launch (HOM-125): backgrounded `hyperframes preview` server.
+    studio_pid: int | None
+    preview_log_path: str | None
+    preview_port: int | None
+    studio_launched_at: str | None
+    studio_reused: bool
 
 
 class PreScanState(TypedDict, total=False):

@@ -31,6 +31,7 @@ from .gates.design_ok import design_ok_gate_node
 from .gates.edl_ok import edl_ok_gate_node
 from .gates.eval_ok import eval_ok_gate_node
 from .gates.plan_ok import plan_ok_gate_node
+from .gates.static_guard import static_guard_gate_node
 from .nodes._routing import (
     route_after_assemble_index,
     route_after_captions_layer,
@@ -52,8 +53,10 @@ from .nodes._routing import (
     route_after_render_segments,
     route_after_scaffold,
     route_after_self_eval,
+    route_after_static_guard,
     route_after_strategy,
     route_after_strategy_confirmed,
+    route_after_studio_launch,
 )
 from .nodes.edl_failure_interrupt import edl_failure_interrupt_node
 from .nodes.eval_failure_interrupt import eval_failure_interrupt_node
@@ -79,6 +82,7 @@ from .nodes.p4_scaffold import p4_scaffold_node
 from .nodes.pickup import pickup_node
 from .nodes.preflight_canon import preflight_canon_node
 from .nodes.strategy_confirmed_interrupt import strategy_confirmed_interrupt_node
+from .nodes.studio_launch import studio_launch_node
 from .state import GraphState
 
 
@@ -117,6 +121,8 @@ def build_graph_uncompiled() -> StateGraph:
     )
     g.add_node("p4_beat", p4_beat_node)
     g.add_node("p4_assemble_index", p4_assemble_index_node)
+    g.add_node("studio_launch", studio_launch_node)
+    g.add_node("gate_static_guard", static_guard_gate_node)
     g.add_node("p3_inventory", p3_inventory_node)
     g.add_node("p3_pre_scan", p3_pre_scan_node)
     g.add_node("p3_strategy", p3_strategy_node)
@@ -339,6 +345,27 @@ def build_graph_uncompiled() -> StateGraph:
         route_after_assemble_index,
         {
             END: END,
+            "halt_llm_boundary": "halt_llm_boundary",
+            "studio_launch": "studio_launch",
+        },
+    )
+    # HOM-125: studio_launch spawns `hyperframes preview --port 3002` in the
+    # background, then gate:static_guard sleeps 5s and scans the preview log.
+    # HOM-127 will insert the lint/validate/inspect/design_adherence/animation_map/
+    # snapshot/captions_track gate cluster + p4_persist_session between
+    # p4_assemble_index and studio_launch.
+    g.add_conditional_edges(
+        "studio_launch",
+        route_after_studio_launch,
+        {
+            END: END,
+            "gate_static_guard": "gate_static_guard",
+        },
+    )
+    g.add_conditional_edges(
+        "gate_static_guard",
+        route_after_static_guard,
+        {
             "halt_llm_boundary": "halt_llm_boundary",
         },
     )

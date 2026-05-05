@@ -50,20 +50,47 @@ def halt_llm_boundary_node(state):
             return "captions written but not inlined"
         return "captions absent"
 
+    static_guard_record = next(
+        (r for r in reversed(gate_results) if r.get("gate") == "gate:static_guard"),
+        None,
+    )
+    if static_guard_record is not None:
+        port = compose_state.get("preview_port")
+        port_part = f" on port {port}" if port else ""
+        if static_guard_record.get("passed"):
+            extra = ""
+            if static_guard_record.get("canon_video_audio_artifact"):
+                extra = " (canon Video/Audio artifact — apply data-has-audio=\"false\")"
+            msg = (
+                f"v4 halt: studio launched{port_part}, gate:static_guard PASSED{extra}; "
+                "next is HITL user_review (HOM-78/v6) → p4_final_render"
+            )
+        else:
+            n_v = len(static_guard_record.get("violations") or [])
+            msg = (
+                f"v4 halt: gate:static_guard FAILED ({n_v} violation(s)) — see gate_results; "
+                "v4-sans-HITL routes failures here, retry-with-feedback is HOM-78/v6"
+            )
+        return {"notices": [msg]}
     if assemble_state.get("skipped") or assemble_state.get("assembled_at"):
         if assemble_state.get("skipped"):
             reason = assemble_state.get("skip_reason") or "no reason given"
             msg = (
                 f"v4 halt: p4_assemble_index skipped: {reason}; {_captions_summary()}; "
                 "p4_dispatch_beats + p4_beat (HOM-133/134) populate "
-                "compositions/<scene>.html; next gate cluster ships in HOM-124"
+                "compositions/<scene>.html; studio_launch is bypassed — "
+                "nothing assembled to preview"
             )
         else:
+            # Reachable if studio_launch errored (routes to END but the halt
+            # branch can still be hit via earlier topology paths). On the
+            # happy path the static_guard branch above fires first.
             n = len(assemble_state.get("beat_names") or [])
             msg = (
                 f"v4 halt: scenes assembled from compositions/*.html into root index.html "
                 f"({n} scene(s), {_captions_summary()}; hard-cut between scenes — "
-                "transitions node ships under HOM-77/v5); next gate cluster ships in HOM-124"
+                "transitions node ships under HOM-77/v5); studio_launch did not "
+                "record a static_guard result — see errors[]"
             )
         return {"notices": [msg]}
     if catalog_state:

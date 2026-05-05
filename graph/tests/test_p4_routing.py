@@ -152,11 +152,37 @@ def test_route_after_assemble_index_error_to_end():
     assert route_after_assemble_index(state) == END
 
 
-def test_route_after_assemble_index_default_to_halt():
-    assert route_after_assemble_index({}) == "halt_llm_boundary"
+def test_route_after_assemble_index_default_to_studio_launch():
+    """HOM-125: a successful assemble (no error, no skip flag) advances to
+    studio_launch — the empty state stands in for "happy path" here."""
+    assert route_after_assemble_index({}) == "studio_launch"
 
 
 def test_route_after_assemble_index_skip_to_halt():
-    """Skip case (no beats yet) still routes to halt so the notice surfaces."""
+    """Skip case (e.g. missing scenes) still routes to halt — there is
+    nothing to preview, so studio_launch would just spawn an idle server."""
     state = {"compose": {"assemble": {"skipped": True, "skip_reason": "no beats"}}}
     assert route_after_assemble_index(state) == "halt_llm_boundary"
+
+
+def test_route_after_studio_launch_default_to_gate():
+    from edit_episode_graph.nodes._routing import route_after_studio_launch
+    assert route_after_studio_launch({}) == "gate_static_guard"
+
+
+def test_route_after_studio_launch_error_to_end():
+    from edit_episode_graph.nodes._routing import route_after_studio_launch
+    state = {"errors": [{"node": "studio_launch", "message": "x", "timestamp": "now"}]}
+    assert route_after_studio_launch(state) == END
+
+
+def test_route_after_static_guard_always_to_halt():
+    """v4 ends here regardless of pass/fail; HITL retry is HOM-78/v6."""
+    from edit_episode_graph.nodes._routing import route_after_static_guard
+    assert route_after_static_guard({}) == "halt_llm_boundary"
+    state = {
+        "gate_results": [
+            {"gate": "gate:static_guard", "passed": False, "violations": ["x"], "iteration": 1}
+        ]
+    }
+    assert route_after_static_guard(state) == "halt_llm_boundary"

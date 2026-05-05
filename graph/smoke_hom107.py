@@ -84,6 +84,9 @@ EXPECTED_NODES = {
     "p4_dispatch_beats",
     "p4_beat",
     "p4_assemble_index",
+    # HOM-125: studio_launch + gate:static_guard end the v4 run.
+    "studio_launch",
+    "gate_static_guard",
 }
 
 HAIKU_MODEL = "claude-haiku-4-5-20251001"

@@ -34,6 +34,8 @@ def test_phase4_nodes_present_in_compiled_graph():
         "p4_dispatch_beats",
         "p4_beat",
         "p4_assemble_index",
+        "studio_launch",
+        "gate_static_guard",
     }
     missing = expected - nodes
     assert not missing, f"Phase 4 nodes missing from compiled graph: {sorted(missing)}"
@@ -83,6 +85,11 @@ def test_phase4_chain_edges_wired():
         # before firing this edge into p4_assemble_index.
         ("p4_beat", "p4_assemble_index"),
         ("p4_assemble_index", "halt_llm_boundary"),
+        # HOM-125: assemble (success) → studio_launch → gate:static_guard → halt.
+        # Skip-side (no scenes assembled) still routes straight to halt.
+        ("p4_assemble_index", "studio_launch"),
+        ("studio_launch", "gate_static_guard"),
+        ("gate_static_guard", "halt_llm_boundary"),
     }
     missing = expected_edges - edges
     assert not missing, (
