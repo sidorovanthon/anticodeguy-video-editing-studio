@@ -314,9 +314,18 @@ def route_after_plan_ok(state) -> str:
 
 
 def route_after_catalog_scan(state) -> str:
-    """p4_catalog_scan → END on error | p4_assemble_index on success."""
+    """p4_catalog_scan → END on error | p4_dispatch_beats when plan has beats |
+    p4_assemble_index otherwise.
+
+    HOM-133 wires the dispatcher between catalog scan and assemble. The
+    skip-to-assemble path is preserved for runs where `compose.plan.beats`
+    is missing or empty (e.g. a slug whose plan didn't fan out).
+    """
     if state.get("errors"):
         return END
+    plan = (state.get("compose") or {}).get("plan") or {}
+    if plan.get("beats"):
+        return "p4_dispatch_beats"
     return "p4_assemble_index"
 
 

@@ -81,6 +81,7 @@ EXPECTED_NODES = {
     "p4_plan",
     "gate_plan_ok",
     "p4_catalog_scan",
+    "p4_dispatch_beats",
     "p4_assemble_index",
 }
 
