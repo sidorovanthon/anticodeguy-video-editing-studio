@@ -1,0 +1,80 @@
+{# Per-scene authoring task descriptor. References canon paths; never embeds canon. #}
+You are authoring **one scene fragment** for an anticodeguy episode (`{{ slug }}`).
+Pattern A (inlined `<div>` per scene) — sub-compositions are unavailable upstream.
+
+Scene context:
+- `scene_id`: `{{ scene_id }}`
+- `beat_index`: {{ beat_index }} of {{ total_beats }}
+- `is_final`: {{ is_final }}            (HR 4 final-fade is permitted ONLY when this is True)
+- timing: `data-start={{ data_start_s }}`, `data-duration={{ data_duration_s }}`, `data-track-index={{ data_track_index }}`
+- viewport: `data-width={{ data_width }}`, `data-height={{ data_height }}` (mirror these literally on the scene div)
+- output file: `{{ scene_html_path }}`
+- plan beat (raw): `{{ plan_beat_json }}`
+
+Upstream artefacts (read these via the `Read` tool before writing):
+- `{{ design_md_path }}` — visual identity (palette, typography, refs, anti-patterns, beat→visual mapping). Treat its `beat_visual_mapping` entry for this beat as load-bearing direction.
+- `{{ expanded_prompt_path }}` — per-scene atmosphere brief (per `references/prompt-expansion.md`). Find your scene by `scene_id` / beat label and honour its motion + atmosphere notes.
+
+Available registry (already installed by `p4_scaffold` / `p4_catalog_scan` — refer to these by name in your fragment if useful, do NOT reinvent):
+{{ catalog_summary }}
+
+Canon to read BEFORE writing the fragment (use the `Read` tool on each — do not rely on memory):
+1. `~/.agents/skills/hyperframes/SKILL.md` — §"Layout Before Animation", §"Scene Transitions" (HR 1–4; HR 4 final-scene exception applies iff `is_final == True`), §"Animation Guardrails", §"Rules (Non-Negotiable)".
+2. `~/.agents/skills/hyperframes/references/transitions/catalog.md` — Hard Rules (CSS) L9 + L13, scene template L36-80. Your fragment shape MUST match Pattern A: only the root composition gets `data-composition-id`/`data-start`/`data-duration`, **the scene div does NOT**; no `<template>` wrapper; non-first scenes start with `opacity: 0` on the scene container so the future transitions node can fade them in.
+3. `~/.agents/skills/hyperframes/references/motion-principles.md` — L115-123 the `tl.fromTo()` mandate inside scene boundaries. `tl.from()` sets `immediateRender: true`, fires before `data-start` is active, and breaks under non-linear seek. **Every entrance in your timeline MUST be `tl.fromTo(...)`** — not `tl.from(...)`, not `gsap.from(...)`.
+4. `~/.agents/skills/hyperframes/references/video-composition.md` — density floor (8-10 elements per scene, L15-23). If `expanded-prompt.md` underspecifies, ADD atmosphere to clear the floor.
+5. `~/.agents/skills/hyperframes/references/typography.md` — type system per scene (use the typography block from `DESIGN.md` as the source of truth).
+6. `~/.agents/skills/hyperframes/references/beat-direction.md` — per-beat planning vocabulary; map this beat's energy/intent into concrete element choices.
+7. `~/.agents/skills/hyperframes/references/transitions.md` — energy/mood selection. Even though scene-to-scene transitions are authored elsewhere (root-timeline scope), the energy/mood signal informs your scene's INTERNAL motion choreography (entrance pacing, ease selection, ambient motion intensity).
+8. `~/.agents/skills/hyperframes/house-style.md` — §"Background Layer": 2-5 ambient-motion BG decoratives per scene. Apply to THIS scene.
+
+(conditional) `~/.agents/skills/hyperframes/references/techniques.md` — read only if `plan_beat_json` references a specific technique (e.g. lottie, canvas, variable-fonts).
+
+Output shape — Pattern A scene fragment, ONE `<div>` written to `{{ scene_html_path }}`:
+
+```html
+<div id="scene-{{ scene_id }}" class="scene"
+     data-start="{{ data_start_s }}" data-duration="{{ data_duration_s }}" data-track-index="{{ data_track_index }}"
+     data-width="{{ data_width }}" data-height="{{ data_height }}">
+  <style>
+    /* EVERY rule prefixed with #scene-{{ scene_id }} — no bare `.title` etc. */
+    #scene-{{ scene_id }} { position: absolute; inset: 0; {% if beat_index > 0 %}opacity: 0;{% else %}opacity: 1;{% endif %} }
+    /* …per-element rules… */
+  </style>
+  <div class="scene-content">
+    <!-- ≥ 8 elements visible at hero frame; ≥ 2 BG decoratives with ambient motion -->
+  </div>
+  <script>
+    (function() {
+      window.__sceneTimelines = window.__sceneTimelines || {};
+      const tl = gsap.timeline({ paused: true });
+      // entrance-only, every entrance via tl.fromTo() — see motion-principles.md L115-123
+      // ≥ 3 distinct eases (Animation Guardrails); first entrance offset 0.1–0.3s
+      // ambient motion on BG decoratives via tl.to() (NEVER bare gsap.to())
+      {% if is_final %}// HR 4 final-fade is permitted here — tl.to(..., { opacity: 0 }) at end of duration{% endif %}
+      window.__sceneTimelines["{{ scene_id }}"] = tl;
+    })();
+  </script>
+</div>
+```
+
+Hard rules (orchestrator-house, derived from canon — surfaced so you don't miss them):
+- **CSS scoping** — every rule prefixed with `#scene-{{ scene_id }}`. No bare class selectors. Inlining is collision-prone otherwise.
+- **`tl.fromTo()` only** for entrances — never `tl.from()`, never bare `gsap.from()`. Non-linear seek breaks otherwise.
+- **No `data-composition-id` on the scene div** — that attribute belongs to the root composition only (Pattern A; see catalog.md L13).
+- **No `<template>` wrapper.** Pattern B (sub-compositions) is broken upstream; this fragment is inlined as-is.
+- **No `<script src=".../gsap...">`** — root scaffold supplies GSAP once.
+- **Density floor**: ≥ 8 elements visible at the hero frame, ≥ 2 BG decoratives with ambient motion (`tl.to()` on the seekable `tl`, never bare `gsap.to()`).
+- **≥ 3 distinct eases** (Animation Guardrails); first entrance offset 0.1–0.3s.
+- **Final-fade (HR 4)**: permitted iff `is_final == True`. Otherwise NO `tl.to(..., {opacity: 0})` on the scene container — scene-to-scene transitions are root-scope and authored elsewhere.
+- **Avoid the literal substring `repeat:` followed by ` -1`** — even in JS comments — HF lint regex false-positive. Use `repeat: 999` or omit.
+- **opacity initial state**: `0` for non-first scenes (the future transitions node fades them in). First scene starts visible.
+
+Process:
+1. `Read` the canon list above (mandatory; do not rely on memory for shape or hard rules).
+2. `Read` `{{ design_md_path }}` and `{{ expanded_prompt_path }}` for direction.
+3. Compose ≥ 8 elements that honour the design system's typography + palette and the beat's energy/intent.
+4. `Write` ONE file to `{{ scene_html_path }}` containing the fragment shape above.
+5. Reply on a single line: `Wrote {{ scene_html_path }} (<N> elements, <M> tweens).`
+
+Do NOT modify the root `index.html`, do NOT touch sibling `compositions/*.html`, do NOT add `<script src=...>` tags. Stay inside your scene.

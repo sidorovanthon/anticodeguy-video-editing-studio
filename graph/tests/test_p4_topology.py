@@ -31,6 +31,7 @@ def test_phase4_nodes_present_in_compiled_graph():
         "gate_plan_ok",
         "p4_catalog_scan",
         "p4_dispatch_beats",
+        "p4_beat",
         "p4_assemble_index",
     }
     missing = expected - nodes
@@ -48,7 +49,11 @@ def test_phase4_chain_edges_wired():
       gate_design_ok → p4_prompt_expansion
       p4_prompt_expansion → p4_plan
       p4_plan → gate_plan_ok
-      gate_plan_ok → halt_llm_boundary
+      gate_plan_ok → {p4_catalog_scan, halt_llm_boundary}
+      p4_catalog_scan → p4_dispatch_beats
+      p4_dispatch_beats → {p4_beat (Send fan-out), p4_assemble_index (skip)}
+      p4_beat → p4_assemble_index (static fan-in)
+      p4_assemble_index → halt_llm_boundary
     """
     graph = _compiled_graph_repr()
     edges = {(e.source, e.target) for e in graph.edges}
@@ -62,11 +67,13 @@ def test_phase4_chain_edges_wired():
         ("gate_plan_ok", "halt_llm_boundary"),
         ("gate_plan_ok", "p4_catalog_scan"),
         ("p4_catalog_scan", "p4_dispatch_beats"),
-        # HOM-133: dispatcher can either fan-out (Send → p4_beat, wired in
-        # HOM-134) or skip straight to assemble (or END if plan empty).
-        # `p4_beat` itself is NOT in this PR — its edge appears once
-        # HOM-134 lands. The skip + END edges are wired now.
+        # HOM-134: dispatcher fans out to p4_beat (Send) for the happy path,
+        # or skips straight to assemble (or END if plan empty).
+        ("p4_dispatch_beats", "p4_beat"),
         ("p4_dispatch_beats", "p4_assemble_index"),
+        # Static fan-in: LangGraph waits for all Send-spawned p4_beat branches
+        # before firing this edge into p4_assemble_index.
+        ("p4_beat", "p4_assemble_index"),
         ("p4_assemble_index", "halt_llm_boundary"),
     }
     missing = expected_edges - edges

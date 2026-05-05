@@ -68,6 +68,7 @@ from .nodes.p3_self_eval import p3_self_eval_node
 from .nodes.p3_strategy import p3_strategy_node
 from .nodes.p4_assemble_index import p4_assemble_index_node
 from .nodes.p4_catalog_scan import p4_catalog_scan_node
+from .nodes.p4_beat import p4_beat_node
 from .nodes.p4_dispatch_beats import p4_dispatch_beats_node
 from .nodes.p4_design_system import p4_design_system_node
 from .nodes.p4_plan import p4_plan_node
@@ -109,8 +110,9 @@ def build_graph_uncompiled() -> StateGraph:
     g.add_node(
         "p4_dispatch_beats",
         p4_dispatch_beats_node,
-        destinations=("p4_assemble_index", END),
+        destinations=("p4_beat", "p4_assemble_index", END),
     )
+    g.add_node("p4_beat", p4_beat_node)
     g.add_node("p4_assemble_index", p4_assemble_index_node)
     g.add_node("p3_inventory", p3_inventory_node)
     g.add_node("p3_pre_scan", p3_pre_scan_node)
@@ -317,6 +319,10 @@ def build_graph_uncompiled() -> StateGraph:
             "p4_assemble_index": "p4_assemble_index",
         },
     )
+    # HOM-134: Send-spawned p4_beat branches fan in here. LangGraph waits
+    # for ALL parallel branches before firing this static edge, so
+    # p4_assemble_index sees every fragment that successfully wrote.
+    g.add_edge("p4_beat", "p4_assemble_index")
     g.add_conditional_edges(
         "p4_assemble_index",
         route_after_assemble_index,

@@ -74,3 +74,13 @@ node_overrides:
     # transition mechanism — creative direction, not mechanical translation.
     # Spec §6.3 originally `cheap`; HOM-120 amends to `smart` (memory
     # `feedback_creative_nodes_flagship_tier`).
+  p4_beat:
+    tier: smart
+    backend_preference: ["claude"]
+    timeout_s: 300
+    # Per-scene Pattern A authoring (HOM-134). Production default is the
+    # smart tier (Opus 4.7) — scene composition is creative work and cheap
+    # models empirically hollow it out (memory `feedback_creative_nodes_flagship_tier`).
+    # Smoke (HOM-122d / smoke_hom122.py) flips this to Haiku for ~$0.001/beat
+    # spend; uncomment the line below to pin Haiku for local smoke runs.
+    # model: claude-haiku-4-5-20251001

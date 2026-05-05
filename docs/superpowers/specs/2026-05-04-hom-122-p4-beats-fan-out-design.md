@@ -73,7 +73,7 @@ episodes/<slug>/edit/hyperframes/
      data-start="{{data_start_s}}" data-duration="{{data_duration_s}}" data-track-index="1">
   <style>
     /* ALL rules prefixed with the id selector — no bare class selectors */
-    #scene-{{scene_id}} { position: absolute; inset: 0; opacity: {{0 if not is_final and beat_index>0 else 1}}; }
+    #scene-{{scene_id}} { position: absolute; inset: 0; opacity: {{0 if beat_index>0 else 1}}; }
     #scene-{{scene_id}} .scene-content { width: 100%; height: 100%; padding: 120px 160px;
                                           display: flex; flex-direction: column; gap: 24px; box-sizing: border-box; }
     #scene-{{scene_id}} .title { font-size: 120px; ... }
