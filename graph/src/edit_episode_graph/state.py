@@ -96,6 +96,14 @@ class ComposeState(TypedDict, total=False):
     expansion: ExpansionState
     expanded_prompt_path: str | None
     catalog: CatalogReport
+    # DEPRECATED — `compose.beats` is no longer populated by any node. The
+    # per-beat fan-out (HOM-133/134) writes scene fragments to
+    # `<hyperframes_dir>/compositions/<scene_id>.html` directly, and
+    # `p4_assemble_index` reads them from disk in `compose.plan.beats[]`
+    # order (FS source-of-truth, no state echo). Kept on the schema only
+    # so existing checkpoints with the field don't fail validation;
+    # mechanical removal is tracked separately. Spec:
+    # `2026-05-04-hom-122-p4-beats-fan-out-design.md` §"State changes".
     beats: list[BeatArtifact]
     captions_block_path: str | None
     assemble: AssembleState
