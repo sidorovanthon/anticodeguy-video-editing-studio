@@ -179,3 +179,29 @@ def test_v4_halt_after_static_guard_canon_artifact():
     assert "PASSED" in msg
     assert "data-has-audio" in msg
 
+
+def test_halt_notice_on_edl_resume_abort():
+    state = {
+        "edit": {"edl": {"failure_resume": {"action": "abort"}}},
+        "gate_results": [
+            {"gate": "gate:edl_ok", "passed": False, "violations": ["v1", "v2"], "iteration": 1}
+        ],
+    }
+    msg = halt_llm_boundary_node(state)["notices"][0]
+    assert msg.startswith("v3 halt: gate:edl_ok FAILED")
+    assert "2 violation" in msg
+    assert "operator aborted" in msg
+
+
+def test_halt_notice_on_eval_resume_abort():
+    state = {
+        "edit": {"eval": {"failure_resume": {"action": {"abort": True}}}},
+        "gate_results": [
+            {"gate": "gate:eval_ok", "passed": False, "violations": ["v"], "iteration": 3}
+        ],
+    }
+    msg = halt_llm_boundary_node(state)["notices"][0]
+    assert msg.startswith("v3 halt: gate:eval_ok FAILED")
+    assert "iter 3" in msg
+    assert "operator aborted" in msg
+

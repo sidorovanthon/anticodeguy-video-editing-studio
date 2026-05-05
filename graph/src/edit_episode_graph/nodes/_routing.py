@@ -171,6 +171,58 @@ def route_after_edl_ok(state) -> str:
     return "edl_failure_interrupt"
 
 
+# HOM-130: tokens that count as "operator gave up" on a failure interrupt.
+# Anything else (including empty payload — the natural Studio Submit gesture
+# after editing state) is treated as "retry — re-run the gate".
+_ABORT_TOKENS = frozenset({"abort", "stop", "end", "give_up", "give up", "no", "n"})
+
+
+def _is_abort(decision: object) -> bool:
+    if isinstance(decision, str):
+        return decision.strip().lower() in _ABORT_TOKENS
+    if isinstance(decision, dict):
+        return decision.get("abort") is True
+    return False
+
+
+def route_after_edl_failure_interrupt(state) -> str:
+    """edl_failure_interrupt → gate_edl_ok (retry) | halt_llm_boundary (abort).
+
+    The interrupt node captures the operator's resume payload at
+    `state.edit.edl.failure_resume.action`. Abort tokens route to
+    halt_llm_boundary so its notice surfaces in Studio (END would be silent).
+    Anything else re-runs gate:edl_ok — which records a fresh iteration and
+    either passes (operator fixed the EDL) or re-suspends here.
+    """
+    if state.get("errors"):
+        return END
+    edl = (state.get("edit") or {}).get("edl") or {}
+    fr = edl.get("failure_resume") or {}
+    if _is_abort(fr.get("action")):
+        return "halt_llm_boundary"
+    return "gate_edl_ok"
+
+
+def route_after_eval_failure_interrupt(state) -> str:
+    """eval_failure_interrupt → gate_eval_ok (retry) | halt_llm_boundary (abort).
+
+    Mirror of `route_after_edl_failure_interrupt`. Resume payload lives at
+    `state.edit.eval.failure_resume.action`. Note: gate_eval_ok's iteration
+    counter has already reached `max_iterations` by the time we land here
+    (that's how `route_after_eval_ok` decides to escalate to the interrupt);
+    re-running the gate post-resume increments to N+1, so a still-failing
+    eval routes via `route_after_eval_ok` straight back into this interrupt
+    rather than re-rendering — operator must fix and re-run, or abort.
+    """
+    if state.get("errors"):
+        return END
+    eval_state = (state.get("edit") or {}).get("eval") or {}
+    fr = eval_state.get("failure_resume") or {}
+    if _is_abort(fr.get("action")):
+        return "halt_llm_boundary"
+    return "gate_eval_ok"
+
+
 def route_after_render_segments(state) -> str:
     """p3_render_segments -> END on error | p3_self_eval | halt on render-skip.
 

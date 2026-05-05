@@ -48,8 +48,10 @@ from .nodes._routing import (
     route_after_design_adherence,
     route_after_design_ok,
     route_after_design_system,
+    route_after_edl_failure_interrupt,
     route_after_edl_ok,
     route_after_edl_select,
+    route_after_eval_failure_interrupt,
     route_after_eval_ok,
     route_after_inspect,
     route_after_inventory,
@@ -282,8 +284,29 @@ def build_graph_uncompiled() -> StateGraph:
             "halt_llm_boundary": "halt_llm_boundary",
         },
     )
-    g.add_edge("edl_failure_interrupt", END)
-    g.add_edge("eval_failure_interrupt", END)
+    # HOM-130: failure interrupts are no longer dead-ends. After resume,
+    # routing inspects `state.edit.<edl|eval>.failure_resume.action`:
+    #   - abort token        → halt_llm_boundary (notice surfaces in Studio)
+    #   - anything else      → re-run the originating gate
+    # END is kept reachable for the defensive `state.errors` short-circuit.
+    g.add_conditional_edges(
+        "edl_failure_interrupt",
+        route_after_edl_failure_interrupt,
+        {
+            END: END,
+            "gate_edl_ok": "gate_edl_ok",
+            "halt_llm_boundary": "halt_llm_boundary",
+        },
+    )
+    g.add_conditional_edges(
+        "eval_failure_interrupt",
+        route_after_eval_failure_interrupt,
+        {
+            END: END,
+            "gate_eval_ok": "gate_eval_ok",
+            "halt_llm_boundary": "halt_llm_boundary",
+        },
+    )
 
     # skip_phase4? lives inside route_after_remap.
     g.add_conditional_edges(
