@@ -167,6 +167,18 @@ class InventoryState(TypedDict, total=False):
     takes_packed_path: str | None
 
 
+class FailureResumeState(TypedDict, total=False):
+    """Operator's resume payload after a HITL gate-failure interrupt (HOM-130).
+
+    `action` is whatever the operator passed to `Command(resume=...)` —
+    typed `object` because Studio resumes are free-form (None / str / dict).
+    Routing inspects this via `_routing._is_abort` to decide retry vs halt.
+    """
+    action: object
+    iteration_at_suspend: int | None
+    resumed_at: str | None
+
+
 class EdlState(TypedDict, total=False):
     version: int
     sources: dict[str, str]
@@ -179,6 +191,7 @@ class EdlState(TypedDict, total=False):
     raw_text: str | None
     skipped: bool
     skip_reason: str | None
+    failure_resume: FailureResumeState
 
 
 class RenderState(TypedDict, total=False):
@@ -200,6 +213,7 @@ class EvalState(TypedDict, total=False):
     raw_text: str | None
     skipped: bool
     skip_reason: str | None
+    failure_resume: FailureResumeState
 
 
 class EditState(TypedDict, total=False):

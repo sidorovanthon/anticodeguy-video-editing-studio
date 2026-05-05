@@ -102,16 +102,12 @@ def halt_llm_boundary_node(state):
     )
     # HOM-130: Phase 3 failure interrupts (edl + eval) are now resumable.
     # On abort, routing lands here so the operator sees an explicit notice
-    # instead of a silent END. Token list mirrors `_routing._ABORT_TOKENS`.
-    _ABORT_TOKENS = {"abort", "stop", "end", "give_up", "give up", "no", "n"}
+    # instead of a silent END. Reuses `_routing._is_abort` to keep the
+    # abort-detection contract single-sourced.
+    from ._routing import _is_abort
 
     def _resume_aborted(failure_state: dict) -> bool:
-        action = (failure_state.get("failure_resume") or {}).get("action")
-        if isinstance(action, str):
-            return action.strip().lower() in _ABORT_TOKENS
-        if isinstance(action, dict):
-            return action.get("abort") is True
-        return False
+        return _is_abort((failure_state.get("failure_resume") or {}).get("action"))
 
     if _resume_aborted(edl_state):
         record = next(
