@@ -233,9 +233,11 @@ def test_brief_references_canon_paths_without_embedding():
     # HOM-145: brief MUST forbid infinite repeats with the canonical replacement
     # formula, citing canon (SKILL.md §Animation Guardrails). Without this rule
     # smart agents emit `repeat: -1` and gate:lint blocks Phase 4 (HOM-76 verify).
-    assert "infinite repeats" in brief.lower() or "infinite-repeat" in brief.lower()
-    assert "Math.ceil" in brief
-    assert "Animation Guardrails" in brief
+    # The trio (prohibition + formula + canon citation) all need to survive any
+    # future edit — single-keyword guards are too easy to step over.
+    assert "infinite" in brief.lower(), "missing the prohibition language"
+    assert "Math.ceil" in brief, "missing the canonical replacement formula"
+    assert "Animation Guardrails" in brief, "missing the canon citation"
     # The brief must NOT lift canonical paragraphs verbatim.
     assert "Layout Before Animation" in brief  # section reference is OK
     # Sanity: the brief stays compact (path-references, ~70 lines target).
