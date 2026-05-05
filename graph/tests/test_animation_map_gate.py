@@ -237,6 +237,25 @@ def test_fails_when_helper_not_found_anywhere(tmp_path, monkeypatch):
     assert any("animation-map.mjs not found" in v for v in record["violations"])
 
 
+def test_runtime_filenotfound_records_failure_does_not_raise(tmp_path, monkeypatch):
+    """Gates MUST NOT raise (per _base.py contract). If `node` is found by
+    `shutil.which` but disappears before subprocess.run completes, the
+    FileNotFoundError must surface as a violation, not an exception."""
+    hf_dir = _hf_dir(tmp_path)
+    helper = tmp_path / "fake-helper.mjs"
+    helper.write_text("// stub", encoding="utf-8")
+    _stub_resolver(monkeypatch, helper)
+    monkeypatch.setattr(gate_mod, "_node_executable", lambda: "node")
+
+    def boom(*a, **kw):
+        raise FileNotFoundError("node vanished mid-call")
+
+    monkeypatch.setattr(gate_mod.subprocess, "run", boom)
+    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
+    assert not record["passed"]
+    assert any("node executable not found" in v for v in record["violations"])
+
+
 def test_fails_when_helper_exits_zero_but_no_json(tmp_path, monkeypatch):
     hf_dir = _hf_dir(tmp_path)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")

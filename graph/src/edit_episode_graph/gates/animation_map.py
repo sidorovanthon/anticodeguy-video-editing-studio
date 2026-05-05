@@ -178,6 +178,19 @@ def _run_helper(hf_dir: Path, helper: Path, used_fallback: bool, timeout: float 
             used_fallback=used_fallback,
             out_dir=out_dir,
         )
+    except FileNotFoundError as exc:
+        # Mirrors `_base.run_hf_cli`: gates must never raise — record a
+        # structured failure instead. Reachable when `shutil.which` found
+        # node but it disappeared (or when a Windows `.cmd` shim lookup
+        # raced a path mutation).
+        return _HelperResult(
+            exit_code=127,
+            stdout="",
+            stderr=f"node executable not found at runtime: {exc}",
+            helper_path=helper,
+            used_fallback=used_fallback,
+            out_dir=out_dir,
+        )
 
     return _HelperResult(
         exit_code=proc.returncode,
