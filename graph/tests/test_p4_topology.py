@@ -30,6 +30,7 @@ def test_phase4_nodes_present_in_compiled_graph():
         "p4_plan",
         "gate_plan_ok",
         "p4_catalog_scan",
+        "p4_captions_layer",
         "p4_dispatch_beats",
         "p4_beat",
         "p4_assemble_index",
@@ -50,7 +51,8 @@ def test_phase4_chain_edges_wired():
       p4_prompt_expansion → p4_plan
       p4_plan → gate_plan_ok
       gate_plan_ok → {p4_catalog_scan, halt_llm_boundary}
-      p4_catalog_scan → p4_dispatch_beats
+      p4_catalog_scan → p4_captions_layer (HOM-123)
+      p4_captions_layer → {p4_dispatch_beats (beats), p4_assemble_index (skip)}
       p4_dispatch_beats → {p4_beat (Send fan-out), p4_assemble_index (skip)}
       p4_beat → p4_assemble_index (static fan-in)
       p4_assemble_index → halt_llm_boundary
@@ -66,7 +68,13 @@ def test_phase4_chain_edges_wired():
         ("p4_plan", "gate_plan_ok"),
         ("gate_plan_ok", "halt_llm_boundary"),
         ("gate_plan_ok", "p4_catalog_scan"),
-        ("p4_catalog_scan", "p4_dispatch_beats"),
+        # HOM-123: captions are authored once after catalog scan, before the
+        # beat-vs-skip fan-out decision. Captions only depend on DESIGN.md +
+        # transcript (both available pre-catalog), so authoring once outside
+        # the per-beat fan-out keeps the smart-tier dispatch single-shot.
+        ("p4_catalog_scan", "p4_captions_layer"),
+        ("p4_captions_layer", "p4_dispatch_beats"),
+        ("p4_captions_layer", "p4_assemble_index"),
         # HOM-134: dispatcher fans out to p4_beat (Send) for the happy path,
         # or skips straight to assemble (or END if plan empty).
         ("p4_dispatch_beats", "p4_beat"),

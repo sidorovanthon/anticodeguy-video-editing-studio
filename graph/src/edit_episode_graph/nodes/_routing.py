@@ -314,12 +314,29 @@ def route_after_plan_ok(state) -> str:
 
 
 def route_after_catalog_scan(state) -> str:
-    """p4_catalog_scan → END on error | p4_dispatch_beats when plan has beats |
-    p4_assemble_index otherwise.
+    """p4_catalog_scan → END on error | p4_captions_layer otherwise.
 
-    HOM-133 wires the dispatcher between catalog scan and assemble. The
-    skip-to-assemble path is preserved for runs where `compose.plan.beats`
-    is missing or empty (e.g. a slug whose plan didn't fan out).
+    HOM-123 inserts the captions authoring node between catalog scan and the
+    beat-fan-out decision. Captions depend only on `DESIGN.md` + transcript
+    (both available before catalog scan completes), so authoring them once
+    here — outside the per-beat fan-out — keeps the topology linear and
+    avoids re-running the smart-tier captions node N times. The beat-vs-skip
+    decision moves to `route_after_captions_layer`.
+    """
+    if state.get("errors"):
+        return END
+    return "p4_captions_layer"
+
+
+def route_after_captions_layer(state) -> str:
+    """p4_captions_layer → END on error | p4_dispatch_beats (beats present) |
+    p4_assemble_index (no beats).
+
+    Mirrors the pre-HOM-123 `route_after_catalog_scan` decision, shifted one
+    node downstream. A captions skip (e.g. missing transcript) is non-fatal:
+    `p4_assemble_index` treats `compose.captions_block_path` as optional and
+    assembles without it; the run continues so the operator sees both the
+    assembled scenes and the skip notice in Studio.
     """
     if state.get("errors"):
         return END
