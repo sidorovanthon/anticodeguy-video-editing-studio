@@ -7,6 +7,7 @@ from pathlib import Path
 from edit_episode_graph.nodes.p4_assemble_index import (
     _SHIM_BEGIN_MARKER,
     _SHIM_END_MARKER,
+    _ensure_inlined_script_iife,
     _ensure_scene_clip_class,
     assemble_html,
     build_visibility_shim,
@@ -364,6 +365,119 @@ def test_assemble_html_injects_clip_class_into_fragments_missing_it(tmp_path):
         captions_html=None,
     )
     assert 'class="scene clip"' in out
+
+
+# ---- HOM-143: IIFE wrapping for inlined script blocks ----
+
+def test_ensure_iife_wraps_unwrapped_script_body():
+    frag = (
+        '<div id="scene-hook"><script>\n'
+        "  const tl = gsap.timeline({ paused: true });\n"
+        "  window.__sceneTimelines['hook'] = tl;\n"
+        "</script></div>"
+    )
+    out = _ensure_inlined_script_iife(frag)
+    assert "(function() {" in out
+    assert "})();" in out
+    # Original body is preserved inside the wrapper.
+    assert "const tl = gsap.timeline({ paused: true });" in out
+
+
+def test_ensure_iife_idempotent_when_already_wrapped():
+    body = (
+        "\n    (function() {\n"
+        "      const tl = gsap.timeline({ paused: true });\n"
+        "    })();\n  "
+    )
+    frag = f"<div><script>{body}</script></div>"
+    assert _ensure_inlined_script_iife(frag) == frag
+
+
+def test_ensure_iife_idempotent_for_arrow_iife():
+    frag = "<div><script>(() => { const tl = 1; })();</script></div>"
+    assert _ensure_inlined_script_iife(frag) == frag
+
+
+def test_ensure_iife_idempotent_for_defensive_leading_semicolon():
+    """Defensive `;(function(){…})()` IIFEs must be recognised as already wrapped."""
+    frag = "<div><script>;(function() { const tl = 1; })();</script></div>"
+    assert _ensure_inlined_script_iife(frag) == frag
+
+
+def test_ensure_iife_skips_external_script_src():
+    frag = '<div><script src="gsap.min.js"></script></div>'
+    assert _ensure_inlined_script_iife(frag) == frag
+
+
+def test_ensure_iife_skips_empty_body():
+    frag = "<div><script>   \n</script></div>"
+    assert _ensure_inlined_script_iife(frag) == frag
+
+
+def test_ensure_iife_handles_leading_comments_in_iife_detection():
+    """Body that begins with a // comment then an IIFE should not be re-wrapped."""
+    frag = (
+        "<div><script>\n"
+        "// scene timeline\n"
+        "(function() { const tl = 1; })();\n"
+        "</script></div>"
+    )
+    assert _ensure_inlined_script_iife(frag) == frag
+
+
+def test_ensure_iife_wraps_each_script_block_independently():
+    frag = (
+        "<div>"
+        "<script>const tl = 1;</script>"
+        "<script>(function() { const tl = 2; })();</script>"
+        "<script>const tl = 3;</script>"
+        "</div>"
+    )
+    out = _ensure_inlined_script_iife(frag)
+    # Two unwrapped blocks gain wrappers; the middle one is unchanged.
+    assert out.count("(function() {") == 3  # middle's existing + 2 new
+    assert out.count("})();") == 3
+
+
+def test_assemble_html_wraps_unwrapped_captions_script(tmp_path):
+    """Defensive: brief drift in p4_captions_layer shouldn't collide with
+    the scaffold's top-level `const tl`."""
+    bad_captions = (
+        '<div id="captions-layer"><script>\n'
+        "  var tl = gsap.timeline({ paused: true });\n"
+        "  window.__captionTimelines['captions'] = tl;\n"
+        "</script></div>"
+    )
+    out = assemble_html(
+        root_html=SCAFFOLDED_INDEX,
+        beat_html_fragments=[("hook", _pattern_a_fragment("hook"))],
+        captions_html=bad_captions,
+    )
+    captions_idx = out.index('id="captions-layer"')
+    body_close_idx = out.index("</body>")
+    captions_section = out[captions_idx:body_close_idx]
+    assert "(function() {" in captions_section
+    assert "var tl = gsap.timeline" in captions_section
+
+
+def test_assemble_html_wraps_unwrapped_scene_script():
+    bad_scene = (
+        '<div id="scene-hook" class="scene clip" '
+        'data-start="0" data-duration="3" data-track-index="1">'
+        "<script>\n"
+        "  const tl = gsap.timeline({ paused: true });\n"
+        "  window.__sceneTimelines['hook'] = tl;\n"
+        "</script></div>"
+    )
+    out = assemble_html(
+        root_html=SCAFFOLDED_INDEX,
+        beat_html_fragments=[("hook", bad_scene)],
+        captions_html=None,
+    )
+    scene_idx = out.index('id="scene-hook"')
+    end_idx = out.index("p4_assemble_index: end")
+    section = out[scene_idx:end_idx]
+    assert "(function() {" in section
 
 
 def test_node_errors_when_captions_path_missing(tmp_path):

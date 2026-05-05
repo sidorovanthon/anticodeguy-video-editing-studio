@@ -117,6 +117,7 @@ Hard rules (orchestrator-house, derived from canon — surfaced so you don't mis
 - **Determinism**: no `Math.random()`, no `Date.now()`. Group/word arrays are static
   literals in the script.
 - **No `<script src="..."`>** — root scaffold supplies GSAP once.
+- **IIFE-wrap the entire script body.** The captions block is inlined into the root `index.html` between the scaffold's `<script>` (which has top-level `const tl = ...`) and the v4 visibility shim. ALL `<script>` blocks in the same HTML share one script-lexical environment, so an un-IIFE'd `var tl` here collides with the scaffold's `const tl` and `hyperframes validate` halts with `Identifier 'tl' has already been declared`. Every `var`/`let`/`const` you declare MUST live inside `(function() { … })();` exactly as in the output shape above.
 - **Avoid the literal substring `repeat:` followed by ` -1`** (HF lint regex
   false-positive). Use `repeat: 999` or omit.
 

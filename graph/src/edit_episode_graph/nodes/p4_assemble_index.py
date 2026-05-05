@@ -141,6 +141,66 @@ def _ensure_scene_clip_class(fragment: str) -> str:
     return fragment[: match.start()] + new_open_tag + fragment[match.end() :]
 
 
+_SCRIPT_BLOCK_RE = re.compile(
+    r"(?P<open><script(?P<attrs>[^>]*)>)(?P<body>.*?)(?P<close></script>)",
+    flags=re.IGNORECASE | re.DOTALL,
+)
+_HAS_SRC_ATTR_RE = re.compile(r"""\bsrc\s*=\s*["']""", flags=re.IGNORECASE)
+# Detects bodies already wrapped in an IIFE — `(function() { ... })()` or
+# `(() => { ... })()`, possibly preceded by leading whitespace and/or // or
+# /* */ comments. Anchored at start of trimmed body.
+# Leading semicolons (defensive `;(function(){…})()`) are tolerated so a
+# protectively-written IIFE is recognised as already-wrapped. A literal
+# `</script>` inside a JS string literal would prematurely close
+# `_SCRIPT_BLOCK_RE`'s match — both briefs forbid the dynamic-write APIs
+# that produce that pattern, and the failure mode is loud (the trailing
+# end-tag is left behind as text) and would surface immediately in the
+# next gate:lint run.
+_IIFE_HEAD_RE = re.compile(
+    r"""\A(?:\s|;|//[^\n]*\n|/\*.*?\*/)*\(\s*(?:function\b|\([^)]*\)\s*=>)""",
+    flags=re.DOTALL,
+)
+
+
+def _ensure_inlined_script_iife(fragment: str) -> str:
+    """Wrap top-level `<script>` bodies in an IIFE so that `const`/`let`/`var`
+    declarations don't leak into the document's shared script lexical scope.
+
+    The scaffolded root composition's script declares `const tl = ...` at
+    top level (canonical `hyperframes init` shape). Multiple `<script>`
+    blocks share the same script-lexical environment in non-module HTML, so
+    *any* other top-level `const tl`/`let tl`/`var tl` (or in fact any
+    duplicate top-level identifier) trips
+    `Identifier 'tl' has already been declared` under headless validate.
+
+    The `p4_beat` and `p4_captions_layer` briefs both mandate IIFE wrapping
+    — but LLM drift produces un-wrapped scripts under re-run, and the
+    failure mode is brittle: `validate` halts the entire episode on the
+    second `const tl`. Defensive post-process at inline time keeps the
+    assembled `index.html` valid regardless of brief drift. Idempotent:
+    bodies that already begin with `(function` / `(() =>` / `((arg) =>`
+    pass through unchanged.
+
+    Skips `<script src="...">` (no inline body) and empty-body scripts.
+    """
+    def _wrap(match: re.Match[str]) -> str:
+        attrs = match.group("attrs") or ""
+        if _HAS_SRC_ATTR_RE.search(attrs):
+            return match.group(0)
+        body = match.group("body")
+        if not body.strip():
+            return match.group(0)
+        if _IIFE_HEAD_RE.match(body):
+            return match.group(0)
+        leading_ws = body[: len(body) - len(body.lstrip("\n"))]
+        trailing_ws = body[len(body.rstrip()) :]
+        inner = body[len(leading_ws) : len(body) - len(trailing_ws)]
+        wrapped = f"{leading_ws}(function() {{\n{inner}\n}})();{trailing_ws}"
+        return match.group("open") + wrapped + match.group("close")
+
+    return _SCRIPT_BLOCK_RE.sub(_wrap, fragment)
+
+
 def _atomic_write_text(path: Path, content: str) -> None:
     """Write `content` to `path` atomically via tmp + os.replace.
 
@@ -232,10 +292,12 @@ def assemble_html(
     pieces = [_BEAT_INJECTION_MARKER]
     for name, fragment in beat_html_fragments:
         pieces.append(f"<!-- beat: {name} -->")
-        pieces.append(_ensure_scene_clip_class(fragment.strip()))
+        pieces.append(
+            _ensure_inlined_script_iife(_ensure_scene_clip_class(fragment.strip()))
+        )
     if captions_html:
         pieces.append(_CAPTIONS_INJECTION_MARKER)
-        pieces.append(captions_html.strip())
+        pieces.append(_ensure_inlined_script_iife(captions_html.strip()))
     pieces.append(_END_INJECTION_MARKER)
     if visibility_shim:
         pieces.append(visibility_shim)
