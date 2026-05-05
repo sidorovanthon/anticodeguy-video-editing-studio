@@ -33,7 +33,7 @@ Canon to read BEFORE writing the fragment (use the `Read` tool on each — do no
 Output shape — Pattern A scene fragment, ONE `<div>` written to `{{ scene_html_path }}`:
 
 ```html
-<div id="scene-{{ scene_id }}" class="scene"
+<div id="scene-{{ scene_id }}" class="scene clip"
      data-start="{{ data_start_s }}" data-duration="{{ data_duration_s }}" data-track-index="{{ data_track_index }}"
      data-width="{{ data_width }}" data-height="{{ data_height }}">
   <style>
@@ -59,6 +59,7 @@ Output shape — Pattern A scene fragment, ONE `<div>` written to `{{ scene_html
 ```
 
 Hard rules (orchestrator-house, derived from canon — surfaced so you don't miss them):
+- **`class="scene clip"` on the scene div** — `clip` is required by HF lint on any element with `data-start`/`data-duration` (the runtime keys hard-cut visibility off `.clip`). Standalone-composition canon (`transitions/catalog.md` L13) omits both timing attrs *and* the `clip` class on scene divs because root timing covers them; our orchestrator-house Pattern A keeps timing on each scene for the v4 visibility shim, so `clip` MUST come along.
 - **CSS scoping** — every rule prefixed with `#scene-{{ scene_id }}`. No bare class selectors. Inlining is collision-prone otherwise.
 - **`tl.fromTo()` only** for entrances — never `tl.from()`, never bare `gsap.from()`. Non-linear seek breaks otherwise.
 - **No `data-composition-id` on the scene div** — that attribute belongs to the root composition only (Pattern A; see catalog.md L13).

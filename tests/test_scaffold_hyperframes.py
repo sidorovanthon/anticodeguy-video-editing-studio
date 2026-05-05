@@ -113,6 +113,20 @@ def test_patch_index_html_video_has_explicit_data_has_audio_false():
     assert "data-has-audio" not in audio_block
 
 
+def test_patch_index_html_canonicalizes_root_composition_id_to_root():
+    """HOM-142: scaffold's default `data-composition-id="main"` and
+    `__timelines["main"]` are renamed to "root" so the assembled
+    `index.html`'s shim/captions references resolve and HF lint's
+    `timeline_id_mismatch` rule stays green."""
+    out = patch_index_html(
+        DEFAULT_INDEX_HTML, width=1080, height=1920, duration=58.8, video_src="final.mp4"
+    )
+    assert 'data-composition-id="main"' not in out
+    assert 'data-composition-id="root"' in out
+    assert '__timelines["main"]' not in out
+    assert '__timelines["root"]' in out
+
+
 def test_patch_meta_json_overwrites_id_and_name():
     src = {"id": "hyperframes", "name": "hyperframes", "createdAt": "2026-04-30T07:58:27.115Z"}
     out = patch_meta_json(src, slug="2026-04-30-hello-world")

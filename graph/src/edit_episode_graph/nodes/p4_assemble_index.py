@@ -97,6 +97,50 @@ def _strip_existing_injection(html: str) -> str:
     return html
 
 
+_SCENE_OPEN_TAG_RE = re.compile(
+    r"""<div\b[^>]*?\bid=(?P<q>["'])scene-[^"']+?(?P=q)[^>]*>""",
+    flags=re.IGNORECASE | re.DOTALL,
+)
+_CLASS_ATTR_RE = re.compile(
+    r"""\bclass\s*=\s*(?P<q>["'])(?P<val>[^"']*)(?P=q)""",
+    flags=re.IGNORECASE,
+)
+
+
+def _ensure_scene_clip_class(fragment: str) -> str:
+    """Ensure the root scene `<div id="scene-…">` carries `class="clip"`.
+
+    HF lint flags `timed_element_missing_clip_class` on any element with
+    `data-start`/`data-duration` but no `.clip` — and the runtime really does
+    use `.clip` to hard-cut visibility (`feedback_hf_pattern_a_vs_b`,
+    `transitions/catalog.md` L13 rationale). Pattern A as authored by
+    `p4_beat` keeps timing attrs on the scene div for the v4 visibility
+    shim, so the class must follow.
+
+    Defensive post-process — the brief mandates `class="scene clip"`, but
+    drift through the LLM (or stale fragments under re-run) shouldn't quietly
+    leave the assembled index.html lint-broken. Idempotent: returns the
+    fragment unchanged if `clip` is already in the class list.
+    """
+    match = _SCENE_OPEN_TAG_RE.search(fragment)
+    if not match:
+        return fragment
+    open_tag = match.group(0)
+    class_attr = _CLASS_ATTR_RE.search(open_tag)
+    if class_attr is None:
+        # No class attr — inject one carrying just `clip`.
+        new_open_tag = open_tag[:-1] + ' class="clip">'
+        return fragment[: match.start()] + new_open_tag + fragment[match.end() :]
+    classes = class_attr.group("val").split()
+    if "clip" in classes:
+        return fragment
+    classes.append("clip")
+    quote = class_attr.group("q")
+    new_class_attr = f"class={quote}{' '.join(classes)}{quote}"
+    new_open_tag = open_tag[: class_attr.start()] + new_class_attr + open_tag[class_attr.end() :]
+    return fragment[: match.start()] + new_open_tag + fragment[match.end() :]
+
+
 def _atomic_write_text(path: Path, content: str) -> None:
     """Write `content` to `path` atomically via tmp + os.replace.
 
@@ -188,7 +232,7 @@ def assemble_html(
     pieces = [_BEAT_INJECTION_MARKER]
     for name, fragment in beat_html_fragments:
         pieces.append(f"<!-- beat: {name} -->")
-        pieces.append(fragment.strip())
+        pieces.append(_ensure_scene_clip_class(fragment.strip()))
     if captions_html:
         pieces.append(_CAPTIONS_INJECTION_MARKER)
         pieces.append(captions_html.strip())
