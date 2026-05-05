@@ -33,6 +33,7 @@ from .gates.eval_ok import eval_ok_gate_node
 from .gates.plan_ok import plan_ok_gate_node
 from .nodes._routing import (
     route_after_assemble_index,
+    route_after_captions_layer,
     route_after_catalog_scan,
     route_after_design_ok,
     route_after_design_system,
@@ -69,6 +70,7 @@ from .nodes.p3_strategy import p3_strategy_node
 from .nodes.p4_assemble_index import p4_assemble_index_node
 from .nodes.p4_catalog_scan import p4_catalog_scan_node
 from .nodes.p4_beat import p4_beat_node
+from .nodes.p4_captions_layer import p4_captions_layer_node
 from .nodes.p4_dispatch_beats import p4_dispatch_beats_node
 from .nodes.p4_design_system import p4_design_system_node
 from .nodes.p4_plan import p4_plan_node
@@ -102,6 +104,7 @@ def build_graph_uncompiled() -> StateGraph:
     g.add_node("p4_plan", p4_plan_node)
     g.add_node("gate_plan_ok", plan_ok_gate_node)
     g.add_node("p4_catalog_scan", p4_catalog_scan_node)
+    g.add_node("p4_captions_layer", p4_captions_layer_node)
     # p4_dispatch_beats returns Command(goto=...) — either a list of Send
     # objects (fan-out to p4_beat, wired in HOM-134) or a string node name
     # for the skip paths. The `destinations=` tuple makes those static
@@ -313,6 +316,14 @@ def build_graph_uncompiled() -> StateGraph:
     g.add_conditional_edges(
         "p4_catalog_scan",
         route_after_catalog_scan,
+        {
+            END: END,
+            "p4_captions_layer": "p4_captions_layer",
+        },
+    )
+    g.add_conditional_edges(
+        "p4_captions_layer",
+        route_after_captions_layer,
         {
             END: END,
             "p4_dispatch_beats": "p4_dispatch_beats",

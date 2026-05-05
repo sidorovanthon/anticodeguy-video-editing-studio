@@ -79,6 +79,14 @@ class BeatArtifact(TypedDict, total=False):
     duration_s: float
 
 
+class CaptionsState(TypedDict, total=False):
+    captions_block_path: str | None
+    cached: bool
+    raw_text: str | None
+    skipped: bool
+    skip_reason: str | None
+
+
 class AssembleState(TypedDict, total=False):
     assembled_at: str
     beat_names: list[str]
@@ -105,6 +113,7 @@ class ComposeState(TypedDict, total=False):
     # mechanical removal is tracked separately. Spec:
     # `2026-05-04-hom-122-p4-beats-fan-out-design.md` §"State changes".
     beats: list[BeatArtifact]
+    captions: CaptionsState
     captions_block_path: str | None
     assemble: AssembleState
 

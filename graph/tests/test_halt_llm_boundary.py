@@ -93,7 +93,10 @@ def test_v4_halt_after_catalog_scan():
     assert "catalog scanned" in msg
     assert "2 block" in msg
     assert "1 component" in msg
-    assert "p4_assemble_index" in msg
+    # HOM-123: post-catalog the next reachable artifact is p4_captions_layer
+    # (captions inserted between catalog scan and the dispatch decision);
+    # the message falls back to p4_assemble_index once captions are written.
+    assert "p4_captions_layer" in msg
 
 
 def test_v4_halt_after_assemble_skip():

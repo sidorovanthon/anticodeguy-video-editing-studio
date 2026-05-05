@@ -85,3 +85,15 @@ node_overrides:
     # `feedback_creative_nodes_flagship_tier`). Switch to a Sonnet/Opus ID for
     # production use.
     model: claude-haiku-4-5-20251001
+  p4_captions_layer:
+    tier: smart
+    backend_preference: ["claude"]
+    timeout_s: 300
+    # Tone-adaptive captions (HOM-123). Spec §6.3 originally `cheap`; HOM-123
+    # amends to `smart`. Canon `references/captions.md` §"Style Detection"
+    # is explicitly tone-adaptive (4 dimensions × 5 tone profiles, per-word
+    # emphasis decisions) — creative styling, not boilerplate. Real-CLI
+    # smoke (smoke_hom123.py) routes through Haiku for ~$0.001 spend.
+    # Switch to a Sonnet/Opus ID for production use (memory
+    # `feedback_creative_nodes_flagship_tier`).
+    model: claude-haiku-4-5-20251001

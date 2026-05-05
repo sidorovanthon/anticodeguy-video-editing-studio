@@ -35,28 +35,49 @@ def halt_llm_boundary_node(state):
     # markers (skipped or assembled_at) rather than dict truthiness so a
     # future partial-write that leaves an unrecognized assemble shape doesn't
     # silently format a misleading "assembled" notice.
+    captions_state = compose_state.get("captions") or {}
+    captions_block_path = compose_state.get("captions_block_path") or captions_state.get(
+        "captions_block_path"
+    )
+
+    def _captions_summary() -> str:
+        if assemble_state.get("captions_included"):
+            return "captions inlined"
+        if captions_state.get("skipped"):
+            reason = captions_state.get("skip_reason") or "no reason given"
+            return f"captions skipped ({reason})"
+        if captions_block_path:
+            return "captions written but not inlined"
+        return "captions absent"
+
     if assemble_state.get("skipped") or assemble_state.get("assembled_at"):
         if assemble_state.get("skipped"):
             reason = assemble_state.get("skip_reason") or "no reason given"
             msg = (
-                f"v4 halt: p4_assemble_index skipped: {reason}; "
+                f"v4 halt: p4_assemble_index skipped: {reason}; {_captions_summary()}; "
                 "p4_dispatch_beats + p4_beat (HOM-133/134) populate "
-                "compositions/<scene>.html; captions block ships in HOM-123"
+                "compositions/<scene>.html; next gate cluster ships in HOM-124"
             )
         else:
             n = len(assemble_state.get("beat_names") or [])
             msg = (
                 f"v4 halt: scenes assembled from compositions/*.html into root index.html "
-                f"({n} scene(s); hard-cut between scenes — transitions node ships under "
-                "HOM-77/v5); next gate cluster ships in HOM-124"
+                f"({n} scene(s), {_captions_summary()}; hard-cut between scenes — "
+                "transitions node ships under HOM-77/v5); next gate cluster ships in HOM-124"
             )
         return {"notices": [msg]}
     if catalog_state:
+        # HOM-123: captions are authored after catalog. If we halt at the
+        # catalog stage with no captions yet, the next reachable artifact is
+        # `p4_captions_layer`; otherwise it's `p4_assemble_index`.
+        next_artifact = (
+            "p4_assemble_index" if captions_block_path else "p4_captions_layer"
+        )
         n_b = len(catalog_state.get("blocks") or [])
         n_c = len(catalog_state.get("components") or [])
         msg = (
-            f"v4 halt: catalog scanned ({n_b} block(s), {n_c} component(s)); next is "
-            "p4_assemble_index"
+            f"v4 halt: catalog scanned ({n_b} block(s), {n_c} component(s), "
+            f"{_captions_summary()}); next is {next_artifact}"
         )
         return {"notices": [msg]}
     if plan_record is not None:

@@ -112,19 +112,39 @@ def test_route_after_catalog_scan_error_to_end():
     assert route_after_catalog_scan(state) == END
 
 
-def test_route_after_catalog_scan_default_to_assemble():
-    assert route_after_catalog_scan({}) == "p4_assemble_index"
+def test_route_after_catalog_scan_default_to_captions():
+    # HOM-123: catalog scan now always routes to p4_captions_layer; the
+    # beat-vs-skip decision moved downstream to route_after_captions_layer.
+    assert route_after_catalog_scan({}) == "p4_captions_layer"
 
 
-def test_route_after_catalog_scan_with_beats_to_dispatch():
+def test_route_after_catalog_scan_with_beats_to_captions():
     state = {"compose": {"plan": {"beats": [{"beat": "Hook", "duration_s": 4.5}]}}}
-    assert route_after_catalog_scan(state) == "p4_dispatch_beats"
+    assert route_after_catalog_scan(state) == "p4_captions_layer"
 
 
-def test_route_after_catalog_scan_empty_beats_to_assemble():
+def test_route_after_captions_layer_error_to_end():
+    from edit_episode_graph.nodes._routing import route_after_captions_layer
+    state = {"errors": [{"node": "p4_captions_layer", "message": "x", "timestamp": "now"}]}
+    assert route_after_captions_layer(state) == END
+
+
+def test_route_after_captions_layer_with_beats_to_dispatch():
+    from edit_episode_graph.nodes._routing import route_after_captions_layer
+    state = {"compose": {"plan": {"beats": [{"beat": "Hook", "duration_s": 4.5}]}}}
+    assert route_after_captions_layer(state) == "p4_dispatch_beats"
+
+
+def test_route_after_captions_layer_empty_beats_to_assemble():
     # Defensive: an explicit empty `beats` list must NOT trigger dispatch.
+    from edit_episode_graph.nodes._routing import route_after_captions_layer
     state = {"compose": {"plan": {"beats": []}}}
-    assert route_after_catalog_scan(state) == "p4_assemble_index"
+    assert route_after_captions_layer(state) == "p4_assemble_index"
+
+
+def test_route_after_captions_layer_default_to_assemble():
+    from edit_episode_graph.nodes._routing import route_after_captions_layer
+    assert route_after_captions_layer({}) == "p4_assemble_index"
 
 
 def test_route_after_assemble_index_error_to_end():

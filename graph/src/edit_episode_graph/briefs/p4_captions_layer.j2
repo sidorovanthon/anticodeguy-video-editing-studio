@@ -1,0 +1,134 @@
+{# Per-episode captions authoring task. References canon paths; never embeds canon. #}
+You are authoring **the captions block** for an anticodeguy episode (`{{ slug }}`).
+
+The block is a single HTML fragment (with embedded `<style>` + `<script>`) that
+`p4_assemble_index` will inline into the root `index.html` between the beat
+fragments and the v4 visibility shim. Pattern A composition — the captions
+container is a regular `<div>` (no `data-composition-id`, no `<template>`
+wrapper) that sits inside the root composition's `<body>`.
+
+Inputs (read these via the `Read` tool before authoring):
+- `{{ design_md_path }}` — visual identity (palette, typography, refs,
+  anti-patterns). Captions MUST inherit the design system: pick fonts +
+  colors from this file, not from canon defaults.
+- `{{ transcript_json_path }}` — word-level transcript with `text`, `start`,
+  `end` per token. Group these into caption groups per canon §"Word
+  Grouping". Reference this file (or its filename) verbatim in the HTML so
+  `gate:captions_track` can detect the captions track.
+
+Composition viewport: `{{ data_width }} × {{ data_height }}` — choose the
+portrait vs. landscape positioning rules from canon §"Positioning".
+
+Total composition duration: `{{ data_duration_s }}` seconds (used for the
+GSAP root timeline length).
+
+Output file: `{{ captions_block_path }}` (write a single HTML fragment via
+the `Write` tool).
+
+Canon to read BEFORE writing the fragment (use the `Read` tool on each — do
+not rely on memory for shape or hard rules):
+1. `~/.agents/skills/hyperframes/references/captions.md` — full canon. In
+   particular: §"Style Detection" (4 dimensions × 5 tone profiles —
+   detect tone from the transcript and pick a profile from §"Script-to-Style
+   Mapping"); §"Per-Word Styling" (brand/ALL CAPS/numbers/emotional/CTA
+   per-word emphasis); §"Word Grouping" (2–6 words per group; break on
+   sentence boundaries, 150ms+ pauses, max word count); §"Positioning"
+   (`position: absolute` container, never `left: 50%; transform:
+   translateX(-50%)`); §"Text Overflow Prevention" (use
+   `window.__hyperframes.fitTextFontSize`, `overflow: visible`); §"Caption
+   Exit Guarantee" (every group MUST have `tl.set(groupEl, { opacity: 0,
+   visibility: "hidden" }, group.end)` after the exit tween);
+   §"Constraints" (deterministic — no `Math.random()`, no `Date.now()`).
+2. `~/.agents/skills/hyperframes/references/transcript-guide.md` — transcript
+   shape reference (the `text`/`start`/`end` array your code consumes).
+3. `~/.agents/skills/hyperframes/references/dynamic-techniques.md` — only if
+   the chosen tone profile calls for karaoke / clip-path / slam-words /
+   scatter exits. Read on demand, not by default.
+4. `~/.agents/skills/hyperframes/SKILL.md` §"Animation Guardrails" — applies
+   to the captions timeline too (≥ 3 distinct eases, deterministic seek).
+
+Output shape (write to `{{ captions_block_path }}`):
+
+```html
+<div id="captions-layer" class="captions-layer">
+  <style>
+    /* ALL rules prefixed with #captions-layer (no bare class selectors) */
+    #captions-layer { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+    #captions-layer .cg { /* per-group styles inherited from DESIGN.md typography + palette */ }
+    /* per-word emphasis classes — brand, allcaps, number, cta, emotional */
+  </style>
+  <!-- one <div class="cg" id="cg-0">…words…</div> per group, all initially opacity:0 -->
+  <script>
+    (function() {
+      // Reference transcript: {{ transcript_json_filename }}
+      // The fragment ships its grouping table inline (the transcript JSON is
+      // resolved at build time, not fetched at runtime — Phase 4 Pattern A
+      // is a single self-contained HTML).
+      var GROUPS = [
+        // { id: "cg-0", text: "...", start: 0.0, end: 1.2,
+        //   words: [{ text, start, end, emphasis: "brand"|"allcaps"|... }] },
+        // ...one per caption group
+      ];
+      window.__captionTimelines = window.__captionTimelines || {};
+      var tl = gsap.timeline({ paused: true });
+      GROUPS.forEach(function (group) {
+        var el = document.getElementById(group.id);
+        if (!el) return;
+        // Entrance via tl.fromTo (motion-principles.md L115-123 — never tl.from)
+        tl.fromTo(el, /* from */ {}, /* to */ {}, group.start);
+        // Exit + hard kill (canon §"Caption Exit Guarantee" — non-negotiable)
+        tl.to(el, { opacity: 0, scale: 0.95, duration: 0.12, ease: "power2.in" }, group.end - 0.12);
+        tl.set(el, { opacity: 0, visibility: "hidden" }, group.end);
+      });
+      // Self-lint per canon §"Caption Exit Guarantee"
+      GROUPS.forEach(function (group, gi) {
+        var el = document.getElementById(group.id);
+        if (!el) return;
+        tl.seek(group.end + 0.01);
+        var computed = window.getComputedStyle(el);
+        if (computed.opacity !== "0" && computed.visibility !== "hidden") {
+          console.warn("[caption-lint] group " + gi + " still visible at t=" + (group.end + 0.01).toFixed(2) + "s");
+        }
+      });
+      tl.seek(0);
+      window.__captionTimelines["captions"] = tl;
+      // Nest under the root timeline so it advances with the composition's seek.
+      var root = window.__timelines && window.__timelines["root"];
+      if (root) root.add(tl, 0);
+    })();
+  </script>
+</div>
+```
+
+Hard rules (orchestrator-house, derived from canon — surfaced so you don't miss them):
+- **Read DESIGN.md first.** Captions inherit typography (font-family, weight) and palette
+  (foreground + accent) from the design system. Do not pick fonts/colors out of canon.
+- **Reference `{{ transcript_json_filename }}` in the HTML** (a comment is enough). This
+  is the precondition for `gate:captions_track` to detect the captions track.
+- **`tl.set(...)` deterministic kill at `group.end` for every group.** Canon §"Caption
+  Exit Guarantee" — non-negotiable.
+- **`position: absolute` on the captions container.** Never `position: relative`. Never
+  `left: 50%; transform: translateX(-50%)` on the container — clips at composition edges.
+- **One caption group visible at a time.** Word grouping per canon: 2–3 words for hype,
+  3–5 for conversational, 4–6 for measured/calm — choose the band from the detected tone.
+- **CSS scoping**: every rule prefixed with `#captions-layer`. No bare class selectors.
+- **`tl.fromTo()` for entrances** (motion-principles.md L115-123). Never `tl.from()`,
+  never bare `gsap.from()`. Non-linear seek breaks otherwise.
+- **Determinism**: no `Math.random()`, no `Date.now()`. Group/word arrays are static
+  literals in the script.
+- **No `<script src="..."`>** — root scaffold supplies GSAP once.
+- **Avoid the literal substring `repeat:` followed by ` -1`** (HF lint regex
+  false-positive). Use `repeat: 999` or omit.
+
+Process:
+1. `Read` `{{ design_md_path }}` for typography + palette.
+2. `Read` `{{ transcript_json_path }}` for the word stream and detect tone.
+3. `Read` the canon list above (mandatory; do not rely on memory).
+4. Group words per §"Word Grouping" using the band that matches the detected tone.
+5. Apply per-word emphasis per §"Per-Word Styling" — brand/product names, ALL CAPS,
+   numbers/statistics, emotional keywords, calls-to-action.
+6. `Write` ONE file to `{{ captions_block_path }}` containing the fragment shape above.
+7. Reply on a single line: `Wrote {{ captions_block_path }} (<N> groups, tone=<profile>).`
+
+Do NOT modify the root `index.html`, do NOT touch sibling `compositions/*.html`, do NOT
+add `<script src=...>` tags. Stay inside the captions block.
