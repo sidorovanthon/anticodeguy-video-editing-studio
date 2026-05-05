@@ -116,6 +116,17 @@ def test_route_after_catalog_scan_default_to_assemble():
     assert route_after_catalog_scan({}) == "p4_assemble_index"
 
 
+def test_route_after_catalog_scan_with_beats_to_dispatch():
+    state = {"compose": {"plan": {"beats": [{"beat": "Hook", "duration_s": 4.5}]}}}
+    assert route_after_catalog_scan(state) == "p4_dispatch_beats"
+
+
+def test_route_after_catalog_scan_empty_beats_to_assemble():
+    # Defensive: an explicit empty `beats` list must NOT trigger dispatch.
+    state = {"compose": {"plan": {"beats": []}}}
+    assert route_after_catalog_scan(state) == "p4_assemble_index"
+
+
 def test_route_after_assemble_index_error_to_end():
     state = {"errors": [{"node": "p4_assemble_index", "message": "x", "timestamp": "now"}]}
     assert route_after_assemble_index(state) == END
