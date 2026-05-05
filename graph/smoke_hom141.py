@@ -38,6 +38,7 @@ import os
 import sys
 from pathlib import Path
 
+from edit_episode_graph.gates.animation_map import animation_map_gate_node
 from edit_episode_graph.gates.captions_track import captions_track_gate_node
 from edit_episode_graph.gates.design_adherence import design_adherence_gate_node
 from edit_episode_graph.gates.inspect import inspect_gate_node
@@ -60,9 +61,10 @@ GATES = [
     ("gate:design_adherence", design_adherence_gate_node),
     ("gate:snapshot", snapshot_gate_node),
     ("gate:captions_track", captions_track_gate_node),
+    ("gate:animation_map", animation_map_gate_node),
 ]
 
-PENDING_GATES = ["gate:animation_map (HOM-140 — not yet implemented)"]
+PENDING_GATES: list[str] = []
 
 
 def _build_state(episode_dir: Path) -> dict:
