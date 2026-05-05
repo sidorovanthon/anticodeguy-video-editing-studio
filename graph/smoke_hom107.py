@@ -48,7 +48,9 @@ from edit_episode_graph.gates.edl_ok import edl_ok_gate_node
 from edit_episode_graph.graph import build_graph_uncompiled
 from edit_episode_graph.nodes.p3_edl_select import _build_node as build_edl_select_node
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+from edit_episode_graph._paths import repo_root
+
+REPO_ROOT = repo_root()
 SLUG = "2026-05-04-desktop-software-licensing-it-turns-out-is-3"
 EPISODE = REPO_ROOT / "episodes" / SLUG
 

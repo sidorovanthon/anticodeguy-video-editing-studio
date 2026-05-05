@@ -31,7 +31,9 @@ import time
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+from edit_episode_graph._paths import repo_root
+
+REPO_ROOT = repo_root()
 SLUG = os.environ.get(
     "SMOKE_SLUG",
     "2026-05-04-desktop-software-licensing-it-turns-out-is",

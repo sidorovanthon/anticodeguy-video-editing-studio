@@ -19,10 +19,11 @@ from edit_episode_graph.backends._concurrency import BackendSemaphores
 from edit_episode_graph.backends._router import BackendRouter
 from edit_episode_graph.backends.claude import ClaudeCodeBackend
 from edit_episode_graph.backends.codex import CodexBackend
+from edit_episode_graph._paths import repo_root
 from edit_episode_graph.config import load_default_config
 from edit_episode_graph.nodes.p3_pre_scan import _build_node, p3_pre_scan_node
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = repo_root()
 SLUG = "desktop-licensing-story"
 EPISODE = REPO_ROOT / "episodes" / SLUG
 

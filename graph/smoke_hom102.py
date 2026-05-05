@@ -22,10 +22,11 @@ from edit_episode_graph.backends._concurrency import BackendSemaphores
 from edit_episode_graph.backends._router import BackendRouter
 from edit_episode_graph.backends.claude import ClaudeCodeBackend
 from edit_episode_graph.backends.codex import CodexBackend
+from edit_episode_graph._paths import repo_root
 from edit_episode_graph.gates.edl_ok import edl_ok_gate_node
 from edit_episode_graph.nodes.p3_edl_select import p3_edl_select_node
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = repo_root()
 SLUG = "edl-smoke"
 EPISODE = REPO_ROOT / "episodes" / SLUG
 
