@@ -249,9 +249,15 @@ class DesignAdherenceGate(Gate):
         families = _typography_families(state)
         html_families = _extract_html_families(html)
         if families and html_families:
+            # Match equality OR HTML-side has a longer variant of a design
+            # family (e.g. design says "Helvetica Neue", HTML uses
+            # "Helvetica Neue Italic"). The reverse direction (design
+            # specifies a longer family than HTML uses) is unsafe — an
+            # HTML "Inter" would falsely pass against a design entry
+            # "Inter Tight". Font family names are discrete tokens.
             stray = sorted(
                 f for f in html_families
-                if not any(f == d or f.startswith(d) or d.startswith(f) for d in families)
+                if not any(f == d or f.startswith(d + " ") for d in families)
             )
             if stray:
                 violations.append(

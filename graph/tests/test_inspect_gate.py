@@ -200,6 +200,21 @@ def test_fails_when_cli_errors_with_no_parseable_payload(
     assert any("exit=2" in v for v in record["violations"])
 
 
+def test_fails_when_cli_errors_with_parseable_payload_but_no_overflows(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    """Non-zero exit + valid JSON without an overflow list usually means a
+    launch failure (e.g. `{"error": "puppeteer launch failed"}`). The gate
+    must not pass silently in that shape."""
+    hf_dir = _hf_with_index(tmp_path)
+    _patch_run(monkeypatch, 1, {"error": "puppeteer launch failed"})
+
+    update = inspect_gate_node(_state_with_plan(hf_dir))
+    record = update["gate_results"][0]
+    assert not record["passed"]
+    assert any("launch failure" in v for v in record["violations"])
+
+
 def test_fails_when_no_hyperframes_dir_in_state():
     update = inspect_gate_node({})
     assert not update["gate_results"][0]["passed"]

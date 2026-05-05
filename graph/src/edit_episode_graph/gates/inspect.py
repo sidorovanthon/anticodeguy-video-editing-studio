@@ -228,6 +228,18 @@ class InspectGate(Gate):
 
         overflows = _extract_overflows(payload)
         if not overflows:
+            # Catch the case where the CLI exited non-zero AND the payload
+            # held no overflow entries — usually means a launch error
+            # (e.g. `{"error": "puppeteer launch failed"}`) rather than a
+            # clean run. Don't silently pass; surface the CLI tail.
+            if not result.ok:
+                body = (result.stderr or result.stdout or "(no output)").strip()
+                if len(body) > 1500:
+                    body = body[:1500] + "\n…(truncated)"
+                return [
+                    f"hyperframes inspect exit={result.exit_code} with no overflow "
+                    f"issues parsed — may be a CLI / browser launch failure:\n{body}"
+                ]
             return []
 
         index_path = hf_dir / "index.html"

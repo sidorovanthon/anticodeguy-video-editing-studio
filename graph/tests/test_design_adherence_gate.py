@@ -163,6 +163,33 @@ def test_short_hex_normalizes_against_palette(tmp_path: Path):
     assert update["gate_results"][0]["passed"]
 
 
+def test_html_family_shorter_than_design_family_is_flagged(tmp_path: Path):
+    """If DESIGN.md specifies "Inter Tight" and the HTML uses bare "Inter",
+    those are different fonts — must NOT be silently allowed by prefix
+    matching."""
+    hf_dir = _hf_with(
+        tmp_path,
+        "<html><body><style>h1 { font-family: 'Inter'; }</style></body></html>",
+    )
+    typography = [{"role": "headline", "family": "Inter Tight"}]
+    update = design_adherence_gate_node(_state(hf_dir, typography=typography))
+    record = update["gate_results"][0]
+    assert not record["passed"]
+
+
+def test_html_family_longer_variant_of_design_family_passes(tmp_path: Path):
+    """The reverse direction is fine: DESIGN.md says "Helvetica Neue", HTML
+    uses "Helvetica Neue Italic" — that's just a style of the declared
+    family, not a different typeface."""
+    hf_dir = _hf_with(
+        tmp_path,
+        "<html><body><style>h1 { font-family: 'Helvetica Neue Italic'; }</style></body></html>",
+    )
+    typography = [{"role": "headline", "family": "Helvetica Neue"}]
+    update = design_adherence_gate_node(_state(hf_dir, typography=typography))
+    assert update["gate_results"][0]["passed"]
+
+
 def test_generic_css_keywords_ignored(tmp_path: Path):
     """`sans-serif`, `monospace` etc. are CSS generics, not real families."""
     hf_dir = _hf_with(
