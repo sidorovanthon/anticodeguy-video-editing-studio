@@ -9,6 +9,16 @@ Output contract: the script writes envelope `{edl_hash, words}` and prints a
 status line to **stderr** (not stdout) — stdout is empty on success. This
 node therefore returns the resolved paths and re-reads the envelope to
 populate `transcripts.edl_hash`, rather than parsing subprocess stdout.
+
+## EDL hydration (HOM-144)
+
+When Phase 3 ran offline via `/edit-episode` and we resume in-graph at
+Phase 4, no upstream node has populated `state.edit.edl` — the EDL only
+exists on disk at `edit/edl.json`. Phase 4 nodes that gate on EDL beats
+(`p4_design_system`, `p4_plan`, etc.) would skip with "no EDL beats to
+map" and the entire chain collapses. This node loads `edl.json` into
+`state.edit.edl` so the in-graph Phase 4 sees the same EDL as the legacy
+flow. The file is in canonical EDL shape — no transformation needed.
 """
 
 import json
@@ -48,6 +58,20 @@ def glue_remap_transcript_node(state):
             + " — run `/edit-episode` Phase 3 (video-use) first, or wait for v3"
         )
 
+    # Load the EDL into state. We read this BEFORE invoking the subprocess
+    # so a malformed file fails fast with a precise message, instead of the
+    # remap script erroring out half-way and leaving final.json in a
+    # questionable state.
+    try:
+        edl_payload = json.loads(edl_json.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return _error(f"{edl_json} unreadable: {exc!r}")
+    if not isinstance(edl_payload, dict) or not isinstance(edl_payload.get("ranges"), list):
+        return _error(
+            f"{edl_json} is not a valid EDL — expected object with `ranges` list, "
+            f"got {type(edl_payload).__name__}"
+        )
+
     cmd = [
         sys.executable,
         "-m",
@@ -75,4 +99,5 @@ def glue_remap_transcript_node(state):
             "final_json_path": str(final_json),
             "edl_hash": edl_hash,
         },
+        "edit": {"edl": edl_payload},
     }
