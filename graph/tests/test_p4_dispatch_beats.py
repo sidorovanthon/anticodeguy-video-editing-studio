@@ -47,6 +47,16 @@ def test_scene_id_caps_at_64_chars():
     assert out == "a" * 64
 
 
+def test_scene_id_no_trailing_dash_when_cap_lands_on_dash():
+    # Reviewer-flagged regression: char 65 sanitising to '-' must not
+    # leave a trailing '-' on the truncated slug.
+    label = "a" * 63 + " " + "b"  # 65 chars; sanitiser turns the space into '-' at index 63
+    out = scene_id_for(label)
+    assert len(out) <= 64
+    assert not out.endswith("-")
+    assert out == "a" * 63
+
+
 def test_scene_id_empty_after_sanitisation_falls_back_to_scene():
     assert scene_id_for("***") == "scene"
     assert scene_id_for("") == "scene"
@@ -206,6 +216,30 @@ def test_scene_id_collision_surfaces_both_labels(tmp_path):
     msg = errors[0]["message"]
     assert "The Hook!" in msg and "the-hook" in msg
     assert "the-hook" in msg  # the colliding scene_id should appear
+
+
+def test_error_when_beat_is_not_a_dict(tmp_path):
+    state = _state_with_index(tmp_path)
+    state["compose"]["plan"]["beats"] = [
+        "raw-string-from-bad-llm-parse",
+        {"beat": "Payoff", "duration_s": 1.0},
+    ]
+    out = p4_dispatch_beats_node(state)
+    assert out.goto == "p4_assemble_index"
+    errors = (out.update or {}).get("errors", [])
+    assert any("not a dict" in e["message"] for e in errors)
+
+
+def test_error_when_beat_has_no_label(tmp_path):
+    state = _state_with_index(tmp_path)
+    state["compose"]["plan"]["beats"] = [
+        {"duration_s": 1.0},  # missing both `beat` and `name`
+        {"beat": "Payoff", "duration_s": 1.0},
+    ]
+    out = p4_dispatch_beats_node(state)
+    assert out.goto == "p4_assemble_index"
+    errors = (out.update or {}).get("errors", [])
+    assert any("no 'beat' label" in e["message"] for e in errors)
 
 
 def test_unicode_beat_label_routed_through_sanitiser(tmp_path):

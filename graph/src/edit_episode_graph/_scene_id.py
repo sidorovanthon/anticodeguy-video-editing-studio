@@ -25,6 +25,9 @@ _DASH_RUN = re.compile(r"[^a-zA-Z0-9]+")
 
 
 def scene_id_for(beat_label: str) -> str:
+    # Strip AFTER the 64-cap, not before — otherwise a 65th char that
+    # sanitises to '-' ends up as the trailing char of the truncated slug,
+    # producing an invalid filename / CSS identifier (`compositions/aaa…-.html`).
     folded = unicodedata.normalize("NFKD", beat_label).encode("ascii", "ignore").decode()
-    slugged = _DASH_RUN.sub("-", folded).strip("-").lower()
-    return slugged[:64] or "scene"
+    slugged = _DASH_RUN.sub("-", folded).lower()
+    return slugged[:64].strip("-") or "scene"
