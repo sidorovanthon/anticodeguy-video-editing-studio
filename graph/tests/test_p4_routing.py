@@ -152,11 +152,11 @@ def test_route_after_assemble_index_error_to_end():
     assert route_after_assemble_index(state) == END
 
 
-def test_route_after_assemble_index_default_to_persist_session():
-    """HOM-126: a successful assemble (no error, no skip flag) advances to
-    p4_persist_session before studio_launch — empty state stands in for
-    "happy path"."""
-    assert route_after_assemble_index({}) == "p4_persist_session"
+def test_route_after_assemble_index_default_to_gate_lint():
+    """HOM-127: a successful assemble (no error, no skip flag) advances into
+    the post-assemble gate cluster at gate_lint — empty state stands in for
+    "happy path". The persist hop now happens at the cluster tail."""
+    assert route_after_assemble_index({}) == "gate_lint"
 
 
 def test_route_after_assemble_index_skip_to_halt():

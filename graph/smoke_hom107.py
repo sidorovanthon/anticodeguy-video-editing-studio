@@ -81,9 +81,18 @@ EXPECTED_NODES = {
     "p4_plan",
     "gate_plan_ok",
     "p4_catalog_scan",
+    "p4_captions_layer",
     "p4_dispatch_beats",
     "p4_beat",
     "p4_assemble_index",
+    # HOM-127: post-assemble gate cluster (spec §4.3, §6.2).
+    "gate_lint",
+    "gate_validate",
+    "gate_inspect",
+    "gate_design_adherence",
+    "gate_animation_map",
+    "gate_snapshot",
+    "gate_captions_track",
     # HOM-126: persist Phase 4 Session block before studio_launch.
     "p4_persist_session",
     # HOM-125: studio_launch + gate:static_guard end the v4 run.

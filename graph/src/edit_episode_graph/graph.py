@@ -27,21 +27,33 @@ v1 topology (spec §4.1, §8 — LLM-free coverage):
 
 from langgraph.graph import END, StateGraph
 
+from .gates.animation_map import animation_map_gate_node
+from .gates.captions_track import captions_track_gate_node
+from .gates.design_adherence import design_adherence_gate_node
 from .gates.design_ok import design_ok_gate_node
 from .gates.edl_ok import edl_ok_gate_node
 from .gates.eval_ok import eval_ok_gate_node
+from .gates.inspect import inspect_gate_node
+from .gates.lint import lint_gate_node
 from .gates.plan_ok import plan_ok_gate_node
+from .gates.snapshot import snapshot_gate_node
 from .gates.static_guard import static_guard_gate_node
+from .gates.validate import validate_gate_node
 from .nodes._routing import (
+    route_after_animation_map,
     route_after_assemble_index,
     route_after_captions_layer,
+    route_after_captions_track,
     route_after_catalog_scan,
+    route_after_design_adherence,
     route_after_design_ok,
     route_after_design_system,
     route_after_edl_ok,
     route_after_edl_select,
     route_after_eval_ok,
+    route_after_inspect,
     route_after_inventory,
+    route_after_lint,
     route_after_p4_persist_session,
     route_after_persist_session,
     route_after_pickup,
@@ -54,10 +66,12 @@ from .nodes._routing import (
     route_after_render_segments,
     route_after_scaffold,
     route_after_self_eval,
+    route_after_snapshot,
     route_after_static_guard,
     route_after_strategy,
     route_after_strategy_confirmed,
     route_after_studio_launch,
+    route_after_validate,
 )
 from .nodes.edl_failure_interrupt import edl_failure_interrupt_node
 from .nodes.eval_failure_interrupt import eval_failure_interrupt_node
@@ -123,6 +137,17 @@ def build_graph_uncompiled() -> StateGraph:
     )
     g.add_node("p4_beat", p4_beat_node)
     g.add_node("p4_assemble_index", p4_assemble_index_node)
+    # HOM-127: post-assemble gate cluster (spec §4.3, §6.2). Each gate
+    # routes pass→next, fail→halt_llm_boundary. Order matches spec —
+    # cheap deterministic checks first (lint), browser-heavy headless
+    # checks last (snapshot, captions_track).
+    g.add_node("gate_lint", lint_gate_node)
+    g.add_node("gate_validate", validate_gate_node)
+    g.add_node("gate_inspect", inspect_gate_node)
+    g.add_node("gate_design_adherence", design_adherence_gate_node)
+    g.add_node("gate_animation_map", animation_map_gate_node)
+    g.add_node("gate_snapshot", snapshot_gate_node)
+    g.add_node("gate_captions_track", captions_track_gate_node)
     g.add_node("p4_persist_session", p4_persist_session_node)
     g.add_node("studio_launch", studio_launch_node)
     g.add_node("gate_static_guard", static_guard_gate_node)
@@ -349,7 +374,66 @@ def build_graph_uncompiled() -> StateGraph:
         {
             END: END,
             "halt_llm_boundary": "halt_llm_boundary",
+            "gate_lint": "gate_lint",
+        },
+    )
+    # HOM-127: post-assemble gate cluster. Each pass-edge advances to
+    # the next gate; each fail-edge routes to halt_llm_boundary so the
+    # boundary's notice surfaces the violation list in Studio.
+    g.add_conditional_edges(
+        "gate_lint",
+        route_after_lint,
+        {
+            "gate_validate": "gate_validate",
+            "halt_llm_boundary": "halt_llm_boundary",
+        },
+    )
+    g.add_conditional_edges(
+        "gate_validate",
+        route_after_validate,
+        {
+            "gate_inspect": "gate_inspect",
+            "halt_llm_boundary": "halt_llm_boundary",
+        },
+    )
+    g.add_conditional_edges(
+        "gate_inspect",
+        route_after_inspect,
+        {
+            "gate_design_adherence": "gate_design_adherence",
+            "halt_llm_boundary": "halt_llm_boundary",
+        },
+    )
+    g.add_conditional_edges(
+        "gate_design_adherence",
+        route_after_design_adherence,
+        {
+            "gate_animation_map": "gate_animation_map",
+            "halt_llm_boundary": "halt_llm_boundary",
+        },
+    )
+    g.add_conditional_edges(
+        "gate_animation_map",
+        route_after_animation_map,
+        {
+            "gate_snapshot": "gate_snapshot",
+            "halt_llm_boundary": "halt_llm_boundary",
+        },
+    )
+    g.add_conditional_edges(
+        "gate_snapshot",
+        route_after_snapshot,
+        {
+            "gate_captions_track": "gate_captions_track",
+            "halt_llm_boundary": "halt_llm_boundary",
+        },
+    )
+    g.add_conditional_edges(
+        "gate_captions_track",
+        route_after_captions_track,
+        {
             "p4_persist_session": "p4_persist_session",
+            "halt_llm_boundary": "halt_llm_boundary",
         },
     )
     # HOM-126: p4_persist_session appends a Phase 4 Session block to
@@ -367,9 +451,6 @@ def build_graph_uncompiled() -> StateGraph:
     )
     # HOM-125: studio_launch spawns `hyperframes preview --port 3002` in the
     # background, then gate:static_guard sleeps 5s and scans the preview log.
-    # HOM-127 will insert the lint/validate/inspect/design_adherence/animation_map/
-    # snapshot/captions_track gate cluster between p4_assemble_index and
-    # p4_persist_session.
     g.add_conditional_edges(
         "studio_launch",
         route_after_studio_launch,

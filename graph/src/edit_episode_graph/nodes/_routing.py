@@ -347,22 +347,63 @@ def route_after_captions_layer(state) -> str:
 
 
 def route_after_assemble_index(state) -> str:
-    """p4_assemble_index → END on error | p4_persist_session | halt_llm_boundary.
+    """p4_assemble_index → END on error | gate_lint | halt_llm_boundary.
 
-    A successful assemble (patched index.html on disk) advances to
-    `p4_persist_session` (HOM-126), which appends a Phase 4 Session block
-    to `<edit>/project.md` before the run reaches `studio_launch`. A skipped
-    assemble (e.g. missing scenes) routes to halt so the boundary's notice
-    surfaces — there is nothing to persist or preview. HOM-127 inserts the
-    gate cluster (lint/validate/inspect/design_adherence/animation_map/
-    snapshot/captions_track) between assemble and persist.
+    HOM-127 wires the post-assemble gate cluster — the success leg now
+    enters the chain at `gate_lint`. A skipped assemble (e.g. missing
+    scenes) still routes to halt so the boundary's notice surfaces;
+    there is nothing to lint or preview.
     """
     if state.get("errors"):
         return END
     assemble = (state.get("compose") or {}).get("assemble") or {}
     if assemble.get("skipped"):
         return "halt_llm_boundary"
-    return "p4_persist_session"
+    return "gate_lint"
+
+
+# HOM-127: post-assemble gate cluster. Chain order matches spec §4.3:
+#   gate_lint → gate_validate → gate_inspect → gate_design_adherence
+#     → gate_animation_map → gate_snapshot → gate_captions_track
+#     → p4_persist_session
+# Each gate routes pass→next, fail→halt_llm_boundary (v4-sans-HITL —
+# retry-with-feedback is HOM-77/v5).
+
+def _route_gate_pass_or_halt(gate_name: str, on_pass: str):
+    """Build a conditional-edge router for a gate that fails to halt.
+
+    Captures the gate name + its pass-target so the router stays a pure
+    function. Gate result lookup mirrors the existing
+    `route_after_design_ok` / `route_after_plan_ok` pattern.
+    """
+    def _route(state) -> str:
+        from ..gates._base import latest_gate_result
+        record = latest_gate_result(state, gate_name)
+        if record and record.get("passed"):
+            return on_pass
+        return "halt_llm_boundary"
+    # `removeprefix` is anchored to the start; an interior `gate_` (in a
+    # hypothetical future name like `gate:gate_*`) won't be silently
+    # stripped the way `.replace('gate_', '')` would.
+    _route.__name__ = (
+        f"route_after_{gate_name.replace(':', '_').removeprefix('gate_')}"
+    )
+    return _route
+
+
+route_after_lint = _route_gate_pass_or_halt("gate:lint", "gate_validate")
+route_after_validate = _route_gate_pass_or_halt("gate:validate", "gate_inspect")
+route_after_inspect = _route_gate_pass_or_halt("gate:inspect", "gate_design_adherence")
+route_after_design_adherence = _route_gate_pass_or_halt(
+    "gate:design_adherence", "gate_animation_map"
+)
+route_after_animation_map = _route_gate_pass_or_halt(
+    "gate:animation_map", "gate_snapshot"
+)
+route_after_snapshot = _route_gate_pass_or_halt("gate:snapshot", "gate_captions_track")
+route_after_captions_track = _route_gate_pass_or_halt(
+    "gate:captions_track", "p4_persist_session"
+)
 
 
 def route_after_p4_persist_session(state) -> str:
