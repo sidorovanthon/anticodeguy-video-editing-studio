@@ -347,12 +347,34 @@ def route_after_captions_layer(state) -> str:
 
 
 def route_after_assemble_index(state) -> str:
-    """p4_assemble_index → END on error | halt_llm_boundary otherwise.
+    """p4_assemble_index → END on error | studio_launch | halt_llm_boundary.
 
-    Both the pass case (assembly produced patched index.html) and the
-    skip case (no beats yet — future fan-out ticket) route to halt so
-    the boundary's notice surfaces in Studio.
+    A successful assemble (patched index.html on disk) advances to
+    `studio_launch` (HOM-125). A skipped assemble (e.g. missing scenes)
+    routes to halt so the boundary's notice surfaces — there is nothing
+    to preview. HOM-127 inserts the gate cluster (lint/validate/inspect
+    /design_adherence/animation_map/snapshot/captions_track) + p4_persist_session
+    between assemble and studio_launch.
     """
     if state.get("errors"):
         return END
+    assemble = (state.get("compose") or {}).get("assemble") or {}
+    if assemble.get("skipped"):
+        return "halt_llm_boundary"
+    return "studio_launch"
+
+
+def route_after_studio_launch(state) -> str:
+    """studio_launch → END on error | gate_static_guard otherwise."""
+    if state.get("errors"):
+        return END
+    return "gate_static_guard"
+
+
+def route_after_static_guard(state) -> str:
+    """gate:static_guard → halt_llm_boundary on pass or fail.
+
+    v4 ends here. Failures surface in `gate_results` for operator review;
+    HITL `user_review` (which would re-route on fail) is HOM-78/v6.
+    """
     return "halt_llm_boundary"

@@ -124,5 +124,58 @@ def test_v4_halt_after_assemble_success():
     msg = halt_llm_boundary_node(state)["notices"][0]
     assert "scenes assembled" in msg
     assert "2 scene" in msg
-    assert "HOM-124" in msg
+    # HOM-125: assemble-success without a static_guard record means
+    # studio_launch errored — notice mentions both studio_launch and errors[].
+    assert "studio_launch" in msg
+
+
+def test_v4_halt_after_static_guard_pass():
+    state = {
+        "compose": {
+            "preview_port": 3002,
+            "assemble": {"assembled_at": "now", "beat_names": ["A"]},
+        },
+        "gate_results": [
+            {"gate": "gate:static_guard", "passed": True, "violations": [], "iteration": 1},
+        ],
+    }
+    msg = halt_llm_boundary_node(state)["notices"][0]
+    assert "studio launched" in msg
+    assert "PASSED" in msg
+    assert "port 3002" in msg
+
+
+def test_v4_halt_after_static_guard_fail():
+    state = {
+        "compose": {"assemble": {"assembled_at": "now", "beat_names": ["A"]}},
+        "gate_results": [
+            {
+                "gate": "gate:static_guard",
+                "passed": False,
+                "violations": ["StaticGuard: missing data-hf-anchor"],
+                "iteration": 1,
+            },
+        ],
+    }
+    msg = halt_llm_boundary_node(state)["notices"][0]
+    assert "FAILED" in msg
+    assert "1 violation" in msg
+
+
+def test_v4_halt_after_static_guard_canon_artifact():
+    state = {
+        "compose": {"assemble": {"assembled_at": "now", "beat_names": ["A"]}},
+        "gate_results": [
+            {
+                "gate": "gate:static_guard",
+                "passed": True,
+                "violations": [],
+                "iteration": 1,
+                "canon_video_audio_artifact": True,
+            },
+        ],
+    }
+    msg = halt_llm_boundary_node(state)["notices"][0]
+    assert "PASSED" in msg
+    assert "data-has-audio" in msg
 
