@@ -119,6 +119,7 @@ def test_v4_halt_after_assemble_success():
         },
     }
     msg = halt_llm_boundary_node(state)["notices"][0]
-    assert "index.html assembled" in msg
-    assert "2 beat" in msg
+    assert "scenes assembled" in msg
+    assert "2 scene" in msg
+    assert "HOM-124" in msg
 

@@ -45,8 +45,9 @@ def halt_llm_boundary_node(state):
         else:
             n = len(assemble_state.get("beat_names") or [])
             msg = (
-                f"v4 halt: index.html assembled ({n} beat(s)); next is preview/render "
-                "(future tickets HOM-124+)"
+                f"v4 halt: scenes assembled from compositions/*.html into root index.html "
+                f"({n} scene(s); hard-cut between scenes — transitions node ships under "
+                "HOM-77/v5); next gate cluster ships in HOM-124"
             )
         return {"notices": [msg]}
     if catalog_state:
