@@ -87,7 +87,7 @@ async def _poll_run(client, thread_id: str, run_id: str) -> str:
         if status != last_status:
             print(f"  run {run_id}: status={status}")
             last_status = status
-        if status in {"success", "error", "interrupted", "timeout"}:
+        if status in {"success", "error", "interrupted", "timeout", "cancelled", "cancelling"}:
             return status
         await asyncio.sleep(RUN_POLL_INTERVAL_S)
     return "timeout-poll"
@@ -226,9 +226,15 @@ async def _amain() -> int:
     # Re-stamp current values as if `p4_catalog_scan` just produced them.
     # The graph's outgoing edges from p4_catalog_scan will fire next:
     # → p4_dispatch_beats → Send(p4_beat) ×N → p4_assemble_index → halt.
+    # Strip `_beat_dispatch` defensively — the spec (§"Send payload") calls
+    # it a transient namespace that "never reaches the parent thread
+    # checkpoint as a stable channel"; if it lingers from a previously
+    # interrupted run, re-stamping it here would inject a stale per-beat
+    # payload into the resumed graph state.
+    clean_values = {k: v for k, v in values.items() if k != "_beat_dispatch"}
     print(f"\n=== update_state(as_node={RESUME_AS_NODE!r}) ===")
     await client.threads.update_state(
-        thread_id, values=values, as_node=RESUME_AS_NODE
+        thread_id, values=clean_values, as_node=RESUME_AS_NODE
     )
 
     print(f"\n=== runs.create (assistant={ASSISTANT_ID}) ===")
