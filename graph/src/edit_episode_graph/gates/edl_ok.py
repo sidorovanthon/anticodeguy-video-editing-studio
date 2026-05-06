@@ -60,25 +60,35 @@ def _inside_word(t: float, words: list[tuple[float, float]]) -> tuple[float, flo
     return None
 
 
-def _padding_distance(t: float, words: list[tuple[float, float]]) -> float | None:
-    """Distance from `t` to the nearer of the two bracketing word boundaries.
+def _bracketing_boundaries(
+    t: float, words: list[tuple[float, float]]
+) -> tuple[float | None, float | None]:
+    """Return ``(prev_end, next_start)`` — the two bracketing word boundaries.
 
-    Walks the sorted word list to find the latest word ending at-or-before `t`
-    (`prev_end`) and the first word starting at-or-after `t` (`next_start`).
-    Returns `min(t - prev_end, next_start - t)` over whichever sides exist.
-
-    A global-min over every boundary in the transcript would falsely flag cuts
-    that sit in long silences between far-apart words: HR 7 specifies padding
-    relative to the cut's *neighboring* word, not the closest word anywhere.
+    Walks the sorted word list to find the latest word ending at-or-before ``t``
+    (``prev_end``) and the first word starting at-or-after ``t`` (``next_start``).
+    Either may be ``None`` at the head/tail of the transcript.
     """
-    prev_end = None
-    next_start = None
+    prev_end: float | None = None
+    next_start: float | None = None
     for s, e in words:
         if e <= t + EPSILON_S:
             prev_end = e
         elif s >= t - EPSILON_S:
             next_start = s
             break
+    return prev_end, next_start
+
+
+def _padding_distance(t: float, words: list[tuple[float, float]]) -> float | None:
+    """Min of the two bracketing-side padding distances; ``None`` if neither exists.
+
+    HR 7 requires padding ≥ 30ms on BOTH sides of every cut, so the gate metric
+    is ``min(t - prev_end, next_start - t)``. A global-min over every boundary
+    in the transcript would falsely flag cuts in long silences between far-apart
+    words; HR 7 specifies padding relative to the cut's *neighboring* word.
+    """
+    prev_end, next_start = _bracketing_boundaries(t, words)
     sides: list[float] = []
     if prev_end is not None:
         sides.append(t - prev_end)
@@ -87,6 +97,74 @@ def _padding_distance(t: float, words: list[tuple[float, float]]) -> float | Non
     if not sides:
         return None
     return min(sides)
+
+
+def _hr7_violation(
+    range_idx: int,
+    label: str,
+    t: float,
+    words: list[tuple[float, float]],
+) -> str:
+    """Compose a prescriptive HR 7 violation that identifies the offending side(s).
+
+    Computes the valid bracketing window where ``t`` would simultaneously satisfy
+    the 30–200ms requirement on both sides; if non-empty, suggests a target.
+    If the bracketing word gap is < 60ms (geometric infeasibility) the message
+    instructs the model to drop or relocate the range — matching the brief's
+    escape clause for unsatisfiable HR 7. The legacy `padding {dist}ms outside
+    A–Bms` substring is preserved so existing tooling that scans for `padding`
+    keeps matching.
+    """
+    prev_end, next_start = _bracketing_boundaries(t, words)
+    side_strs: list[str] = []
+    prev_dist_ms: float | None = None
+    next_dist_ms: float | None = None
+    if prev_end is not None:
+        prev_dist_ms = (t - prev_end) * 1000.0
+        side_strs.append(f"prev-side {prev_dist_ms:.0f}ms (prev_end={prev_end:.3f})")
+    if next_start is not None:
+        next_dist_ms = (next_start - t) * 1000.0
+        side_strs.append(f"next-side {next_dist_ms:.0f}ms (next_start={next_start:.3f})")
+    side_blob = "; ".join(side_strs) if side_strs else "no bracketing words"
+
+    # Headline distance — the offending (smaller) side, for the legacy
+    # `padding Nms outside A-Bms` substring scanners (incl. tests / brief feedback).
+    headline_ms = _padding_distance(t, words)
+    headline_ms = headline_ms * 1000.0 if headline_ms is not None else 0.0
+    head = (
+        f"range[{range_idx}].{label}={t:.3f}: padding {headline_ms:.0f}ms outside "
+        f"{int(PADDING_MIN_S*1000)}–{int(PADDING_MAX_S*1000)}ms (HR 7) — "
+        f"both sides must satisfy this; {side_blob}"
+    )
+
+    valid_lo: float | None = None
+    valid_hi: float | None = None
+    if prev_end is not None:
+        valid_lo = prev_end + PADDING_MIN_S
+        valid_hi = prev_end + PADDING_MAX_S
+    if next_start is not None:
+        next_lo = next_start - PADDING_MAX_S
+        next_hi = next_start - PADDING_MIN_S
+        valid_lo = next_lo if valid_lo is None else max(valid_lo, next_lo)
+        valid_hi = next_hi if valid_hi is None else min(valid_hi, next_hi)
+
+    if valid_lo is not None and valid_hi is not None and valid_lo <= valid_hi + EPSILON_S:
+        target = (valid_lo + valid_hi) / 2.0
+        return (
+            f"{head} — valid window [{valid_lo:.3f}, {valid_hi:.3f}], "
+            f"try {label}={target:.3f}"
+        )
+    if (
+        prev_end is not None
+        and next_start is not None
+        and (next_start - prev_end) < (2 * PADDING_MIN_S) - EPSILON_S
+    ):
+        gap_ms = (next_start - prev_end) * 1000.0
+        return (
+            f"{head} — bracketing gap {gap_ms:.0f}ms < {int(2*PADDING_MIN_S*1000)}ms; "
+            f"HR 7 infeasible at this position — drop or relocate this range"
+        )
+    return head
 
 
 def _ffprobe_duration_s(path: Path) -> float | None:
@@ -224,10 +302,7 @@ class EdlOkGate(Gate):
                     violations.append(f"range[{i}].{label}: no word boundaries in transcript")
                     continue
                 if dist < PADDING_MIN_S - EPSILON_S or dist > PADDING_MAX_S + EPSILON_S:
-                    violations.append(
-                        f"range[{i}].{label}={t:.3f}: padding {dist*1000:.0f}ms outside "
-                        f"{int(PADDING_MIN_S*1000)}–{int(PADDING_MAX_S*1000)}ms (HR 7)"
-                    )
+                    violations.append(_hr7_violation(i, label, t, words))
 
         cut_total = sum(max(0.0, float(r.get("end", 0)) - float(r.get("start", 0))) for r in ranges)
         durations = _source_duration_map(state)

@@ -26,7 +26,8 @@ from ..schemas.p3_edl_select import EDL
 from ._llm import LLMNode, _load_brief
 
 # Bump on brief / schema / tool-list change. Spec §8 review checkpoint.
-_CACHE_VERSION = 1
+# v2 (HOM-154): brief gained explicit HR 7 both-sides clarification.
+_CACHE_VERSION = 2
 
 
 def _takes_packed_path(state: dict) -> Path:
