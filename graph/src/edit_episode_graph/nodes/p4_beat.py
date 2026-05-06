@@ -31,7 +31,7 @@ from langgraph.types import CachePolicy
 
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
-from .._caching import make_key, stable_fingerprint
+from .._caching import make_llm_key, stable_fingerprint
 from ._llm import LLMNode, _load_brief
 
 # Bump on brief / schema / tool-list change. See HOM-132 spec §8.
@@ -56,7 +56,7 @@ def _cache_key(state, *_args, **_kwargs):
     # plan-only change for the same beat_id (e.g. p4_plan re-runs and
     # produces different concept/mood for the same scene).
     plan_beat = bd.get("plan_beat") or {}
-    return make_key(
+    return make_llm_key(
         node="p4_beat",
         version=_CACHE_VERSION,
         slug=slug,

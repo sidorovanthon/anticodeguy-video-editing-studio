@@ -45,6 +45,13 @@ wiping the cache to force re-execution does not lose thread history. Manual esca
 `rm graph/.cache/langgraph.db`. Per-node `_CACHE_VERSION` integers (in each node module)
 must be bumped when its brief / schema / tool-list changes; code-review enforces (spec §8).
 
+**LLM cache keys include routing-config fingerprint (HOM-157).** LLM nodes use `make_llm_key`
+(not `make_key`), which prepends a sha256 of the effective `NodeConfig`
+(`tier`, `model`, `backend_preference`, `timeout_s`) to extras. Bumping `graph/config.yaml`
+on a node — e.g. `p3_strategy.timeout_s: 120 → 300` to fix a transient timeout —
+auto-invalidates that node's cache without touching anything else. Deterministic
+nodes (ffmpeg, file IO) still use `make_key`. Spec §7 mechanism (3).
+
 The legacy `/edit-episode` slash command separately walked artifact existence on disk
 (final.mp4 → index.html → studio); that flow predates the LangGraph migration and is now
 secondary. Phase 3+ runs through `graph/` + Studio.

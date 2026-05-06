@@ -28,7 +28,7 @@ from langgraph.types import CachePolicy
 
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
-from .._caching import make_key
+from .._caching import make_llm_key
 from ..schemas.p4_persist_session import PersistSessionResult
 from ._llm import LLMNode, _load_brief
 
@@ -61,7 +61,7 @@ def _cache_key(state, *_args, **_kwargs):
     # block — desirable, nothing changed); a next-day re-run misses
     # exactly when the brief would write a different date.
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    return make_key(
+    return make_llm_key(
         node="p4_persist_session",
         version=_CACHE_VERSION,
         slug=slug,

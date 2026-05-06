@@ -25,7 +25,7 @@ from langgraph.types import CachePolicy
 
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
-from .._caching import make_key, stable_fingerprint, strategy_fingerprint
+from .._caching import make_llm_key, stable_fingerprint, strategy_fingerprint
 from ..schemas.p4_plan import CompositionPlan
 from ._llm import LLMNode, _load_brief
 
@@ -50,7 +50,7 @@ def _cache_key(state, *_args, **_kwargs):
     # Hashed as `extras` per spec §6 row update in this PR.
     strategy = edit.get("strategy") or {}
     edl_beats = _edl_beats(state)
-    return make_key(
+    return make_llm_key(
         node="p4_plan",
         version=_CACHE_VERSION,
         slug=slug,

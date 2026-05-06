@@ -20,7 +20,7 @@ from langgraph.types import CachePolicy
 
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
-from .._caching import make_key, stable_fingerprint, strategy_fingerprint
+from .._caching import make_llm_key, stable_fingerprint, strategy_fingerprint
 from ..gates._base import gate_retry_context
 from ..schemas.p3_edl_select import EDL
 from ._llm import LLMNode, _load_brief
@@ -86,7 +86,7 @@ def _cache_key(state, *_args, **_kwargs):
     elif transcripts.get("raw_json_paths"):
         files.extend(list(transcripts["raw_json_paths"]))
     retry = gate_retry_context(state, "gate:edl_ok")
-    return make_key(
+    return make_llm_key(
         node="p3_edl_select",
         version=_CACHE_VERSION,
         slug=slug,

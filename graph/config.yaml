@@ -22,7 +22,14 @@ node_overrides:
   p3_strategy:
     tier: smart
     backend_preference: ["claude"]
-    timeout_s: 120
+    timeout_s: 300
+    # Opus 4.7 on full pre_scan context exceeds the global 120s default; aligned
+    # with sibling smart-tier creative nodes (edl_select 240, plan 240,
+    # prompt_expansion 300). Discovered in HOM-154 first clean E2E — Haiku-pinned
+    # smoke (per LLM-node DoD) hid this until production tier=smart resolution.
+    # Folded into HOM-157 PR — that fix makes future config bumps invalidate
+    # the cache automatically, so this is the last bump that needed a manual
+    # graph/.cache/langgraph.db wipe.
   p3_edl_select:
     tier: smart
     backend_preference: ["claude"]

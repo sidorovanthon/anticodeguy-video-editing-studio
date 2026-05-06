@@ -195,15 +195,18 @@ The following 18 nodes carry `cache_policy=`. The `files=` column lists upstream
 
 ## 7. Lifecycle and invalidation
 
-Three native mechanisms:
+Four native mechanisms:
 
 1. **Content invalidation.** User edits `DESIGN.md` → sha256 differs → cache miss → node re-runs. Covers ~95% of cases.
 2. **`_CACHE_VERSION` bump.** When the brief, output schema, or tool list of a node changes, the per-node integer increments. Code review enforces (see §8).
-3. **Manual nuke.** `rm graph/.cache/langgraph.db` resets all entries. Documented in `graph/README.md` as "when in doubt"; not expected in normal flow.
+3. **Routing-config invalidation (HOM-157).** For LLM nodes, the cache key includes a fingerprint of the effective `NodeConfig` resolved via `load_default_config().resolve_node(name)` — `tier`, `model`, `backend_preference`, `timeout_s`. A `graph/config.yaml` edit that changes any of these for a node yields a different fingerprint → cache miss → re-execute. This closes the HOM-157 hole: previously the operator could bump `p3_strategy.timeout_s 120 → 300` to fix a transient timeout, submit a fresh thread, and the cache replayed the prior failure verbatim because the key didn't include the bumped field. Wired via `make_llm_key()` in `_caching.py` — every LLM node's `_cache_key` calls `make_llm_key` instead of `make_key`. Deterministic nodes (ffmpeg, file IO) keep `make_key` since they don't dispatch through `BackendRouter`.
+4. **Manual nuke.** `rm graph/.cache/langgraph.db` resets all entries. Documented in `graph/README.md` as "when in doubt"; not expected in normal flow.
 
 **TTL policy: `ttl=None` everywhere.** No use case for time-based expiry — artifacts stay valid until the user edits them.
 
 **`graph/.gitignore` add:** `/.cache/` (one line).
+
+**Note on terminal failures (HOM-157).** LangGraph caches failures by design: pregel's `_runner.commit` appends `(__error__, exception)` to `task.writes` on a raised exception, and the cache layer memoizes that just like a successful return (`pregel/_runner.py:448`, `pregel/_loop.py:1206-1219`). Within a single thread this enables retries via `match_cached_writes` to replay the failure point instead of re-running prior work. Cross-thread / cross-process (our use case via `SqliteCache`), this means a stuck failure persists until the cache key changes. Mechanism (3) is the right canonical answer: a transient/config-driven failure becomes a cache miss the moment the operator fixes the config, because the key encodes the config dimension that changed. Mechanisms for retrying without operator intervention (transient backend errors → automatic retry) live in HOM-158 (`RetryPolicy`), separate from cache design.
 
 ## 8. Process — keeping `_CACHE_VERSION` honest
 
