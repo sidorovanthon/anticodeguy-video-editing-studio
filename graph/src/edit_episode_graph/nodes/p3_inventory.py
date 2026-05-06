@@ -26,8 +26,47 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
+from langgraph.types import CachePolicy
+
+from .._caching import make_key
+
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 HELPERS_DIR = Path.home() / ".claude" / "skills" / "video-use" / "helpers"
+
+# Bump on transcribe/pack helper-version / parser / output-shape change. Spec §8.
+_CACHE_VERSION = 1
+
+
+def _cache_key(state, *_args, **_kwargs):
+    """Cache key for `p3_inventory` (HOM-132.4).
+
+    Outputs (`takes_packed.md`, per-source transcript JSON files) are
+    deterministic in the upstream raw video; replacing the raw input
+    invalidates, everything else (ffprobe, transcribe_batch.py,
+    pack_transcripts.py) is pure given that input.
+
+    Spec §6 originally listed `[audio.cleaned_path]`. No such field exists
+    on `AudioState`; the canonical upstream artifact tracked in state is
+    `pickup.raw_path`. HOM-132.4 amends to `pickup.raw_path` (with
+    `audio.wav_path` as a secondary signal so a re-isolated WAV under the
+    same raw still invalidates).
+    """
+    if not isinstance(state, dict):
+        raise TypeError(
+            f"p3_inventory cache key requires dict state, got {type(state).__name__}"
+        )
+    slug = state.get("slug") or "__unbound__"
+    raw_path = (state.get("pickup") or {}).get("raw_path")
+    wav_path = (state.get("audio") or {}).get("wav_path")
+    return make_key(
+        node="p3_inventory",
+        version=_CACHE_VERSION,
+        slug=slug,
+        files=[raw_path, wav_path],
+    )
+
+
+CACHE_POLICY = CachePolicy(key_func=_cache_key)
 TRANSCRIBE_BATCH = HELPERS_DIR / "transcribe_batch.py"
 PACK_TRANSCRIPTS = HELPERS_DIR / "pack_transcripts.py"
 TIMELINE_VIEW = HELPERS_DIR / "timeline_view.py"

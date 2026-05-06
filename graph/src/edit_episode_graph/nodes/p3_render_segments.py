@@ -27,10 +27,62 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from langgraph.types import CachePolicy
+
+from .._caching import make_key
 from .._render_constants import duration_tolerance_ms
 
 HELPERS_DIR = Path.home() / ".claude" / "skills" / "video-use" / "helpers"
 RENDER_PY = HELPERS_DIR / "render.py"
+
+# Bump on canon `render.py` shape / parser / output-schema change. Spec §8.
+_CACHE_VERSION = 1
+
+
+def _edl_path_for_key(state: dict) -> str | None:
+    edl = (state.get("edit") or {}).get("edl") or {}
+    explicit = edl.get("edl_path")
+    if explicit:
+        return str(explicit)
+    if not state.get("episode_dir"):
+        return None
+    return str(Path(state["episode_dir"]) / "edit" / "edl.json")
+
+
+def _cache_key(state, *_args, **_kwargs):
+    """Cache key for `p3_render_segments` (HOM-132.4).
+
+    Output is `<edit>/final.mp4` — deterministic for a given EDL (canon
+    `render.py` is pure: per-segment extract → `-c copy` concat with
+    fixed-tolerance audio fades). `edl.json` content invalidates naturally
+    via file fingerprint.
+
+    Spec §6 row originally said `extras=(edit.iteration,)`. There is no
+    `edit.iteration` field on `GraphState`; gate retries rewrite `edl.json`
+    in place (changing its content hash), so file invalidation already
+    covers retry-driven re-renders. HOM-132.4 amends extras to `()` — the
+    iteration counter is redundant with the file fingerprint.
+
+    `final.mp4` is deliberately NOT in `files=`: it is the node's OUTPUT
+    (mirrors the `p3_persist_session` / `project.md` rule from HOM-132.3 —
+    listing a file the node mutates forces every cold→warm transition to
+    cache-miss, defeating idempotency). The node body's own `cached =
+    final_path.exists()` check provides the missing-output recovery.
+    """
+    if not isinstance(state, dict):
+        raise TypeError(
+            f"p3_render_segments cache key requires dict state, got {type(state).__name__}"
+        )
+    slug = state.get("slug") or "__unbound__"
+    return make_key(
+        node="p3_render_segments",
+        version=_CACHE_VERSION,
+        slug=slug,
+        files=[_edl_path_for_key(state)],
+    )
+
+
+CACHE_POLICY = CachePolicy(key_func=_cache_key)
 
 
 def _now() -> str:

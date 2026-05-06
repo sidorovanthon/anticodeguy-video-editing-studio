@@ -28,6 +28,38 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from langgraph.types import CachePolicy
+
+from .._caching import make_key
+
+# Bump on `npx hyperframes catalog --json` shape / parser change. Spec §8.
+_CACHE_VERSION = 1
+
+
+def _cache_key(state, *_args, **_kwargs):
+    """Cache key for `p4_catalog_scan` (HOM-132.4).
+
+    The CLI reads the global `npx hyperframes` registry; output is
+    deterministic in (registry version, slug). HOM-132's scope does not
+    track registry-version changes — manual cache nuke (`rm
+    graph/.cache/langgraph.db`) is the documented escape hatch when a
+    registry update needs to land. Per spec §6: `files=[]`.
+    """
+    if not isinstance(state, dict):
+        raise TypeError(
+            f"p4_catalog_scan cache key requires dict state, got {type(state).__name__}"
+        )
+    slug = state.get("slug") or "__unbound__"
+    return make_key(
+        node="p4_catalog_scan",
+        version=_CACHE_VERSION,
+        slug=slug,
+        files=[],
+    )
+
+
+CACHE_POLICY = CachePolicy(key_func=_cache_key)
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()

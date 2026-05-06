@@ -27,7 +27,65 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from langgraph.types import CachePolicy
+
+from .._caching import make_key
+
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
+
+# Bump on remap_transcript.py shape / output-schema change. Spec §8.
+_CACHE_VERSION = 1
+
+
+def _edl_path_for_key(state: dict) -> str | None:
+    """Resolve `edit/edl.json` for cache-key fingerprinting.
+
+    Falls back to `<episode_dir>/edit/edl.json` when state hasn't yet been
+    populated (e.g. resume-in-graph after offline `/edit-episode` Phase 3 —
+    see HOM-144 docstring above).
+    """
+    edl = (state.get("edit") or {}).get("edl") or {}
+    explicit = edl.get("edl_path")
+    if explicit:
+        return str(explicit)
+    if not state.get("episode_dir"):
+        return None
+    return str(Path(state["episode_dir"]) / "edit" / "edl.json")
+
+
+def _raw_json_path_for_key(state: dict) -> str | None:
+    """Resolve `edit/transcripts/raw.json` for cache-key fingerprinting."""
+    explicit = (state.get("transcripts") or {}).get("raw_json_path")
+    if explicit:
+        return str(explicit)
+    if not state.get("episode_dir"):
+        return None
+    return str(Path(state["episode_dir"]) / "edit" / "transcripts" / "raw.json")
+
+
+def _cache_key(state, *_args, **_kwargs):
+    """Cache key for `glue_remap_transcript` (HOM-132.4).
+
+    Output `final.json` is deterministic in (`edl.json`, `raw.json`) — the
+    wrapped `remap_transcript.py` is pure given those inputs. `final.json`
+    is the OUTPUT and deliberately NOT in `files=` (mirrors the
+    `p3_persist_session` / `p3_render_segments` rule — listing a mutated
+    output forces cold→warm to cache-miss, defeating idempotency).
+    """
+    if not isinstance(state, dict):
+        raise TypeError(
+            f"glue_remap_transcript cache key requires dict state, got {type(state).__name__}"
+        )
+    slug = state.get("slug") or "__unbound__"
+    return make_key(
+        node="glue_remap_transcript",
+        version=_CACHE_VERSION,
+        slug=slug,
+        files=[_edl_path_for_key(state), _raw_json_path_for_key(state)],
+    )
+
+
+CACHE_POLICY = CachePolicy(key_func=_cache_key)
 
 
 def _now() -> str:
