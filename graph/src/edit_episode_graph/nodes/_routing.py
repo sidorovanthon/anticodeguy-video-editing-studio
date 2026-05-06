@@ -262,16 +262,32 @@ def route_after_eval_ok(state) -> str:
 
 
 def route_after_persist_session(state) -> str:
-    """p3_persist_session -> END on hard error | halt_llm_boundary otherwise.
+    """p3_persist_session -> END on hard error | p3_review_interrupt otherwise.
 
-    A persist skip or sub-agent failure is non-fatal — the Session block is
-    a memory aid for the next run, not load-bearing for Phase 4. Errors
-    surfaced into `state['errors']` (e.g. AllBackendsExhausted) still END
-    the graph; otherwise we continue to halt_llm_boundary.
+    HOM-146: replaces the prior `→ halt_llm_boundary` terminus with a linear
+    edge into the Phase-3-review interrupt checkpoint. After the operator
+    approves, routing flows on to `glue_remap_transcript` and Phase 4 — a
+    single linear pass through both phases instead of two separate Submits.
+    Errors in `state['errors']` still END defensively.
     """
     if state.get("errors"):
         return END
-    return "halt_llm_boundary"
+    return "p3_review_interrupt"
+
+
+def route_after_p3_review_interrupt(state) -> str:
+    """p3_review_interrupt → glue_remap_transcript | halt_llm_boundary | END.
+
+    The interrupt node records `state.edit.review.phase3.{approved|aborted}`
+    based on the operator's resume payload. Approved → continue into Phase 4.
+    Aborted → halt with notice. Errors → END defensively.
+    """
+    if state.get("errors"):
+        return END
+    review = ((state.get("edit") or {}).get("review") or {}).get("phase3") or {}
+    if review.get("aborted"):
+        return "halt_llm_boundary"
+    return "glue_remap_transcript"
 
 
 def route_after_remap(state) -> str:
