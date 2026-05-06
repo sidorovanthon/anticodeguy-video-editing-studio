@@ -21,10 +21,52 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from langgraph.types import CachePolicy
+
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
+from .._caching import make_key, stable_fingerprint, strategy_fingerprint
 from ..schemas.p4_plan import CompositionPlan
 from ._llm import LLMNode, _load_brief
+
+# Bump on brief / schema / tool-list change. See HOM-132 spec §8.
+_CACHE_VERSION = 1
+
+
+def _cache_key(state, *_args, **_kwargs):
+    if not isinstance(state, dict):
+        raise TypeError(
+            f"p4_plan cache key requires dict state, got {type(state).__name__}"
+        )
+    # See p4_design_system._cache_key for the empty-slug rationale.
+    slug = state.get("slug") or "__unbound__"
+    compose = state.get("compose") or {}
+    transcripts = state.get("transcripts") or {}
+    edit = state.get("edit") or {}
+    # `strategy_json` and `edl_beats_json` are rendered verbatim into the
+    # brief (lines 30-32 of briefs/p4_plan.j2). They live in-memory on
+    # `state.edit.strategy` / `state.edit.edl.ranges`, NOT on disk — so
+    # transitive file-fingerprint invalidation does not cover them.
+    # Hashed as `extras` per spec §6 row update in this PR.
+    strategy = edit.get("strategy") or {}
+    edl_beats = _edl_beats(state)
+    return make_key(
+        node="p4_plan",
+        version=_CACHE_VERSION,
+        slug=slug,
+        files=[
+            compose.get("design_md_path"),
+            compose.get("expanded_prompt_path"),
+            transcripts.get("final_json_path"),
+        ],
+        extras=(
+            strategy_fingerprint(strategy),
+            stable_fingerprint(edl_beats),
+        ),
+    )
+
+
+CACHE_POLICY = CachePolicy(key_func=_cache_key)
 
 
 def _strategy(state: dict) -> dict:

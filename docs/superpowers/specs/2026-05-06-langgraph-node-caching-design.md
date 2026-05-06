@@ -176,13 +176,13 @@ The following 18 nodes carry `cache_policy=`. The `files=` column lists upstream
 | `glue_remap_transcript` | `[edit.edl_path, transcripts.raw_json_path]` | — |
 | `p4_scaffold` | `[]` (depends on slug only) | — |
 | `p4_design_system` | `[transcripts.final_json_path, edit.edl.edl_path]` | `(strategy_hash,)` — sha256 of strategy dict modulo `source_path`/`skipped`/`skip_reason`; the brief feeds `strategy_json` directly |
-| `p4_prompt_expansion` | `[compose.design_md_path, transcripts.final_json_path]` | — |
-| `p4_plan` | `[compose.design_md_path, compose.expanded_prompt_path, transcripts.final_json_path]` | — |
+| `p4_prompt_expansion` | `[compose.design_md_path, transcripts.final_json_path]` | `(style_request_hash,)` — sha256 of `compose.style_request`, the operator-supplied prompt seed; brief renders it as `style_request_json`; not produced by any upstream node so transitive invalidation does not cover it (HOM-150 amendment) |
+| `p4_plan` | `[compose.design_md_path, compose.expanded_prompt_path, transcripts.final_json_path]` | `(strategy_hash, edl_beats_hash)` — both are rendered verbatim into the brief (`strategy_json`, `edl_beats_json`); they live in-memory on `state.edit.strategy` / `state.edit.edl.ranges`, not on disk, so transitive file-fingerprint invalidation does not cover them (HOM-150 amendment) |
 | `p4_catalog_scan` | `[]` (deterministic, reads npm registry) | — |
-| `p4_beat` (per-`Send`) | `[compose.design_md_path, compose.expanded_prompt_path]` | `(beat_id,)` |
+| `p4_beat` (per-`Send`) | `[compose.design_md_path, compose.expanded_prompt_path]` | `(beat_id, plan_beat_hash)` — `plan_beat_json` (concept / mood / energy / duration for this beat) is rendered verbatim into the brief but lives in-memory on `_beat_dispatch.plan_beat`; transitive design_md / expanded_prompt invalidation does not catch a plan-only change for the same beat_id (HOM-150 amendment) |
 | `p4_captions_layer` | `[compose.design_md_path, transcripts.final_json_path]` | — |
 | `p4_assemble_index` | `[compose.captions_block_path] + [b.html_path for b in beats]` | — |
-| `p4_persist_session` | `[compose.index_html_path]` | — |
+| `p4_persist_session` | `[compose.assemble.index_html_path]` (with `assemble.assembled_at` as legacy fallback) | `(today,)` — UTC YYYY-MM-DD; brief renders `today` and the appended Session block carries that date, so day-rollover MUST invalidate (HOM-150 amendment; spec originally said `compose.index_html_path` — the actual location is `compose.assemble.*`) |
 
 **Explicitly NOT cached:**
 

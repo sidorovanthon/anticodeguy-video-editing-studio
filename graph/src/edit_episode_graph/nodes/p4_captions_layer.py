@@ -16,8 +16,9 @@ Per spec §6.3 + HOM-123 amendment:
   - allowed_tools = [Read, Write].
   - briefs reference canon paths, never embed canon
     (`feedback_graph_decomposition_brief_references_canon`).
-  - cached skip when the captions HTML already exists with non-zero size
-    (poor-man's cache — full CachePolicy + SqliteCache lands under HOM-132).
+  - caching: `CACHE_POLICY` keyed on (slug, design_md_path,
+    transcripts.final_json_path) per HOM-150 / spec §6. Replaces the prior
+    poor-man's "skip if file exists" stub.
 
 Captions are produced **exclusively** in Phase 4 — Phase 3 (HOM-75
 amendment) emits no subtitles. Absence in the final composition is a bug
@@ -28,9 +29,38 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from langgraph.types import CachePolicy
+
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
+from .._caching import make_key
 from ._llm import LLMNode, _load_brief
+
+# Bump on brief / schema / tool-list change. See HOM-132 spec §8.
+_CACHE_VERSION = 1
+
+
+def _cache_key(state, *_args, **_kwargs):
+    if not isinstance(state, dict):
+        raise TypeError(
+            f"p4_captions_layer cache key requires dict state, got {type(state).__name__}"
+        )
+    # See p4_design_system._cache_key for the empty-slug rationale.
+    slug = state.get("slug") or "__unbound__"
+    compose = state.get("compose") or {}
+    transcripts = state.get("transcripts") or {}
+    return make_key(
+        node="p4_captions_layer",
+        version=_CACHE_VERSION,
+        slug=slug,
+        files=[
+            compose.get("design_md_path"),
+            transcripts.get("final_json_path"),
+        ],
+    )
+
+
+CACHE_POLICY = CachePolicy(key_func=_cache_key)
 
 
 def _captions_path(state: dict) -> Path | None:
@@ -169,27 +199,6 @@ def p4_captions_layer_node(state, *, router: BackendRouter | None = None):
             },
         }
 
-    # Cached skip: if captions.html already exists with non-zero size, the
-    # previous run authored it. Re-running is free under this gate. Brief
-    # drift requires the operator to delete the file — documented in PR.
-    try:
-        if captions_path.is_file() and captions_path.stat().st_size > 0:
-            return {
-                "compose": {
-                    "captions_block_path": str(captions_path),
-                    "captions": {
-                        "captions_block_path": str(captions_path),
-                        "cached": True,
-                    },
-                },
-                "notices": ["p4_captions_layer: cached, skipping"],
-            }
-    except OSError:
-        # stat failure is genuinely unusual; fall through and let the LLM
-        # dispatch run, which will overwrite or surface the error via its
-        # own Write tool path.
-        pass
-
     captions_path.parent.mkdir(parents=True, exist_ok=True)
 
     node = _build_node()
@@ -217,6 +226,5 @@ def p4_captions_layer_node(state, *, router: BackendRouter | None = None):
         compose_update["captions_block_path"] = str(captions_path)
         compose_update["captions"] = {
             "captions_block_path": str(captions_path),
-            "cached": False,
         }
     return update

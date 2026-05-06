@@ -18,10 +18,48 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from langgraph.types import CachePolicy
+
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
+from .._caching import make_key, stable_fingerprint
 from ..schemas.p4_prompt_expansion import ExpandedPrompt
 from ._llm import LLMNode, _load_brief
+
+# Bump on brief / schema / tool-list change. See HOM-132 spec §8.
+_CACHE_VERSION = 1
+
+
+def _cache_key(state, *_args, **_kwargs):
+    if not isinstance(state, dict):
+        raise TypeError(
+            f"p4_prompt_expansion cache key requires dict state, got {type(state).__name__}"
+        )
+    # See p4_design_system._cache_key for the empty-slug rationale (LangGraph
+    # introspects `compiled.get_graph()` against the channel default).
+    slug = state.get("slug") or "__unbound__"
+    compose = state.get("compose") or {}
+    transcripts = state.get("transcripts") or {}
+    # `style_request` is a brief input (rendered as `style_request_json`)
+    # that is NOT produced by any upstream node — transitive invalidation
+    # through file fingerprints does not cover it. Hashed as `extras`.
+    # Spec §6 row for `p4_prompt_expansion` updated in this PR to reflect
+    # this; the HOM-149 pilot row was incomplete on first pass (per
+    # CLAUDE.md "Re-validate each row against the actual brief inputs").
+    style_request = compose.get("style_request") or ""
+    return make_key(
+        node="p4_prompt_expansion",
+        version=_CACHE_VERSION,
+        slug=slug,
+        files=[
+            compose.get("design_md_path"),
+            transcripts.get("final_json_path"),
+        ],
+        extras=(stable_fingerprint(style_request),),
+    )
+
+
+CACHE_POLICY = CachePolicy(key_func=_cache_key)
 
 
 def _expanded_prompt_path(state: dict) -> Path:

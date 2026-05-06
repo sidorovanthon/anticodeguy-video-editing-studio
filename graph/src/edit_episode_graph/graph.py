@@ -95,16 +95,31 @@ from .nodes.p3_self_eval import p3_self_eval_node
 from .nodes.p3_strategy import p3_strategy_node
 from .nodes.p4_assemble_index import p4_assemble_index_node
 from .nodes.p4_catalog_scan import p4_catalog_scan_node
-from .nodes.p4_beat import p4_beat_node
-from .nodes.p4_captions_layer import p4_captions_layer_node
+from .nodes.p4_beat import (
+    CACHE_POLICY as p4_beat_cache_policy,
+    p4_beat_node,
+)
+from .nodes.p4_captions_layer import (
+    CACHE_POLICY as p4_captions_layer_cache_policy,
+    p4_captions_layer_node,
+)
 from .nodes.p4_dispatch_beats import p4_dispatch_beats_node
 from .nodes.p4_design_system import (
     CACHE_POLICY as p4_design_system_cache_policy,
     p4_design_system_node,
 )
-from .nodes.p4_plan import p4_plan_node
-from .nodes.p4_persist_session import p4_persist_session_node
-from .nodes.p4_prompt_expansion import p4_prompt_expansion_node
+from .nodes.p4_plan import (
+    CACHE_POLICY as p4_plan_cache_policy,
+    p4_plan_node,
+)
+from .nodes.p4_persist_session import (
+    CACHE_POLICY as p4_persist_session_cache_policy,
+    p4_persist_session_node,
+)
+from .nodes.p4_prompt_expansion import (
+    CACHE_POLICY as p4_prompt_expansion_cache_policy,
+    p4_prompt_expansion_node,
+)
 from .nodes.p4_redispatch_beat import p4_redispatch_beat_node
 from .nodes.p4_scaffold import p4_scaffold_node
 from .nodes.pickup import pickup_node
@@ -140,11 +155,21 @@ def build_graph_uncompiled() -> StateGraph:
         cache_policy=p4_design_system_cache_policy,
     )
     g.add_node("gate_design_ok", design_ok_gate_node)
-    g.add_node("p4_prompt_expansion", p4_prompt_expansion_node)
-    g.add_node("p4_plan", p4_plan_node)
+    # HOM-150: cache_policy on the Phase 4 LLM nodes. Spec
+    # `docs/superpowers/specs/2026-05-06-langgraph-node-caching-design.md` §6.
+    g.add_node(
+        "p4_prompt_expansion",
+        p4_prompt_expansion_node,
+        cache_policy=p4_prompt_expansion_cache_policy,
+    )
+    g.add_node("p4_plan", p4_plan_node, cache_policy=p4_plan_cache_policy)
     g.add_node("gate_plan_ok", plan_ok_gate_node)
     g.add_node("p4_catalog_scan", p4_catalog_scan_node)
-    g.add_node("p4_captions_layer", p4_captions_layer_node)
+    g.add_node(
+        "p4_captions_layer",
+        p4_captions_layer_node,
+        cache_policy=p4_captions_layer_cache_policy,
+    )
     # p4_dispatch_beats returns Command(goto=...) — either a list of Send
     # objects (fan-out to p4_beat, wired in HOM-134) or a string node name
     # for the skip paths. The `destinations=` tuple makes those static
@@ -155,7 +180,7 @@ def build_graph_uncompiled() -> StateGraph:
         p4_dispatch_beats_node,
         destinations=("p4_beat", "p4_assemble_index", END),
     )
-    g.add_node("p4_beat", p4_beat_node)
+    g.add_node("p4_beat", p4_beat_node, cache_policy=p4_beat_cache_policy)
     g.add_node("p4_assemble_index", p4_assemble_index_node)
     # HOM-127: post-assemble gate cluster (spec §4.3, §6.2). Each gate
     # routes pass→next, fail→halt_llm_boundary. Order matches spec —
@@ -172,7 +197,11 @@ def build_graph_uncompiled() -> StateGraph:
     # fragment, then static-edges back to p4_assemble_index so the gate
     # can re-run on the rewritten HTML.
     g.add_node("p4_redispatch_beat", p4_redispatch_beat_node)
-    g.add_node("p4_persist_session", p4_persist_session_node)
+    g.add_node(
+        "p4_persist_session",
+        p4_persist_session_node,
+        cache_policy=p4_persist_session_cache_policy,
+    )
     g.add_node("studio_launch", studio_launch_node)
     g.add_node("gate_static_guard", static_guard_gate_node)
     g.add_node("p3_inventory", p3_inventory_node)
