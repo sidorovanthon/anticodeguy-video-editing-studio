@@ -25,8 +25,12 @@ v1 topology (spec §4.1, §8 — LLM-free coverage):
                                                                           └─ ok ─► p3_pre_scan ─► p3_strategy ─► p3_edl_select ─► gate_edl_ok ─► …
 """
 
+from pathlib import Path
+
+from langgraph.cache.sqlite import SqliteCache
 from langgraph.graph import END, StateGraph
 
+from ._paths import repo_root
 from .gates.animation_map import animation_map_gate_node
 from .gates.captions_track import captions_track_gate_node
 from .gates.design_adherence import design_adherence_gate_node
@@ -94,7 +98,10 @@ from .nodes.p4_catalog_scan import p4_catalog_scan_node
 from .nodes.p4_beat import p4_beat_node
 from .nodes.p4_captions_layer import p4_captions_layer_node
 from .nodes.p4_dispatch_beats import p4_dispatch_beats_node
-from .nodes.p4_design_system import p4_design_system_node
+from .nodes.p4_design_system import (
+    CACHE_POLICY as p4_design_system_cache_policy,
+    p4_design_system_node,
+)
 from .nodes.p4_plan import p4_plan_node
 from .nodes.p4_persist_session import p4_persist_session_node
 from .nodes.p4_prompt_expansion import p4_prompt_expansion_node
@@ -123,7 +130,15 @@ def build_graph_uncompiled() -> StateGraph:
     g.add_node("preflight_canon", preflight_canon_node)
     g.add_node("glue_remap_transcript", glue_remap_transcript_node)
     g.add_node("p4_scaffold", p4_scaffold_node)
-    g.add_node("p4_design_system", p4_design_system_node)
+    # HOM-132.1: pilot node for `cache_policy=`. Spec
+    # `docs/superpowers/specs/2026-05-06-langgraph-node-caching-design.md`
+    # §6 — `files=[transcripts.final_json_path]`. Re-runs on the same slug
+    # with unchanged upstream skip the Opus visual-identity dispatch.
+    g.add_node(
+        "p4_design_system",
+        p4_design_system_node,
+        cache_policy=p4_design_system_cache_policy,
+    )
     g.add_node("gate_design_ok", design_ok_gate_node)
     g.add_node("p4_prompt_expansion", p4_prompt_expansion_node)
     g.add_node("p4_plan", p4_plan_node)
@@ -537,8 +552,24 @@ def build_graph_uncompiled() -> StateGraph:
     return g
 
 
+_CACHE_PATH = repo_root() / "graph" / ".cache" / "langgraph.db"
+
+
+def _build_cache() -> SqliteCache:
+    """Singleton-ish cache backend for `compile(cache=...)`.
+
+    HOM-132.1: gitignored `graph/.cache/langgraph.db`, lifecycle independent
+    from `.langgraph_api/checkpoints.sqlite` (spec §5.1). `langgraph_api`
+    rejects user-supplied checkpointer/store but NOT cache (verified against
+    `langgraph_api/graph.py` 2026-05-06), so wiring `cache=` here is safe
+    under both `langgraph dev` and direct compile.
+    """
+    _CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    return SqliteCache(path=str(_CACHE_PATH))
+
+
 def build_graph():
-    """Compile the graph WITHOUT a checkpointer.
+    """Compile the graph WITHOUT a checkpointer, WITH a SqliteCache.
 
     Spec §9.6 originally bound a `SqliteSaver` here, but the langgraph-api
     runtime (used by `langgraph dev` and `langgraph up`) manages persistence
@@ -546,8 +577,12 @@ def build_graph():
 
     Switching the dev runtime to a real DB is configured via env vars
     (`POSTGRES_URI`) — out of scope for v1.
+
+    The `cache=` argument is NOT rejected by langgraph-api (only
+    checkpointer + store are) and powers per-node `cache_policy=` hits
+    across runs / threads / processes for the same slug.
     """
-    return build_graph_uncompiled().compile()
+    return build_graph_uncompiled().compile(cache=_build_cache())
 
 
 graph = build_graph()

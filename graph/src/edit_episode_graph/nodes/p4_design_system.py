@@ -14,13 +14,85 @@ empirically hollow it out (per `feedback_creative_nodes_flagship_tier`).
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
+from langgraph.types import CachePolicy
+
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
+from .._caching import make_key
 from ..schemas.p4_design_system import DesignDoc
 from ._llm import LLMNode, _load_brief
+
+# Bump on brief / schema / tool-list change. See HOM-132 spec §8 review
+# checkpoint and `feedback_code_review_before_merge` memory.
+_CACHE_VERSION = 1
+
+
+def _strategy_fingerprint(strategy: dict) -> str:
+    """Stable sha256 of the strategy dict, modulo non-content metadata.
+
+    `source_path` is excluded — it's a filesystem locator, not output-
+    affecting content. `skipped`/`skip_reason` are excluded so a graph
+    re-run that successfully populates strategy after a prior skip
+    doesn't share a key with the skipped run.
+    """
+    stable = {
+        k: v for k, v in (strategy or {}).items()
+        if k not in {"source_path", "skipped", "skip_reason"}
+    }
+    return hashlib.sha256(
+        json.dumps(stable, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+
+
+def _cache_key(state, *_args, **_kwargs):
+    """Cache key for `p4_design_system`.
+
+    Captures every upstream input the brief consumes (`p4_design_system.j2`
+    renders `strategy_json`, `edl_beats_json`, `design_md_path`):
+
+    * `slug` — per-episode namespace; missing/empty → fail fast.
+    * `transcripts.final_json_path` — final transcript content drives
+      copy/voice decisions in the design.
+    * `edit.edl.edl_path` — content fingerprint covers beat changes
+      (the brief feeds `edl_beats_json` derived from `edl.ranges`).
+    * strategy hash via `extras` — captures in-memory strategy edits
+      that don't necessarily change `edl.json` (e.g. `length_estimate_s`
+      tweaks that the brief still echoes through `strategy_json`).
+
+    Spec §6 row for `p4_design_system` reflects this shape.
+    """
+    if not isinstance(state, dict):
+        # Defensive — every realistic call path passes a dict. Anything
+        # else is a programming error worth surfacing immediately.
+        raise TypeError(
+            f"p4_design_system cache key requires dict state, got {type(state).__name__}"
+        )
+    # NOTE: empty slug is tolerated here (`__unbound__` sentinel) because
+    # LangGraph's `compiled.get_graph()` evaluates `key_func` against the
+    # state-channel default during graph introspection (verified against
+    # `langgraph/pregel/_algo.py:648`). Raising on empty slug breaks every
+    # topology test + Studio's static graph rendering. In production, an
+    # empty slug at execution time fails downstream in the node body
+    # (which requires `episode_dir`), so safety is preserved.
+    slug = state.get("slug") or "__unbound__"
+    transcripts = state.get("transcripts") or {}
+    edit = state.get("edit") or {}
+    edl = edit.get("edl") or {}
+    strategy = edit.get("strategy") or {}
+    return make_key(
+        node="p4_design_system",
+        version=_CACHE_VERSION,
+        slug=slug,
+        files=[transcripts.get("final_json_path"), edl.get("edl_path")],
+        extras=(_strategy_fingerprint(strategy),),
+    )
+
+
+CACHE_POLICY = CachePolicy(key_func=_cache_key)
 
 
 def _design_md_path(state: dict) -> Path:
