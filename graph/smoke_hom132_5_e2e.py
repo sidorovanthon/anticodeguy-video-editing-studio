@@ -246,8 +246,26 @@ def _run(graph, state: dict, label: str) -> tuple[dict[str, bool], float]:
     print(f"\n--- {label} ---")
     seen: dict[str, bool] = {}
     t0 = time.perf_counter()
+    # Several deterministic nodes (`p4_catalog_scan`, `p3_inventory`,
+    # `p3_render_segments`, `glue_remap_transcript`) do their own
+    # `import subprocess` rather than going through `_deterministic`.
+    # Patch each module's `subprocess.run` defensively so the smoke can
+    # never accidentally hit a real `npm`/`ffmpeg`/helper-script call if
+    # a future state-shape change avoids the early-return skip.
     with patch(
         "edit_episode_graph.nodes._deterministic.subprocess.run",
+        side_effect=_mock_subprocess_run,
+    ), patch(
+        "edit_episode_graph.nodes.p4_catalog_scan.subprocess.run",
+        side_effect=_mock_subprocess_run,
+    ), patch(
+        "edit_episode_graph.nodes.p3_inventory.subprocess.run",
+        side_effect=_mock_subprocess_run,
+    ), patch(
+        "edit_episode_graph.nodes.p3_render_segments.subprocess.run",
+        side_effect=_mock_subprocess_run,
+    ), patch(
+        "edit_episode_graph.nodes.glue_remap_transcript.subprocess.run",
         side_effect=_mock_subprocess_run,
     ):
         for event in graph.stream(state, stream_mode="updates"):
