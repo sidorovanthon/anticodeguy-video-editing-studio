@@ -469,11 +469,12 @@ def build_graph_uncompiled() -> StateGraph:
     # terminus. Single linear pass through both phases; the operator pauses
     # on `p3_review_interrupt` to glance at `final.mp4`, then resumes (or
     # aborts) — no second Submit / different routing path required.
+    # HOM-158: route_after_persist_session no longer returns END (LLM raises
+    # don't commit writes; the old `state.errors → END` short-circuit is gone).
     g.add_conditional_edges(
         "p3_persist_session",
         route_after_persist_session,
         {
-            END: END,
             "p3_review_interrupt": "p3_review_interrupt",
         },
     )
@@ -682,11 +683,12 @@ def build_graph_uncompiled() -> StateGraph:
     # then advances to studio_launch. A persist skip / sub-agent failure is
     # non-fatal — preview still happens — but a hard `errors[]` entry ENDs
     # the graph.
+    # HOM-158: route_after_p4_persist_session no longer returns END — LLM
+    # raises don't commit writes; persist_session always advances to studio.
     g.add_conditional_edges(
         "p4_persist_session",
         route_after_p4_persist_session,
         {
-            END: END,
             "studio_launch": "studio_launch",
         },
     )
