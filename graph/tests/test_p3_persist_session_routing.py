@@ -54,12 +54,6 @@ def test_persist_session_routes_to_end_on_hard_error():
 # HOM-146 — review_interrupt routing
 
 
-def test_review_interrupt_default_routes_to_glue():
-    """No review payload yet → graph proceeds into Phase 4 on resume."""
-    state = {}
-    assert _routing.route_after_p3_review_interrupt(state) == "glue_remap_transcript"
-
-
 def test_review_interrupt_approved_routes_to_glue():
     state = {"edit": {"review": {"phase3": {"approved": True}}}}
     assert _routing.route_after_p3_review_interrupt(state) == "glue_remap_transcript"
@@ -68,6 +62,15 @@ def test_review_interrupt_approved_routes_to_glue():
 def test_review_interrupt_aborted_routes_to_halt():
     state = {"edit": {"review": {"phase3": {"aborted": True}}}}
     assert _routing.route_after_p3_review_interrupt(state) == "halt_llm_boundary"
+
+
+def test_review_interrupt_absent_flags_route_to_halt():
+    """Replay / update_state scenarios where neither flag is set must NOT
+    silently bypass the checkpoint into Phase 4 — route to halt instead."""
+    assert _routing.route_after_p3_review_interrupt({}) == "halt_llm_boundary"
+    assert _routing.route_after_p3_review_interrupt(
+        {"edit": {"review": {"phase3": {}}}}
+    ) == "halt_llm_boundary"
 
 
 def test_review_interrupt_errors_route_to_end():

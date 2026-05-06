@@ -66,8 +66,7 @@ def _is_abort(decision: object) -> bool:
 
 def p3_review_interrupt_node(state: dict) -> dict:
     edit = state.get("edit") or {}
-    review = dict((edit.get("review") or {}))
-    phase3 = dict((review.get("phase3") or {}))
+    phase3 = dict(((edit.get("review") or {}).get("phase3") or {}))
 
     if phase3.get("approved") or phase3.get("aborted"):
         return {}
@@ -93,12 +92,13 @@ def p3_review_interrupt_node(state: dict) -> dict:
 
     if _is_abort(decision):
         phase3.update({"aborted": True, "decision_payload": decision})
-        review["phase3"] = phase3
-        return {"edit": {"review": review}}
-
-    # Default to approval: matches the strategy_confirmed_interrupt convention
-    # (empty Submit = "I'm fine with what I see"). Anything we don't recognize
-    # as an explicit abort is treated as approval rather than wedging the run.
-    phase3.update({"approved": True, "decision_payload": decision})
-    review["phase3"] = phase3
-    return {"edit": {"review": review}}
+    else:
+        # Default to approval: matches strategy_confirmed_interrupt convention
+        # (empty Submit = "I'm fine with what I see"). Anything we don't
+        # recognize as an explicit abort is treated as approval — wedging the
+        # run on a typo would be worse than over-approving.
+        phase3.update({"approved": True, "decision_payload": decision})
+    # Return only the touched sub-dict so a future `review.phaseN` can't get
+    # round-tripped through this node's delta. Mirrors the prior-art shape in
+    # strategy_confirmed_interrupt.
+    return {"edit": {"review": {"phase3": phase3}}}

@@ -278,16 +278,19 @@ def route_after_persist_session(state) -> str:
 def route_after_p3_review_interrupt(state) -> str:
     """p3_review_interrupt → glue_remap_transcript | halt_llm_boundary | END.
 
-    The interrupt node records `state.edit.review.phase3.{approved|aborted}`
-    based on the operator's resume payload. Approved → continue into Phase 4.
-    Aborted → halt with notice. Errors → END defensively.
+    Conservative routing: `approved is True` is required to advance into
+    Phase 4. Aborted (or any non-approved state — e.g. injected via
+    update_state) routes to halt so the boundary's notice surfaces.
+    Errors → END defensively. The node itself always sets one of the two
+    flags in normal flow; this asymmetric default exists to keep replay /
+    state-injection scenarios from silently bypassing the checkpoint.
     """
     if state.get("errors"):
         return END
     review = ((state.get("edit") or {}).get("review") or {}).get("phase3") or {}
-    if review.get("aborted"):
-        return "halt_llm_boundary"
-    return "glue_remap_transcript"
+    if review.get("approved") is True:
+        return "glue_remap_transcript"
+    return "halt_llm_boundary"
 
 
 def route_after_remap(state) -> str:
