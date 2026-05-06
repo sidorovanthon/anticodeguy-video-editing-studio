@@ -24,11 +24,16 @@ from edit_episode_graph.backends.claude import ClaudeCodeBackend
 from edit_episode_graph.backends.codex import CodexBackend
 from edit_episode_graph._paths import repo_root
 from edit_episode_graph.gates.edl_ok import edl_ok_gate_node
-from edit_episode_graph.nodes.p3_edl_select import p3_edl_select_node
+from edit_episode_graph.nodes.p3_edl_select import _build_node, p3_edl_select_node
 
 REPO_ROOT = repo_root()
 SLUG = "edl-smoke"
 EPISODE = REPO_ROOT / "episodes" / SLUG
+
+# HOM-116e: HOM-107 lifted the Haiku pin from config.yaml's p3_edl_select
+# (production now defaults to Sonnet 4.6). Pin Haiku per-smoke-run so the
+# smoke doesn't silently spend Sonnet quota on every CI/dev invocation.
+HAIKU_MODEL = "claude-haiku-4-5-20251001"
 
 
 def _router() -> BackendRouter:
@@ -50,7 +55,7 @@ def _source_duration(path: Path) -> float | None:
 
 
 def case_real_cli() -> dict:
-    print("\n=== Case 1: real-CLI EDL select (Haiku via config override) ===")
+    print("\n=== Case 1: real-CLI EDL select (Haiku via per-run override) ===")
     transcripts = sorted(str(p) for p in (EPISODE / "edit" / "transcripts").glob("*.json"))
     state = {
         "slug": SLUG,
@@ -65,7 +70,21 @@ def case_real_cli() -> dict:
                          "pacing": "tight", "length_estimate_s": 50.0},
         },
     }
-    update = p3_edl_select_node(state, router=_router())
+    node = _build_node()
+    update = node._invoke_with(
+        _router(), state,
+        render_ctx={
+            "takes_packed_path": str(EPISODE / "edit" / "takes_packed.md"),
+            "transcript_paths_json": json.dumps(transcripts),
+            "pre_scan_slips_json": "[]",
+            "strategy_json": json.dumps(state["edit"]["strategy"]),
+            # HOM-147 retry-feedback macro inputs (iter 1 → empty block).
+            "prior_violations": [],
+            "prior_iteration": 0,
+        },
+        model_override=HAIKU_MODEL,
+        timeout_s=240,
+    )
     runs = update.get("llm_runs") or []
     print(f"  attempts: {len(runs)}")
     for r in runs:

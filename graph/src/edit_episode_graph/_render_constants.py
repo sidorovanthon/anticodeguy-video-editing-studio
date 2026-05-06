@@ -10,6 +10,9 @@ this consolidation.
 from __future__ import annotations
 
 
+_TOLERANCE_CAP_MS = 500
+
+
 def duration_tolerance_ms(n_segments: int) -> int:
     """Acceptable drift between EDL-arithmetic and rendered final.mp4.
 
@@ -29,5 +32,14 @@ def duration_tolerance_ms(n_segments: int) -> int:
     broken concat, multi-second audio drift) still trip it — they
     produce deltas measured in seconds, not the hundreds-of-ms
     band this function permits.
+
+    Hard cap at 500ms (HOM-116d): the linear formula keeps growing
+    without ceiling — at N=20 → 1100ms, N=30 → 1600ms — wide enough to
+    mask real render bugs on long-form content. 500ms = 12 frames at
+    24fps, well above the random-walk frame-snap aggregate
+    (`sqrt(2N) * 21ms` ≈ 130ms at N=20) we'd expect on a healthy
+    render but small enough to still catch single-segment-dropped
+    failures (which produce seconds of drift). The cap kicks in at
+    N=8; below that the linear formula already gives more headroom.
     """
-    return 100 + 50 * n_segments
+    return min(100 + 50 * n_segments, _TOLERANCE_CAP_MS)

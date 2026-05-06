@@ -5,7 +5,10 @@ Validates the wiring assembled in graph.py against spec §4.2:
   pickup → preflight_canon → (skip-edge | p3_inventory) → p3_pre_scan
     → p3_strategy → strategy_confirmed_interrupt → p3_edl_select
     → gate:edl_ok → p3_render_segments → p3_self_eval → gate:eval_ok
-    → p3_persist_session → glue_remap_transcript → END
+    → p3_persist_session → halt_llm_boundary → END
+
+  (`glue_remap_transcript` is reachable only from `preflight_canon`'s
+  skip-edge — when `final.mp4` already exists and Phase 3 is bypassed.)
 
 Three layers, in order of cost:
 
@@ -37,6 +40,7 @@ Run from the worktree's graph directory:
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -129,14 +133,22 @@ def case_topology() -> int:
     return 0
 
 
+def _fixture_skip(reason: str) -> int:
+    """Honor `HOM107_SMOKE_REQUIRE_FIXTURE=1` (set by CI) so a vanished
+    fixture surfaces as a hard failure instead of a silent green run."""
+    if os.environ.get("HOM107_SMOKE_REQUIRE_FIXTURE") == "1":
+        print(f"SMOKE FAIL: {reason} (HOM107_SMOKE_REQUIRE_FIXTURE=1)", file=sys.stderr)
+        return 1
+    print(f"SMOKE SKIP: {reason}")
+    return 0
+
+
 def case_edl_select_haiku() -> int:
     print("\n=== Case 2: real-CLI Haiku invocation of p3_edl_select ===")
     if not (EPISODE / "edit" / "takes_packed.md").exists():
-        print(f"SMOKE SKIP: fixture missing — {EPISODE/'edit'/'takes_packed.md'}")
-        return 0
+        return _fixture_skip(f"fixture missing — {EPISODE/'edit'/'takes_packed.md'}")
     if not (EPISODE / "edit" / "transcripts" / "raw.json").exists():
-        print(f"SMOKE SKIP: fixture transcript missing")
-        return 0
+        return _fixture_skip("fixture transcript missing")
 
     inventory_sources = [{
         "stem": "raw",
@@ -177,6 +189,9 @@ def case_edl_select_haiku() -> int:
             "transcript_paths_json": json.dumps([str(EPISODE / "edit" / "transcripts" / "raw.json")]),
             "pre_scan_slips_json": "[]",
             "strategy_json": json.dumps(state["edit"]["strategy"]),
+            # HOM-147 retry-feedback macro inputs (iter 1 → empty block).
+            "prior_violations": [],
+            "prior_iteration": 0,
         },
         model_override=HAIKU_MODEL,
         timeout_s=240,
@@ -194,15 +209,18 @@ def case_edl_select_haiku() -> int:
         return 1
     print(f"  ✓ Haiku produced EDL with {len(edl['ranges'])} range(s); "
           f"total_duration_s={edl.get('total_duration_s')}")
-    return 0 if any(r.get("success") for r in runs) else 1
+    # EDL-presence is the success signal: we already returned 1 above when
+    # ranges were missing. `llm_runs` may be empty/None if the node short-
+    # circuited on a cache hit or telemetry path change — `any()` over an
+    # empty sequence is False and would otherwise spuriously return 1.
+    return 0
 
 
 def case_gate_evaluates() -> int:
     print("\n=== Case 3: gate:edl_ok evaluates produced EDL ===")
     edl_path = EPISODE / "edit" / "edl.json"
     if not edl_path.exists():
-        print(f"SMOKE SKIP: {edl_path} missing — run Case 2 first or restore fixture")
-        return 0
+        return _fixture_skip(f"{edl_path} missing — run Case 2 first or restore fixture")
     edl = json.loads(edl_path.read_text(encoding="utf-8"))
     state = {
         "episode_dir": str(EPISODE),
