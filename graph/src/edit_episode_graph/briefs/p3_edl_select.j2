@@ -24,6 +24,31 @@ SKILL.md you just read. Two orchestrator-house overrides on top of canon
 - Omit the `subtitles` field entirely. The downstream schema rejects
   unknown fields and the gate also flags it explicitly.
 
+HR 7 enforcement (orchestrator-house clarification of canon `SKILL.md` §"Hard
+Rules" item 7 — canon says "working window: 30–200ms" without specifying
+sidedness; the gate enforces both sides):
+
+- For every cut edge `t`, BOTH bracketing distances must lie in [30, 200] ms:
+  `t - prev_word_end ≥ 30 ms` AND `next_word_start - t ≥ 30 ms` (and ≤ 200ms).
+- Practically: pick `t` near the midpoint of a silence ≥ 60 ms between two
+  words. A snug 9 ms after a word ends is INVALID even if the next word is
+  far away — the prev-side fails.
+- If a candidate cut sits in a bracketing gap < 60 ms, HR 7 is geometrically
+  infeasible there: drop or relocate the range (escape clause below).
+
+Color grade (orchestrator-house clarification — canon `SKILL.md` §"Color
+grade" allows raw ffmpeg filter chains; this rule is an ffmpeg constraint,
+not a canon override):
+
+- ffmpeg's `curves=master='x/y …'` filter requires every keypoint coordinate
+  in [0, 1]. Worked examples in `~/.claude/skills/video-use/helpers/grade.py`
+  PRESETS (e.g. `subtle: 0/0 0.25/0.23 0.75/0.77 1/1`) all anchor at
+  `0/0` and `1/1` — clamp highlights to 1.0 instead of going to 1.07.
+- For a "punchier highlights" feel use `eq=contrast=1.05` or
+  `colorbalance` rather than pushing curves above 1.0.
+- The `gate:edl_ok` validator pre-flights this; an out-of-range keypoint
+  triggers retry with a prescriptive violation.
+
 If you cannot satisfy HR 6/7 or the strategy's `length_estimate_s` (target
 final-cut length, validated downstream within ±20%), revise the range
 selection — drop a beat or trim tails — and report `total_duration_s`
