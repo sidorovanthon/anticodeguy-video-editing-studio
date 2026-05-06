@@ -40,6 +40,7 @@ Run from the worktree's graph directory:
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -132,14 +133,22 @@ def case_topology() -> int:
     return 0
 
 
+def _fixture_skip(reason: str) -> int:
+    """Honor `HOM107_SMOKE_REQUIRE_FIXTURE=1` (set by CI) so a vanished
+    fixture surfaces as a hard failure instead of a silent green run."""
+    if os.environ.get("HOM107_SMOKE_REQUIRE_FIXTURE") == "1":
+        print(f"SMOKE FAIL: {reason} (HOM107_SMOKE_REQUIRE_FIXTURE=1)", file=sys.stderr)
+        return 1
+    print(f"SMOKE SKIP: {reason}")
+    return 0
+
+
 def case_edl_select_haiku() -> int:
     print("\n=== Case 2: real-CLI Haiku invocation of p3_edl_select ===")
     if not (EPISODE / "edit" / "takes_packed.md").exists():
-        print(f"SMOKE SKIP: fixture missing — {EPISODE/'edit'/'takes_packed.md'}")
-        return 0
+        return _fixture_skip(f"fixture missing — {EPISODE/'edit'/'takes_packed.md'}")
     if not (EPISODE / "edit" / "transcripts" / "raw.json").exists():
-        print(f"SMOKE SKIP: fixture transcript missing")
-        return 0
+        return _fixture_skip("fixture transcript missing")
 
     inventory_sources = [{
         "stem": "raw",
@@ -208,8 +217,7 @@ def case_gate_evaluates() -> int:
     print("\n=== Case 3: gate:edl_ok evaluates produced EDL ===")
     edl_path = EPISODE / "edit" / "edl.json"
     if not edl_path.exists():
-        print(f"SMOKE SKIP: {edl_path} missing — run Case 2 first or restore fixture")
-        return 0
+        return _fixture_skip(f"{edl_path} missing — run Case 2 first or restore fixture")
     edl = json.loads(edl_path.read_text(encoding="utf-8"))
     state = {
         "episode_dir": str(EPISODE),
