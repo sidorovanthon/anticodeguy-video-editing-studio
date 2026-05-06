@@ -107,8 +107,13 @@ def _render_ctx(state: dict) -> dict:
         compositions_dir = str(Path(index_html_path).parent / "compositions")
 
     scene_ids, scene_starts, scene_durations = _scene_metadata(state)
-    # Read scaffold dimensions from the first beat's record if present;
-    # otherwise leave defaults. The brief mirrors these literally.
+    # Viewport dimensions: `p4_assemble_index` always runs upstream of any
+    # cluster-gate failure, so by the time we land here `compose.assemble`
+    # carries the previous lap's `data_width`/`data_height` — those reflect
+    # the episode's actual viewport (parsed from the scaffolded root index.html
+    # by `p4_dispatch_beats`). Defaults below cover the synthetic-state path
+    # only (smokes / hand-injected state in Studio); they are not a code-path
+    # the production graph traverses.
     bd_dims = ((state.get("compose") or {}).get("assemble") or {})
     data_width = bd_dims.get("data_width") or 1920
     data_height = bd_dims.get("data_height") or 1080

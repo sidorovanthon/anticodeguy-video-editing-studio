@@ -23,6 +23,13 @@ Identification — find the offending scene(s) yourself:
 4. Pick ONE scene to rewrite this turn (the one most clearly responsible
    for the violations). If multiple scenes share the blame, pick the
    FIRST one in plan order — subsequent retries will catch the others.
+5. **If the violation cannot be traced to ANY `<!-- beat: ... -->` marker**
+   (e.g. a validate error about a root-composition attribute, a
+   captions-track failure with no per-scene attribution): pick the FIRST
+   scene in plan order, and prefix your reply with `WARN: violation not
+   beat-attributable —` so the orchestrator surfaces the uncertainty in the
+   halt notice when retries exhaust. Do NOT skip writing — the loop relies
+   on a fresh fragment to make progress.
 
 Scene context (these are the per-beat parameters from the plan; mirror them
 literally on the scene div):

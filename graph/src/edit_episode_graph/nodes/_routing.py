@@ -491,6 +491,13 @@ def route_after_assemble_index(state) -> str:
 # gate_design_adherence → gate_animation_map → gate_snapshot →
 # gate_captions_track → p4_persist_session. Cheap deterministic checks first
 # (lint), browser-heavy headless checks last (snapshot, captions_track).
+#
+# Cap is **per-gate**, not per-cluster. Each gate maintains its own
+# `_iteration` counter (gates._base.Gate._iteration counts records for the
+# named gate only). Worst-case redispatch invocations across one cluster
+# pass = 7 gates × 2 retries = 14 LLM calls; in practice early failures halt
+# the chain before later gates accumulate retries. Per-cluster cap is a v6
+# concern (HOM-78). Spec §6.2 reference.
 
 route_after_lint = route_after_gate_with_retry(
     gate_name="gate:lint",
