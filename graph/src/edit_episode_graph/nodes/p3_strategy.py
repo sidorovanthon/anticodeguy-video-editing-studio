@@ -67,12 +67,18 @@ def _cache_key(state, *_args, **_kwargs):
     pre_scan = (state.get("edit") or {}).get("pre_scan") or {}
     slips = pre_scan.get("slips") or []
     revisions = state.get("strategy_revisions") or []
+    # `episode_dir` is rendered into the brief verbatim ("Episode dir:
+    # `{{ episode_dir }}`"). Slug + takes_packed.md content already
+    # namespace per-episode in practice, but include episode_dir in
+    # extras for the "all brief-rendered inputs covered" invariant
+    # (HOM-132.3 review).
     return make_key(
         node="p3_strategy",
         version=_CACHE_VERSION,
         slug=slug,
         files=[_takes_packed_path_for_key(state)],
         extras=(
+            state.get("episode_dir") or "",
             stable_fingerprint(slips),
             stable_fingerprint(revisions),
         ),
