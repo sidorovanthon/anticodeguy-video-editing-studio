@@ -48,7 +48,73 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
+from langgraph.types import CachePolicy
+
+from .._caching import make_key
 from .._scene_id import scene_id_for
+
+# Bump on assemble_html / shim shape / marker change. Spec §8.
+_CACHE_VERSION = 1
+
+
+def _scene_html_paths(state: dict) -> list[str | None]:
+    """Resolve per-beat `<scene_id>.html` paths from `compose.plan.beats[]`.
+
+    Spec §6 originally listed `[b.html_path for b in beats]` referencing the
+    deprecated `compose.beats[]` state echo. HOM-133/134 moved beats fan-out
+    to FS-truth (`<hyperframes_dir>/compositions/<scene_id>.html`); this
+    helper rebuilds the list on the same FS basis the node body uses.
+    """
+    compose = state.get("compose") or {}
+    plan = compose.get("plan") or {}
+    plan_beats = plan.get("beats") or []
+    index_html_path = compose.get("index_html_path")
+    if not index_html_path or not plan_beats:
+        return []
+    compositions_dir = Path(index_html_path).parent / "compositions"
+    paths: list[str | None] = []
+    for beat in plan_beats:
+        if not isinstance(beat, dict):
+            continue
+        label = beat.get("beat") or beat.get("name") or ""
+        if not label:
+            continue
+        sid = scene_id_for(label)
+        paths.append(str(compositions_dir / f"{sid}.html"))
+    return paths
+
+
+def _cache_key(state, *_args, **_kwargs):
+    """Cache key for `p4_assemble_index` (HOM-132.4).
+
+    Inputs are the per-beat scene fragments and the optional captions block.
+    The node mutates `<hyperframes_dir>/index.html` (atomic write) — that
+    path is the OUTPUT and is NOT in `files=` (mirrors the
+    `p3_render_segments` / `p3_persist_session` mutated-output rule).
+
+    Spec §6 amendment in this PR: `[b.html_path for b in beats]` was based
+    on the deprecated `compose.beats[]` echo; the live source is
+    `compose.plan.beats[]` with derived `<scene_id>.html` paths under
+    `<hyperframes_dir>/compositions/`.
+    """
+    if not isinstance(state, dict):
+        raise TypeError(
+            f"p4_assemble_index cache key requires dict state, got {type(state).__name__}"
+        )
+    slug = state.get("slug") or "__unbound__"
+    files: list[str | None] = list(_scene_html_paths(state))
+    captions_path = (state.get("compose") or {}).get("captions_block_path")
+    if captions_path:
+        files.append(str(captions_path))
+    return make_key(
+        node="p4_assemble_index",
+        version=_CACHE_VERSION,
+        slug=slug,
+        files=files,
+    )
+
+
+CACHE_POLICY = CachePolicy(key_func=_cache_key)
 
 
 _BEAT_INJECTION_MARKER = "<!-- p4_assemble_index: beats -->"

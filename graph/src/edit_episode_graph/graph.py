@@ -82,19 +82,31 @@ from .nodes._routing import (
 )
 from .nodes.edl_failure_interrupt import edl_failure_interrupt_node
 from .nodes.eval_failure_interrupt import eval_failure_interrupt_node
-from .nodes.glue_remap_transcript import glue_remap_transcript_node
+from .nodes.glue_remap_transcript import (
+    CACHE_POLICY as glue_remap_transcript_cache_policy,
+    glue_remap_transcript_node,
+)
 from .nodes.halt_llm_boundary import halt_llm_boundary_node
-from .nodes.isolate_audio import isolate_audio_node
+from .nodes.isolate_audio import (
+    CACHE_POLICY as isolate_audio_cache_policy,
+    isolate_audio_node,
+)
 from .nodes.p3_edl_select import (
     CACHE_POLICY as p3_edl_select_cache_policy,
     p3_edl_select_node,
 )
-from .nodes.p3_inventory import p3_inventory_node
+from .nodes.p3_inventory import (
+    CACHE_POLICY as p3_inventory_cache_policy,
+    p3_inventory_node,
+)
 from .nodes.p3_pre_scan import (
     CACHE_POLICY as p3_pre_scan_cache_policy,
     p3_pre_scan_node,
 )
-from .nodes.p3_render_segments import p3_render_segments_node
+from .nodes.p3_render_segments import (
+    CACHE_POLICY as p3_render_segments_cache_policy,
+    p3_render_segments_node,
+)
 from .nodes.p3_persist_session import (
     CACHE_POLICY as p3_persist_session_cache_policy,
     p3_persist_session_node,
@@ -108,8 +120,14 @@ from .nodes.p3_strategy import (
     CACHE_POLICY as p3_strategy_cache_policy,
     p3_strategy_node,
 )
-from .nodes.p4_assemble_index import p4_assemble_index_node
-from .nodes.p4_catalog_scan import p4_catalog_scan_node
+from .nodes.p4_assemble_index import (
+    CACHE_POLICY as p4_assemble_index_cache_policy,
+    p4_assemble_index_node,
+)
+from .nodes.p4_catalog_scan import (
+    CACHE_POLICY as p4_catalog_scan_cache_policy,
+    p4_catalog_scan_node,
+)
 from .nodes.p4_beat import (
     CACHE_POLICY as p4_beat_cache_policy,
     p4_beat_node,
@@ -136,7 +154,10 @@ from .nodes.p4_prompt_expansion import (
     p4_prompt_expansion_node,
 )
 from .nodes.p4_redispatch_beat import p4_redispatch_beat_node
-from .nodes.p4_scaffold import p4_scaffold_node
+from .nodes.p4_scaffold import (
+    CACHE_POLICY as p4_scaffold_cache_policy,
+    p4_scaffold_node,
+)
 from .nodes.pickup import pickup_node
 from .nodes.preflight_canon import preflight_canon_node
 from .nodes.strategy_confirmed_interrupt import strategy_confirmed_interrupt_node
@@ -156,10 +177,25 @@ def build_graph_uncompiled() -> StateGraph:
     g = StateGraph(GraphState)
 
     g.add_node("pickup", pickup_node)
-    g.add_node("isolate_audio", isolate_audio_node)
+    # HOM-132.4: cache_policy on the deterministic heavy nodes — primary cost
+    # saving of the HOM-132 epic (`isolate_audio` re-run no longer re-spends
+    # ElevenLabs Scribe credits). Spec §6.
+    g.add_node(
+        "isolate_audio",
+        isolate_audio_node,
+        cache_policy=isolate_audio_cache_policy,
+    )
     g.add_node("preflight_canon", preflight_canon_node)
-    g.add_node("glue_remap_transcript", glue_remap_transcript_node)
-    g.add_node("p4_scaffold", p4_scaffold_node)
+    g.add_node(
+        "glue_remap_transcript",
+        glue_remap_transcript_node,
+        cache_policy=glue_remap_transcript_cache_policy,
+    )
+    g.add_node(
+        "p4_scaffold",
+        p4_scaffold_node,
+        cache_policy=p4_scaffold_cache_policy,
+    )
     # HOM-132.1: pilot node for `cache_policy=`. Spec
     # `docs/superpowers/specs/2026-05-06-langgraph-node-caching-design.md`
     # §6 — `files=[transcripts.final_json_path]`. Re-runs on the same slug
@@ -179,7 +215,11 @@ def build_graph_uncompiled() -> StateGraph:
     )
     g.add_node("p4_plan", p4_plan_node, cache_policy=p4_plan_cache_policy)
     g.add_node("gate_plan_ok", plan_ok_gate_node)
-    g.add_node("p4_catalog_scan", p4_catalog_scan_node)
+    g.add_node(
+        "p4_catalog_scan",
+        p4_catalog_scan_node,
+        cache_policy=p4_catalog_scan_cache_policy,
+    )
     g.add_node(
         "p4_captions_layer",
         p4_captions_layer_node,
@@ -196,7 +236,11 @@ def build_graph_uncompiled() -> StateGraph:
         destinations=("p4_beat", "p4_assemble_index", END),
     )
     g.add_node("p4_beat", p4_beat_node, cache_policy=p4_beat_cache_policy)
-    g.add_node("p4_assemble_index", p4_assemble_index_node)
+    g.add_node(
+        "p4_assemble_index",
+        p4_assemble_index_node,
+        cache_policy=p4_assemble_index_cache_policy,
+    )
     # HOM-127: post-assemble gate cluster (spec §4.3, §6.2). Each gate
     # routes pass→next, fail→halt_llm_boundary. Order matches spec —
     # cheap deterministic checks first (lint), browser-heavy headless
@@ -219,7 +263,11 @@ def build_graph_uncompiled() -> StateGraph:
     )
     g.add_node("studio_launch", studio_launch_node)
     g.add_node("gate_static_guard", static_guard_gate_node)
-    g.add_node("p3_inventory", p3_inventory_node)
+    g.add_node(
+        "p3_inventory",
+        p3_inventory_node,
+        cache_policy=p3_inventory_cache_policy,
+    )
     # HOM-132.3: cache_policy on the Phase 3 LLM nodes. Spec
     # `docs/superpowers/specs/2026-05-06-langgraph-node-caching-design.md` §6.
     g.add_node("p3_pre_scan", p3_pre_scan_node, cache_policy=p3_pre_scan_cache_policy)
@@ -227,7 +275,11 @@ def build_graph_uncompiled() -> StateGraph:
     g.add_node("strategy_confirmed_interrupt", strategy_confirmed_interrupt_node)
     g.add_node("p3_edl_select", p3_edl_select_node, cache_policy=p3_edl_select_cache_policy)
     g.add_node("gate_edl_ok", edl_ok_gate_node)
-    g.add_node("p3_render_segments", p3_render_segments_node)
+    g.add_node(
+        "p3_render_segments",
+        p3_render_segments_node,
+        cache_policy=p3_render_segments_cache_policy,
+    )
     g.add_node("p3_self_eval", p3_self_eval_node, cache_policy=p3_self_eval_cache_policy)
     g.add_node("gate_eval_ok", eval_ok_gate_node)
     g.add_node(
