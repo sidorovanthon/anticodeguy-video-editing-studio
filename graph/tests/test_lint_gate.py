@@ -182,6 +182,57 @@ def test_info_level_findings_ignored(
     assert update["gate_results"][0]["passed"]
 
 
+def test_malformed_finding_entry_surfaces_as_violation_not_fallback(
+    monkeypatch: pytest.MonkeyPatch, hf_project: Path
+):
+    """A non-dict element in findings[] must NOT trigger text-mode fallback.
+    Fallback can pass on CLIs that happen to exit 0, masking real failures
+    that were parseable in the JSON payload. Surface the malformed entry
+    inline instead."""
+
+    calls: list[list[str]] = []
+    payload = {
+        "ok": False,
+        "errorCount": 0,
+        "warningCount": 1,
+        "findings": [
+            "this is not a dict",
+            {
+                "code": "overlapping_gsap_tweens",
+                "severity": "warning",
+                "message": "real failure",
+                "file": "index.html",
+            },
+        ],
+    }
+
+    def fake_run(args, hf_dir, **kw):
+        calls.append(list(args))
+        if "--json" in args:
+            return _json_result(hf_dir, payload, exit_code=2)
+        # If we ever reach here, the fallback fired — that's the bug.
+        return _base.CliResult(
+            cmd=["hyperframes", *list(args)],
+            cwd=str(hf_dir),
+            exit_code=0,
+            stdout="(no output)",
+            stderr="",
+        )
+
+    _patch_runner(monkeypatch, fake_run)
+
+    update = lint_gate_node(_state_for(hf_project))
+    record = update["gate_results"][0]
+
+    assert calls == [["lint", "--json"]], (
+        "fallback to text-mode must NOT fire on a malformed entry — that "
+        "would let a 0-exit text-mode mask real parseable failures"
+    )
+    assert not record["passed"]
+    assert any("overlapping_gsap_tweens" in v for v in record["violations"])
+    assert any("malformed lint finding" in v for v in record["violations"])
+
+
 def test_falls_back_to_text_mode_when_json_unparseable(
     monkeypatch: pytest.MonkeyPatch, hf_project: Path
 ):

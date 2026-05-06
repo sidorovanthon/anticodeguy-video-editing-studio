@@ -70,7 +70,12 @@ def _violations_from_json(payload: object) -> list[str] | None:
     violations: list[str] = []
     for f in findings:
         if not isinstance(f, dict):
-            return None
+            # Malformed entry inside an otherwise-parseable payload: surface
+            # it as a violation rather than aborting the whole list. Bailing
+            # out (return None) would fall back to text-mode lint, which can
+            # exit 0 and silently mask real errors that *were* parseable.
+            violations.append(f"[warn] malformed lint finding (not a dict): {f!r}")
+            continue
         if f.get("severity") != "error" and f.get("severity") != "warning":
             # info-level: skip (matches HF default behavior without --verbose)
             continue
