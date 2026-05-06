@@ -54,20 +54,16 @@ def _isolated_config(monkeypatch):
     monkeypatch.setattr(config_module, "load_config", _fake_load)
     load_default_config.cache_clear()
     monkeypatch.setattr(config_module, "_REPO_CONFIG_PATH", Path("/__nonexistent__"), raising=False)
-    # Force the cache to repopulate with our in-memory base by patching
-    # the loader's path-existence branch:
+    # Patch `config_module.load_default_config` to a closure that returns our
+    # in-memory `base`. `node_config_fingerprint` does
+    # `from .config import load_default_config` at call time, which resolves
+    # via `config`'s module namespace — so this single patch covers the
+    # production code path. (We do NOT patch `_caching.load_default_config`
+    # because `_caching` never reads it from its own namespace.)
     monkeypatch.setattr(
         config_module,
         "load_default_config",
         lambda: base,
-    )
-    # Also patch the import target inside _caching.
-    from edit_episode_graph import _caching as caching_module
-    monkeypatch.setattr(
-        caching_module,
-        "load_default_config",
-        lambda: base,
-        raising=False,
     )
 
     yield base
