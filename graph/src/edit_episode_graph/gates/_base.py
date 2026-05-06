@@ -210,3 +210,22 @@ def latest_gate_result(state: dict, name: str) -> dict | None:
         if record.get("gate") == name:
             return record
     return None
+
+
+def gate_retry_context(state: dict, gate_name: str) -> dict:
+    """Render-context fragment for producer briefs participating in a retry loop.
+
+    Returns ``{"prior_violations": [...], "prior_iteration": int}`` when the
+    latest record for ``gate_name`` exists and is a failure; both keys are
+    empty/zero otherwise. Producer ``_render_ctx`` functions splat this into
+    their context so `briefs/_macros.j2`'s `prior_violations_block` macro
+    can render the feedback block on retry attempts.
+    """
+    record = latest_gate_result(state, gate_name)
+    if not record or record.get("passed"):
+        return {"prior_violations": [], "prior_iteration": 0}
+    violations = record.get("violations") or []
+    return {
+        "prior_violations": list(violations),
+        "prior_iteration": int(record.get("iteration") or 0),
+    }

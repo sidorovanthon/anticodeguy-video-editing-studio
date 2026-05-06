@@ -131,6 +131,11 @@ def test_phase4_chain_edges_wired():
         ("p3_persist_session", "p3_review_interrupt"),
         ("p3_review_interrupt", "glue_remap_transcript"),
         ("p3_review_interrupt", "halt_llm_boundary"),
+        # HOM-147: gate:edl_ok adopts the generic retry helper. The pass
+        # and exhaustion edges are already covered above (→p3_render_segments
+        # and →edl_failure_interrupt); the new retry edge loops back to
+        # the producer so prior violations can be injected into the brief.
+        ("gate_edl_ok", "p3_edl_select"),
     }
     missing = expected_edges - edges
     assert not missing, (

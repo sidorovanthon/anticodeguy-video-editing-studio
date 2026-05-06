@@ -1,0 +1,19 @@
+{# Shared brief macros. Imported via `{% from "_macros.j2" import ... %}`.
+   Available because LLMNode renders briefs through a Jinja Environment with
+   FileSystemLoader pointing at this directory.
+
+   Producers participating in a retry loop must add the gate-retry context
+   to their render dict — see `gates._base.gate_retry_context`. The macro
+   renders nothing on iteration 1 (no prior failure) so non-retry runs
+   produce identical briefs to before. #}
+
+{%- macro prior_violations_block(prior_violations, prior_iteration) -%}
+{%- if prior_violations and prior_iteration -%}
+
+## Previous attempt (iteration {{ prior_iteration }}) failed these checks; address them on this attempt:
+
+{% for v in prior_violations -%}
+- {{ v }}
+{% endfor %}
+{%- endif -%}
+{%- endmacro -%}
