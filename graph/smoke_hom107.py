@@ -189,6 +189,9 @@ def case_edl_select_haiku() -> int:
             "transcript_paths_json": json.dumps([str(EPISODE / "edit" / "transcripts" / "raw.json")]),
             "pre_scan_slips_json": "[]",
             "strategy_json": json.dumps(state["edit"]["strategy"]),
+            # HOM-147 retry-feedback macro inputs (iter 1 → empty block).
+            "prior_violations": [],
+            "prior_iteration": 0,
         },
         model_override=HAIKU_MODEL,
         timeout_s=240,

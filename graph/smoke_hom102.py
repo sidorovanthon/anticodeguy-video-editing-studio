@@ -78,7 +78,9 @@ def case_real_cli() -> dict:
             "transcript_paths_json": json.dumps(transcripts),
             "pre_scan_slips_json": "[]",
             "strategy_json": json.dumps(state["edit"]["strategy"]),
-            "gate_retry_violations_block": "",
+            # HOM-147 retry-feedback macro inputs (iter 1 → empty block).
+            "prior_violations": [],
+            "prior_iteration": 0,
         },
         model_override=HAIKU_MODEL,
         timeout_s=240,
