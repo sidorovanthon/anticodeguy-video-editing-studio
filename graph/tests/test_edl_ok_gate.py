@@ -390,6 +390,66 @@ def test_asymmetric_gap_violation_is_prescriptive(tmp_path: Path):
     assert "infeasible" in msg and "drop or relocate" in msg
 
 
+def test_grade_curves_keypoint_above_one_fails(episode: Path):
+    """Real-episode regression (HOM-154): grade with `curves=master='... 1/1.07'`
+    — y=1.07 > 1.0. ffmpeg curves filter rejects this with `Invalid key
+    point coordinates`. Pre-flight here so the gate catches it instead
+    of letting render burn 6 segment-extracts before crashing.
+    """
+    edl = _good_edl()
+    edl["grade"] = (
+        "curves=master='0/0.02 0.5/0.535 1/1.07',"
+        "eq=saturation=1.05,colorbalance=rm=0.03:gm=0.01:bm=-0.02"
+    )
+    state = _state(episode, edl, source_duration_s=7.0)
+    record = edl_ok_gate_node(state)["gate_results"][0]
+    assert not record["passed"]
+    msg = next((v for v in record["violations"] if "grade.curves" in v), "")
+    assert msg, record["violations"]
+    assert "1.07" in msg and "outside [0,1]" in msg
+
+
+def test_grade_curves_keypoint_negative_fails(episode: Path):
+    """Symmetric to the >1 case: ffmpeg also rejects negative coordinates."""
+    edl = _good_edl()
+    edl["grade"] = "curves=master='-0.05/0 0.5/0.5 1/1'"
+    state = _state(episode, edl, source_duration_s=7.0)
+    record = edl_ok_gate_node(state)["gate_results"][0]
+    assert not record["passed"]
+    assert any("grade.curves" in v and "outside [0,1]" in v for v in record["violations"])
+
+
+def test_grade_preset_name_passes(episode: Path):
+    """Grade as a preset name (no `=`) is valid — `grade.py` resolves it."""
+    edl = _good_edl()
+    edl["grade"] = "warm_cinematic"
+    state = _state(episode, edl, source_duration_s=7.0)
+    record = edl_ok_gate_node(state)["gate_results"][0]
+    assert record["passed"], record["violations"]
+
+
+def test_grade_valid_curves_passes(episode: Path):
+    """Canonical `grade.py` PRESET-style chain (all keypoints in [0,1]) passes."""
+    edl = _good_edl()
+    edl["grade"] = (
+        "curves=master='0/0 0.25/0.23 0.75/0.77 1/1',"
+        "eq=saturation=1.05"
+    )
+    state = _state(episode, edl, source_duration_s=7.0)
+    record = edl_ok_gate_node(state)["gate_results"][0]
+    assert record["passed"], record["violations"]
+
+
+def test_grade_malformed_keypoint_fails(episode: Path):
+    """Non-`x/y` token in curves payload → flagged with malformed-keypoint message."""
+    edl = _good_edl()
+    edl["grade"] = "curves=master='0/0 broken 1/1'"
+    state = _state(episode, edl, source_duration_s=7.0)
+    record = edl_ok_gate_node(state)["gate_results"][0]
+    assert not record["passed"]
+    assert any("malformed keypoint" in v for v in record["violations"])
+
+
 def test_solvable_gap_violation_suggests_target(tmp_path: Path):
     """When the bracketing gap is wide enough (≥60ms), the violation should
     recommend a concrete target inside the valid window instead of just

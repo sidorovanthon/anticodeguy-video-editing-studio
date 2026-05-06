@@ -36,6 +36,19 @@ sidedness; the gate enforces both sides):
 - If a candidate cut sits in a bracketing gap < 60 ms, HR 7 is geometrically
   infeasible there: drop or relocate the range (escape clause below).
 
+Color grade (orchestrator-house clarification — canon `SKILL.md` §"Color
+grade" allows raw ffmpeg filter chains; this rule is an ffmpeg constraint,
+not a canon override):
+
+- ffmpeg's `curves=master='x/y …'` filter requires every keypoint coordinate
+  in [0, 1]. Worked examples in `~/.claude/skills/video-use/helpers/grade.py`
+  PRESETS (e.g. `subtle: 0/0 0.25/0.23 0.75/0.77 1/1`) all anchor at
+  `0/0` and `1/1` — clamp highlights to 1.0 instead of going to 1.07.
+- For a "punchier highlights" feel use `eq=contrast=1.05` or
+  `colorbalance` rather than pushing curves above 1.0.
+- The `gate:edl_ok` validator pre-flights this; an out-of-range keypoint
+  triggers retry with a prescriptive violation.
+
 If you cannot satisfy HR 6/7 or the strategy's `length_estimate_s` (target
 final-cut length, validated downstream within ±20%), revise the range
 selection — drop a beat or trim tails — and report `total_duration_s`

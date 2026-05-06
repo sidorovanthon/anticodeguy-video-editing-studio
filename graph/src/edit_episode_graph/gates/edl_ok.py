@@ -16,11 +16,17 @@ Per spec §6.2 / canon HR 6+7:
     one-artifact ratio that pretends to validate intent.
   - `overlays == []` (Phase-3 orchestrator policy; Phase 4 owns animation).
   - `subtitles` field absent at dict level.
+  - `grade` (when raw ffmpeg filter chain): every `curves=master='...'`
+    keypoint sits in [0,1] (ffmpeg constraint; built-in presets in
+    `~/.claude/skills/video-use/helpers/grade.py` follow this). Pre-flight
+    validation prevents `Invalid key point coordinates` failing the
+    downstream render after expensive upstream work has already run.
 """
 
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -230,6 +236,67 @@ def _transcript_dir(state: dict) -> Path:
     return Path(episode_dir) / "edit" / "transcripts"
 
 
+# Matches each occurrence of `curves=master='<keypoints>'` (or "double-quoted")
+# inside an ffmpeg filter chain. The capture group is the keypoint payload —
+# space-separated `x/y` pairs — which we then validate point-wise. Single + double
+# quote variants both seen in the wild; ffmpeg accepts either. Empty quotes mean
+# "use default curve", which we leave alone.
+_CURVES_RE = re.compile(r"curves=master=(?:'([^']*)'|\"([^\"]*)\")")
+
+
+def _grade_violations(grade: str) -> list[str]:
+    """Validate the raw ffmpeg-filter-chain form of `edl.grade`.
+
+    Canon (`SKILL.md` §"Color grade") allows raw ffmpeg filter strings via
+    `grade.py --filter '<raw>'`. ffmpeg's `curves` filter requires every
+    keypoint coordinate in [0, 1] — see `grade.py` PRESETS as worked
+    examples. Pre-flight validation here catches `Invalid key point
+    coordinates` before render burns the per-segment ffmpeg passes.
+
+    Returns a list of violation strings; empty when grade is None / preset
+    name / valid filter chain.
+    """
+    if not isinstance(grade, str) or not grade.strip():
+        return []
+    # Preset names contain no `=`; skip those.
+    if "=" not in grade:
+        return []
+    out: list[str] = []
+    for match in _CURVES_RE.finditer(grade):
+        payload = match.group(1) if match.group(1) is not None else match.group(2)
+        if not payload.strip():
+            continue
+        for token in payload.split():
+            if "/" not in token:
+                out.append(
+                    f"grade.curves: malformed keypoint `{token}` "
+                    f"(expected `x/y` with x,y in [0,1])"
+                )
+                continue
+            x_str, _, y_str = token.partition("/")
+            try:
+                x = float(x_str)
+                y = float(y_str)
+            except ValueError:
+                out.append(
+                    f"grade.curves: non-numeric keypoint `{token}` "
+                    f"(expected `x/y` with x,y in [0,1])"
+                )
+                continue
+            if not (0.0 - EPSILON_S <= x <= 1.0 + EPSILON_S):
+                out.append(
+                    f"grade.curves: keypoint `{token}` x={x} outside [0,1] "
+                    f"(ffmpeg curves filter rejects this)"
+                )
+            if not (0.0 - EPSILON_S <= y <= 1.0 + EPSILON_S):
+                out.append(
+                    f"grade.curves: keypoint `{token}` y={y} outside [0,1] "
+                    f"(ffmpeg curves filter rejects this; clamp highlights "
+                    f"to 1.0 or use eq=contrast/brightness instead)"
+                )
+    return out
+
+
 def _strategy_length_estimate(state: dict) -> float | None:
     strategy = (state.get("edit") or {}).get("strategy") or {}
     estimate = strategy.get("length_estimate_s")
@@ -255,6 +322,7 @@ class EdlOkGate(Gate):
             violations.append("forbidden field `subtitles` present at top level")
         if edl.get("overlays") not in (None, []):
             violations.append(f"overlays must be [] (got {edl.get('overlays')!r})")
+        violations.extend(_grade_violations(edl.get("grade") or ""))
 
         ranges = edl.get("ranges") or []
         if not ranges:

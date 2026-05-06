@@ -27,7 +27,8 @@ from ._llm import LLMNode, _load_brief
 
 # Bump on brief / schema / tool-list change. Spec §8 review checkpoint.
 # v2 (HOM-154): brief gained explicit HR 7 both-sides clarification.
-_CACHE_VERSION = 2
+# v3 (HOM-154): brief gained ffmpeg curves [0,1] keypoint clarification.
+_CACHE_VERSION = 3
 
 
 def _takes_packed_path(state: dict) -> Path:
