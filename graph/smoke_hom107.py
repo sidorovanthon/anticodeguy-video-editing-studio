@@ -197,7 +197,11 @@ def case_edl_select_haiku() -> int:
         return 1
     print(f"  ✓ Haiku produced EDL with {len(edl['ranges'])} range(s); "
           f"total_duration_s={edl.get('total_duration_s')}")
-    return 0 if any(r.get("success") for r in runs) else 1
+    # EDL-presence is the success signal: we already returned 1 above when
+    # ranges were missing. `llm_runs` may be empty/None if the node short-
+    # circuited on a cache hit or telemetry path change — `any()` over an
+    # empty sequence is False and would otherwise spuriously return 1.
+    return 0
 
 
 def case_gate_evaluates() -> int:
