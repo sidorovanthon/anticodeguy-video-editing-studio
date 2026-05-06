@@ -1,4 +1,4 @@
-"""Tests for `edit_episode_graph._paths.repo_root` (HOM-131)."""
+"""Tests for `edit_episode_graph._paths` (HOM-131 + HOM-159)."""
 
 from __future__ import annotations
 
@@ -6,7 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from edit_episode_graph._paths import repo_root
+from edit_episode_graph._paths import (
+    PROJECT_ROOT_ENV_VAR,
+    project_root,
+    repo_root,
+)
 
 
 def test_resolves_main_worktree(tmp_path: Path) -> None:
@@ -50,3 +54,27 @@ def test_default_start_resolves_this_repo() -> None:
     """Called with no args, finds the actual checkout this test runs from."""
     root = repo_root()
     assert (root / ".git").is_dir()
+
+
+def test_project_root_env_override(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``HOMESTUDIO_PROJECT_ROOT`` overrides the git-walk default (HOM-159)."""
+    custom = tmp_path / "custom-root"
+    custom.mkdir()
+    monkeypatch.setenv(PROJECT_ROOT_ENV_VAR, str(custom))
+    assert project_root() == custom.resolve()
+
+
+def test_project_root_default_falls_back_to_repo_root(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Without the env var, ``project_root()`` matches ``repo_root()``."""
+    monkeypatch.delenv(PROJECT_ROOT_ENV_VAR, raising=False)
+    assert project_root() == repo_root()
+
+
+def test_project_root_empty_env_falls_back(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Empty-string env var is treated as unset, not as ``Path('').resolve()``."""
+    monkeypatch.setenv(PROJECT_ROOT_ENV_VAR, "")
+    assert project_root() == repo_root()

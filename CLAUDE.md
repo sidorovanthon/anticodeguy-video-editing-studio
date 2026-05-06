@@ -69,6 +69,8 @@ If a session ends with uncommitted work or an unmerged branch, leave the branch 
 
 **`gh pr merge` quirk on Windows worktrees.** If `main` exists as a separate git-worktree and you run `gh pr merge` from a feature worktree, the command exits with `failed to run git: fatal: 'main' is already used by worktree...`. **The remote merge succeeds anyway.** Verify via `gh pr view <n> --json state,mergedAt,mergeCommit` before assuming failure; pull main manually in the main worktree.
 
+**Worktree data-dir resolution.** Graph nodes resolve `inbox/` and `episodes/` via `edit_episode_graph._paths.project_root()`. Default: walk up to the main git worktree (linked-worktree `.git` files are skipped) — so a worktree run reads/writes data from the main checkout automatically, no junctions needed. Explicit override: set `HOMESTUDIO_PROJECT_ROOT` to pin a specific path. **Never** create NTFS junctions to `inbox/`+`episodes/` inside a worktree — `Remove-Item -Recurse` on a worktree traverses junctions and wipes the target (lost 6 episodes 2026-05-06; see memory `feedback_powershell_recurse_through_junction`).
+
 ## External skill canon — non-negotiable
 
 `video-use` (`~/repos/video-use`, junctioned to `~/.claude/skills/video-use`) and

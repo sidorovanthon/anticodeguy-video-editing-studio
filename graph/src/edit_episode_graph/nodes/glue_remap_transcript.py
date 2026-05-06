@@ -30,8 +30,9 @@ from pathlib import Path
 from langgraph.types import CachePolicy
 
 from .._caching import make_key
+from .._paths import project_root
 
-PROJECT_ROOT = Path(__file__).resolve().parents[4]
+PROJECT_ROOT = project_root()
 
 # Bump on remap_transcript.py shape / output-schema change. Spec §8.
 _CACHE_VERSION = 1

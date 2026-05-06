@@ -14,9 +14,10 @@ from pathlib import Path
 from langgraph.types import CachePolicy
 
 from .._caching import make_key
+from .._paths import project_root
 from ._deterministic import deterministic_node
 
-PROJECT_ROOT = Path(__file__).resolve().parents[4]
+PROJECT_ROOT = project_root()
 
 # Bump on scaffold_hyperframes.py shape / patch-set change. Spec §8.
 _CACHE_VERSION = 1

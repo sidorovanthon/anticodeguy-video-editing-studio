@@ -36,8 +36,9 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable, Iterable
 
-# Walks: nodes/preflight_canon.py → nodes → edit_episode_graph → src → graph → repo root.
-PROJECT_ROOT = Path(__file__).resolve().parents[4]
+from .._paths import project_root
+
+PROJECT_ROOT = project_root()
 BARE_REPROS_DIR = PROJECT_ROOT / "scripts" / "bare_repros"
 DEFAULT_STATE_PATH = BARE_REPROS_DIR / "state.json"
 
