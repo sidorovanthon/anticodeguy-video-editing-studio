@@ -146,11 +146,13 @@ def halt_llm_boundary_node(state):
     if cluster_supersedes_static_guard:
         n_v = len(cluster_failure.get("violations") or [])
         gate_name = cluster_failure.get("gate")
+        iter_n = cluster_failure.get("iteration") or 0
         msg = (
-            f"v4 halt: {gate_name} FAILED ({n_v} violation(s)) — see gate_results; "
+            f"v4 halt: {gate_name} FAILED at iter {iter_n} ({n_v} violation(s)) — "
+            "see gate_results; "
             f"{_persist_summary()}; "
-            "v4-sans-HITL routes post-assemble gate failures here, "
-            "retry-with-feedback is HOM-77/v5"
+            "p4_redispatch_beat retry-with-feedback exhausted (HOM-148, max 3 "
+            "attempts); HITL user_review for cluster-gate failures is HOM-78/v6"
         )
         return {"notices": [msg]}
     if static_guard_record is not None:

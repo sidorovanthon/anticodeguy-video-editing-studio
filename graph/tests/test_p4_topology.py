@@ -47,6 +47,8 @@ def test_phase4_nodes_present_in_compiled_graph():
         "gate_static_guard",
         # HOM-146: Phase 3 → Phase 4 bridge interrupt
         "p3_review_interrupt",
+        # HOM-148: cluster-gate retry node — re-authors offending scene
+        "p4_redispatch_beat",
     }
     missing = expected - nodes
     assert not missing, f"Phase 4 nodes missing from compiled graph: {sorted(missing)}"
@@ -136,6 +138,19 @@ def test_phase4_chain_edges_wired():
         # and →edl_failure_interrupt); the new retry edge loops back to
         # the producer so prior violations can be injected into the brief.
         ("gate_edl_ok", "p3_edl_select"),
+        # HOM-148: post-assemble cluster gates adopt the same retry helper.
+        # Each gate now has THREE outgoing edges: pass→next, retry→
+        # p4_redispatch_beat (fail+iter<3), halt (fail+iter≥3). Pass and
+        # halt edges are already asserted above; the new retry edges are:
+        ("gate_lint", "p4_redispatch_beat"),
+        ("gate_validate", "p4_redispatch_beat"),
+        ("gate_inspect", "p4_redispatch_beat"),
+        ("gate_design_adherence", "p4_redispatch_beat"),
+        ("gate_animation_map", "p4_redispatch_beat"),
+        ("gate_snapshot", "p4_redispatch_beat"),
+        ("gate_captions_track", "p4_redispatch_beat"),
+        # The redispatch node static-edges back to assemble — closing the loop.
+        ("p4_redispatch_beat", "p4_assemble_index"),
     }
     missing = expected_edges - edges
     assert not missing, (
