@@ -17,10 +17,30 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from langgraph.types import CachePolicy
+
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
+from .._caching import make_key
 from ..schemas.p4_design_system import DesignDoc
 from ._llm import LLMNode, _load_brief
+
+# Bump on brief / schema / tool-list change. See HOM-132 spec §8 review
+# checkpoint and `feedback_code_review_before_merge` memory.
+_CACHE_VERSION = 1
+
+
+def _cache_key(state, *_args, **_kwargs):
+    transcripts = (state.get("transcripts") or {}) if isinstance(state, dict) else {}
+    return make_key(
+        node="p4_design_system",
+        version=_CACHE_VERSION,
+        slug=state.get("slug", ""),
+        files=[transcripts.get("final_json_path")],
+    )
+
+
+CACHE_POLICY = CachePolicy(key_func=_cache_key)
 
 
 def _design_md_path(state: dict) -> Path:
