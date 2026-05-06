@@ -244,11 +244,16 @@ def build_graph_uncompiled() -> StateGraph:
             "gate_edl_ok": "gate_edl_ok",
         },
     )
+    # HOM-147: gate:edl_ok adopts the generic retry helper. The
+    # `gate_edl_ok → p3_edl_select` retry edge sits between pass (render)
+    # and exhaustion (interrupt); the producer's render context includes
+    # `prior_violations` so the brief shows the prior failures verbatim.
     g.add_conditional_edges(
         "gate_edl_ok",
         route_after_edl_ok,
         {
             "p3_render_segments": "p3_render_segments",
+            "p3_edl_select": "p3_edl_select",
             "edl_failure_interrupt": "edl_failure_interrupt",
         },
     )

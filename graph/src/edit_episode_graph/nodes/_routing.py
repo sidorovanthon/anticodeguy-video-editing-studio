@@ -155,20 +155,64 @@ def route_after_edl_select(state) -> str:
     return "gate_edl_ok"
 
 
-def route_after_edl_ok(state) -> str:
-    """gate:edl_ok -> p3_render_segments on pass | edl_failure_interrupt on fail.
+def route_after_gate_with_retry(
+    *,
+    gate_name: str,
+    on_pass: str,
+    retry_node: str,
+    fail_route: str,
+    max_iterations: int = 3,
+):
+    """Build a conditional-edge router for an artifact-validation gate that
+    supports a retry-with-feedback middle path.
 
-    The interrupt node suspends the graph (HITL) so an operator can inspect
-    `state["gate_results"]`, fix the EDL, and resume. Per spec §6.2 the gate
-    itself stays pure (state-update only); routing decides what to do with
-    the recorded outcome. The retry-loop variant (re-call p3_edl_select with
-    violations fed back into the brief) is tracked separately under HOM-75.
+    Three outcomes per spec §6.2:
+
+      * pass                                → ``on_pass``
+      * fail + iteration < max_iterations   → ``retry_node`` (re-run producer
+        with prior violations injected via the `prior_violations_block` macro)
+      * fail + iteration ≥ max_iterations   → ``fail_route`` (interrupt or halt)
+
+    A missing record is treated as fail-with-no-iteration: route to
+    ``fail_route`` rather than burning a retry on phantom state.
+
+    The producer's ``_render_ctx`` MUST splat
+    ``gate_retry_context(state, gate_name)`` into its dict so the brief can
+    render the violations feedback block; see `gates._base.gate_retry_context`.
     """
-    from ..gates._base import latest_gate_result
-    result = latest_gate_result(state, "gate:edl_ok")
-    if result and result.get("passed"):
-        return "p3_render_segments"
-    return "edl_failure_interrupt"
+    def _route(state) -> str:
+        from ..gates._base import latest_gate_result
+        record = latest_gate_result(state, gate_name)
+        if record is None:
+            return fail_route
+        if record.get("passed"):
+            return on_pass
+        if (record.get("iteration") or 0) < max_iterations:
+            return retry_node
+        return fail_route
+
+    _route.__name__ = (
+        f"route_after_{gate_name.replace(':', '_').removeprefix('gate_')}_with_retry"
+    )
+    return _route
+
+
+# HOM-147: `gate:edl_ok` adopts the generic retry helper. On failure with
+# iter < 3 we re-invoke `p3_edl_select`, whose brief renders the prior
+# violations via `briefs/_macros.j2 :: prior_violations_block`. Once retries
+# exhaust, control still falls to `edl_failure_interrupt` so an operator can
+# inspect state and resume (or abort).
+route_after_edl_ok = route_after_gate_with_retry(
+    gate_name="gate:edl_ok",
+    on_pass="p3_render_segments",
+    retry_node="p3_edl_select",
+    fail_route="edl_failure_interrupt",
+    max_iterations=3,
+)
+route_after_edl_ok.__doc__ = (
+    "gate:edl_ok → p3_render_segments (pass) | p3_edl_select (fail+iter<3) | "
+    "edl_failure_interrupt (fail+iter≥3 or no record). HOM-147."
+)
 
 
 # HOM-130: tokens that count as "operator gave up" on a failure interrupt.
@@ -248,17 +292,20 @@ def route_after_self_eval(state) -> str:
     return "gate_eval_ok"
 
 
-def route_after_eval_ok(state) -> str:
-    """gate:eval_ok -> p3_persist_session on pass | p3_render_segments on fail+iter<3 | escalate."""
-    from ..gates._base import latest_gate_result
-    record = latest_gate_result(state, "gate:eval_ok")
-    if record is None:
-        return "eval_failure_interrupt"
-    if record.get("passed"):
-        return "p3_persist_session"
-    if (record.get("iteration") or 0) < 3:
-        return "p3_render_segments"
-    return "eval_failure_interrupt"
+# HOM-147: gate:eval_ok was the prior-art retry router; migrate to the
+# generic helper. Behavior is identical (pass→persist, fail+iter<3→re-render,
+# otherwise→eval_failure_interrupt).
+route_after_eval_ok = route_after_gate_with_retry(
+    gate_name="gate:eval_ok",
+    on_pass="p3_persist_session",
+    retry_node="p3_render_segments",
+    fail_route="eval_failure_interrupt",
+    max_iterations=3,
+)
+route_after_eval_ok.__doc__ = (
+    "gate:eval_ok → p3_persist_session (pass) | p3_render_segments (fail+iter<3) | "
+    "eval_failure_interrupt (otherwise). HOM-147 — was the prior-art pattern."
+)
 
 
 def route_after_persist_session(state) -> str:

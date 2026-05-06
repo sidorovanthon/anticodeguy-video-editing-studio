@@ -16,22 +16,32 @@ from edit_episode_graph.nodes._routing import route_after_edl_ok
 from edit_episode_graph.nodes.edl_failure_interrupt import edl_failure_interrupt_node
 
 
-def _state_with_gate(passed: bool, violations: list[str] | None = None) -> dict:
+def _state_with_gate(passed: bool, violations: list[str] | None = None,
+                     iteration: int = 1) -> dict:
     return {
         "gate_results": [
             {
                 "gate": "gate:edl_ok",
                 "passed": passed,
                 "violations": violations or [],
-                "iteration": 1,
+                "iteration": iteration,
                 "timestamp": "now",
             }
         ]
     }
 
 
-def test_routing_fail_goes_to_interrupt():
+def test_routing_first_fail_routes_to_retry():
+    """HOM-147: first failure (iter=1) routes to p3_edl_select for a retry
+    with prior violations injected, rather than straight to interrupt."""
     state = _state_with_gate(False, ["range[0].start cuts inside word"])
+    assert route_after_edl_ok(state) == "p3_edl_select"
+
+
+def test_routing_exhausted_fail_goes_to_interrupt():
+    """HOM-147: once iter ≥ max_iterations (3) the retry budget is spent;
+    routing falls through to the interrupt for HITL recovery."""
+    state = _state_with_gate(False, ["range[0].start cuts inside word"], iteration=3)
     assert route_after_edl_ok(state) == "edl_failure_interrupt"
 
 
@@ -41,7 +51,8 @@ def test_routing_pass_skips_interrupt():
 
 
 def test_routing_no_record_treated_as_fail():
-    """Defensive: missing gate record should not silently route to halt."""
+    """Defensive: missing gate record should not silently route to halt or
+    burn a retry — fall through to the interrupt so the operator sees state."""
     assert route_after_edl_ok({}) == "edl_failure_interrupt"
 
 
@@ -101,20 +112,32 @@ def test_compiled_minigraph_suspends_on_gate_failure(tmp_path):
     g.add_node("gate_edl_ok", edl_ok_gate_node)
     g.add_node("edl_failure_interrupt", edl_failure_interrupt_node)
     g.set_entry_point("gate_edl_ok")
+    # HOM-147: gate_edl_ok router can also route to p3_edl_select (retry)
+    # on early-iteration failures. We skip the retry branch in this mini-
+    # graph by pre-seeding state with two prior failed records so the next
+    # gate run records iteration=3 and routes straight to the interrupt.
+    # The retry path is exercised by test_gate_retry_routing.py.
     g.add_conditional_edges(
         "gate_edl_ok",
         route_after_edl_ok,
         {
-            "p3_render_segments": END,  # placeholder for the pass branch
+            "p3_render_segments": END,        # placeholder for the pass branch
+            "p3_edl_select": END,             # retry branch — not exercised here
             "edl_failure_interrupt": "edl_failure_interrupt",
         },
     )
     g.add_edge("edl_failure_interrupt", END)
     compiled = g.compile(checkpointer=InMemorySaver())
 
+    prior_failures = [
+        {"gate": "gate:edl_ok", "passed": False,
+         "violations": ["earlier"], "iteration": i, "timestamp": "old"}
+        for i in (1, 2)
+    ]
     state = {
         "slug": "synthetic",
         "episode_dir": str(tmp_path),
+        "gate_results": prior_failures,
         "edit": {
             "edl": {
                 "version": 1,

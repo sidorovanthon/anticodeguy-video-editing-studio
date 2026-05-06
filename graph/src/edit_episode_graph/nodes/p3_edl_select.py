@@ -18,6 +18,7 @@ from pathlib import Path
 
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
+from ..gates._base import gate_retry_context
 from ..schemas.p3_edl_select import EDL
 from ._llm import LLMNode, _load_brief
 
@@ -53,12 +54,17 @@ def _strategy(state: dict) -> dict:
 
 
 def _render_ctx(state: dict) -> dict:
-    return {
+    ctx = {
         "takes_packed_path": str(_takes_packed_path(state)),
         "transcript_paths_json": json.dumps(_transcript_paths(state), ensure_ascii=False),
         "pre_scan_slips_json": json.dumps(_pre_scan_slips(state), ensure_ascii=False),
         "strategy_json": json.dumps(_strategy(state), ensure_ascii=False),
     }
+    # HOM-147: render the prior-violations feedback block on retry attempts.
+    # Iteration 1 (no prior failure) → macro emits empty string; brief is
+    # byte-identical to pre-HOM-147 output.
+    ctx.update(gate_retry_context(state, "gate:edl_ok"))
+    return ctx
 
 
 def _build_node() -> LLMNode:

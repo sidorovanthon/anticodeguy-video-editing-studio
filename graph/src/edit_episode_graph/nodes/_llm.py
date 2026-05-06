@@ -20,7 +20,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable
 
-from jinja2 import Template
+from jinja2 import Environment, FileSystemLoader
 from pydantic import BaseModel
 
 from ..backends._router import BackendRouter
@@ -32,6 +32,15 @@ from ..backends._types import (
 
 
 _BRIEFS_DIR = Path(__file__).resolve().parent.parent / "briefs"
+
+# Single Jinja Environment so producer briefs can `{% from "_macros.j2" import ... %}`
+# shared macros (e.g. retry feedback rendering — see gates._base.gate_retry_context).
+# Briefs render via `_BRIEF_ENV.from_string(template)`; the FileSystemLoader is
+# what makes the import work even though briefs are loaded as strings.
+_BRIEF_ENV = Environment(
+    loader=FileSystemLoader(str(_BRIEFS_DIR)),
+    keep_trailing_newline=True,
+)
 
 
 @lru_cache(maxsize=None)
@@ -99,7 +108,7 @@ class LLMNode:
     ) -> dict:
         req = requirements or self.requirements
         timeout_s = timeout_s or self.timeout_s
-        task = Template(self.brief_template).render(**render_ctx)
+        task = _BRIEF_ENV.from_string(self.brief_template).render(**render_ctx)
         cwd = Path(state.get("episode_dir") or ".")
         try:
             result, attempts = router.invoke(
