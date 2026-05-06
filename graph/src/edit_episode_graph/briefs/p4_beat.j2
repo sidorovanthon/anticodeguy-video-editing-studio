@@ -69,7 +69,15 @@ Hard rules (orchestrator-house, derived from canon — surfaced so you don't mis
 - **Density floor**: ≥ 8 elements visible at the hero frame, ≥ 2 BG decoratives with ambient motion (`tl.to()` on the seekable `tl`, never bare `gsap.to()`).
 - **≥ 3 distinct eases** (Animation Guardrails); first entrance offset 0.1–0.3s.
 - **Final-fade (HR 4)**: permitted iff `is_final == True`. Otherwise NO `tl.to(..., {opacity: 0})` on the scene container — scene-to-scene transitions are root-scope and authored elsewhere.
-- **Avoid the literal substring `repeat:` followed by ` -1`** — even in JS comments — HF lint regex false-positive. Use `repeat: 999` or omit.
+- **NO infinite repeats** — the GSAP infinite-repeat sentinel is forbidden (canon: `~/.agents/skills/hyperframes/SKILL.md` §"Animation Guardrails" L227 + Rules L240). Infinite-repeat timelines break the deterministic capture engine. For any looping ambient motion, compute a FINITE count from the scene's `data-duration` and the tween's own duration:
+  ```js
+  const sceneDuration = {{ data_duration_s }};
+  const cycleDuration = 1.2; // your tween duration in seconds
+  tl.to(".aura", { scale: 1.08, yoyo: true,
+                   repeat: Math.ceil(sceneDuration / cycleDuration) - 1,
+                   duration: cycleDuration }, 0);
+  ```
+  Never write the literal token `repeat:` followed by the infinite sentinel — even inside JS comments — HF lint regex false-positives on the bare substring (memory `feedback_lint_regex_repeat_minus_one_in_comments`). Use a finite count (`Math.ceil(...) - 1`, or a large positive integer like `repeat: 999` for unbounded-feeling ambient motion).
 - **opacity initial state**: `0` for non-first scenes (the future transitions node fades them in). First scene starts visible.
 
 Process:
