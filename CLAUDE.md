@@ -30,10 +30,24 @@ semantically equivalent, invoke `/edit-episode` (with a slug argument if they na
 
 ## Idempotency
 
-The command is safe to re-run on the same slug. It resumes from the first missing
-artifact: `episodes/<slug>/edit/final.mp4`, then `episodes/<slug>/hyperframes/index.html`,
-then studio launch. Skipping Phase 1 when `final.mp4` exists is important — it avoids
-re-spending ElevenLabs Scribe credits.
+Re-running the graph on the same slug is **structurally safe**: every expensive node
+carries a `langgraph.types.CachePolicy(key_func=…)` keyed on slug + content-fingerprint of
+its upstream artifacts, and the compiled graph binds a `SqliteCache(graph/.cache/langgraph.db)`.
+A re-run on identical inputs produces zero LLM dispatches and zero subprocess calls
+(ElevenLabs Scribe, ffmpeg, npx hyperframes); editing one upstream artifact invalidates
+exactly the nodes whose `files=` lists it, leaving everything else cached. Coarse
+phase-skip edges (`route_after_preflight` short-circuits Phase 3 when `final.mp4` exists)
+remain in place as routing — caching is the orthogonal node-body layer.
+
+Source-of-truth design: `docs/superpowers/specs/2026-05-06-langgraph-node-caching-design.md`
+(HOM-132 epic). Cache lifecycle is independent from `graph/.langgraph_api/checkpoints.sqlite` —
+wiping the cache to force re-execution does not lose thread history. Manual escape hatch:
+`rm graph/.cache/langgraph.db`. Per-node `_CACHE_VERSION` integers (in each node module)
+must be bumped when its brief / schema / tool-list changes; code-review enforces (spec §8).
+
+The legacy `/edit-episode` slash command separately walked artifact existence on disk
+(final.mp4 → index.html → studio); that flow predates the LangGraph migration and is now
+secondary. Phase 3+ runs through `graph/` + Studio.
 
 ## Branching workflow — non-negotiable
 
