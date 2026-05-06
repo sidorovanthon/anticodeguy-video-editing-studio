@@ -17,7 +17,7 @@ from langgraph.types import CachePolicy
 
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
-from .._caching import make_key
+from .._caching import make_llm_key
 from ..schemas.p3_pre_scan import PreScanReport
 from ._llm import LLMNode, _load_brief
 
@@ -60,7 +60,7 @@ def _cache_key(state, *_args, **_kwargs):
     # Empty slug tolerated (`__unbound__` sentinel) — see p4_design_system
     # for the LangGraph introspection rationale.
     slug = state.get("slug") or "__unbound__"
-    return make_key(
+    return make_llm_key(
         node="p3_pre_scan",
         version=_CACHE_VERSION,
         slug=slug,

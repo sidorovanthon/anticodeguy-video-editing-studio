@@ -87,3 +87,59 @@ def make_key(
     parts.extend(file_fingerprint(p) for p in files)
     parts.extend(repr(x) for x in extras)
     return "|".join(parts)
+
+
+def node_config_fingerprint(node_name: str) -> str:
+    """Stable fingerprint of the effective `NodeConfig` for an LLM node.
+
+    HOM-157: the inputs that determine an LLM node's output are not just
+    its brief and upstream artifacts — they also include the per-node
+    routing config from ``graph/config.yaml`` (``tier``, ``model``,
+    ``backend_preference``, ``timeout_s``). Two prior runs with the same
+    slug + same upstream files but different ``timeout_s`` are NOT the
+    same function-of-input: one may exhaust backends where the other
+    succeeds. Including this fingerprint in the cache key makes a config
+    bump invalidate the affected node naturally — no manual cache wipe,
+    no SqliteCache override, no swallow-vs-raise tradeoff.
+
+    Resolution goes through ``load_default_config().resolve_node`` so
+    pattern-glob overrides + defaults are applied identically to how the
+    router resolves them at dispatch time. Resolved on every key build —
+    ``load_default_config`` is itself ``lru_cache``'d, so the cost is one
+    YAML parse per process.
+    """
+    # Local import: `_caching` is imported by every node module, while
+    # `config` is leaf-level. Top-level import works fine today, but a
+    # local import keeps the dependency direction unambiguous and avoids
+    # surprising future readers.
+    from .config import load_default_config
+    cfg = load_default_config().resolve_node(node_name)
+    return stable_fingerprint({
+        "tier": cfg.tier,
+        "backend_preference": cfg.backend_preference,
+        "timeout_s": cfg.timeout_s,
+        "model": cfg.model,
+    })
+
+
+def make_llm_key(
+    *,
+    node: str,
+    version: int,
+    slug: str,
+    files: Iterable[str | Path | None] = (),
+    extras: Iterable[object] = (),
+) -> str:
+    """Build a cache key for an LLM node, baking in routing-config fingerprint.
+
+    Identical signature to :func:`make_key`; the only difference is an
+    auto-prepended ``cfg:<sha>`` extra resolved via
+    :func:`node_config_fingerprint`. Use from any node whose dispatch
+    goes through ``LLMNode`` (i.e. is sensitive to ``graph/config.yaml``).
+    Deterministic nodes (ffmpeg, file-IO) keep using :func:`make_key`.
+    """
+    cfg_fp = node_config_fingerprint(node)
+    return make_key(
+        node=node, version=version, slug=slug, files=files,
+        extras=(f"cfg:{cfg_fp}", *extras),
+    )

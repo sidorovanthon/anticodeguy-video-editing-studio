@@ -76,6 +76,8 @@ def test_node_resolve_p3_strategy_smart_override():
         n = load_default_config().resolve_node("p3_strategy")
         assert n.tier == "smart"
         assert n.backend_preference == ["claude"]
-        assert n.timeout_s == 120
+        # HOM-154/HOM-157: bumped 120 → 300 (Opus 4.7 on full pre_scan
+        # context exceeds the 120s default).
+        assert n.timeout_s == 300
     finally:
         load_default_config.cache_clear()

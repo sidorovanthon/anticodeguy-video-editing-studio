@@ -24,7 +24,7 @@ from langgraph.types import CachePolicy
 
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
-from .._caching import make_key, stable_fingerprint, strategy_fingerprint
+from .._caching import make_llm_key, stable_fingerprint, strategy_fingerprint
 from ..schemas.p3_persist_session import PersistSessionResult
 from ._llm import LLMNode, _load_brief
 
@@ -81,7 +81,7 @@ def _cache_key(state, *_args, **_kwargs):
     edl = edit.get("edl") or {}
     eval_report = edit.get("eval") or {}
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    return make_key(
+    return make_llm_key(
         node="p3_persist_session",
         version=_CACHE_VERSION,
         slug=slug,

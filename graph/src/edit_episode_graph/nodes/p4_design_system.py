@@ -21,7 +21,7 @@ from langgraph.types import CachePolicy
 
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
-from .._caching import make_key, strategy_fingerprint
+from .._caching import make_llm_key, strategy_fingerprint
 from ..schemas.p4_design_system import DesignDoc
 from ._llm import LLMNode, _load_brief
 
@@ -65,7 +65,7 @@ def _cache_key(state, *_args, **_kwargs):
     edit = state.get("edit") or {}
     edl = edit.get("edl") or {}
     strategy = edit.get("strategy") or {}
-    return make_key(
+    return make_llm_key(
         node="p4_design_system",
         version=_CACHE_VERSION,
         slug=slug,
