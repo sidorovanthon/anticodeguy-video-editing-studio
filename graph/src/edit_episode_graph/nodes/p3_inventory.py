@@ -29,8 +29,9 @@ from typing import Any
 from langgraph.types import CachePolicy
 
 from .._caching import make_key
+from .._paths import project_root
 
-PROJECT_ROOT = Path(__file__).resolve().parents[4]
+PROJECT_ROOT = project_root()
 HELPERS_DIR = Path.home() / ".claude" / "skills" / "video-use" / "helpers"
 
 # Bump on transcribe/pack helper-version / parser / output-shape change. Spec §8.

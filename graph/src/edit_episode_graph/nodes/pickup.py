@@ -4,9 +4,10 @@ import json
 import sys
 from pathlib import Path
 
+from .._paths import project_root
 from ._deterministic import deterministic_node
 
-PROJECT_ROOT = Path(__file__).resolve().parents[4]
+PROJECT_ROOT = project_root()
 
 
 def _cmd(state) -> list[str]:
