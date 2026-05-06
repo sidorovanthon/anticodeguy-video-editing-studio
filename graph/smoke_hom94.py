@@ -27,6 +27,11 @@ REPO_ROOT = repo_root()
 SLUG = "desktop-licensing-story"
 EPISODE = REPO_ROOT / "episodes" / SLUG
 
+# HOM-116e: pin Haiku explicitly per-smoke-run rather than via config so a
+# future config change to p3_pre_scan's `model:` doesn't silently route this
+# smoke to Sonnet/Opus and bill subscription quota on every CI/dev run.
+HAIKU_MODEL = "claude-haiku-4-5-20251001"
+
 
 def _router_with(model_override: str | None = None) -> BackendRouter:
     backends = [ClaudeCodeBackend(), CodexBackend()]
@@ -39,10 +44,16 @@ def _print(label: str, run: dict) -> None:
 
 
 def case_happy_path() -> None:
-    print("\n=== Case 1: happy path (Haiku via config override) ===")
+    print("\n=== Case 1: happy path (Haiku via per-run override) ===")
     state = {"slug": SLUG, "episode_dir": str(EPISODE)}
     router = _router_with()
-    update = p3_pre_scan_node(state, router=router)
+    node = _build_node()
+    update = node._invoke_with(
+        router, state,
+        render_ctx={"takes_packed_path": str(EPISODE / "edit" / "takes_packed.md")},
+        model_override=HAIKU_MODEL,
+        timeout_s=90,
+    )
     runs = update.get("llm_runs") or []
     print(f"  attempts: {len(runs)}")
     for r in runs:
