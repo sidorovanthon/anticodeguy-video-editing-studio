@@ -15,7 +15,6 @@ node in Phase 4 and is never cheap (per `feedback_creative_nodes_flagship_tier`)
 
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 
@@ -23,25 +22,12 @@ from langgraph.types import CachePolicy
 
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
-from .._caching import make_key
+from .._caching import make_key, stable_fingerprint
 from ..schemas.p4_prompt_expansion import ExpandedPrompt
 from ._llm import LLMNode, _load_brief
 
 # Bump on brief / schema / tool-list change. See HOM-132 spec §8.
 _CACHE_VERSION = 1
-
-
-def _style_request_fingerprint(state: dict) -> str:
-    """Stable sha256 of `compose.style_request` (operator-supplied prompt seed).
-
-    Covered explicitly because it is a brief input (rendered as
-    `style_request_json`) that is NOT produced by any upstream node — so
-    transitive invalidation through file fingerprints does not catch it.
-    Spec §6 row for `p4_prompt_expansion` listed only design + transcript;
-    the HOM-150 re-validation surfaced this gap (per CLAUDE.md note).
-    """
-    val = (state.get("compose") or {}).get("style_request") or ""
-    return hashlib.sha256(repr(val).encode("utf-8")).hexdigest()
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -54,6 +40,13 @@ def _cache_key(state, *_args, **_kwargs):
     slug = state.get("slug") or "__unbound__"
     compose = state.get("compose") or {}
     transcripts = state.get("transcripts") or {}
+    # `style_request` is a brief input (rendered as `style_request_json`)
+    # that is NOT produced by any upstream node — transitive invalidation
+    # through file fingerprints does not cover it. Hashed as `extras`.
+    # Spec §6 row for `p4_prompt_expansion` updated in this PR to reflect
+    # this; the HOM-149 pilot row was incomplete on first pass (per
+    # CLAUDE.md "Re-validate each row against the actual brief inputs").
+    style_request = compose.get("style_request") or ""
     return make_key(
         node="p4_prompt_expansion",
         version=_CACHE_VERSION,
@@ -62,7 +55,7 @@ def _cache_key(state, *_args, **_kwargs):
             compose.get("design_md_path"),
             transcripts.get("final_json_path"),
         ],
-        extras=(_style_request_fingerprint(state),),
+        extras=(stable_fingerprint(style_request),),
     )
 
 

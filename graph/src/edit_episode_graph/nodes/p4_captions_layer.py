@@ -226,6 +226,5 @@ def p4_captions_layer_node(state, *, router: BackendRouter | None = None):
         compose_update["captions_block_path"] = str(captions_path)
         compose_update["captions"] = {
             "captions_block_path": str(captions_path),
-            "cached": False,
         }
     return update

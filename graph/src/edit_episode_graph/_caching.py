@@ -12,10 +12,38 @@ Design choices live in the spec; this file only implements them.
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 _CHUNK = 64 * 1024
+
+
+def stable_fingerprint(value: Any) -> str:
+    """Stable sha256 hex of any JSON-serialisable value.
+
+    Used by node `_cache_key` functions to fingerprint in-memory state
+    that is rendered verbatim into the brief but is NOT covered by an
+    upstream file. `sort_keys=True` makes the digest order-independent for
+    dicts; `default=str` is a defensive fall-through for non-JSON scalars
+    (e.g. Path) that occasionally land in compose namespaces.
+    """
+    payload = json.dumps(value, sort_keys=True, ensure_ascii=False, default=str)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def strategy_fingerprint(strategy: dict | None) -> str:
+    """Fingerprint a `state.edit.strategy` dict, excluding non-content metadata.
+
+    `source_path` is a filesystem locator, not output-affecting content;
+    `skipped`/`skip_reason` are transient skip markers that should not
+    namespace a successful run away from a prior skipped run.
+    """
+    stable = {
+        k: v for k, v in (strategy or {}).items()
+        if k not in {"source_path", "skipped", "skip_reason"}
+    }
+    return stable_fingerprint(stable)
 
 
 def file_fingerprint(path: str | Path | None) -> str:

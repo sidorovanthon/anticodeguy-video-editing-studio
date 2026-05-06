@@ -54,11 +54,19 @@ def _cache_key(state, *_args, **_kwargs):
         assemble.get("index_html_path")
         or assemble.get("assembled_at")
     )
+    # `today` (UTC YYYY-MM-DD) is rendered into the brief (line 33 of
+    # briefs/p4_persist_session.j2) and dictates the date stamped on the
+    # appended Session block. Including it in `extras` means a same-day
+    # re-run with unchanged `index.html` cache-hits (no duplicate Session
+    # block — desirable, nothing changed); a next-day re-run misses
+    # exactly when the brief would write a different date.
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     return make_key(
         node="p4_persist_session",
         version=_CACHE_VERSION,
         slug=slug,
         files=[index_html_path],
+        extras=(today,),
     )
 
 

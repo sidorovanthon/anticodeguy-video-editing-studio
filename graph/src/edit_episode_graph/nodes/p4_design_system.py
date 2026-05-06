@@ -14,7 +14,6 @@ empirically hollow it out (per `feedback_creative_nodes_flagship_tier`).
 
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 
@@ -22,30 +21,13 @@ from langgraph.types import CachePolicy
 
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
-from .._caching import make_key
+from .._caching import make_key, strategy_fingerprint
 from ..schemas.p4_design_system import DesignDoc
 from ._llm import LLMNode, _load_brief
 
 # Bump on brief / schema / tool-list change. See HOM-132 spec §8 review
 # checkpoint and `feedback_code_review_before_merge` memory.
 _CACHE_VERSION = 1
-
-
-def _strategy_fingerprint(strategy: dict) -> str:
-    """Stable sha256 of the strategy dict, modulo non-content metadata.
-
-    `source_path` is excluded — it's a filesystem locator, not output-
-    affecting content. `skipped`/`skip_reason` are excluded so a graph
-    re-run that successfully populates strategy after a prior skip
-    doesn't share a key with the skipped run.
-    """
-    stable = {
-        k: v for k, v in (strategy or {}).items()
-        if k not in {"source_path", "skipped", "skip_reason"}
-    }
-    return hashlib.sha256(
-        json.dumps(stable, sort_keys=True, ensure_ascii=False).encode("utf-8")
-    ).hexdigest()
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -88,7 +70,7 @@ def _cache_key(state, *_args, **_kwargs):
         version=_CACHE_VERSION,
         slug=slug,
         files=[transcripts.get("final_json_path"), edl.get("edl_path")],
-        extras=(_strategy_fingerprint(strategy),),
+        extras=(strategy_fingerprint(strategy),),
     )
 
 
