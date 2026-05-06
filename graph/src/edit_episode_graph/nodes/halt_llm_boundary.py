@@ -244,7 +244,8 @@ def halt_llm_boundary_node(state):
         n_issues = len(eval_state.get("issues") or [])
         msg = (
             f"v3 halt: self-eval passed ({n} segment(s), {n_issues} note(s)); "
-            "downstream persist/glue are future tickets (HOM-105..107)"
+            "Phase 3 complete; next is p3_persist_session → p3_review_interrupt → "
+            "Phase 4 chain (design → expansion → plan → catalog → assemble)"
         )
         return {"notices": [msg]}
     if render_state.get("final_mp4"):
@@ -255,16 +256,23 @@ def halt_llm_boundary_node(state):
         cached_part = " [cached]" if cached else ""
         msg = (
             f"v3 halt: final.mp4 rendered ({n} segment(s)){cached_part}{delta_part}; "
-            "downstream self_eval/persist/glue are future tickets (HOM-104..107)"
+            "next is p3_self_eval → gate:eval_ok → p3_persist_session"
         )
     elif edl_state.get("ranges"):
         n = len(edl_state.get("ranges") or [])
-        msg = f"v3 halt: EDL passed gate:edl_ok ({n} range(s)); render requires p3_render_segments (future)"
+        msg = (
+            f"v3 halt: EDL passed gate:edl_ok ({n} range(s)); "
+            "next is p3_render_segments → p3_self_eval"
+        )
     elif pre_scan_state.get("slips") is not None and not pre_scan_state.get("skipped"):
         msg = (
-            "v2 halt: pre_scan ran ({n} slip(s) recorded); EDL + render require v3 LLM nodes"
+            "v2 halt: pre_scan ran ({n} slip(s) recorded); next is p3_strategy → "
+            "strategy_confirmed_interrupt → p3_edl_select"
             .format(n=len(pre_scan_state.get("slips") or []))
         )
     else:
-        msg = "v1 halt: `final.mp4` missing; Phase 3 (`p3_inventory`+) requires LLM nodes (v3+)"
+        msg = (
+            "v1 halt: `final.mp4` missing; next is p3_inventory → p3_pre_scan → "
+            "p3_strategy (Phase 3 LLM chain)"
+        )
     return {"notices": [msg]}
