@@ -61,6 +61,8 @@ START → pickup → idle? → END
 
 **Orchestrator policy: animations and subtitles are produced in Phase 4 (hyperframes), NOT in Phase 3.** Video-use canon makes both opt-in (`## Animations (when requested)` line 195; `subtitles is optional` line 280). Our `p3_strategy` and `p3_edl_select` briefs honor this opt-out: strategy does not propose animations or subtitles; EDL emits `overlays: []` and omits `subtitles` entirely. As a result `p3_render_segments` is purely cuts + grade + concat — Hard Rules 1 (subtitles last) and 4 (overlay PTS-shift) are trivially satisfied because there are no subtitles or overlays to manage.
 
+**Phase 3 → Phase 4 transition: linear edge with `interrupt()` review checkpoint (HOM-146).** The edge from `p3_persist_session` flows through `p3_review_interrupt` directly into `glue_remap_transcript`. The interrupt is a lightweight HITL pause that lets the operator glance at `final.mp4` before Phase 4 commits LLM tokens — empty Submit / `"approved"` / `{"approved": True}` resumes; explicit `"abort"` / `{"abort": True}` routes to `halt_llm_boundary`. The earlier shape (Phase 3 terminus = halt-to-END, Phase 4 reachable only via re-Submit through the `route_after_preflight` skip-edge) was an oversight from incrementally shipping Phase 3 (HOM-75) and Phase 4 (HOM-76) as separate epics — it produced two routing paths to the same artifact and required two operator gestures for one e2e run. v6 user_review (HOM-78) is a *different* checkpoint: it gates on the composed preview, not the raw cut, so both nodes coexist. (Source: HOM-146 amendment, 2026-05-06.)
+
 **Step 1 sampling: timeline_view PNGs (v3.1).** Canon Step 1 calls for *"one or two timeline_view samples for a visual first impression."* The v3 deterministic `p3_inventory` originally produced none (text-only). v3.1 adds best-effort midpoint sampling — one filmstrip+waveform PNG per source written to `<edit>/verify/inventory/<stem>_mid.png`. Failure is non-fatal (notice + empty `timeline_view_samples` list). Per-cut waveform sampling at decision time still belongs to canon Step 7 (`p3_self_eval`).
 
 ```
@@ -91,12 +93,15 @@ START → pickup → idle? → END
               ▼ pass
        p3_persist_session    LLM cheap — appends Session block to <edit>/project.md
               ▼               (canon video-use §"Memory")
+       p3_review_interrupt   HITL — interrupt() with render summary; operator reviews `final.mp4`
+              ▼               before Phase 4 spends LLM tokens. Approve resumes into Phase 4;
+              ▼               abort routes to halt_llm_boundary. Idempotent on re-entry.
        glue_remap_transcript deterministic, scripts/remap_transcript.py
               ▼
        skip_phase4?
 ```
 
-Phase 3 LLM nodes: 5 (`p3_pre_scan`, `p3_strategy`, `p3_edl_select`, `p3_self_eval`, `p3_persist_session`). Plus 2 deterministic (`p3_inventory`, `p3_render_segments`) and 1 HITL interrupt (`strategy_confirmed_interrupt`). Animation fan-out (`p3_animations_plan`, `p3_animations_slot_<n>` Send) is removed entirely — that surface lives in Phase 4 hyperframes scenes.
+Phase 3 LLM nodes: 5 (`p3_pre_scan`, `p3_strategy`, `p3_edl_select`, `p3_self_eval`, `p3_persist_session`). Plus 2 deterministic (`p3_inventory`, `p3_render_segments`) and 2 HITL interrupts (`strategy_confirmed_interrupt`, `p3_review_interrupt`). Animation fan-out (`p3_animations_plan`, `p3_animations_slot_<n>` Send) is removed entirely — that surface lives in Phase 4 hyperframes scenes.
 
 ### 4.3 Phase 4 — hyperframes, decomposed (canon §"Approach" Step 1/2/3 + Quality Checks)
 

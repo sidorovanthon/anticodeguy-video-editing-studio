@@ -45,6 +45,8 @@ def test_phase4_nodes_present_in_compiled_graph():
         "p4_persist_session",
         "studio_launch",
         "gate_static_guard",
+        # HOM-146: Phase 3 → Phase 4 bridge interrupt
+        "p3_review_interrupt",
     }
     missing = expected - nodes
     assert not missing, f"Phase 4 nodes missing from compiled graph: {sorted(missing)}"
@@ -123,6 +125,12 @@ def test_phase4_chain_edges_wired():
         ("edl_failure_interrupt", "halt_llm_boundary"),
         ("eval_failure_interrupt", "gate_eval_ok"),
         ("eval_failure_interrupt", "halt_llm_boundary"),
+        # HOM-146: Phase 3 → Phase 4 bridge via interrupt() checkpoint.
+        # Replaces `p3_persist_session → halt_llm_boundary` terminus.
+        # Approve resume continues into Phase 4; abort routes to halt.
+        ("p3_persist_session", "p3_review_interrupt"),
+        ("p3_review_interrupt", "glue_remap_transcript"),
+        ("p3_review_interrupt", "halt_llm_boundary"),
     }
     missing = expected_edges - edges
     assert not missing, (

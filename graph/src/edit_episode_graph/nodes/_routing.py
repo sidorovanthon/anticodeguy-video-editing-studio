@@ -262,15 +262,34 @@ def route_after_eval_ok(state) -> str:
 
 
 def route_after_persist_session(state) -> str:
-    """p3_persist_session -> END on hard error | halt_llm_boundary otherwise.
+    """p3_persist_session -> END on hard error | p3_review_interrupt otherwise.
 
-    A persist skip or sub-agent failure is non-fatal — the Session block is
-    a memory aid for the next run, not load-bearing for Phase 4. Errors
-    surfaced into `state['errors']` (e.g. AllBackendsExhausted) still END
-    the graph; otherwise we continue to halt_llm_boundary.
+    HOM-146: replaces the prior `→ halt_llm_boundary` terminus with a linear
+    edge into the Phase-3-review interrupt checkpoint. After the operator
+    approves, routing flows on to `glue_remap_transcript` and Phase 4 — a
+    single linear pass through both phases instead of two separate Submits.
+    Errors in `state['errors']` still END defensively.
     """
     if state.get("errors"):
         return END
+    return "p3_review_interrupt"
+
+
+def route_after_p3_review_interrupt(state) -> str:
+    """p3_review_interrupt → glue_remap_transcript | halt_llm_boundary | END.
+
+    Conservative routing: `approved is True` is required to advance into
+    Phase 4. Aborted (or any non-approved state — e.g. injected via
+    update_state) routes to halt so the boundary's notice surfaces.
+    Errors → END defensively. The node itself always sets one of the two
+    flags in normal flow; this asymmetric default exists to keep replay /
+    state-injection scenarios from silently bypassing the checkpoint.
+    """
+    if state.get("errors"):
+        return END
+    review = ((state.get("edit") or {}).get("review") or {}).get("phase3") or {}
+    if review.get("approved") is True:
+        return "glue_remap_transcript"
     return "halt_llm_boundary"
 
 

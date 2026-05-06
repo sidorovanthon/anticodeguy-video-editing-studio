@@ -205,3 +205,24 @@ def test_halt_notice_on_eval_resume_abort():
     assert "iter 3" in msg
     assert "operator aborted" in msg
 
+
+def test_halt_notice_on_phase3_review_abort():
+    """HOM-146: explicit abort at p3_review_interrupt must surface its own
+    notice — not the stale 'final.mp4 rendered' one that would otherwise
+    fire (final.mp4 always exists by the time we reach this checkpoint)."""
+    state = {
+        "edit": {
+            "review": {"phase3": {"aborted": True}},
+            "render": {
+                "final_mp4": "/x/edit/final.mp4",
+                "n_segments": 3,
+                "delta_ms": 12,
+                "cached": False,
+            },
+        },
+    }
+    msg = halt_llm_boundary_node(state)["notices"][0]
+    assert "Phase 3 review aborted" in msg
+    assert "re-Submit" in msg
+    assert "final.mp4 rendered" not in msg
+

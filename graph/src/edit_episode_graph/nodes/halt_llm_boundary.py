@@ -133,6 +133,16 @@ def halt_llm_boundary_node(state):
             "operator aborted the resume-loop; see gate_results"
         )
         return {"notices": [msg]}
+    # HOM-146: Phase 3 → Phase 4 review interrupt also routes here on abort.
+    # Without this branch the operator's explicit abort would surface as the
+    # stale "v3 halt: final.mp4 rendered" notice — unrelated to their action.
+    review_phase3 = (edit.get("review") or {}).get("phase3") or {}
+    if review_phase3.get("aborted"):
+        msg = (
+            "v3 halt: Phase 3 review aborted by operator — re-Submit on the "
+            "same slug to restart at p3_review_interrupt; final.mp4 is intact"
+        )
+        return {"notices": [msg]}
     if cluster_supersedes_static_guard:
         n_v = len(cluster_failure.get("violations") or [])
         gate_name = cluster_failure.get("gate")
