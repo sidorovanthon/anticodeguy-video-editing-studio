@@ -87,6 +87,8 @@ EXPECTED_NODES = {
     "p4_dispatch_beats",
     "p4_beat",
     "p4_assemble_index",
+    # HOM-148: cluster-gate retry node (re-authors offending scene fragment)
+    "p4_redispatch_beat",
     # HOM-127: post-assemble gate cluster (spec §4.3, §6.2).
     "gate_lint",
     "gate_validate",

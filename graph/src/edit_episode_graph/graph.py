@@ -98,6 +98,7 @@ from .nodes.p4_design_system import p4_design_system_node
 from .nodes.p4_plan import p4_plan_node
 from .nodes.p4_persist_session import p4_persist_session_node
 from .nodes.p4_prompt_expansion import p4_prompt_expansion_node
+from .nodes.p4_redispatch_beat import p4_redispatch_beat_node
 from .nodes.p4_scaffold import p4_scaffold_node
 from .nodes.pickup import pickup_node
 from .nodes.preflight_canon import preflight_canon_node
@@ -152,6 +153,10 @@ def build_graph_uncompiled() -> StateGraph:
     g.add_node("gate_animation_map", animation_map_gate_node)
     g.add_node("gate_snapshot", snapshot_gate_node)
     g.add_node("gate_captions_track", captions_track_gate_node)
+    # HOM-148: cluster-gate retry node — re-authors one offending scene
+    # fragment, then static-edges back to p4_assemble_index so the gate
+    # can re-run on the rewritten HTML.
+    g.add_node("p4_redispatch_beat", p4_redispatch_beat_node)
     g.add_node("p4_persist_session", p4_persist_session_node)
     g.add_node("studio_launch", studio_launch_node)
     g.add_node("gate_static_guard", static_guard_gate_node)
@@ -422,14 +427,21 @@ def build_graph_uncompiled() -> StateGraph:
             "gate_lint": "gate_lint",
         },
     )
-    # HOM-127: post-assemble gate cluster. Each pass-edge advances to
-    # the next gate; each fail-edge routes to halt_llm_boundary so the
-    # boundary's notice surfaces the violation list in Studio.
+    # HOM-148: post-assemble gate cluster — each gate has THREE outcomes:
+    #   pass             → next gate in the chain
+    #   fail + iter < 3  → p4_redispatch_beat (re-author offending scene,
+    #                       then static-edge back to p4_assemble_index → gate)
+    #   fail + iter ≥ 3  → halt_llm_boundary (notice surfaces violations)
+    # `route_after_gate_with_retry` (from HOM-147) returns the bare node
+    # name; the dict below maps it to the edge target — identity in all
+    # three cases. The retry edge plus the `p4_redispatch_beat → p4_assemble_index`
+    # fan-in edge below close the loop.
     g.add_conditional_edges(
         "gate_lint",
         route_after_lint,
         {
             "gate_validate": "gate_validate",
+            "p4_redispatch_beat": "p4_redispatch_beat",
             "halt_llm_boundary": "halt_llm_boundary",
         },
     )
@@ -438,6 +450,7 @@ def build_graph_uncompiled() -> StateGraph:
         route_after_validate,
         {
             "gate_inspect": "gate_inspect",
+            "p4_redispatch_beat": "p4_redispatch_beat",
             "halt_llm_boundary": "halt_llm_boundary",
         },
     )
@@ -446,6 +459,7 @@ def build_graph_uncompiled() -> StateGraph:
         route_after_inspect,
         {
             "gate_design_adherence": "gate_design_adherence",
+            "p4_redispatch_beat": "p4_redispatch_beat",
             "halt_llm_boundary": "halt_llm_boundary",
         },
     )
@@ -454,6 +468,7 @@ def build_graph_uncompiled() -> StateGraph:
         route_after_design_adherence,
         {
             "gate_animation_map": "gate_animation_map",
+            "p4_redispatch_beat": "p4_redispatch_beat",
             "halt_llm_boundary": "halt_llm_boundary",
         },
     )
@@ -462,6 +477,7 @@ def build_graph_uncompiled() -> StateGraph:
         route_after_animation_map,
         {
             "gate_snapshot": "gate_snapshot",
+            "p4_redispatch_beat": "p4_redispatch_beat",
             "halt_llm_boundary": "halt_llm_boundary",
         },
     )
@@ -470,6 +486,7 @@ def build_graph_uncompiled() -> StateGraph:
         route_after_snapshot,
         {
             "gate_captions_track": "gate_captions_track",
+            "p4_redispatch_beat": "p4_redispatch_beat",
             "halt_llm_boundary": "halt_llm_boundary",
         },
     )
@@ -478,9 +495,13 @@ def build_graph_uncompiled() -> StateGraph:
         route_after_captions_track,
         {
             "p4_persist_session": "p4_persist_session",
+            "p4_redispatch_beat": "p4_redispatch_beat",
             "halt_llm_boundary": "halt_llm_boundary",
         },
     )
+    # HOM-148: redispatched scene fragment → re-assemble → first cluster gate.
+    # Static edge keeps Studio's graph view honest about the loop.
+    g.add_edge("p4_redispatch_beat", "p4_assemble_index")
     # HOM-126: p4_persist_session appends a Phase 4 Session block to
     # <edit>/project.md (canon §"Memory" format, monotonic N across phases),
     # then advances to studio_launch. A persist skip / sub-agent failure is

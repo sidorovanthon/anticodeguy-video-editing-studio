@@ -1,0 +1,139 @@
+{# Per-scene re-authoring brief — invoked when a post-assemble cluster gate
+   fails (lint / validate / inspect / design_adherence / animation_map /
+   snapshot / captions_track). Mirrors `p4_beat.j2` for ONE scene, with
+   prior violations injected via the shared `prior_violations_block` macro.
+   Brief references canon paths; never embeds canon. #}
+{% from "_macros.j2" import prior_violations_block %}
+You are RE-AUTHORING **one scene fragment** for an anticodeguy episode (`{{ slug }}`).
+Pattern A (inlined `<div>` per scene). The previous attempt's fragment FAILED
+the gate `{{ failed_gate }}`; rewrite the offending scene so the gate passes.
+
+{{ prior_violations_block(prior_violations, prior_iteration) }}
+
+Identification — find the offending scene(s) yourself:
+
+1. `Read` the assembled root composition at `{{ index_html_path }}`. Each
+   inlined scene fragment is bracketed by `<!-- beat: <scene_id> -->` markers.
+2. Cross-reference the violations above with the assembled HTML. Most lint /
+   validate / design-adherence violations name the scene either by
+   `#scene-<scene_id>` selector, by `id="scene-<scene_id>"` attribute, or
+   by line number — the enclosing `<!-- beat: <scene_id> -->` marker
+   identifies the owning scene.
+3. Available scenes (canonical plan order): {{ scene_ids_json }}
+4. Pick ONE scene to rewrite this turn (the one most clearly responsible
+   for the violations). If multiple scenes share the blame, pick the
+   FIRST one in plan order — subsequent retries will catch the others.
+5. **If the violation cannot be traced to ANY `<!-- beat: ... -->` marker**
+   (e.g. a validate error about a root-composition attribute, a
+   captions-track failure with no per-scene attribution): pick the FIRST
+   scene in plan order, and prefix your reply with `WARN: violation not
+   beat-attributable —` so the orchestrator surfaces the uncertainty in the
+   halt notice when retries exhaust. Do NOT skip writing — the loop relies
+   on a fresh fragment to make progress.
+
+Scene context (these are the per-beat parameters from the plan; mirror them
+literally on the scene div):
+
+- viewport: `data-width={{ data_width }}`, `data-height={{ data_height }}`
+- track: `data-track-index={{ data_track_index }}`
+- scene starts (cumulative seconds, plan order, parallel to the scene-ids above):
+  {{ scene_starts_json }}
+- scene durations (parallel to scene-ids):
+  {{ scene_durations_json }}
+- output directory: `{{ compositions_dir }}` — write the rewritten fragment to
+  `{{ compositions_dir }}/<scene_id>.html` for the scene you picked.
+
+Upstream artefacts (read these via `Read` for direction):
+- `{{ design_md_path }}` — visual identity (palette, typography, beat→visual mapping).
+- `{{ expanded_prompt_path }}` — per-scene atmosphere brief.
+
+Available registry:
+{{ catalog_summary }}
+
+Canon — read BEFORE rewriting (use `Read` on each):
+1. `~/.agents/skills/hyperframes/SKILL.md` — §"Layout Before Animation",
+   §"Scene Transitions" (HR 1–4; HR 4 final-fade only on the LAST scene),
+   §"Animation Guardrails", §"Rules (Non-Negotiable)".
+2. `~/.agents/skills/hyperframes/references/transitions/catalog.md` — Hard
+   Rules (CSS) L9 + L13, scene template L36-80. Pattern A: only the root
+   composition gets `data-composition-id`; the scene div does NOT; no
+   `<template>` wrapper; non-first scenes start with `opacity: 0`.
+3. `~/.agents/skills/hyperframes/references/motion-principles.md` — L115-123:
+   every entrance MUST be `tl.fromTo(...)` — never `tl.from(...)`.
+4. `~/.agents/skills/hyperframes/references/video-composition.md` — density
+   floor (≥ 8 elements per scene, L15-23).
+5. `~/.agents/skills/hyperframes/references/typography.md` — type system.
+6. `~/.agents/skills/hyperframes/house-style.md` — §"Background Layer":
+   2-5 ambient-motion BG decoratives per scene.
+
+Output shape — Pattern A scene fragment, ONE `<div>` written to the
+compositions file for the chosen scene_id:
+
+```html
+<div id="scene-<scene_id>" class="scene clip"
+     data-start="<scene_start>" data-duration="<scene_duration>" data-track-index="{{ data_track_index }}"
+     data-width="{{ data_width }}" data-height="{{ data_height }}">
+  <style>
+    /* EVERY rule prefixed with #scene-<scene_id> — no bare class selectors. */
+    #scene-<scene_id> { position: absolute; inset: 0; <opacity-init>; }
+    /* …per-element rules… */
+  </style>
+  <div class="scene-content">
+    <!-- ≥ 8 elements visible at hero frame; ≥ 2 BG decoratives with ambient motion -->
+  </div>
+  <script>
+    (function() {
+      window.__sceneTimelines = window.__sceneTimelines || {};
+      const tl = gsap.timeline({ paused: true });
+      // entrance-only, every entrance via tl.fromTo()
+      // ≥ 3 distinct eases; first entrance offset 0.1–0.3s
+      window.__sceneTimelines["<scene_id>"] = tl;
+    })();
+  </script>
+</div>
+```
+
+Substitute:
+- `<scene_id>` → the scene_id you picked.
+- `<scene_start>` and `<scene_duration>` → the values from the parallel
+  arrays above for that scene's index.
+- `<opacity-init>` → `opacity: 1` for the FIRST scene in plan order (index 0),
+  `opacity: 0` for any other scene (the visibility shim sets opacity at start).
+
+Hard rules (orchestrator-house — derived from canon, surfaced so you don't miss them):
+- **`class="scene clip"` on the scene div** — `clip` is required by HF lint.
+- **CSS scoping** — every rule prefixed with `#scene-<scene_id>`. No bare class selectors.
+- **`tl.fromTo()` only** for entrances — never `tl.from()`, never bare `gsap.from()`.
+- **No `data-composition-id` on the scene div.**
+- **No `<template>` wrapper.**
+- **No `<script src=".../gsap...">`** — root scaffold supplies GSAP once.
+- **IIFE-wrap the entire script body** — un-IIFE'd `const tl` collides with
+  the scaffold's top-level `const tl` and trips `hyperframes validate` with
+  `Identifier 'tl' has already been declared`.
+- **Density floor**: ≥ 8 elements visible at the hero frame, ≥ 2 BG
+  decoratives with ambient motion (`tl.to()` on the seekable `tl`).
+- **≥ 3 distinct eases**; first entrance offset 0.1–0.3s.
+- **Final-fade (HR 4)**: permitted ONLY on the last scene (highest index in
+  plan order). Otherwise NO `tl.to(..., {opacity: 0})` on the scene container.
+- **NO infinite repeats** — the GSAP infinite-repeat sentinel is forbidden
+  (canon: SKILL.md §"Animation Guardrails" L227 + Rules L240). Compute
+  finite counts from `data-duration` and tween duration. Never write the
+  literal token `repeat:` followed by the infinite sentinel even inside
+  comments — HF lint regex false-positives on the substring.
+
+Process:
+1. `Read` the violations above and the canon list.
+2. `Read` `{{ index_html_path }}` to identify which scene the violations
+   target (use the `<!-- beat: <scene_id> -->` markers for intersection).
+3. `Read` `{{ design_md_path }}` and `{{ expanded_prompt_path }}` for direction.
+4. `Read` the existing `{{ compositions_dir }}/<scene_id>.html` so you
+   understand what the previous attempt wrote (avoid repeating the same mistake).
+5. `Write` ONE file to `{{ compositions_dir }}/<scene_id>.html` with the
+   rewritten fragment.
+6. Reply on a single line:
+   `Rewrote <scene_id> for {{ failed_gate }} (<N> elements, <M> tweens).`
+
+Do NOT modify the root `index.html`, do NOT touch sibling
+`compositions/*.html` other than the one scene you picked, do NOT add
+`<script src=...>` tags. The `p4_assemble_index` node will re-inline your
+fragment into the root composition — stay inside your scene.

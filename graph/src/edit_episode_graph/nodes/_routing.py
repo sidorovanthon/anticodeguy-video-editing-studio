@@ -480,47 +480,73 @@ def route_after_assemble_index(state) -> str:
     return "gate_lint"
 
 
-# HOM-127: post-assemble gate cluster. Chain order matches spec §4.3:
-#   gate_lint → gate_validate → gate_inspect → gate_design_adherence
-#     → gate_animation_map → gate_snapshot → gate_captions_track
-#     → p4_persist_session
-# Each gate routes pass→next, fail→halt_llm_boundary (v4-sans-HITL —
-# retry-with-feedback is HOM-77/v5).
+# HOM-148: post-assemble gate cluster adopts the generic retry helper from
+# HOM-147. Each gate routes:
+#   pass                     → next gate in chain
+#   fail + iter < 3          → p4_redispatch_beat (re-author offending scene)
+#                              → p4_assemble_index → re-run the gate
+#   fail + iter >= 3         → halt_llm_boundary (notice surfaces violations)
+#
+# Chain order matches spec §4.3: gate_lint → gate_validate → gate_inspect →
+# gate_design_adherence → gate_animation_map → gate_snapshot →
+# gate_captions_track → p4_persist_session. Cheap deterministic checks first
+# (lint), browser-heavy headless checks last (snapshot, captions_track).
+#
+# Cap is **per-gate**, not per-cluster. Each gate maintains its own
+# `_iteration` counter (gates._base.Gate._iteration counts records for the
+# named gate only). Worst-case redispatch invocations across one cluster
+# pass = 7 gates × 2 retries = 14 LLM calls; in practice early failures halt
+# the chain before later gates accumulate retries. Per-cluster cap is a v6
+# concern (HOM-78). Spec §6.2 reference.
 
-def _route_gate_pass_or_halt(gate_name: str, on_pass: str):
-    """Build a conditional-edge router for a gate that fails to halt.
-
-    Captures the gate name + its pass-target so the router stays a pure
-    function. Gate result lookup mirrors the existing
-    `route_after_design_ok` / `route_after_plan_ok` pattern.
-    """
-    def _route(state) -> str:
-        from ..gates._base import latest_gate_result
-        record = latest_gate_result(state, gate_name)
-        if record and record.get("passed"):
-            return on_pass
-        return "halt_llm_boundary"
-    # `removeprefix` is anchored to the start; an interior `gate_` (in a
-    # hypothetical future name like `gate:gate_*`) won't be silently
-    # stripped the way `.replace('gate_', '')` would.
-    _route.__name__ = (
-        f"route_after_{gate_name.replace(':', '_').removeprefix('gate_')}"
-    )
-    return _route
-
-
-route_after_lint = _route_gate_pass_or_halt("gate:lint", "gate_validate")
-route_after_validate = _route_gate_pass_or_halt("gate:validate", "gate_inspect")
-route_after_inspect = _route_gate_pass_or_halt("gate:inspect", "gate_design_adherence")
-route_after_design_adherence = _route_gate_pass_or_halt(
-    "gate:design_adherence", "gate_animation_map"
+route_after_lint = route_after_gate_with_retry(
+    gate_name="gate:lint",
+    on_pass="gate_validate",
+    retry_node="p4_redispatch_beat",
+    fail_route="halt_llm_boundary",
+    max_iterations=3,
 )
-route_after_animation_map = _route_gate_pass_or_halt(
-    "gate:animation_map", "gate_snapshot"
+route_after_validate = route_after_gate_with_retry(
+    gate_name="gate:validate",
+    on_pass="gate_inspect",
+    retry_node="p4_redispatch_beat",
+    fail_route="halt_llm_boundary",
+    max_iterations=3,
 )
-route_after_snapshot = _route_gate_pass_or_halt("gate:snapshot", "gate_captions_track")
-route_after_captions_track = _route_gate_pass_or_halt(
-    "gate:captions_track", "p4_persist_session"
+route_after_inspect = route_after_gate_with_retry(
+    gate_name="gate:inspect",
+    on_pass="gate_design_adherence",
+    retry_node="p4_redispatch_beat",
+    fail_route="halt_llm_boundary",
+    max_iterations=3,
+)
+route_after_design_adherence = route_after_gate_with_retry(
+    gate_name="gate:design_adherence",
+    on_pass="gate_animation_map",
+    retry_node="p4_redispatch_beat",
+    fail_route="halt_llm_boundary",
+    max_iterations=3,
+)
+route_after_animation_map = route_after_gate_with_retry(
+    gate_name="gate:animation_map",
+    on_pass="gate_snapshot",
+    retry_node="p4_redispatch_beat",
+    fail_route="halt_llm_boundary",
+    max_iterations=3,
+)
+route_after_snapshot = route_after_gate_with_retry(
+    gate_name="gate:snapshot",
+    on_pass="gate_captions_track",
+    retry_node="p4_redispatch_beat",
+    fail_route="halt_llm_boundary",
+    max_iterations=3,
+)
+route_after_captions_track = route_after_gate_with_retry(
+    gate_name="gate:captions_track",
+    on_pass="p4_persist_session",
+    retry_node="p4_redispatch_beat",
+    fail_route="halt_llm_boundary",
+    max_iterations=3,
 )
 
 
