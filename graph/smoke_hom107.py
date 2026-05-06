@@ -5,7 +5,10 @@ Validates the wiring assembled in graph.py against spec §4.2:
   pickup → preflight_canon → (skip-edge | p3_inventory) → p3_pre_scan
     → p3_strategy → strategy_confirmed_interrupt → p3_edl_select
     → gate:edl_ok → p3_render_segments → p3_self_eval → gate:eval_ok
-    → p3_persist_session → glue_remap_transcript → END
+    → p3_persist_session → halt_llm_boundary → END
+
+  (`glue_remap_transcript` is reachable only from `preflight_canon`'s
+  skip-edge — when `final.mp4` already exists and Phase 3 is bypassed.)
 
 Three layers, in order of cost:
 
