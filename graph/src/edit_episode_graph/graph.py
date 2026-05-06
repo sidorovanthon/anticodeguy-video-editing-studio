@@ -29,8 +29,27 @@ from pathlib import Path
 
 from langgraph.cache.sqlite import SqliteCache
 from langgraph.graph import END, StateGraph
+from langgraph.types import RetryPolicy
 
 from ._paths import repo_root
+from .backends._types import BackendTimeout
+
+# HOM-158: native LangGraph RetryPolicy
+# (https://langchain-ai.github.io/langgraph/reference/types/#langgraph.types.RetryPolicy).
+# `_llm.py` raises `AllBackendsExhausted` on terminal failure (per HOM-158
+# contract change); pregel applies this policy on every Exception subclass
+# matched by `retry_on`. We retry only `BackendTimeout` — auth/CLI/schema
+# errors are deterministic and would just burn the same dollar twice.
+# `max_attempts=2` = one retry on top of the original call, since the LLM
+# subprocess timeout is already 240–300s on Opus-tier nodes; budgeting a
+# second 5-minute wait is enough to ride out a Windows shim hiccup without
+# creating a 30-minute hang on a permanently sick backend. cfg-fingerprint
+# (HOM-157) handles cross-thread recovery once an operator bumps timeout
+# or model.
+_LLM_RETRY_POLICY = RetryPolicy(
+    max_attempts=2,
+    retry_on=(BackendTimeout,),
+)
 from .gates.animation_map import animation_map_gate_node
 from .gates.captions_track import captions_track_gate_node
 from .gates.design_adherence import design_adherence_gate_node
@@ -204,6 +223,7 @@ def build_graph_uncompiled() -> StateGraph:
         "p4_design_system",
         p4_design_system_node,
         cache_policy=p4_design_system_cache_policy,
+        retry_policy=_LLM_RETRY_POLICY,
     )
     g.add_node("gate_design_ok", design_ok_gate_node)
     # HOM-150: cache_policy on the Phase 4 LLM nodes. Spec
@@ -212,8 +232,14 @@ def build_graph_uncompiled() -> StateGraph:
         "p4_prompt_expansion",
         p4_prompt_expansion_node,
         cache_policy=p4_prompt_expansion_cache_policy,
+        retry_policy=_LLM_RETRY_POLICY,
     )
-    g.add_node("p4_plan", p4_plan_node, cache_policy=p4_plan_cache_policy)
+    g.add_node(
+        "p4_plan",
+        p4_plan_node,
+        cache_policy=p4_plan_cache_policy,
+        retry_policy=_LLM_RETRY_POLICY,
+    )
     g.add_node("gate_plan_ok", plan_ok_gate_node)
     g.add_node(
         "p4_catalog_scan",
@@ -224,6 +250,7 @@ def build_graph_uncompiled() -> StateGraph:
         "p4_captions_layer",
         p4_captions_layer_node,
         cache_policy=p4_captions_layer_cache_policy,
+        retry_policy=_LLM_RETRY_POLICY,
     )
     # p4_dispatch_beats returns Command(goto=...) — either a list of Send
     # objects (fan-out to p4_beat, wired in HOM-134) or a string node name
@@ -235,7 +262,12 @@ def build_graph_uncompiled() -> StateGraph:
         p4_dispatch_beats_node,
         destinations=("p4_beat", "p4_assemble_index", END),
     )
-    g.add_node("p4_beat", p4_beat_node, cache_policy=p4_beat_cache_policy)
+    g.add_node(
+        "p4_beat",
+        p4_beat_node,
+        cache_policy=p4_beat_cache_policy,
+        retry_policy=_LLM_RETRY_POLICY,
+    )
     g.add_node(
         "p4_assemble_index",
         p4_assemble_index_node,
@@ -255,11 +287,16 @@ def build_graph_uncompiled() -> StateGraph:
     # HOM-148: cluster-gate retry node — re-authors one offending scene
     # fragment, then static-edges back to p4_assemble_index so the gate
     # can re-run on the rewritten HTML.
-    g.add_node("p4_redispatch_beat", p4_redispatch_beat_node)
+    g.add_node(
+        "p4_redispatch_beat",
+        p4_redispatch_beat_node,
+        retry_policy=_LLM_RETRY_POLICY,
+    )
     g.add_node(
         "p4_persist_session",
         p4_persist_session_node,
         cache_policy=p4_persist_session_cache_policy,
+        retry_policy=_LLM_RETRY_POLICY,
     )
     g.add_node("studio_launch", studio_launch_node)
     g.add_node("gate_static_guard", static_guard_gate_node)
@@ -270,22 +307,43 @@ def build_graph_uncompiled() -> StateGraph:
     )
     # HOM-132.3: cache_policy on the Phase 3 LLM nodes. Spec
     # `docs/superpowers/specs/2026-05-06-langgraph-node-caching-design.md` §6.
-    g.add_node("p3_pre_scan", p3_pre_scan_node, cache_policy=p3_pre_scan_cache_policy)
-    g.add_node("p3_strategy", p3_strategy_node, cache_policy=p3_strategy_cache_policy)
+    g.add_node(
+        "p3_pre_scan",
+        p3_pre_scan_node,
+        cache_policy=p3_pre_scan_cache_policy,
+        retry_policy=_LLM_RETRY_POLICY,
+    )
+    g.add_node(
+        "p3_strategy",
+        p3_strategy_node,
+        cache_policy=p3_strategy_cache_policy,
+        retry_policy=_LLM_RETRY_POLICY,
+    )
     g.add_node("strategy_confirmed_interrupt", strategy_confirmed_interrupt_node)
-    g.add_node("p3_edl_select", p3_edl_select_node, cache_policy=p3_edl_select_cache_policy)
+    g.add_node(
+        "p3_edl_select",
+        p3_edl_select_node,
+        cache_policy=p3_edl_select_cache_policy,
+        retry_policy=_LLM_RETRY_POLICY,
+    )
     g.add_node("gate_edl_ok", edl_ok_gate_node)
     g.add_node(
         "p3_render_segments",
         p3_render_segments_node,
         cache_policy=p3_render_segments_cache_policy,
     )
-    g.add_node("p3_self_eval", p3_self_eval_node, cache_policy=p3_self_eval_cache_policy)
+    g.add_node(
+        "p3_self_eval",
+        p3_self_eval_node,
+        cache_policy=p3_self_eval_cache_policy,
+        retry_policy=_LLM_RETRY_POLICY,
+    )
     g.add_node("gate_eval_ok", eval_ok_gate_node)
     g.add_node(
         "p3_persist_session",
         p3_persist_session_node,
         cache_policy=p3_persist_session_cache_policy,
+        retry_policy=_LLM_RETRY_POLICY,
     )
     g.add_node("p3_review_interrupt", p3_review_interrupt_node)
     g.add_node("edl_failure_interrupt", edl_failure_interrupt_node)
@@ -411,11 +469,12 @@ def build_graph_uncompiled() -> StateGraph:
     # terminus. Single linear pass through both phases; the operator pauses
     # on `p3_review_interrupt` to glance at `final.mp4`, then resumes (or
     # aborts) — no second Submit / different routing path required.
+    # HOM-158: route_after_persist_session no longer returns END (LLM raises
+    # don't commit writes; the old `state.errors → END` short-circuit is gone).
     g.add_conditional_edges(
         "p3_persist_session",
         route_after_persist_session,
         {
-            END: END,
             "p3_review_interrupt": "p3_review_interrupt",
         },
     )
@@ -624,11 +683,12 @@ def build_graph_uncompiled() -> StateGraph:
     # then advances to studio_launch. A persist skip / sub-agent failure is
     # non-fatal — preview still happens — but a hard `errors[]` entry ENDs
     # the graph.
+    # HOM-158: route_after_p4_persist_session no longer returns END — LLM
+    # raises don't commit writes; persist_session always advances to studio.
     g.add_conditional_edges(
         "p4_persist_session",
         route_after_p4_persist_session,
         {
-            END: END,
             "studio_launch": "studio_launch",
         },
     )

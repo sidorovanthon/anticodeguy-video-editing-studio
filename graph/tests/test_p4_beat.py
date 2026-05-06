@@ -238,11 +238,17 @@ def test_brief_references_canon_paths_without_embedding():
 
 
 # ---------------------------------------------------------------------------
-# AllBackendsExhausted — delegated to LLMNode base, but assert routing-friendly shape
+# AllBackendsExhausted — HOM-158 contract: LLMNode raises so pregel's
+# RetryPolicy (graph.py) actually engages.
 # ---------------------------------------------------------------------------
 
 
-def test_all_backends_exhausted_records_error_and_notice(tmp_path):
+def test_all_backends_exhausted_raises(tmp_path):
+    """HOM-158: p4_beat (via LLMNode base) re-raises on terminal failure
+    instead of returning an `errors[]` delta. Required for `RetryPolicy` to
+    fire — see `_llm.py` and `graph.py` notes.
+    """
+    import pytest
     from edit_episode_graph.backends._types import AllBackendsExhausted
 
     fragment = tmp_path / "hyperframes" / "compositions" / "hook.html"
@@ -252,8 +258,8 @@ def test_all_backends_exhausted_records_error_and_notice(tmp_path):
           "reason": "timeout", "wall_time_s": 300.0, "ts": "now"}],
     )
 
-    update = p4_beat_node(_state(tmp_path, str(fragment)), router=router)
-    assert update.get("errors") and update["errors"][0]["node"] == "p4_beat"
-    assert any("p4_beat" in n for n in (update.get("notices") or []))
-    # The fragment was NOT created — assemble_index will collect it as missing.
+    with pytest.raises(AllBackendsExhausted):
+        p4_beat_node(_state(tmp_path, str(fragment)), router=router)
+    # The fragment was NOT created — pregel discards writes on raise; the
+    # next attempt (if RetryPolicy fires) starts from an unchanged state.
     assert not fragment.exists()

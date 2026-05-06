@@ -2,9 +2,20 @@
 """LLMNode — minimal base for nodes that dispatch through BackendRouter.
 
 Subclass or instantiate to build a callable that LangGraph treats as a node.
-The base handles: brief rendering (Jinja2 string), router invocation,
-telemetry append to `state["llm_runs"]`, error → `state["errors"]` + notice
-on terminal failure (AllBackendsExhausted).
+The base handles: brief rendering (Jinja2 string), router invocation, and
+telemetry append to `state["llm_runs"]` on success.
+
+Terminal failure (AllBackendsExhausted) **raises** — HOM-158. Pregel sees the
+exception, applies the node's `RetryPolicy` (configured in `graph.py`), and
+on exhaustion terminates the task without committing writes. Per-attempt
+telemetry for the failed dispatch is emitted via `dispatch_custom_event`
+(`llm_attempts_exhausted`) so Studio still surfaces what was tried, even
+though `state["llm_runs"]` is not mutated for the failed call. This contract
+is what makes `langgraph.types.RetryPolicy(retry_on=BackendTimeout)`
+actually fire — pre-HOM-158 the swallow-into-`state["errors"]` pattern
+returned a "successful" delta from pregel's perspective and the policy
+never engaged. Spec §7 mechanism (4); doc:
+https://langchain-ai.github.io/langgraph/reference/types/#langgraph.types.RetryPolicy
 
 Tool-call observability: if a `dispatch_custom_event` is available
 (LangGraph runtime), each `ToolCall` from the InvokeResult is re-emitted as
@@ -121,12 +132,17 @@ class LLMNode:
                 model_override=model_override,
             )
         except AllBackendsExhausted as e:
+            # HOM-158: surface per-attempt telemetry as a custom event so
+            # Studio still shows what was tried, then re-raise. Pregel's
+            # RetryPolicy (graph.py) decides whether to retry. State writes
+            # are NOT committed on raise — `state["llm_runs"]`/`state["errors"]`
+            # are intentionally untouched here. Spec §7 mechanism (4).
             runs = [self._record(at) for at in e.attempts]
-            return {
-                "errors": [{"node": self.name, "message": str(e), "timestamp": _now()}],
-                "llm_runs": runs,
-                "notices": [f"{self.name}: all backends exhausted; see llm_runs"],
-            }
+            _safe_dispatch_event(
+                "llm_attempts_exhausted",
+                {"node": self.name, "runs": runs, "message": str(e)},
+            )
+            raise
 
         for tc in result.tool_calls:
             _safe_dispatch_event("tool_call", {

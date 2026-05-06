@@ -46,9 +46,13 @@ def test_persist_session_routes_to_review_on_skip():
     assert _routing.route_after_persist_session(state) == "p3_review_interrupt"
 
 
-def test_persist_session_routes_to_end_on_hard_error():
-    state = {"errors": [{"node": "p3_persist_session", "message": "boom", "timestamp": "t"}]}
-    assert _routing.route_after_persist_session(state) == END
+def test_persist_session_router_ignores_historical_errors():
+    """HOM-158: p3_persist_session is an LLM node — raises on terminal failure;
+    pregel never commits LLM-origin errors. The router treats any errors
+    entry as historical and proceeds to the review interrupt.
+    """
+    state = {"errors": [{"node": "p3_persist_session", "message": "boom", "timestamp": "old"}]}
+    assert _routing.route_after_persist_session(state) == "p3_review_interrupt"
 
 
 # HOM-146 — review_interrupt routing
@@ -73,6 +77,9 @@ def test_review_interrupt_absent_flags_route_to_halt():
     ) == "halt_llm_boundary"
 
 
-def test_review_interrupt_errors_route_to_end():
-    state = {"errors": [{"node": "p3_review_interrupt", "message": "boom", "timestamp": "t"}]}
-    assert _routing.route_after_p3_review_interrupt(state) == END
+def test_review_interrupt_router_ignores_historical_errors():
+    """HOM-158: interrupt nodes never write `state["errors"]`; the router
+    falls through to the absent-flags branch (halt) for an empty review state.
+    """
+    state = {"errors": [{"node": "p3_review_interrupt", "message": "boom", "timestamp": "old"}]}
+    assert _routing.route_after_p3_review_interrupt(state) == "halt_llm_boundary"
