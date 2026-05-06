@@ -16,11 +16,17 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from langgraph.types import CachePolicy
+
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
+from .._caching import make_key, stable_fingerprint, strategy_fingerprint
 from ..gates._base import gate_retry_context
 from ..schemas.p3_edl_select import EDL
 from ._llm import LLMNode, _load_brief
+
+# Bump on brief / schema / tool-list change. Spec §8 review checkpoint.
+_CACHE_VERSION = 1
 
 
 def _takes_packed_path(state: dict) -> Path:
@@ -28,6 +34,71 @@ def _takes_packed_path(state: dict) -> Path:
     if explicit:
         return Path(explicit)
     return Path(state["episode_dir"]) / "edit" / "takes_packed.md"
+
+
+def _takes_packed_path_for_key(state: dict) -> str | None:
+    explicit = (state.get("transcripts") or {}).get("takes_packed_path")
+    if explicit:
+        return str(explicit)
+    if not state.get("episode_dir"):
+        return None
+    return str(Path(state["episode_dir"]) / "edit" / "takes_packed.md")
+
+
+def _cache_key(state, *_args, **_kwargs):
+    """Cache key for `p3_edl_select`.
+
+    Brief inputs the agent consumes:
+    * `takes_packed_path` (Read tool), `transcript_paths_json` (each Read).
+      All are file inputs → `files=` content-hashes them.
+    * `pre_scan_slips_json` — `state.edit.pre_scan.slips`, in-memory.
+    * `strategy_json` — `state.edit.strategy` (modulo skip flags), in-memory.
+    * `prior_violations` / `prior_iteration` — retry feedback from
+      `gate_retry_context`, in-memory; without it, retry-after-gate-fail
+      would cache-hit and short-circuit the retry-with-feedback loop.
+
+    Spec §6 row says `[takes_packed.md, edit.strategy_path]`. There is no
+    `strategy_path` on disk — strategy is in-memory state — and the brief
+    actually consumes both transcript files plus the pre-scan slips and
+    retry feedback. This implementation keeps the spec's intent
+    (output-determining content goes in the key) while reflecting the
+    actual brief inputs; spec §6 row will be amended with this PR.
+    """
+    if not isinstance(state, dict):
+        raise TypeError(
+            f"p3_edl_select cache key requires dict state, got {type(state).__name__}"
+        )
+    slug = state.get("slug") or "__unbound__"
+    pre_scan = (state.get("edit") or {}).get("pre_scan") or {}
+    slips = pre_scan.get("slips") or []
+    strategy = (state.get("edit") or {}).get("strategy") or {}
+    files: list[str | None] = [_takes_packed_path_for_key(state)]
+    # `_transcript_paths` falls back to globbing `<episode_dir>/edit/transcripts/`
+    # — under introspection (no `episode_dir`), only state-provided paths are
+    # safe; suppress the glob path. Using inline lookups keeps the cache key
+    # function tolerant of unbound state without forking the production helper.
+    inv = (state.get("edit") or {}).get("inventory") or {}
+    transcripts = state.get("transcripts") or {}
+    if inv.get("transcript_json_paths"):
+        files.extend(list(inv["transcript_json_paths"]))
+    elif transcripts.get("raw_json_paths"):
+        files.extend(list(transcripts["raw_json_paths"]))
+    retry = gate_retry_context(state, "gate:edl_ok")
+    return make_key(
+        node="p3_edl_select",
+        version=_CACHE_VERSION,
+        slug=slug,
+        files=files,
+        extras=(
+            stable_fingerprint(slips),
+            strategy_fingerprint(strategy),
+            stable_fingerprint(retry.get("prior_violations") or []),
+            int(retry.get("prior_iteration") or 0),
+        ),
+    )
+
+
+CACHE_POLICY = CachePolicy(key_func=_cache_key)
 
 
 def _transcript_paths(state: dict) -> list[str]:
