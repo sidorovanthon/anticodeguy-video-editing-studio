@@ -70,10 +70,14 @@ def test_edl_resume_abort_dict_routes_to_halt():
     )
 
 
-def test_edl_resume_errors_short_circuit_to_end():
+def test_edl_resume_ignores_historical_errors():
+    """HOM-158: failure interrupts never write `state["errors"]` themselves —
+    they capture the operator's resume payload. A historical error from any
+    earlier node must NOT block the resume; routing follows the resume action.
+    """
     state = _state_with_edl_resume("retry")
-    state["errors"] = [{"node": "x", "message": "y", "timestamp": "now"}]
-    assert route_after_edl_failure_interrupt(state) == END
+    state["errors"] = [{"node": "x", "message": "y", "timestamp": "old"}]
+    assert route_after_edl_failure_interrupt(state) == "gate_edl_ok"
 
 
 def test_edl_resume_missing_failure_resume_routes_to_gate():
@@ -116,10 +120,11 @@ def test_eval_resume_nonempty_payload_routes_to_gate():
     )
 
 
-def test_eval_resume_errors_short_circuit_to_end():
+def test_eval_resume_ignores_historical_errors():
+    """HOM-158: mirror of `test_edl_resume_ignores_historical_errors`."""
     state = _state_with_eval_resume("retry")
-    state["errors"] = [{"node": "x", "message": "y", "timestamp": "now"}]
-    assert route_after_eval_failure_interrupt(state) == END
+    state["errors"] = [{"node": "x", "message": "y", "timestamp": "old"}]
+    assert route_after_eval_failure_interrupt(state) == "gate_eval_ok"
 
 
 # --- interrupt nodes capture resume payload into state -----------------------

@@ -75,12 +75,16 @@ def test_p3_pre_scan_does_not_reread_brief_per_call(tmp_path, monkeypatch):
     monkeypatch.setattr(Path, "read_text", counting_read)
 
     # Trigger _build_node multiple times via direct call (router=MagicMock so no LLM).
+    # HOM-158: LLMNode now raises on AllBackendsExhausted instead of swallowing —
+    # wrap each call in pytest.raises so the loop still exercises 5 dispatches.
+    import pytest
     from unittest.mock import MagicMock
     from edit_episode_graph.backends._types import AllBackendsExhausted
     router = MagicMock()
     router.invoke.side_effect = AllBackendsExhausted([])
     for _ in range(5):
-        node_module.p3_pre_scan_node(state, router=router)
+        with pytest.raises(AllBackendsExhausted):
+            node_module.p3_pre_scan_node(state, router=router)
 
     # Primary signal: the node actually reached _build_node and dispatched 5×.
     # Without this, the brief_reads<=1 assertion could pass vacuously if an

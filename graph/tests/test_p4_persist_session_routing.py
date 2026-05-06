@@ -41,6 +41,9 @@ def test_persist_session_routes_to_studio_on_skip():
     assert _routing.route_after_p4_persist_session(state) == "studio_launch"
 
 
-def test_persist_session_routes_to_end_on_hard_error():
-    state = {"errors": [{"node": "p4_persist_session", "message": "boom", "timestamp": "t"}]}
-    assert _routing.route_after_p4_persist_session(state) == END
+def test_persist_session_router_ignores_historical_errors():
+    """HOM-158: p4_persist_session is an LLM node — raises on terminal failure;
+    routing proceeds to studio_launch regardless of historical errors.
+    """
+    state = {"errors": [{"node": "p4_persist_session", "message": "boom", "timestamp": "old"}]}
+    assert _routing.route_after_p4_persist_session(state) == "studio_launch"

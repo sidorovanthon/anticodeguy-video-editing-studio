@@ -37,9 +37,16 @@ def test_route_after_design_system_skip_to_end():
     assert route_after_design_system({"compose": {"design": {"skipped": True}}}) == END
 
 
-def test_route_after_design_system_error_to_end():
-    state = {"errors": [{"node": "p4_design_system", "message": "x", "timestamp": "now"}]}
-    assert route_after_design_system(state) == END
+def test_route_after_design_system_ignores_historical_errors():
+    """HOM-158: p4_design_system is an LLM node — raises on terminal failure;
+    pregel never commits LLM-origin errors to state. Any errors entry is
+    historical and routing must NOT END on it.
+    """
+    state = {
+        "errors": [{"node": "p4_design_system", "message": "x", "timestamp": "old"}],
+        "compose": {"design": {"palette": []}},
+    }
+    assert route_after_design_system(state) == "gate_design_ok"
 
 
 def test_route_after_design_system_pass_to_gate():
@@ -62,9 +69,15 @@ def test_route_after_prompt_expansion_skip_to_end():
     assert route_after_prompt_expansion({"compose": {"expansion": {"skipped": True}}}) == END
 
 
-def test_route_after_prompt_expansion_error_to_end():
-    state = {"errors": [{"node": "p4_prompt_expansion", "message": "x", "timestamp": "now"}]}
-    assert route_after_prompt_expansion(state) == END
+def test_route_after_prompt_expansion_ignores_historical_errors():
+    """HOM-158: p4_prompt_expansion is an LLM node — see
+    `test_route_after_design_system_ignores_historical_errors`.
+    """
+    state = {
+        "errors": [{"node": "p4_prompt_expansion", "message": "x", "timestamp": "old"}],
+        "compose": {"expansion": {"expanded_prompt_path": "/x"}},
+    }
+    assert route_after_prompt_expansion(state) == "p4_plan"
 
 
 def test_route_after_prompt_expansion_default_to_plan():
@@ -76,9 +89,15 @@ def test_route_after_plan_skip_to_end():
     assert route_after_plan({"compose": {"plan": {"skipped": True}}}) == END
 
 
-def test_route_after_plan_error_to_end():
-    state = {"errors": [{"node": "p4_plan", "message": "x", "timestamp": "now"}]}
-    assert route_after_plan(state) == END
+def test_route_after_plan_ignores_historical_errors():
+    """HOM-158: p4_plan is an LLM node — see
+    `test_route_after_design_system_ignores_historical_errors`.
+    """
+    state = {
+        "errors": [{"node": "p4_plan", "message": "x", "timestamp": "old"}],
+        "compose": {"plan": {"beats": []}},
+    }
+    assert route_after_plan(state) == "gate_plan_ok"
 
 
 def test_route_after_plan_pass_to_gate():
@@ -123,10 +142,16 @@ def test_route_after_catalog_scan_with_beats_to_captions():
     assert route_after_catalog_scan(state) == "p4_captions_layer"
 
 
-def test_route_after_captions_layer_error_to_end():
+def test_route_after_captions_layer_ignores_historical_errors():
+    """HOM-158: p4_captions_layer is an LLM node — see
+    `test_route_after_design_system_ignores_historical_errors`.
+    """
     from edit_episode_graph.nodes._routing import route_after_captions_layer
-    state = {"errors": [{"node": "p4_captions_layer", "message": "x", "timestamp": "now"}]}
-    assert route_after_captions_layer(state) == END
+    state = {
+        "errors": [{"node": "p4_captions_layer", "message": "x", "timestamp": "old"}],
+        "compose": {"plan": {"beats": []}},
+    }
+    assert route_after_captions_layer(state) == "p4_assemble_index"
 
 
 def test_route_after_captions_layer_with_beats_to_dispatch():

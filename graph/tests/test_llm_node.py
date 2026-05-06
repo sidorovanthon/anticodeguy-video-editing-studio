@@ -43,7 +43,15 @@ def test_llm_node_returns_state_update():
     assert update["llm_runs"][0]["success"] is True
 
 
-def test_llm_node_records_failure(monkeypatch):
+def test_llm_node_raises_on_terminal_failure():
+    """HOM-158: LLMNode re-raises AllBackendsExhausted instead of swallowing.
+
+    Pregel's `RetryPolicy` (configured per-node in graph.py) only fires when a
+    node raises; the pre-HOM-158 swallow-into-state pattern was a successful
+    return from pregel's view, and the policy never engaged. This test pins
+    the contract.
+    """
+    import pytest
     from edit_episode_graph.backends._types import AllBackendsExhausted
     router = MagicMock()
     router.invoke.side_effect = AllBackendsExhausted([
@@ -54,6 +62,39 @@ def test_llm_node_records_failure(monkeypatch):
         brief_template="hi", output_schema=_Out, result_namespace="edit",
         result_key="demo", timeout_s=5,
     )
-    update = node._invoke_with(router, {"slug": "x", "episode_dir": str(Path.cwd())}, render_ctx={})
-    assert "errors" in update
-    assert update["llm_runs"][0]["success"] is False
+    with pytest.raises(AllBackendsExhausted):
+        node._invoke_with(router, {"slug": "x", "episode_dir": str(Path.cwd())}, render_ctx={})
+
+
+def test_llm_node_emits_telemetry_event_before_raising():
+    """HOM-158: state writes are NOT committed on raise, so per-attempt
+    telemetry must be emitted as a custom event so Studio still surfaces
+    what was tried. We monkeypatch `_safe_dispatch_event` to capture.
+    """
+    import pytest
+    from edit_episode_graph.backends._types import AllBackendsExhausted
+    from edit_episode_graph.nodes import _llm as llm_module
+
+    captured: list[tuple[str, dict]] = []
+    orig = llm_module._safe_dispatch_event
+    llm_module._safe_dispatch_event = lambda name, payload: captured.append((name, payload))
+    try:
+        router = MagicMock()
+        router.invoke.side_effect = AllBackendsExhausted([
+            {"backend": "claude", "success": False, "reason": "timeout", "ts": "t"},
+        ])
+        node = LLMNode(
+            name="demo", requirements=NodeRequirements("cheap", False, ["claude"]),
+            brief_template="hi", output_schema=_Out, result_namespace="edit",
+            result_key="demo", timeout_s=5,
+        )
+        with pytest.raises(AllBackendsExhausted):
+            node._invoke_with(router, {"slug": "x", "episode_dir": str(Path.cwd())}, render_ctx={})
+    finally:
+        llm_module._safe_dispatch_event = orig
+
+    assert any(name == "llm_attempts_exhausted" for name, _ in captured), \
+        "expected an llm_attempts_exhausted custom event before the raise"
+    payload = next(p for name, p in captured if name == "llm_attempts_exhausted")
+    assert payload["node"] == "demo"
+    assert payload["runs"][0]["success"] is False

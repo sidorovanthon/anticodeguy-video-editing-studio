@@ -42,18 +42,26 @@ def test_routes_to_pre_scan_after_inventory_success():
     assert route_after_inventory({}) == "p3_pre_scan"
 
 
-def test_routes_to_end_after_pre_scan_error():
-    state = {"errors": [{"node": "p3_pre_scan", "message": "boom", "timestamp": "now"}]}
-    assert route_after_pre_scan(state) == END
+def test_pre_scan_router_ignores_historical_errors():
+    """HOM-158: p3_pre_scan is an LLM node and raises on terminal failure;
+    pregel never commits an LLM-origin entry to `state["errors"]`. So an
+    `errors` entry on the thread is by definition stale (deterministic-origin
+    or pre-HOM-158 state) — routing must NOT END on it.
+    """
+    state = {"errors": [{"node": "p3_pre_scan", "message": "boom", "timestamp": "old"}]}
+    assert route_after_pre_scan(state) == "p3_strategy"
 
 
 def test_routes_to_strategy_after_pre_scan_success():
     assert route_after_pre_scan({}) == "p3_strategy"
 
 
-def test_routes_to_end_after_strategy_error():
-    state = {"errors": [{"node": "p3_strategy", "message": "boom", "timestamp": "now"}]}
-    assert route_after_strategy(state) == END
+def test_strategy_router_ignores_historical_errors():
+    """HOM-158: same as `test_pre_scan_router_ignores_historical_errors` —
+    p3_strategy is an LLM node, so any errors entry is historical.
+    """
+    state = {"errors": [{"node": "p3_strategy", "message": "boom", "timestamp": "old"}]}
+    assert route_after_strategy(state) == "strategy_confirmed_interrupt"
 
 
 def test_routes_to_strategy_confirmed_after_strategy_success():
@@ -83,9 +91,13 @@ def test_routes_to_halt_when_revision_cap_exceeded():
     assert route_after_strategy_confirmed(state) == "halt_llm_boundary"
 
 
-def test_routes_to_end_after_strategy_confirmed_error():
-    state = {"errors": [{"node": "x", "message": "boom", "timestamp": "now"}]}
-    assert route_after_strategy_confirmed(state) == END
+def test_strategy_confirmed_router_ignores_historical_errors():
+    """HOM-158: strategy_confirmed_interrupt is an interrupt node — never writes
+    state["errors"]; any entry there is historical. Defensive fallback (no
+    approval, no revisions) re-runs strategy.
+    """
+    state = {"errors": [{"node": "x", "message": "boom", "timestamp": "old"}]}
+    assert route_after_strategy_confirmed(state) == "p3_strategy"
 
 
 def test_routes_to_end_when_strategy_skipped():
