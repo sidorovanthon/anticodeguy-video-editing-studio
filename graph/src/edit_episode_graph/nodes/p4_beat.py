@@ -10,10 +10,13 @@ root `index.html`.
 Per spec `2026-05-04-hom-122-p4-beats-fan-out-design.md`:
   - tier=smart (creative — `feedback_creative_nodes_flagship_tier`)
   - allowed_tools = [Read, Write]
-  - cached skip when fragment file already exists with non-zero size
-    (poor-man's cache — full CachePolicy + SqliteCache lands under HOM-132)
   - briefs reference canon paths, never embed canon
     (`feedback_graph_decomposition_brief_references_canon`)
+
+Caching: `CACHE_POLICY` keyed on (slug, design_md_path,
+expanded_prompt_path) with `extras=(beat_id,)` per HOM-150 / spec §6.
+The prior poor-man's "skip if file exists" stub is replaced by the
+native LangGraph cache.
 
 Smoke + production model selection happens in `graph/config.yaml` via
 per-node `model:` override; the dataclass below sets only the tier ceiling.
@@ -24,9 +27,41 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from langgraph.types import CachePolicy
+
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
+from .._caching import make_key
 from ._llm import LLMNode, _load_brief
+
+# Bump on brief / schema / tool-list change. See HOM-132 spec §8.
+_CACHE_VERSION = 1
+
+
+def _cache_key(state, *_args, **_kwargs):
+    if not isinstance(state, dict):
+        raise TypeError(
+            f"p4_beat cache key requires dict state, got {type(state).__name__}"
+        )
+    # Per-Send invocation: each beat's `_beat_dispatch.scene_id` namespaces
+    # the key. See p4_design_system._cache_key for the empty-slug rationale.
+    slug = state.get("slug") or "__unbound__"
+    compose = state.get("compose") or {}
+    bd = state.get("_beat_dispatch") or {}
+    beat_id = bd.get("scene_id") or bd.get("beat_id") or "__unbound__"
+    return make_key(
+        node="p4_beat",
+        version=_CACHE_VERSION,
+        slug=slug,
+        files=[
+            compose.get("design_md_path"),
+            compose.get("expanded_prompt_path"),
+        ],
+        extras=(beat_id,),
+    )
+
+
+CACHE_POLICY = CachePolicy(key_func=_cache_key)
 
 
 def _catalog_summary(state: dict) -> str:
@@ -94,22 +129,7 @@ def _build_node() -> LLMNode:
 
 def p4_beat_node(state, *, router: BackendRouter | None = None):
     bd = state.get("_beat_dispatch") or {}
-    scene_id = bd.get("scene_id") or "?"
     scene_html_path = bd.get("scene_html_path")
-
-    # Cached skip: if the fragment already exists with non-zero size, the
-    # previous run authored it. Re-running is free under this gate. Brief
-    # drift requires the operator to delete the file — documented in PR.
-    if scene_html_path:
-        scene_path = Path(scene_html_path)
-        try:
-            if scene_path.is_file() and scene_path.stat().st_size > 0:
-                return {"notices": [f"p4_beat[{scene_id}]: cached, skipping"]}
-        except OSError:
-            # stat failure is genuinely unusual; fall through and let the
-            # LLM dispatch run, which will overwrite or surface the error
-            # via its own Write tool path.
-            pass
 
     # Ensure the destination directory exists so the sub-agent's `Write`
     # call lands in a real folder.

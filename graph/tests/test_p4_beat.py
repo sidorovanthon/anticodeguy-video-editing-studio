@@ -1,7 +1,6 @@
 """Unit tests for p4_beat — per-scene LLM authoring node (HOM-134).
 
 Per spec `2026-05-04-hom-122-p4-beats-fan-out-design.md` §"`p4_beat` node":
-  - cached skip when fragment already exists with non-zero size
   - AllBackendsExhausted handling (delegated to LLMNode base)
   - brief render context completeness (every Jinja variable resolves)
   - mocked happy path (router invoked with smart tier, has_tools, allowed_tools)
@@ -10,6 +9,12 @@ Per spec `2026-05-04-hom-122-p4-beats-fan-out-design.md` §"`p4_beat` node":
 `_beat_dispatch` namespace populated by `p4_dispatch_beats`. Tests construct
 that namespace by hand; the dispatcher's payload shape is covered separately
 in `test_p4_dispatch_beats.py`.
+
+Note (HOM-150): the prior poor-man's FS-existence cached-skip stub was
+deleted — caching is now native LangGraph (`CACHE_POLICY` + `SqliteCache`)
+which bypasses the node body entirely on cache hits. The node body itself
+no longer carries any skip-on-existence logic, so the corresponding test
+`test_cached_skip_when_fragment_exists_nonempty` was retired with the stub.
 """
 
 from __future__ import annotations
@@ -64,21 +69,9 @@ def _state(tmp_path: Path, scene_html_path: str, **bd_overrides) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# cached skip
+# fragment-exists branch (HOM-150: no longer short-circuits — native cache
+# wraps the whole node above this point)
 # ---------------------------------------------------------------------------
-
-
-def test_cached_skip_when_fragment_exists_nonempty(tmp_path):
-    fragment = tmp_path / "hyperframes" / "compositions" / "hook.html"
-    fragment.parent.mkdir(parents=True)
-    fragment.write_text("<div id='scene-hook'></div>", encoding="utf-8")
-
-    router = MagicMock()
-    update = p4_beat_node(_state(tmp_path, str(fragment)), router=router)
-
-    assert router.invoke.call_count == 0
-    notices = update.get("notices") or []
-    assert any("cached" in n and "hook" in n for n in notices), notices
 
 
 def test_no_cached_skip_when_fragment_zero_bytes(tmp_path):

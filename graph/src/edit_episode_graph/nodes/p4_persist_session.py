@@ -24,10 +24,45 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+from langgraph.types import CachePolicy
+
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
+from .._caching import make_key
 from ..schemas.p4_persist_session import PersistSessionResult
 from ._llm import LLMNode, _load_brief
+
+# Bump on brief / schema / tool-list change. See HOM-132 spec §8.
+_CACHE_VERSION = 1
+
+
+def _cache_key(state, *_args, **_kwargs):
+    if not isinstance(state, dict):
+        raise TypeError(
+            f"p4_persist_session cache key requires dict state, got {type(state).__name__}"
+        )
+    # See p4_design_system._cache_key for the empty-slug rationale.
+    slug = state.get("slug") or "__unbound__"
+    compose = state.get("compose") or {}
+    assemble = compose.get("assemble") or {}
+    # Spec §6 specifies `compose.index_html_path`; the assembled artifact is
+    # actually carried as `compose.assemble.index_html_path` (with
+    # `assembled_at` as a legacy fallback). A re-run with identical
+    # `index.html` content cache-hits and skips appending a duplicate
+    # Session block — desirable: nothing changed, no new session.
+    index_html_path = (
+        assemble.get("index_html_path")
+        or assemble.get("assembled_at")
+    )
+    return make_key(
+        node="p4_persist_session",
+        version=_CACHE_VERSION,
+        slug=slug,
+        files=[index_html_path],
+    )
+
+
+CACHE_POLICY = CachePolicy(key_func=_cache_key)
 
 # Phase 4 gates whose records belong in the persisted Session block. Filtering
 # narrows the brief input to relevant context (design / plan / static_guard,
