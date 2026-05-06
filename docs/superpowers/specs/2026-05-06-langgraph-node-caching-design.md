@@ -175,7 +175,7 @@ The following 18 nodes carry `cache_policy=`. The `files=` column lists upstream
 | `p3_persist_session` | `[edit.final_mp4_path, edit.edl_path]` | — |
 | `glue_remap_transcript` | `[edit.edl_path, transcripts.raw_json_path]` | — |
 | `p4_scaffold` | `[]` (depends on slug only) | — |
-| `p4_design_system` | `[transcripts.final_json_path]` | — |
+| `p4_design_system` | `[transcripts.final_json_path, edit.edl.edl_path]` | `(strategy_hash,)` — sha256 of strategy dict modulo `source_path`/`skipped`/`skip_reason`; the brief feeds `strategy_json` directly |
 | `p4_prompt_expansion` | `[compose.design_md_path, transcripts.final_json_path]` | — |
 | `p4_plan` | `[compose.design_md_path, compose.expanded_prompt_path, transcripts.final_json_path]` | — |
 | `p4_catalog_scan` | `[]` (deterministic, reads npm registry) | — |
