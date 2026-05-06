@@ -168,11 +168,11 @@ The following 18 nodes carry `cache_policy=`. The `files=` column lists upstream
 | `isolate_audio` | `[pickup.raw_path]` | — |
 | `p3_inventory` | `[audio.cleaned_path]` | — |
 | `p3_pre_scan` | `[transcripts.takes_packed_path]` | — |
-| `p3_strategy` | `[transcripts.takes_packed_path, edit.pre_scan_path]` | — |
-| `p3_edl_select` | `[transcripts.takes_packed_path, edit.strategy_path]` | — |
+| `p3_strategy` | `[transcripts.takes_packed_path]` | `(pre_scan_slips_hash, strategy_revisions_hash)` — both are rendered verbatim into the brief (`pre_scan_slips_json`, `strategy_revisions_json`) and live in-memory on `state.edit.pre_scan.slips` / `state.strategy_revisions`, not on disk; spec originally said `edit.pre_scan_path` — there is no on-disk pre-scan artifact (HOM-132.3 amendment) |
+| `p3_edl_select` | `[transcripts.takes_packed_path] + transcript_paths` | `(pre_scan_slips_hash, strategy_hash, prior_violations_hash, prior_iteration)` — pre-scan slips and strategy are in-memory; the gate-retry feedback (`prior_violations`, `prior_iteration` from `gate_retry_context("gate:edl_ok")`) is rendered into the brief on retry attempts and MUST invalidate so the retry-with-feedback loop is not short-circuited; spec originally said `edit.strategy_path` — there is no on-disk strategy artifact (HOM-132.3 amendment) |
 | `p3_render_segments` | `[edit.edl_path]` | `(edit.iteration,)` |
-| `p3_self_eval` | `[edit.final_mp4_path, edit.edl_path]` | `(edit.iteration,)` |
-| `p3_persist_session` | `[edit.final_mp4_path, edit.edl_path]` | — |
+| `p3_self_eval` | `[edit.final_mp4_path, edit.edl_path]` | `(eval_iteration,)` — count of `gate:eval_ok` records in `state.gate_results`; there is no `edit.iteration` field on `GraphState`, so the de-facto counter (also used by `p3_persist_session`'s brief) is derived from gate history (HOM-132.3 amendment) |
+| `p3_persist_session` | `[edit.final_mp4_path, edit.edl_path]` | `(strategy_hash, edl_hash, eval_hash, today)` — `strategy_json` / `edl_json` / `eval_report_json` are rendered verbatim from in-memory state, and `today` is rendered into the appended Session-block heading so day-rollover MUST invalidate (mirrors the `p4_persist_session` HOM-150 amendment); spec originally listed no extras (HOM-132.3 amendment). `project.md` is deliberately NOT in `files=`: the node's first run mutates it, so listing it would force every re-run to cache-miss, defeating idempotency. |
 | `glue_remap_transcript` | `[edit.edl_path, transcripts.raw_json_path]` | — |
 | `p4_scaffold` | `[]` (depends on slug only) | — |
 | `p4_design_system` | `[transcripts.final_json_path, edit.edl.edl_path]` | `(strategy_hash,)` — sha256 of strategy dict modulo `source_path`/`skipped`/`skip_reason`; the brief feeds `strategy_json` directly |

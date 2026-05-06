@@ -20,10 +20,82 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+from langgraph.types import CachePolicy
+
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
+from .._caching import make_key, stable_fingerprint, strategy_fingerprint
 from ..schemas.p3_persist_session import PersistSessionResult
 from ._llm import LLMNode, _load_brief
+
+# Bump on brief / schema / tool-list change. Spec §8 review checkpoint.
+_CACHE_VERSION = 1
+
+
+def _final_mp4_path_for_key(state: dict) -> str | None:
+    render = (state.get("edit") or {}).get("render") or {}
+    explicit = render.get("final_mp4")
+    if explicit:
+        return str(explicit)
+    if not state.get("episode_dir"):
+        return None
+    return str(Path(state["episode_dir"]) / "edit" / "final.mp4")
+
+
+def _edl_path_for_key(state: dict) -> str | None:
+    edl = (state.get("edit") or {}).get("edl") or {}
+    explicit = edl.get("edl_path")
+    if explicit:
+        return str(explicit)
+    if not state.get("episode_dir"):
+        return None
+    return str(Path(state["episode_dir"]) / "edit" / "edl.json")
+
+
+def _cache_key(state, *_args, **_kwargs):
+    """Cache key for `p3_persist_session`.
+
+    Brief renders `strategy_json`, `edl_json`, `eval_report_json` (all
+    in-memory state — none are written to disk in a form that would let us
+    file-fingerprint them; `edl.json` IS on disk but the brief renders the
+    in-state dict including transient fields, so we hash it explicitly),
+    plus `iteration` and `today`. All in-memory values move to `extras=`.
+
+    `files=` keeps the spec's `[final_mp4_path, edl_path]` for upstream-
+    invalidation parity with `p3_self_eval`, and deliberately does NOT
+    include `project.md` itself — the node's first run mutates that file
+    (appending Session N), so listing it would cause re-runs to always
+    cache-miss, defeating idempotency.
+
+    Spec §6 row will be amended in this PR with the in-memory extras and
+    the `today` rationale (mirrors the HOM-150 amendment for
+    `p4_persist_session`).
+    """
+    if not isinstance(state, dict):
+        raise TypeError(
+            f"p3_persist_session cache key requires dict state, got {type(state).__name__}"
+        )
+    slug = state.get("slug") or "__unbound__"
+    edit = state.get("edit") or {}
+    strategy = edit.get("strategy") or {}
+    edl = edit.get("edl") or {}
+    eval_report = edit.get("eval") or {}
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return make_key(
+        node="p3_persist_session",
+        version=_CACHE_VERSION,
+        slug=slug,
+        files=[_final_mp4_path_for_key(state), _edl_path_for_key(state)],
+        extras=(
+            strategy_fingerprint(strategy),
+            stable_fingerprint({k: v for k, v in edl.items() if k != "source_path"}),
+            stable_fingerprint(eval_report),
+            today,
+        ),
+    )
+
+
+CACHE_POLICY = CachePolicy(key_func=_cache_key)
 
 
 def _project_md_path(state: dict) -> Path:

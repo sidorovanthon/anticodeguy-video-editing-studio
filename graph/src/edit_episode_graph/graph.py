@@ -85,14 +85,29 @@ from .nodes.eval_failure_interrupt import eval_failure_interrupt_node
 from .nodes.glue_remap_transcript import glue_remap_transcript_node
 from .nodes.halt_llm_boundary import halt_llm_boundary_node
 from .nodes.isolate_audio import isolate_audio_node
-from .nodes.p3_edl_select import p3_edl_select_node
+from .nodes.p3_edl_select import (
+    CACHE_POLICY as p3_edl_select_cache_policy,
+    p3_edl_select_node,
+)
 from .nodes.p3_inventory import p3_inventory_node
-from .nodes.p3_pre_scan import p3_pre_scan_node
+from .nodes.p3_pre_scan import (
+    CACHE_POLICY as p3_pre_scan_cache_policy,
+    p3_pre_scan_node,
+)
 from .nodes.p3_render_segments import p3_render_segments_node
-from .nodes.p3_persist_session import p3_persist_session_node
+from .nodes.p3_persist_session import (
+    CACHE_POLICY as p3_persist_session_cache_policy,
+    p3_persist_session_node,
+)
 from .nodes.p3_review_interrupt import p3_review_interrupt_node
-from .nodes.p3_self_eval import p3_self_eval_node
-from .nodes.p3_strategy import p3_strategy_node
+from .nodes.p3_self_eval import (
+    CACHE_POLICY as p3_self_eval_cache_policy,
+    p3_self_eval_node,
+)
+from .nodes.p3_strategy import (
+    CACHE_POLICY as p3_strategy_cache_policy,
+    p3_strategy_node,
+)
 from .nodes.p4_assemble_index import p4_assemble_index_node
 from .nodes.p4_catalog_scan import p4_catalog_scan_node
 from .nodes.p4_beat import (
@@ -205,15 +220,21 @@ def build_graph_uncompiled() -> StateGraph:
     g.add_node("studio_launch", studio_launch_node)
     g.add_node("gate_static_guard", static_guard_gate_node)
     g.add_node("p3_inventory", p3_inventory_node)
-    g.add_node("p3_pre_scan", p3_pre_scan_node)
-    g.add_node("p3_strategy", p3_strategy_node)
+    # HOM-132.3: cache_policy on the Phase 3 LLM nodes. Spec
+    # `docs/superpowers/specs/2026-05-06-langgraph-node-caching-design.md` §6.
+    g.add_node("p3_pre_scan", p3_pre_scan_node, cache_policy=p3_pre_scan_cache_policy)
+    g.add_node("p3_strategy", p3_strategy_node, cache_policy=p3_strategy_cache_policy)
     g.add_node("strategy_confirmed_interrupt", strategy_confirmed_interrupt_node)
-    g.add_node("p3_edl_select", p3_edl_select_node)
+    g.add_node("p3_edl_select", p3_edl_select_node, cache_policy=p3_edl_select_cache_policy)
     g.add_node("gate_edl_ok", edl_ok_gate_node)
     g.add_node("p3_render_segments", p3_render_segments_node)
-    g.add_node("p3_self_eval", p3_self_eval_node)
+    g.add_node("p3_self_eval", p3_self_eval_node, cache_policy=p3_self_eval_cache_policy)
     g.add_node("gate_eval_ok", eval_ok_gate_node)
-    g.add_node("p3_persist_session", p3_persist_session_node)
+    g.add_node(
+        "p3_persist_session",
+        p3_persist_session_node,
+        cache_policy=p3_persist_session_cache_policy,
+    )
     g.add_node("p3_review_interrupt", p3_review_interrupt_node)
     g.add_node("edl_failure_interrupt", edl_failure_interrupt_node)
     g.add_node("eval_failure_interrupt", eval_failure_interrupt_node)

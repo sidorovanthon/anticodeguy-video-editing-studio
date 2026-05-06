@@ -16,12 +16,80 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from langgraph.types import CachePolicy
+
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
+from .._caching import make_key
 from ..schemas.p3_self_eval import EvalReport
 from ._llm import LLMNode, _load_brief
 
+# Bump on brief / schema / tool-list change. Spec §8 review checkpoint.
+_CACHE_VERSION = 1
+
 TIMELINE_VIEW_PATH = Path.home() / ".claude" / "skills" / "video-use" / "helpers" / "timeline_view.py"
+
+
+def _final_mp4_path(state: dict) -> str | None:
+    render = (state.get("edit") or {}).get("render") or {}
+    explicit = render.get("final_mp4")
+    if explicit:
+        return str(explicit)
+    if not state.get("episode_dir"):
+        return None
+    return str(Path(state["episode_dir"]) / "edit" / "final.mp4")
+
+
+def _edl_path(state: dict) -> str | None:
+    edl = (state.get("edit") or {}).get("edl") or {}
+    explicit = edl.get("edl_path")
+    if explicit:
+        return str(explicit)
+    if not state.get("episode_dir"):
+        return None
+    return str(Path(state["episode_dir"]) / "edit" / "edl.json")
+
+
+def _eval_iteration(state: dict) -> int:
+    """Render-eval iteration — number of `gate:eval_ok` records so far.
+
+    Spec §6 lists `extras=(edit.iteration,)` for `p3_self_eval`. There is
+    no `edit.iteration` field on `GraphState`; the de-facto counter is
+    derived from `gate_results` (the same logic `p3_persist_session` uses
+    via `_iteration_count`). Including it ensures a forced re-eval on
+    iteration N+1 cache-misses even when `final.mp4`/`edl.json` content
+    are byte-identical (operator's "judge again" intent).
+    """
+    n = 0
+    for rec in state.get("gate_results") or []:
+        if rec.get("gate") == "gate:eval_ok":
+            n += 1
+    return n
+
+
+def _cache_key(state, *_args, **_kwargs):
+    """Cache key for `p3_self_eval`.
+
+    Brief inputs are `final_mp4_path` (Read/Bash) and `edl_path` (Read);
+    derived `cut_boundaries_json` is a function of EDL content (covered by
+    `edl_path` fingerprint) and so does not need its own extra. The
+    `iteration` extra defends against forced re-runs on identical artifacts.
+    """
+    if not isinstance(state, dict):
+        raise TypeError(
+            f"p3_self_eval cache key requires dict state, got {type(state).__name__}"
+        )
+    slug = state.get("slug") or "__unbound__"
+    return make_key(
+        node="p3_self_eval",
+        version=_CACHE_VERSION,
+        slug=slug,
+        files=[_final_mp4_path(state), _edl_path(state)],
+        extras=(_eval_iteration(state),),
+    )
+
+
+CACHE_POLICY = CachePolicy(key_func=_cache_key)
 
 
 def _cut_boundaries(state: dict) -> tuple[list[float], list[dict]]:
