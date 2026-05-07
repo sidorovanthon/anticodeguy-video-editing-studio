@@ -90,5 +90,25 @@ class AllBackendsExhausted(BackendError):
     """Router tried every backend in the preference list and none succeeded."""
 
     def __init__(self, attempts: list[dict[str, Any]]):
-        super().__init__(f"All backends exhausted across {len(attempts)} attempt(s).")
+        # Embed a compact summary of attempts directly in the exception message
+        # so it surfaces in checkpoint task.error and `langgraph_api.worker`
+        # error logs without needing the per-run stream-events replay (which
+        # is unavailable once the run has terminated).
+        summary_parts = []
+        for i, a in enumerate(attempts):
+            piece = f"#{i + 1} backend={a.get('backend')} reason={a.get('reason')} exc={a.get('exc_type')}"
+            msg = (a.get("message") or "")[:120]
+            if msg:
+                piece += f" msg={msg!r}"
+            stderr = (a.get("stderr_preview") or "")[:120]
+            if stderr:
+                piece += f" stderr={stderr!r}"
+            rc = a.get("returncode")
+            if rc is not None:
+                piece += f" rc={rc}"
+            summary_parts.append(piece)
+        summary = " | ".join(summary_parts) if summary_parts else "(no attempts)"
+        super().__init__(
+            f"All backends exhausted across {len(attempts)} attempt(s): {summary}"
+        )
         self.attempts = attempts
