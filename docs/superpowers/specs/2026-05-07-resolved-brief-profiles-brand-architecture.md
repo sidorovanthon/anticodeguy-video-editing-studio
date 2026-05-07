@@ -49,7 +49,7 @@ final brief consumed by node =
   └─ pipeline_state      (артефакты от upstream-нод)
 ```
 
-**Профиль — first-class абстракция, не bool-флаг.** Каждый профиль фиксирует видео-класс: `talking-head-portrait`, `explainer`, `long-form`, `horizontal-product-promo`, …. У профиля свои дефолты pacing'а, structural archetype, rhythm template, captions-стратегии, плотности анимации, музыкального бренча (ducking aggressiveness, allowed mood). `canonical` — пустой профиль для regression-режима: чистый канон без бренд- и класс-опинионов.
+**Профиль — first-class абстракция, не bool-флаг.** Каждый профиль фиксирует видео-класс: `talking-head-portrait`, `explainer`, `long-form`, `horizontal-product-promo`, …. У профиля свои дефолты pacing'а, structural archetype, rhythm template, captions-стратегии, плотности анимации, музыкального бренча (allowed mood, default mix-volume). `canonical` — пустой профиль для regression-режима: чистый канон без бренд- и класс-опинионов.
 
 **Brand-канон — не форк skill-канона.** Skill-канон по-прежнему read-only. Бренд-слой добавляет инварианты ПОВЕРХ канона (палитра, типографика, лого, motion language, music library, CTA template). При формальном конфликте brand-канон выигрывает (он ближе к выводу).
 
@@ -78,7 +78,7 @@ brand/
       logo.svg
       symbol-lime.svg
     templates/
-      cta_scene.html                  # детерминированный CTA-блок
+      cta_scene.html                  # детерминированный CTA-блок (статический HTML-template; НЕ hyperframes-registry component)
       intro_scene.html                # опционально
     music/
       tracks/
@@ -87,9 +87,7 @@ brand/
         tutorial-clean-2.mp3
         tutorial-clean-2.meta.yaml
         ...
-      defaults.yaml                   # default trackId, per-profile preferences, ducking
-      _runtime/
-        ducking.js                    # HF-runtime hook template (если нужно ducking)
+      defaults.yaml                   # default trackId, per-profile preferences, fixed mix-volume
 
 episodes/<slug>/
   intent.yaml                         # optional per-episode override
@@ -141,7 +139,7 @@ captions:
 animation_density: medium
 music:
   enabled: true
-  ducking_aggressiveness: medium
+  default_mix_db: -18           # фикс mix-volume vs voice; canonical mix без sidechain
 cta:
   enabled: true
   placement: final_scene
@@ -160,14 +158,9 @@ edit:
 
 ```yaml
 default_track_id: editorial-warm-1
-volume_db: -18
-fade_in_s: 0.5
+volume_db: -18                # фиксированный mix; конвертится в data-volume через 10**(db/20)
+fade_in_s: 0.5                # GSAP-tween на свойство volume; опционально
 fade_out_s: 1.0
-ducking:
-  enabled: true
-  target_db: -28
-  attack_ms: 120
-  release_ms: 400
 per_profile:
   talking-head-portrait: editorial-warm-1
   explainer:            tutorial-clean-2
@@ -229,10 +222,9 @@ brief = {
     "music": {
         "track_id": str,
         "asset_path": str,
-        "volume_db": float,
+        "volume_db": float,           # → data-volume через 10**(db/20)
         "fade_in_s": float,
         "fade_out_s": float,
-        "ducking": dict,
         "license_note": str,
         "lufs_integrated": float,
     } | None,
@@ -291,13 +283,13 @@ Deterministic, в графе между `pickup` и `p3_inventory` (до нач�
 
 **File-first default:**
 1. Если `brief.resolved.narrative_context` уже заполнен (через `intent.yaml`) — Converse-нода — no-op, идём на `p3_strategy`.
-2. Иначе после `p3_pre_scan` — нода `p3_converse` делает `interrupt({...})` с pre-scan summary + 8-полевой анкетой канонического Step 3 (video-use SKILL.md L87, verbatim):
+2. Иначе после `p3_pre_scan` — нода `p3_converse` делает `interrupt({...})` с pre-scan summary + 8-полевой анкетой канонического Step 3 (`video-use SKILL.md ## The process` → list-item «Converse», verbatim):
 
 > «Converse. Describe what you see in plain English. Ask questions *shaped by the material*. Collect: content type, target length/aspect, aesthetic/brand direction, pacing feel, must-preserve moments, must-cut moments, animation and grade preferences, subtitle needs.»
 
 Ответ человека пишется в `episodes/<slug>/edit/narrative_context.md` (свободный markdown) и в `state.brief.narrative_context`. Состояние brief после Converse — пересохраняется в `brief.resolved.yaml`, fingerprint бампается.
 
-**Канонический контракт editor INPUTS** (video-use SKILL.md L130–137, verbatim):
+**Канонический контракт editor INPUTS** (`video-use SKILL.md ## Editor sub-agent brief (for multi-take selection)` → блок начинающийся с «INPUTS:», verbatim):
 ```
 INPUTS:
   - takes_packed.md
@@ -330,13 +322,21 @@ INPUTS:
    ```
    Возвращает структурированный markdown-блок для Jinja2-брифа. Каждый источник помечен `## SOURCE: skill_canon`, `## SOURCE: profile`, `## SOURCE: brand`, `## SOURCE: episode_intent`.
 
-2. **Sub-list-item extraction.** Step 3 «Converse» в video-use SKILL.md L87 — пункт списка внутри `## The process`, без своего H2-якоря. Loader умеет извлекать markdown-list-item по index или по startswith-тексту.
+2. **Sub-list-item extraction.** Step 3 «Converse» в `video-use SKILL.md ## The process` — пункт списка без своего H2-якоря. Loader извлекает markdown-list-item по startswith-тексту первых 1-2 слов («Converse.», «Self-eval»). Index-based extraction явно запрещён — fragile к перенумерации канонических шагов.
 
-3. **Cache-key включает sha256 каждого подгруженного блока** — обновился канон, инвалидировалась только нода, чьи якоря изменились (улучшение над ручным `_CACHE_VERSION` бампом).
+3. **Heading match через `startswith`, не full-string equality.** `## Hard Rules (production correctness — non-negotiable)` матчится через `startswith("## Hard Rules")` чтобы пунктуация хедера не ломала загрузку при upstream churn. Регистрируем мин-длину префикса (~10 chars) чтобы исключить false-positive.
 
-4. **Snapshot-тесты на каждый используемый якорь** обоих скиллов и каждой brand/profile-секции.
+4. **Cache-key включает sha256 каждого подгруженного блока** — обновился канон, инвалидировалась только нода, чьи якоря изменились. **Цена: cache-key включает sha256 содержимого якоря, НЕ имени.** sha256 пустой строки стабилен, поэтому пункт 5 ниже обязателен — иначе silent-empty + warm cache = LLM крутится без канона.
 
-**Anchorability check:** обе SKILL.md и referenced files имеют unique-text H2 заголовки в пределах файла — anchorable без disambiguation. Проверено 2026-05-07.
+5. **Hard-fail на пустую экстракцию.** Если `load_skill_section(...)` возвращает пустую строку (heading не найден / sub-list-item не найден / referenced файл удалён) — поднимается `CanonAnchorMissing(skill_path, anchor)` с понятным сообщением «канон обновился, ниже якорь больше не существует, проверь diff». Никаких silent-empty fallback'ов в LLM brief.
+
+6. **Startup integrity check `verify_anchors()`.** При build времени графа (один раз per process) walk'аем все registered tuples `(skill_path, anchor)` через все ноды и все `(profile, brand)`-секции; fail loud если хоть один якорь не резолвится. Cheap, deterministic, ловит upstream rename до запуска любых LLM-нод.
+
+7. **Helper-script версионирование.** `pickup` и `p3_pre_scan` `key_func` включают sha256 содержимого ключевых canon-helpers (`transcribe_batch.py`, `pack_transcripts.py`, `timeline_view.py`, `render.py` из `~/.claude/skills/video-use/helpers/`) — иначе обновление helper'а с тем же путём не инвалидирует кэш и пайплайн крутится на deprecated logic.
+
+8. **Snapshot-тесты на каждый используемый якорь** обоих скиллов и каждой brand/profile-секции.
+
+**Anchorability check:** обе SKILL.md и referenced files имеют unique-text H2 заголовки в пределах файла — anchorable без disambiguation. Проверено 2026-05-07; поддерживаем актуальность через п.6 startup check.
 
 **Per-нода anchor list (verbatim из родительских спек, переносится без изменений):**
 
@@ -350,19 +350,19 @@ INPUTS:
 - **`p4_beat`:** hyperframes SKILL.md `## Layout Before Animation`, `## Rules (Non-Negotiable)`, `## Scene Transitions (Non-Negotiable)`, `## Animation Guardrails`; `references/motion-principles.md ## Load-Bearing GSAP Rules` (full, verbatim — канон сам требует *«don't summarize or shorten them»*); brand `defaults.yaml.motion_language`.
 - **`p4_captions_layer`:** `references/captions.md` (`## Caption Exit Guarantee`, `## Text Overflow Prevention`, `## Positioning`, `## Constraints`); brand `defaults.yaml.captions`.
 
-**Каноническое обоснование mechanical-inline подхода:** `references/motion-principles.md` L142 (verbatim): *«don't summarize or shorten them»*. Канон сам требует не пересказывать load-bearing rules — паста идёт verbatim.
+**Каноническое обоснование mechanical-inline подхода:** `references/motion-principles.md ## Load-Bearing GSAP Rules` содержит фразу *«don't summarize or shorten them»*. Канон сам требует не пересказывать load-bearing rules — паста идёт verbatim.
 
 ## 10. `neighbors_summary` injection
 
 В `p4_prompt_expansion`, `p4_beat`, `p4_plan` (опционально) прокидывается сводка соседних сцен, чтобы closed-context fan-out соблюдал кросс-сценные канон-правила.
 
-**Канонические места, требующие соседского контекста (verbatim, hyperframes):**
-- SKILL.md L249–252, Scene Transitions Non-Negotiable Rule 3: *«NEVER use exit animations except on the final scene… The transition IS the exit.»*
-- `transitions.md` L22: *«Pick ONE primary (60-70% of scene changes) + 1-2 accents.»*
-- `transitions.md` L40-49 (Narrative Position).
-- `beat-direction.md` L88-96 (Rhythm Planning).
-- `beat-direction.md` L54: *«1-2 shader transitions (the hero reveal + the CTA)»*.
-- `video-composition.md` L52-54: *«Vary motion per scene — don't repeat the same ambient pattern.»*
+**Канонические места, требующие соседского контекста (hyperframes, anchor-cited):**
+- `SKILL.md ## Scene Transitions (Non-Negotiable)` Rule 3: *«NEVER use exit animations except on the final scene… The transition IS the exit.»* — beat не знает что он final без injection.
+- `references/transitions.md` примерно строка с «Pick ONE primary (60-70% of scene changes) + 1-2 accents.» — кросс-сценный transition budget.
+- `references/transitions.md ## Narrative Position` — требует знания opening / climax / outro.
+- `references/beat-direction.md ## Rhythm Planning` — глобальная строка ритма «fast-fast-SLOW-fast-SHADER-hold».
+- `references/beat-direction.md ## Per-Beat Direction` фраза «1-2 shader transitions (the hero reveal + the CTA)» — кросс-сценный budget.
+- `references/video-composition.md` фраза «Vary motion per scene — don't repeat the same ambient pattern.» — motion variation.
 
 **Поле `_beat_dispatch.neighbors_summary`:**
 
@@ -384,20 +384,35 @@ INPUTS:
 
 **Ответственный за заполнение:** `p4_dispatch_beats` (детерминированная нода, она и так формирует `Send` payload). Cache-key `p4_beat` учитывает соседский summary (бамп `_CACHE_VERSION`).
 
-## 11. Music — selection, application, ducking
+## 11. Music — selection и application
+
+**Музыка — нативный HF-механизм, никаких custom-runtime'ов.** Канон: `SKILL.md ## Video and Audio` — `<audio>` элемент с `data-track-index`, `data-volume`, `data-start`, `data-duration`. HF capture engine сам микширует треки по `data-volume`. Голос (из `final.mp4`) и музыка — два отдельных `<audio>` элемента с разными `data-volume` и разными track-index'ами. Никаких `window.__hfAudio`, никаких ducking-runtime-скриптов: фиксированный микс громкостей покрывает 95% talking-head shorts.
 
 **Selection at resolve-time** (см. §6). Brief гарантирует наличие `music.asset_path`, валидной license_note, измеренного LUFS.
 
-**Application — новая детерминированная нода `p4_inject_music`** между `p4_assemble_index` и `gate:design_adherence`:
+**Application — детерминированная нода `p4_inject_music`** между `p4_assemble_index` и `gate:design_adherence`:
 
 - Читает `state.brief.music`.
-- Пишет `<audio>` слой в `index.html` верстатимом (timeline-зарегистрированный, seek-driven, как требует HF-канон).
-- Если `ducking.enabled` — подключает `brand/<brand_id>/music/_runtime/ducking.js` и регистрирует hook на `window.__hfAudio` через паттерн HF audio-adapter'а (см. waapi/three skills для аналогичных runtime-hook-паттернов).
-- На `gate:music_present` failure — нода-pre-flight в самой `p4_inject_music` падает с прескриптивным сообщением, что чинить.
+- Пишет `<audio>` верстатимом в root `index.html`:
+  ```html
+  <audio
+    id="music-bed"
+    data-start="0"
+    data-duration="<final_mp4_duration_s>"
+    data-track-index="2"
+    data-volume="<volume_0_to_1>"
+    src="../assets/music/<track_id>.mp3"
+  ></audio>
+  ```
+- `data-volume` — конвертация из brief.music.volume_db (`-18 dB → ~0.25`, `-12 dB → ~0.5` через `10**(db/20)`).
+- Fade in/out (опционально) — GSAP-tween на свойство `volume` через timeline; канон запрещает анимировать только `play()`/`visibility`/`display`, animating `volume` допустимо.
+- На `gate:music_present` failure — нода-pre-flight в самой `p4_inject_music` падает с прескриптивным сообщением.
 
-**Альтернатива A (через `p4_assemble_index` brief).** Рассмотрена и отклонена: LLM может «забыть» ducking/fade параметры, потребуется gate с corrective loop, удорожает токены без выигрыша. Деттерминированная инъекция чище.
+**Альтернатива A (через `p4_assemble_index` brief).** Рассмотрена и отклонена: LLM может «забыть» точные параметры volume/track-index, потребуется gate с corrective loop, удорожает токены без выигрыша. Деттерминированная инъекция короче (~10 строк генерации html + write).
 
-**Volume normalization.** Треки нормализуются на ingest вручную (LUFS измеряется и записывается в `<track>.meta.yaml`). `gate:music_present` валидирует `lufs_integrated` в окне `[-18, -14]` LUFS; вне окна — failure с инструкцией нормализовать.
+**Volume normalization.** Треки нормализуются на ingest вручную (LUFS измеряется и записывается в `<track>.meta.yaml`). `gate:music_present` валидирует `lufs_integrated` в окне `[-18, -14]` LUFS (источник: EBU R128 / ITU-R BS.1770 streaming targets); вне окна — failure с инструкцией нормализовать через `ffmpeg -af loudnorm` или Audacity.
+
+**Если когда-нибудь понадобится sidechain ducking** (динамическое притухание музыки под voice peaks) — это будет отдельный custom adapter поверх HF (HF-канон сегодня не даёт sidechain primitive), либо upstream HF feature request. Не входит в эту спеку. Memory `feedback_external_skill_canon` запрещает форки канона; sidechain — orchestrator-house добавление, не подмена.
 
 ## 12. Content-quality gates
 
@@ -427,7 +442,7 @@ Output schema: `{issues: [...], passed: bool, severity}`. Routing на failure �
 
 ### 12.3 `gate:brand_adherence` (детерминированный)
 
-После `p4_assemble_index`. Каждый hex-цвет в композиции присутствует в `palette.yaml`; каждый `font-family` ссылается на разрешённую типографику (или fallback chain из brand kit). Канон-обоснование: hyperframes SKILL.md L348 описывает ручной agent-level чек *«every hex value in the composition appears in design.md's palette»* — формализуем.
+После `p4_assemble_index`. Каждый hex-цвет в композиции присутствует в `palette.yaml`; каждый `font-family` ссылается на разрешённую типографику (или fallback chain из brand kit). Канон-обоснование: `hyperframes SKILL.md ## Quality Checks → ### Design Adherence` описывает ручной agent-level чек *«every hex value in the composition appears in design.md's palette»* — формализуем как deterministic gate.
 
 ### 12.4 `gate:cta_present` (детерминированный)
 
@@ -456,6 +471,8 @@ Output schema: `{issues: [...], passed: bool, severity}`. Routing на failure �
 - Override: `intent.yaml.allow_cheap_creative: true` для smoke на конкретном эпизоде.
 
 Memory `feedback_creative_nodes_flagship_tier` уже фиксирует политику; этот guard — её формальный пресечь-механизм.
+
+**LangGraph primitive check (per CLAUDE.md «search docs first»):** проверена документация LangGraph Python (CachePolicy/RetryPolicy/Pregel reference) — нативного node-config-validation хука на graph-build-time нет. Tier policy — orchestrator-house concern (не graph-runtime), поэтому собственный guard в `_llm.py` `resolve_node_config()` оправдан.
 
 ## 14. HITL semantics
 
@@ -492,7 +509,7 @@ Memory `feedback_creative_nodes_flagship_tier` уже фиксирует пол�
 8. **`gate:brand_adherence` + `gate:cta_present` + `gate:seam_policy`** (§12.3-12.5). DoD: unit-тесты, smoke на референс-композиции.
 9. **Music library substrate** — `brand/<id>/music/` каталог + `<track>.meta.yaml` schema + LUFS validation utility (§4+§11). DoD: 2-3 трека-плейсхолдера в библиотеке, схемы парсятся.
 10. **Music selection в resolve_episode_brief + `gate:music_present`** (§6+§11). DoD: priority chain тестируется (CLI > intent > per_profile > default).
-11. **`p4_inject_music` нода + ducking runtime template** (§11). DoD: smoke композиция реально проигрывает аудио в HF Studio с ducking'ом.
+11. **`p4_inject_music` нода** (§11). Деттерминированный `<audio>`-write поверх `index.html`; `data-volume` конвертируется из `volume_db`. Опциональный fade через GSAP-tween на `volume`. DoD: smoke композиция проигрывает music + voice одновременно в HF Studio со штатным микшированием HF capture engine.
 12. **Production-creative model guard** (§13). DoD: тест что cheap-tier на production падает; canonical-режим не падает.
 13. **HITL approval tightening** (§14). DoD: тест что empty submit в non-canonical не approve.
 
@@ -518,7 +535,7 @@ Memory `feedback_creative_nodes_flagship_tier` уже фиксирует пол�
 |---|---|---|
 | **HOM-160** (High, существует) | Cross-thread cache replay channel-writes hydrate | Перевести в M5. Без него acceptance §17 на fresh-thread не воспроизводится. |
 | **HOM-158 follow-up** (новый, S) | `RetryPolicy.retry_on` → `AllBackendsExhausted` или re-raise `BackendTimeout` из `_llm.py` | Завести в M5. Сейчас retry мёртв. |
-| **gate_results reducer fix** (новый, S) | `gate_results: Annotated[list, add]` → reducer с clear-on-rewind | Завести в M5. Без него `update_state(as_node=...)` rewind заблокирован — fallback acceptance §17 при незакрытом HOM-160. |
+| **gate_results reducer fix** (новый, S) | `gate_results: Annotated[list, add]` → custom reducer с clear-on-replay семантикой ([LangGraph reducer API](https://langchain-ai.github.io/langgraph/concepts/low_level/) §"Reducers" — `Annotated[list, custom_reducer]`) | Завести в M5. Без него `update_state(as_node=...)` rewind заблокирован — fallback acceptance §17 при незакрытом HOM-160. |
 | **HF Phase 4 black-screen** (новый, M) | Bare-repro в чистом `npx hyperframes init`, локализовать слой, fix или upstream issue | Завести в M5. Без playable HF композиции §17 не проверить. |
 | **`p4_beat` preventive guards** (новый, S) | В brief — запреты gsap `Math.ceil` repeat overshoot и caption-exit-without-kill | Завести в M5. Сходимость gate:lint loop ~1 fix/iter — preventive окупается каждым прогоном. |
 | **HOM-114** (Med, существует) | Pre-load SKILL.md sections | **Расширить scope** до three-source loader (см. §9). Тикет переезжает в M6 как часть архитектуры; в M5 закрывается комментарием «scope merged into M6 ticket #3». |
@@ -549,7 +566,7 @@ HOM-77 family может закрываться **параллельно** с M6
 
 **Wave 3 — Content-quality gates (§15.6+§15.8).** `gate:edl_semantic_ok` (детерминированный shingle), `gate:brand_adherence`, `gate:cta_present`, `gate:seam_policy` (warn-only до HOM-137). **Wave acceptance:** EDL с phrase duplication → `gate:edl_semantic_ok` failed → `p3_edl_redispatch` → fixed.
 
-**Wave 4 — Defence-in-depth + music (§15.7+§15.9+§15.10+§15.11).** LLM `p3_content_review`; music library substrate + selection + `p4_inject_music` + `gate:music_present`. **Wave acceptance:** HF композиция проигрывает background music с ducking; смена `intent.yaml.music.track_id` инвалидирует ровно `p4_inject_music`.
+**Wave 4 — Defence-in-depth + music (§15.7+§15.9+§15.10+§15.11).** LLM `p3_content_review`; music library substrate + selection + `p4_inject_music` + `gate:music_present`. **Wave acceptance:** HF композиция проигрывает background music + voice одновременно через нативный HF audio-mix; смена `intent.yaml.music.track_id` инвалидирует ровно `p4_inject_music`.
 
 **Параллельно с любой волной (после wave 1):** §15.12 (production-creative model guard) + §15.13 (HITL approval tightening).
 
@@ -593,7 +610,7 @@ HOM-77 family может закрываться **параллельно** с M6
    - семантических дублей нет ни там, ни там;
    - брэнд-палитра видна в Phase 4 graph-output, в clean-session — не требуется;
    - CTA-сцена с лого присутствует в graph-output (если `profile.cta.enabled`);
-   - background music играет с заданным ducking'ом;
+   - background music играет с фиксированным mix-volume под voice (нативный HF audio-mix);
    - editing `intent.yaml.music.track_id` инвалидирует ровно `p4_inject_music` (и ничего лишнего);
    - editing `brand/anticodeguy/palette.yaml` инвалидирует `p4_design_system` и нижестоящие;
    - editing `brief.resolved.narrative_context` инвалидирует `p3_strategy` + `p3_edl_select`.
