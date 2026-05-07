@@ -82,12 +82,15 @@ node_overrides:
   p4_prompt_expansion:
     tier: smart
     backend_preference: ["claude"]
-    timeout_s: 300
+    timeout_s: 600
     # Per canon `references/prompt-expansion.md`: "the quality gap between a
     # single-pass composition and a multi-scene-pipeline composition comes
     # from this step." Highest-leverage creative node in Phase 4. tier=smart
     # resolves to Opus 4.7 in backends/claude.py. See memory
     # `feedback_creative_nodes_flagship_tier` and HOM-119.
+    # 300→600 in HOM-154: first clean E2E hit walltime ~300s exactly at the
+    # prior limit. Multi-scene expansion is genuinely long on Opus 4.7;
+    # aligned with the EDL bump precedent in this same run.
   p4_plan:
     tier: smart
     backend_preference: ["claude"]
