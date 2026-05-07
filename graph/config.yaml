@@ -110,6 +110,17 @@ node_overrides:
     # `feedback_creative_nodes_flagship_tier`). Switch to a Sonnet/Opus ID for
     # production use.
     model: claude-haiku-4-5-20251001
+  p4_redispatch_beat:
+    tier: smart
+    backend_preference: ["claude"]
+    timeout_s: 600
+    # Re-authors one scene fragment after a cluster-gate fail. Same shape as
+    # p4_beat (creative scene composition, Read+Write tools), so same budget.
+    # Without an explicit override the global defaults clobber the LLMNode's
+    # timeout_s=300 down to 120 AND inject codex into backend_preference,
+    # which on Windows immediately ENOENT's. Surfaced in HOM-154 first clean
+    # E2E (PR #84 added attempts-detail in AllBackendsExhausted message;
+    # the fix made the diagnosis trivial).
   p4_captions_layer:
     tier: smart
     backend_preference: ["claude"]
