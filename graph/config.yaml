@@ -33,18 +33,20 @@ node_overrides:
   p3_edl_select:
     tier: smart
     backend_preference: ["claude"]
-    timeout_s: 360
+    timeout_s: 600
     # Production default: Sonnet 4.6. EDL is the highest-stakes numeric step
     # (HR 6/7 word-boundary + 30–200ms padding across all cuts); Haiku-4.5
     # empirically fails the padding window, and Opus 4.7 (the default
     # tier:smart resolution in claude.py) timed out at 180s in HOM-107
     # smoke. Sonnet 4.6 hits the precision/latency sweet spot. Smoke
     # scripts pin Haiku locally via per-run override, not here.
-    # 240→360 in HOM-154: first clean E2E (slug
-    # 2026-05-06-who-else-is-tired-of-endless-monthly) hit walltime
-    # 240.141s exactly at the prior limit — Sonnet 4.6 needs more headroom
-    # on full pre_scan+strategy context for EDL. HOM-157 cfg-fingerprint
-    # invalidates the cache automatically.
+    # 240→360→600 in HOM-154: two consecutive E2E runs on slug
+    # 2026-05-06-who-else-is-tired-of-endless-monthly hit walltime 240.141s
+    # then 360.079s — exactly at each prior limit. Sonnet 4.6 + Read-tool
+    # iteration over a 4272-line Scribe raw.json + word-boundary HR 6/7
+    # math is genuinely long. HOM-157 cfg-fingerprint invalidates cache
+    # automatically. If 600s also fails, switch to Opus 4.7 or pre-trim
+    # transcript inputs in the brief.
     model: claude-sonnet-4-6
   p3_self_eval:
     tier: cheap
