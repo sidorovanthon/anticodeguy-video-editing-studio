@@ -42,6 +42,24 @@ _SUPPRESSED_CODES = frozenset(
     }
 )
 
+# Findings we suppress *only* on files under the per-scene fragments dir
+# (`<hf_dir>/compositions/`). p4_beat persists each scene as a `<div>`
+# fragment for traceability/replay; the orchestrator inlines those into
+# `index.html` via `<!-- beat: ... -->` markers (Pattern A inline mode —
+# memories `feedback_hf_pattern_a_vs_b`, `feedback_multi_beat_sub_compositions`).
+# HF lint scans every .html in the project and treats each fragment as a
+# standalone composition, so it raises `root_missing_composition_id` and
+# `missing_timeline_registry` against fragments that geometrically can't
+# satisfy those rules — they aren't roots. The same lint rules ARE valid
+# against `index.html` and remain unsuppressed there.
+_FRAGMENT_ONLY_SUPPRESSED_CODES = frozenset(
+    {
+        "root_missing_composition_id",
+        "missing_timeline_registry",
+    }
+)
+_FRAGMENT_DIR_MARKER = "compositions"
+
 
 def _format_finding(f: dict) -> str:
     code = f.get("code") or "unknown"
@@ -81,6 +99,10 @@ def _violations_from_json(payload: object) -> list[str] | None:
             continue
         if f.get("code") in _SUPPRESSED_CODES:
             continue
+        if f.get("code") in _FRAGMENT_ONLY_SUPPRESSED_CODES:
+            file_path = (f.get("file") or "").replace("\\", "/")
+            if f"/{_FRAGMENT_DIR_MARKER}/" in file_path:
+                continue
         violations.append(_format_finding(f))
     return violations
 

@@ -288,6 +288,55 @@ def test_fails_when_hyperframes_dir_missing_on_disk(tmp_path: Path):
     )
 
 
+def test_suppresses_root_codes_only_on_fragment_files(
+    monkeypatch: pytest.MonkeyPatch, hf_project: Path
+):
+    """root_missing_composition_id and missing_timeline_registry are only
+    valid on the root composition (index.html). The same codes raised on
+    files under `<hf_dir>/compositions/` are false positives — those
+    files are scene fragments inlined by p4_assemble_index, not standalone
+    roots. The gate must suppress them on fragments while keeping them
+    on `index.html`."""
+
+    payload = {
+        "ok": False,
+        "errorCount": 3,
+        "warningCount": 0,
+        "findings": [
+            {
+                "code": "root_missing_composition_id",
+                "severity": "error",
+                "message": "missing on fragment",
+                "file": "/abs/path/to/hyperframes/compositions/hook.html",
+            },
+            {
+                "code": "missing_timeline_registry",
+                "severity": "error",
+                "message": "missing on fragment",
+                "file": str(hf_project / "compositions" / "cta.html"),
+            },
+            {
+                "code": "root_missing_composition_id",
+                "severity": "error",
+                "message": "real failure on root",
+                "file": str(hf_project / "index.html"),
+            },
+        ],
+    }
+
+    def fake_run(args, hf_dir, **kw):
+        return _json_result(hf_dir, payload, exit_code=2)
+
+    _patch_runner(monkeypatch, fake_run)
+
+    update = lint_gate_node(_state_for(hf_project))
+    record = update["gate_results"][0]
+    assert not record["passed"]
+    assert len(record["violations"]) == 1
+    assert "real failure on root" in record["violations"][0]
+    assert "index.html" in record["violations"][0]
+
+
 def test_truncates_very_long_text_fallback(
     monkeypatch: pytest.MonkeyPatch, hf_project: Path
 ):
