@@ -496,19 +496,116 @@ Memory `feedback_creative_nodes_flagship_tier` уже фиксирует пол�
 12. **Production-creative model guard** (§13). DoD: тест что cheap-tier на production падает; canonical-режим не падает.
 13. **HITL approval tightening** (§14). DoD: тест что empty submit в non-canonical не approve.
 
-## 16. Sequencing — milestones
+## 16. Sequencing — sprints
 
-**Milestone A — Brief substrate (тикеты 1+2+3).** Без него остальное не закрепляется. Acceptance: смена палитры в `brand/anticodeguy/palette.yaml` инвалидирует `p4_design_system` и нижестоящие; чистый `canonical`-прогон проходит как раньше.
+Архитектурная работа этой спеки имеет смысл **только если baseline стабилен**. Текущий backlog содержит несколько багов, которые либо блокируют acceptance §17, либо удорожают каждый прогон шумом — их закрываем в **Sprint 0** до старта Milestone A.
 
-**Milestone B — Per-node context fan-out (тикеты 4+5).** Converse + narrative_context, neighbors_summary. Acceptance: HOM-154 повтор → `p3_strategy.rationale` явно ссылается на тон Converse; `p4_beat` видит `is_final=true` без посторонних подсказок.
+Полный mapping всех тикетов backlog'а (включая незаведённые из ретро HOM-154) — в §16.1 ниже.
 
-**Milestone C — Content-quality gates (тикеты 6+8).** Detect-and-route на content-уровне. Acceptance: подсунутый EDL с phrase duplication → `gate:edl_semantic_ok` failed → redispatch → fixed.
+### Sprint 0 — Pre-architecture cleanup (~1 неделя)
 
-**Milestone D — Defence-in-depth + music (тикеты 7+9+10+11).** LLM content-review поверх детерминированных гейтов; music library и инъекция. Acceptance: финальная HF композиция проигрывает background music с ducking'ом под голос.
+**Цель:** убрать блокеры acceptance и кэш-/retry-/rewind-шум, чтобы Milestone A приходил на стабильную базу.
 
-**Milestone E — Profile expansion (тикет = эпик-extension).** Добавляем второй профиль (например `explainer`) как доказательство расширяемости. Не пишем, пока MVP единственного профиля не работает.
+| # | Тикет | Что | Почему сейчас |
+|---|---|---|---|
+| 0.1 | **HOM-160** (High, существует) | Cross-thread cache replay channel-writes hydrate | Без него acceptance §17 на fresh-thread не воспроизводится. Каждый ticket-PR смок будет «вроде хитнул кэш или нет — х.з.». Блокер архитектурной части. |
+| 0.2 | **HOM-158-follow-up** (новый, S) | `RetryPolicy.retry_on` фикс на `AllBackendsExhausted` либо re-raise `BackendTimeout` из `_llm.py` | Сейчас retry мёртв. При первом transient прогоне Sprint 1 опять будем теряться в логах. Тривиальная правка, лучше до Sprint 1. |
+| 0.3 | **gate_results reducer fix** (новый, S) | `gate_results: Annotated[list, add]` → reducer с поддержкой clear-on-rewind для конкретного gate | Без него `update_state(as_node=...)` для rewind с failed-gate состоянием не работает. Acceptance §17 fallback (HOM-160 не закрыт → resume через update_state) тоже упрётся. |
+| 0.4 | **HF Phase 4 black-screen** (новый, M) | Bare-repro в чистом `npx hyperframes init`, локализовать слой (project config / scene structure / runtime mismatch); fix или upstream issue | Без playable HF композиции §17 acceptance просто нечем проверить. Текущий `final.mp4` есть, но Phase 4 — чёрный квадрат. |
+| 0.5 | **`p4_beat` preventive guards** (новый, S) | В brief — explicit запреты gsap `Math.ceil` repeat overshoot и caption-exit-without-kill | Сходимость gate:lint loop сейчас ~1 fix/iter. С preventive guards — меньше ошибок, меньше итераций, меньше токенов. Дешёвая правка, окупается каждым прогоном архитектурной работы. |
 
-**Параллельно (vendor-tier, любой момент после Milestone A):** тикеты 12+13.
+**Dependencies:** 0.1, 0.2, 0.3, 0.5 — независимы между собой, можно параллелить. 0.4 — самостоятельный investigation, не блокирует остальные четыре.
+
+**Sprint 0 DoD:** на тестовом эпизоде fresh dispatch на прогретом cache даёт cache hits (0.1); transient timeout вызывает Pregel retry (0.2); rewind через update_state клирует stale gate_results (0.3); HF Studio проигрывает реальную нашу композицию хотя бы базово (0.4); смок Phase 4 не дёргает gate:lint redispatch на тех двух классах ошибок (0.5).
+
+### Sprint 1 — Milestone A: Brief substrate (тикеты 1+2+3)
+
+State namespace `brief`, `resolve_episode_brief` нода, schema loosening, расширение HOM-114 до three-source loader, profile/brand skeleton.
+
+**Acceptance:** смена палитры в `brand/anticodeguy/palette.yaml` инвалидирует `p4_design_system` и нижестоящие; чистый `canonical`-прогон проходит как раньше; brief fingerprint попадает в LLM cache keys.
+
+### Sprint 2 — Milestone B: Per-node context fan-out (тикеты 4+5)
+
+Converse interrupt + `narrative_context`, `neighbors_summary` инъекция.
+
+**Acceptance:** HOM-154-подобный re-run → `p3_strategy.rationale` явно ссылается на тон Converse; `p4_beat` видит `is_final=true` через neighbors_summary без посторонних подсказок.
+
+### Sprint 3 — Milestone C: Content-quality gates (тикеты 6+8)
+
+`gate:edl_semantic_ok` (детерминированный shingle-детектор), `gate:brand_adherence`, `gate:cta_present`, `gate:seam_policy` (warn-only до закрытия HOM-137).
+
+**Acceptance:** подсунутый EDL с phrase duplication → `gate:edl_semantic_ok` failed → `p3_edl_redispatch` → fixed; brand-adherence ловит off-palette hex.
+
+### Sprint 4 — Milestone D: Defence-in-depth + music (тикеты 7+9+10+11)
+
+LLM `p3_content_review` поверх детерминированных гейтов; music library substrate + selection + `p4_inject_music` нода + `gate:music_present`.
+
+**Acceptance:** HF композиция проигрывает background music с ducking'ом под voice; смена `intent.yaml.music.track_id` инвалидирует ровно `p4_inject_music`.
+
+### Sprint 5 — Milestone E: Profile expansion
+
+Добавляем второй профиль (например `explainer`) как доказательство расширяемости. Не пишем, пока MVP `talking-head-portrait` не работает по §17.
+
+### Параллельно (vendor-tier, любой момент после Sprint 1)
+
+Тикеты 12 (production-creative model guard) + 13 (HITL approval tightening). Не зависят от Milestones B/C/D.
+
+### Post-architecture (после Sprint 4)
+
+| # | Тикет | Sprint | Зависимость |
+|---|---|---|---|
+| Post-1 | **HOM-137** (High) | 6 | Без него `gate:seam_policy` остаётся warn-only. После закрытия — гейт переключается в enforce-mode. |
+| Post-2 | **HOM-155** (Medium) | 7 | Beat_kills auto-inserter. Дополняет Sprint 0.5 preventive guards: §0.5 не даёт LLM генерить ошибочные паттерны, HOM-155 чинит детерминированно если всё-таки сгенерил. |
+| Post-3 | **HOM-156** (Medium) | 7 | LLM fix-or-justify для animation-map gate. Снижает false-fail rate на legitimate creative choices. |
+| Post-4 | **HOM-78** (Low) | 8 | HITL user_review — комплементарно §14. После закрытия архитектуры payload содержит новые поля (semantic-dup result, brief fingerprint, brand-adherence result). |
+| Post-5 | **HOM-79** (Low) | 9 | `/edit-episode` thin-client cutover. Финальная веха LangGraph migration epic'а. |
+
+### Backlog без приоритета (можно добивать в любом окне)
+
+| Тикет | Что | Когда удобно |
+|---|---|---|
+| **HOM-117** (Low) | 24fps re-encode investigation | Cosmetic, в любой момент когда есть бандвидс. Не блокирует ничего. |
+| **HOM-115** (Low) | Tier-mapping consolidation (cheap=Sonnet, smart=Opus counterintuitive) | DX-улучшение. Sprint 0+ когда удобно. После §13 production-creative-guard cтанет менее критично. |
+
+## 16.1. Полный backlog mapping
+
+Сводная таблица всех тикетов, релевантных пайплайну, с явной привязкой к спеке/спринтам:
+
+| ID | Title | Pri | Status | Sprint | Связь |
+|---|---|---|---|---|---|
+| HOM-160 | cache replay drops state channel-writes | High | Backlog | 0 | Блокер acceptance §17 |
+| HOM-158-fu | RetryPolicy.retry_on dead | — | **Не заведён** | 0 | Cleanup, тривиальный |
+| gate_results reducer | clear-on-rewind | — | **Не заведён** | 0 | Cleanup, разблокирует update_state |
+| HF black-screen | bare-repro investigation | — | **Не заведён** | 0 | Без него §17 неизмерим на Phase 4 |
+| p4_beat guards | gsap Math.floor + caption kill | — | **Не заведён** | 0 | Cleanup, дешёвая convergence-правка |
+| HOM-114 | pre-load SKILL.md sections | Med | Backlog | 1 | Tickets №3 спека (расширенный three-source) |
+| Brief substrate | state.brief + resolve node + schema loosening | — | **Новый под epic** | 1 | Tickets №1, спека §5+§6+§7 |
+| Profile+brand skeleton | каталоги | — | **Новый под epic** | 1 | Tickets №2, спека §4 |
+| Converse + narrative_context | interrupt | — | **Новый под epic** | 2 | Tickets №4, спека §8 |
+| neighbors_summary | injection | — | **Новый под epic** | 2 | Tickets №5, спека §10 |
+| gate:edl_semantic_ok | shingle-детектор | — | **Новый под epic** | 3 | Tickets №6, спека §12.1 |
+| gate:brand_adherence + cta + seam | детерминированные | — | **Новый под epic** | 3 | Tickets №8, спека §12.3-12.5 |
+| p3_content_review | LLM defence-in-depth | — | **Новый под epic** | 4 | Tickets №7, спека §12.2 |
+| Music library substrate | brand/<id>/music/ | — | **Новый под epic** | 4 | Tickets №9, спека §11 |
+| Music selection + gate | resolve_episode_brief | — | **Новый под epic** | 4 | Tickets №10, спека §11 |
+| p4_inject_music | детерминированная нода | — | **Новый под epic** | 4 | Tickets №11, спека §11 |
+| Production-creative guard | fail-fast cheap-tier | — | **Новый под epic** | 1+ (parallel) | Tickets №12, спека §13 |
+| HITL approval tightening | non-canonical require explicit | — | **Новый под epic** | 1+ (parallel) | Tickets №13, спека §14 |
+| Profile expansion | second profile (`explainer`) | — | **Новый под epic** | 5 | Спека §16 Milestone E |
+| HOM-137 | root transitions | High | Backlog | 6 (post-arch) | Разблокирует gate:seam_policy enforce |
+| HOM-155 | beat_kills auto-inserter | Med | Backlog | 7 (post-arch) | Дополняет 0.5 preventive guards |
+| HOM-156 | animation-map fix-or-justify | Med | Backlog | 7 (post-arch) | Снижает false-fail на gate:animation_map |
+| HOM-77 | Phase 4 canonical gaps (parent epic) | Low | Backlog | 6-7 | Closes when 137+155+156 done |
+| HOM-78 | HITL user_review + final_render | Low | Backlog | 8 (post-arch) | Дополняет §14, использует новые поля payload |
+| HOM-79 | /edit-episode thin-client cutover | Low | Backlog | 9 | Финал epic'а |
+| HOM-117 | 24fps re-encode | Low | Backlog | any | Cosmetic |
+| HOM-115 | tier-mapping consolidation | Low | Backlog | any | DX |
+
+**Заводим в Linear:**
+
+1. Sprint 0 cleanup тикеты (4 штуки): `HOM-158-fu`, `gate_results-reducer-fix`, `hf-black-screen-investigation`, `p4_beat-preventive-guards`. Все под parent HOM-154 (текущая In Progress E2E) либо как самостоятельные с label `cleanup`.
+2. Architecture epic «Resolved Brief & Profile Architecture» с 13 sub-issues по списку §15. Parent — новый эпик.
+3. Profile-expansion (Milestone E) — отдельный sub-issue под архитектурным эпиком, заводится после закрытия Milestone D.
 
 ## 17. Acceptance criteria на уровне всей спеки
 
