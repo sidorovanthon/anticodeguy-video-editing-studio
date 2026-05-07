@@ -498,13 +498,13 @@ Memory `feedback_creative_nodes_flagship_tier` уже фиксирует пол�
 
 ## 16. Sequencing — sprints
 
-Архитектурная работа этой спеки имеет смысл **только если baseline стабилен**. Текущий backlog содержит несколько багов, которые либо блокируют acceptance §17, либо удорожают каждый прогон шумом — их закрываем в **Sprint 0** до старта Milestone A.
+Архитектурная работа этой спеки имеет смысл **только если baseline стабилен**. Текущий backlog содержит несколько багов, которые либо блокируют acceptance §17, либо удорожают каждый прогон шумом — их закрываем в **Sprint 0** до старта Sprint 1.
 
 Полный mapping всех тикетов backlog'а (включая незаведённые из ретро HOM-154) — в §16.1 ниже.
 
 ### Sprint 0 — Pre-architecture cleanup (~1 неделя)
 
-**Цель:** убрать блокеры acceptance и кэш-/retry-/rewind-шум, чтобы Milestone A приходил на стабильную базу.
+**Цель:** убрать блокеры acceptance и кэш-/retry-/rewind-шум, чтобы Sprint 1 приходил на стабильную базу.
 
 | # | Тикет | Что | Почему сейчас |
 |---|---|---|---|
@@ -518,37 +518,37 @@ Memory `feedback_creative_nodes_flagship_tier` уже фиксирует пол�
 
 **Sprint 0 DoD:** на тестовом эпизоде fresh dispatch на прогретом cache даёт cache hits (0.1); transient timeout вызывает Pregel retry (0.2); rewind через update_state клирует stale gate_results (0.3); HF Studio проигрывает реальную нашу композицию хотя бы базово (0.4); смок Phase 4 не дёргает gate:lint redispatch на тех двух классах ошибок (0.5).
 
-### Sprint 1 — Milestone A: Brief substrate (тикеты 1+2+3)
+### Sprint 1 — Brief substrate (тикеты 1+2+3)
 
 State namespace `brief`, `resolve_episode_brief` нода, schema loosening, расширение HOM-114 до three-source loader, profile/brand skeleton.
 
 **Acceptance:** смена палитры в `brand/anticodeguy/palette.yaml` инвалидирует `p4_design_system` и нижестоящие; чистый `canonical`-прогон проходит как раньше; brief fingerprint попадает в LLM cache keys.
 
-### Sprint 2 — Milestone B: Per-node context fan-out (тикеты 4+5)
+### Sprint 2 — Per-node context fan-out (тикеты 4+5)
 
 Converse interrupt + `narrative_context`, `neighbors_summary` инъекция.
 
 **Acceptance:** HOM-154-подобный re-run → `p3_strategy.rationale` явно ссылается на тон Converse; `p4_beat` видит `is_final=true` через neighbors_summary без посторонних подсказок.
 
-### Sprint 3 — Milestone C: Content-quality gates (тикеты 6+8)
+### Sprint 3 — Content-quality gates (тикеты 6+8)
 
 `gate:edl_semantic_ok` (детерминированный shingle-детектор), `gate:brand_adherence`, `gate:cta_present`, `gate:seam_policy` (warn-only до закрытия HOM-137).
 
 **Acceptance:** подсунутый EDL с phrase duplication → `gate:edl_semantic_ok` failed → `p3_edl_redispatch` → fixed; brand-adherence ловит off-palette hex.
 
-### Sprint 4 — Milestone D: Defence-in-depth + music (тикеты 7+9+10+11)
+### Sprint 4 — Defence-in-depth + music (тикеты 7+9+10+11)
 
 LLM `p3_content_review` поверх детерминированных гейтов; music library substrate + selection + `p4_inject_music` нода + `gate:music_present`.
 
 **Acceptance:** HF композиция проигрывает background music с ducking'ом под voice; смена `intent.yaml.music.track_id` инвалидирует ровно `p4_inject_music`.
 
-### Sprint 5 — Milestone E: Profile expansion
+### Sprint 5 — Profile expansion
 
 Добавляем второй профиль (например `explainer`) как доказательство расширяемости. Не пишем, пока MVP `talking-head-portrait` не работает по §17.
 
 ### Параллельно (vendor-tier, любой момент после Sprint 1)
 
-Тикеты 12 (production-creative model guard) + 13 (HITL approval tightening). Не зависят от Milestones B/C/D.
+Тикеты 12 (production-creative model guard) + 13 (HITL approval tightening). Не зависят от Sprint 2-4.
 
 ### Post-architecture (после Sprint 4)
 
@@ -591,7 +591,7 @@ LLM `p3_content_review` поверх детерминированных гейт
 | p4_inject_music | детерминированная нода | — | **Новый под epic** | 4 | Tickets №11, спека §11 |
 | Production-creative guard | fail-fast cheap-tier | — | **Новый под epic** | 1+ (parallel) | Tickets №12, спека §13 |
 | HITL approval tightening | non-canonical require explicit | — | **Новый под epic** | 1+ (parallel) | Tickets №13, спека §14 |
-| Profile expansion | second profile (`explainer`) | — | **Новый под epic** | 5 | Спека §16 Milestone E |
+| Profile expansion | second profile (`explainer`) | — | **Новый под epic** | 5 | Спека §16 Sprint 5 |
 | HOM-137 | root transitions | High | Backlog | 6 (post-arch) | Разблокирует gate:seam_policy enforce |
 | HOM-155 | beat_kills auto-inserter | Med | Backlog | 7 (post-arch) | Дополняет 0.5 preventive guards |
 | HOM-156 | animation-map fix-or-justify | Med | Backlog | 7 (post-arch) | Снижает false-fail на gate:animation_map |
@@ -605,11 +605,11 @@ LLM `p3_content_review` поверх детерминированных гейт
 
 1. Sprint 0 cleanup тикеты (4 штуки): `HOM-158-fu`, `gate_results-reducer-fix`, `hf-black-screen-investigation`, `p4_beat-preventive-guards`. Все под parent HOM-154 (текущая In Progress E2E) либо как самостоятельные с label `cleanup`.
 2. Architecture epic «Resolved Brief & Profile Architecture» с 13 sub-issues по списку §15. Parent — новый эпик.
-3. Profile-expansion (Milestone E) — отдельный sub-issue под архитектурным эпиком, заводится после закрытия Milestone D.
+3. Profile-expansion (Sprint 5) — отдельный sub-issue под архитектурным эпиком, заводится после закрытия Sprint 4.
 
 ## 17. Acceptance criteria на уровне всей спеки
 
-После Milestone'ов A+B+C+D критерий «работает не хуже чистой сессии» проверяется так:
+После Sprint 1-4 критерий «работает не хуже чистой сессии» проверяется так:
 
 1. Один и тот же raw-эпизод прогоняется через `/edit-episode` (граф) и через свежую `claude` сессию с промптом `«Используя скилл /video-use обработай видео»`.
 2. Оба `final.mp4` и оба HF-результата смотрит человек.
@@ -656,4 +656,4 @@ LLM `p3_content_review` поверх детерминированных гейт
 - `feedback_branch_pr_workflow` — implementation тикетов через worktree → PR → review → merge.
 - `feedback_langgraph_native_primitives` — `interrupt()` для Converse, `Send` для neighbors_summary через `p4_dispatch_beats`, `CachePolicy` для нод, `update_state(as_node=...)` для midpoint-resume в HOM-160 acceptance.
 
-Спека написана с учётом ретро HOM-154; конкретные симптомы (semantic-дубль, отсутствие бренд-идентичности, cold fan-out beat) закрываются Milestone'ами B+C+D соответственно.
+Спека написана с учётом ретро HOM-154; конкретные симптомы (semantic-дубль, отсутствие бренд-идентичности, cold fan-out beat) закрываются Sprint 2-4 соответственно.
