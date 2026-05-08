@@ -54,7 +54,18 @@ from .._caching import make_key
 from .._scene_id import scene_id_for
 
 # Bump on assemble_html / shim shape / marker change. Spec §8.
-_CACHE_VERSION = 1
+# v2 (HOM-164): visibility shim now unpauses scene-local timelines before
+# nesting them into root via `tl.add(child)`. GSAP semantics: a parent's
+# `seek()` does NOT advance a child timeline whose `paused: true` flag is
+# still set — the child stays at t=0 even when the parent is at t=N. Per-scene
+# `p4_beat` fragments register `gsap.timeline({ paused: true })` (HF canon
+# `~/.agents/skills/hyperframes/SKILL.md` §"Timeline Contract"); the shim
+# must clear that flag immediately before `root.add(...)` so the HF runtime's
+# seek of `__timelines["root"]` actually plays the entrance tweens. Without
+# this, every scene-1+ frame stays at the fromTo from-state — the
+# Phase 4 black-screen symptom HOM-164 was filed for. Repro confirmed in a
+# clean `npx hyperframes init` scaffold; fix is purely orchestrator-side.
+_CACHE_VERSION = 2
 
 
 def _scene_html_paths(state: dict) -> list[str | None]:
@@ -299,9 +310,11 @@ def build_visibility_shim(
       - if `i > 0`: `root.set('#scene-<id>', { opacity: 1 }, t)` — the first
         scene starts visible (opacity: 1 in its fragment style); subsequent
         scenes carry `opacity: 0` initially per `transitions/catalog.md` L9.
-      - always: `root.add(window.__sceneTimelines[id], t)` — nest the
-        scene-local timeline at its start so its entrance tweens fire under
-        non-linear seek.
+      - always: unpause `window.__sceneTimelines[id]` and nest it via
+        `root.add(sceneTl, t)` — see `_CACHE_VERSION` v2 note for the GSAP
+        rationale (a paused child timeline does not advance under parent
+        `seek()`, so HOM-164's black-screen symptom is fixed by clearing the
+        `paused: true` flag the per-scene `p4_beat` fragment authored).
 
     The script is defensive about both `__timelines["root"]` and
     `__sceneTimelines[id]` being undefined so a missing scaffold piece (or
@@ -325,7 +338,13 @@ def build_visibility_shim(
         "      root.set('#scene-' + id, { opacity: 1 }, starts[i]);\n"
         "    }\n"
         "    var sceneTl = window.__sceneTimelines && window.__sceneTimelines[id];\n"
-        "    if (sceneTl) root.add(sceneTl, starts[i]);\n"
+        "    if (sceneTl) {\n"
+        "      // HOM-164: unpause child timeline before nesting — GSAP does\n"
+        "      // not advance a paused child under parent.seek(), which left\n"
+        "      // every scene at fromTo from-state (Phase 4 black screen).\n"
+        "      sceneTl.paused(false);\n"
+        "      root.add(sceneTl, starts[i]);\n"
+        "    }\n"
         "  });\n"
         "})();\n"
         "</script>\n"
