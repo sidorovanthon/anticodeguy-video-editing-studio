@@ -16,10 +16,15 @@ _TOLERANCE_CAP_MS = 500
 def duration_tolerance_ms(n_segments: int) -> int:
     """Acceptable drift between EDL-arithmetic and rendered final.mp4.
 
-    Canon `render.py` re-encodes to 24fps (libx264 `-r 24`); each segment
-    edge snaps to the 24fps grid (~42ms max per boundary, random direction).
-    With N segments there are 2N edges contributing independent drift, plus
-    per-segment container/timestamp overhead from the concat.
+    Canon `render.py` re-encodes to a fixed fps (default 24, overridable via
+    EDL `target_fps` → `--fps` since HOM-117); each segment edge snaps to the
+    output-fps grid (~42ms max per boundary at 24fps, ~17ms at 60fps, random
+    direction). With N segments there are 2N edges contributing independent
+    drift, plus per-segment container/timestamp overhead from the concat.
+
+    The formula is tuned for 24fps (the default and worst case among common
+    targets); higher target_fps values strictly tighten the physics, so the
+    tolerance remains sound. Re-tune only if a much-lower-fps target is added.
 
     Empirically (HOM-107 integration smoke), a 5-segment 24fps render
     drifts ~220ms vs sum-of-EDL-ranges — within physics, not a render bug.
