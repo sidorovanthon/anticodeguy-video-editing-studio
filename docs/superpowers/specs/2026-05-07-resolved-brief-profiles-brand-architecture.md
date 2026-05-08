@@ -515,6 +515,9 @@ Memory `feedback_creative_nodes_flagship_tier` уже фиксирует пол�
 
 ## 16. Sequencing — по Linear milestones
 
+> **Amended 2026-05-08 by §21 (strict layer ordering).** Подзаголовки `M3 close (после M5, параллельно с M6 либо до)` и `M4 — Production cutover (после M6)` ниже описывают **исходную** прикидку. Реальный авторитетный порядок зафиксирован в §21: M3 close (включая HOM-77 family) → M4 v6 (HOM-78) → M6 → M4 v7 (HOM-79). Если возникает противоречие — побеждает §21.
+
+
 Существующие milestones проекта `LangGraph pipeline migration`:
 
 | ID | Name | Progress | Включает |
@@ -632,10 +635,12 @@ HOM-77 family может закрываться **параллельно** с M6
 
 ## 19. Не входит в эту спеку
 
+> **Amended 2026-05-08 by §21.** «Самостоятельный трек» / «комплементарно» — формулировка up-to-2026-05-07. Per §21, HOM-77 family и HOM-78 — **архитектурные предусловия M6**, не параллельные/комплементарные. Они выполняются ДО M6, не вместо. Out-of-scope этой спеки означает «не закрывается M6-тикетами», а не «может ехать одновременно».
+
 См. §2 (нон-цели). Дополнительно:
-- Phase 4 canonical gaps (HOM-77 / HOM-137 / HOM-155 / HOM-156) — самостоятельный трек.
-- HOM-78 (HITL user_review после Studio) — комплементарно.
-- HOM-79 cutover в thin-client — после стабилизации baseline.
+- Phase 4 canonical gaps (HOM-77 / HOM-137 / HOM-155 / HOM-156) — закрываются как M3-close ДО старта M6 (§21 Layer 2).
+- HOM-78 (HITL user_review после Studio) — закрывается как M4 v6 ДО старта M6 (§21 Layer 3).
+- HOM-79 cutover в thin-client — закрывается ПОСЛЕ §17 acceptance (§21 Layer 5).
 - Phase 1/2 (audio-isolation / pickup) — закрыты ранее, не пересматриваем.
 - Upstream PRs в `video-use` (semantic-dedup taste rule) и `hyperframes` — async, делаются отдельно от этой работы.
 
@@ -650,3 +655,82 @@ HOM-77 family может закрываться **параллельно** с M6
 - `feedback_langgraph_native_primitives` — `interrupt()` для Converse, `Send` для neighbors_summary через `p4_dispatch_beats`, `CachePolicy` для нод, `update_state(as_node=...)` для midpoint-resume в HOM-160 acceptance.
 
 Спека написана с учётом ретро HOM-154; конкретные симптомы (semantic-дубль, отсутствие бренд-идентичности, cold fan-out beat) закрываются M6 waves 2-4 соответственно.
+
+## 21. Strict execution ordering (2026-05-08 amendment) — авторитетная последовательность
+
+**Зачем эта секция.** §16 и §19 в исходной редакции допускали M3 close, M4 v6 и M6 «параллельно либо до/после». На практике это привело к рекомендации стартовать M6 wave 1 поверх v4-шимов в Phase 4 без feedback-loop'а. Решение 2026-05-08 (запись в этой секции — авторитетная):
+
+**Бренд и профиль — это style-overlay поверх mechanics. Mechanics в шиме = overlay рисуется по сломанному canvas'у.** Поэтому строгая послойная последовательность:
+
+```
+Layer 1: graph runtime          ✓ DONE  (M1, M2, M3 + M5 cleanup HOM-160/162/163/164/165/179)
+Layer 2: canon-correct Phase 4  TODO    (M3 close: HOM-154 → HOM-77 family = HOM-137 + HOM-155 + HOM-156)
+Layer 3: feedback loop          TODO    (M4 v6: HOM-78 user_review + feedback routing + final_render)
+Layer 4: context resolution     TODO    (M6 epic HOM-161 — entire ticket map §15.1..§15.14)
+Layer 5: cutover                TODO    (M4 v7: HOM-79 thin-client)
+```
+
+Каждый следующий слой имеет **архитектурную причину** ждать предыдущего:
+
+1. **Layer 2 → Layer 4.** Canonical Phase 4 gates в M6 (§12.5 `gate:seam_policy` через HOM-171, §11 `p4_inject_music` через HOM-175, §12.2 `p3_content_review` через HOM-172) валидируют против канонической механики. Сегодня v4 `p4_assemble_index` использует visibility-shim вместо канонического root-timeline transitions (HOM-137); HOM-155 hard-kill закрыт preventive-guard'ом в брифе (HOM-165), не структурно; HOM-156 strict-fail на `gate:animation_map` умножает redispatch-tax на каждый M6-добавленный gate. Запускать M6 поверх шимов — закладывать архитектурный долг, который придётся выкорчёвывать когда HOM-77 family придёт.
+
+2. **Layer 3 → Layer 4.** §17 acceptance critера `«parity vs clean skill session»` измеряются через ручной просмотр Studio. Без HOM-78 review-router'а нет канала «approve / feedback → target_phase regenerates» — оператор не может вернуть фидбэк в граф структурно, только через ручной rewind. HOM-177 (HITL approval tightening, M6) гейтит payload, но **routing для feedback'а это HOM-78**. M6 §14 HITL semantics ссылается на каноны feedback loop, которых нет без HOM-78.
+
+3. **Layer 4 → Layer 5.** HOM-79 ожидаемо требует CLI-overrides `--profile`, `--brand`, `--music-track` экспонировать новый brief-resolution слой (см. §16 «должна экспонировать новый brief-resolution layer»). До закрытия M6 эти CLI-флаги не имеют под собой substrate'а.
+
+### Авторитетный порядок исполнения
+
+| # | Тикет | Слой | Статус | Принцип |
+|---|---|---|---|---|
+| 1 | HOM-154 (parent HOM-76) | L1 close-out | In Progress | Доказать v4 traversal; budget cap ≤2 fix-PR'а на E2E попытку |
+| 2 | HOM-137 | L2 | Backlog | Root-timeline transitions; заменяет visibility shim |
+| 3 | HOM-155 | L2 | Backlog | beat_kills auto-inserter; структурно закрывает hard-kill |
+| 4 | HOM-156 | L2 | Backlog | gate:animation_map fix-or-justify; снимает redispatch-tax |
+| 5 | HOM-77 (parent) | L2 close-out | Backlog | Закрывается когда 2..4 в Done; M3 milestone closes |
+| 6 | HOM-78 | L3 | Backlog | user_review + feedback routing + final_render |
+| 7 | HOM-167 | L4 wave 1 | Backlog | Profile + brand skeleton |
+| 8 | HOM-114 (extended) | L4 wave 1 | Backlog | Three-source canon loader |
+| 9 | HOM-166 | L4 wave 1 | Backlog | state.brief + resolve_episode_brief — **M6 cornerstone** |
+| 10 | HOM-168, HOM-169 | L4 wave 2 | Backlog | Per-node context fan-out |
+| 11 | HOM-170, HOM-171 | L4 wave 3 | Backlog | Content-quality gates |
+| 12 | HOM-173, HOM-174, HOM-175, HOM-172 | L4 wave 4 | Backlog | Defence-in-depth + music |
+| 13 | HOM-176, HOM-177 | L4 parallel | Backlog | Production guard + HITL tightening |
+| 14 | HOM-178 | L4 close gate | Backlog | Profile expansion + §17 acceptance — **M6 milestone closes** |
+| 15 | HOM-79 | L5 | Backlog | Cutover — `/edit-episode` thin client |
+
+### Параллелизм в пределах одного слоя — разрешён
+
+Внутри L2: HOM-137, HOM-155, HOM-156 — независимы; могут идти в произвольном порядке после HOM-154. Внутри L4 — волны (§16) описывают локальный параллелизм. **Между слоями параллелизм запрещён.**
+
+### Cosmetic / низкоприоритетные тикеты вне послойного потока
+
+- **HOM-187** (cost-experiment Sonnet vs Opus) — operational optimization, безопасно ждёт. Окно — после HOM-178 чтобы measurement шёл против стабильного M6 baseline.
+- **HOM-188** (populate `edl.target_fps`) — small wire-up. Должен делаться **после HOM-166** (schema loosening касается соседнего поля state.edit.edl, чтобы не делать миграцию дважды).
+
+### Linear `blockedBy` mapping (механически вытекает из таблицы выше)
+
+| Тикет | blockedBy | Основание |
+|---|---|---|
+| HOM-137 | HOM-154 | L2 ждёт зелёный L1 traversal |
+| HOM-155 | HOM-154 | то же |
+| HOM-156 | HOM-154 | то же |
+| HOM-77 (parent) | HOM-76 *(существует)* | Уже корректно |
+| HOM-78 | HOM-77 *(существует)* | Уже корректно — L3 ждёт L2 |
+| HOM-161 (M6 epic) | HOM-77, HOM-78 | L4 ждёт L2 + L3 |
+| HOM-167 | HOM-78 | L4 wave 1 entry point ждёт L3 |
+| HOM-114 | HOM-78 | то же |
+| HOM-79 | HOM-178 | L5 ждёт §17 acceptance |
+| HOM-188 | HOM-166 | См. cosmetic выше |
+
+`blockedBy` Linear-relations реально проставляются в этом же PR'е (commit message: `chore(linear): wire layer-ordering blockedBy per spec §21`). Любая будущая сессия видит «ready to work» через стандартный Linear-фильтр без перечитывания спеки.
+
+### Что меняется в practical workflow
+
+- Не стартовать M6-тикеты (включая HOM-167, который ранее казался «scaffold можно параллельно») пока HOM-78 не в Done.
+- Если M3 close выявит новые канонические дыры в Phase 4 — открывать sub-issue под HOM-77, не сдвигать M6.
+- §17 acceptance в исходной редакции спеки теперь явно требует L3 (HOM-78 review-router) для measurement loop'а, не только operator-manual просмотр Studio.
+
+### Ссылка из тикетов
+
+Каждый из HOM-77, HOM-137, HOM-155, HOM-156, HOM-78, HOM-161, HOM-167, HOM-114, HOM-79 несёт пинговый комментарий в Linear со ссылкой на эту секцию. Спека — single source of truth; комментарии — навигация.
+
