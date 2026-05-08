@@ -179,6 +179,7 @@ from .nodes.p4_scaffold import (
 )
 from .nodes.pickup import pickup_node
 from .nodes.preflight_canon import preflight_canon_node
+from .nodes.rehydrate_skip_phase3 import rehydrate_skip_phase3_node
 from .nodes.strategy_confirmed_interrupt import strategy_confirmed_interrupt_node
 from .nodes.studio_launch import studio_launch_node
 from .state import GraphState
@@ -205,6 +206,12 @@ def build_graph_uncompiled() -> StateGraph:
         cache_policy=isolate_audio_cache_policy,
     )
     g.add_node("preflight_canon", preflight_canon_node)
+    # HOM-160: deterministic rehydrate on Phase 3 skip path. Reads
+    # <edit>/strategy.json (persisted by p3_strategy) into state.edit.strategy
+    # so Phase 4 cache keys hit on cross-thread re-runs of slugs whose
+    # final.mp4 already exists. No cache_policy — node body is a tiny file
+    # read; running it every fresh-thread skip is cheaper than fingerprinting.
+    g.add_node("rehydrate_skip_phase3", rehydrate_skip_phase3_node)
     g.add_node(
         "glue_remap_transcript",
         glue_remap_transcript_node,
@@ -376,12 +383,15 @@ def build_graph_uncompiled() -> StateGraph:
         route_after_preflight,
         {
             END: END,
-            "glue_remap_transcript": "glue_remap_transcript",
+            "rehydrate_skip_phase3": "rehydrate_skip_phase3",
             "p3_inventory": "p3_inventory",
             "p3_pre_scan": "p3_pre_scan",
             "halt_llm_boundary": "halt_llm_boundary",
         },
     )
+    # HOM-160: rehydrate is only reached on the Phase 3 skip edge; it
+    # always advances to glue_remap_transcript afterwards.
+    g.add_edge("rehydrate_skip_phase3", "glue_remap_transcript")
     g.add_conditional_edges(
         "p3_inventory",
         route_after_inventory,

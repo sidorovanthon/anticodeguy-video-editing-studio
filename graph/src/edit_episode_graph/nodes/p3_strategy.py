@@ -14,7 +14,11 @@ from ..schemas.p3_strategy import Strategy
 from ._llm import LLMNode, _load_brief
 
 # Bump on brief / schema / tool-list change. Spec §8 review checkpoint.
-_CACHE_VERSION = 1
+# v2 (HOM-160): node body now persists <edit>/strategy.json as a side effect.
+# Bumping invalidates warm-cache rows for slugs run before this change so
+# the next re-run actually executes the body and produces strategy.json,
+# eliminating the one-run "legacy episode" notice path on the rehydrate node.
+_CACHE_VERSION = 2
 
 
 def _takes_packed_path(state: dict) -> Path:
@@ -120,6 +124,10 @@ def _build_node() -> LLMNode:
     )
 
 
+def _strategy_json_path(episode_dir: str) -> Path:
+    return Path(episode_dir) / "edit" / "strategy.json"
+
+
 def p3_strategy_node(state, *, router: BackendRouter | None = None):
     episode_dir = state.get("episode_dir")
     if not episode_dir:
@@ -132,5 +140,18 @@ def p3_strategy_node(state, *, router: BackendRouter | None = None):
     strategy = (update.get("edit") or {}).get("strategy") or {}
     if "skipped" not in strategy:
         strategy["source_path"] = str(takes)
+        # HOM-160: persist a machine-readable snapshot so the phase-skip
+        # path (route_after_preflight → rehydrate_skip_phase3 when final.mp4
+        # exists) can reload strategy on a fresh thread without re-running
+        # Phase 3. Without this, Phase 4 cache keys that fingerprint
+        # `state.edit.strategy` diverge across threads (state empty vs
+        # populated) → cache miss → re-execution. Strip transient keys the
+        # cache fingerprint already excludes so the on-disk artifact equals
+        # the in-memory fingerprint round-trip.
+        out = _strategy_json_path(episode_dir)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        persisted = {k: v for k, v in strategy.items()
+                     if k not in {"skipped", "skip_reason", "approved", "approval_payload"}}
+        out.write_text(json.dumps(persisted, ensure_ascii=False, indent=2), encoding="utf-8")
         update.setdefault("edit", {})["strategy"] = strategy
     return update

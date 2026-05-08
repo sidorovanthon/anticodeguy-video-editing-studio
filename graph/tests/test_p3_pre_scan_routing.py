@@ -19,13 +19,16 @@ def test_routes_to_pre_scan_when_takes_packed_exists(tmp_path):
     assert route_after_preflight(state) == "p3_pre_scan"
 
 
-def test_routes_to_glue_when_final_exists(tmp_path):
+def test_routes_to_rehydrate_when_final_exists(tmp_path):
+    """HOM-160: skip-Phase3 path now goes via rehydrate_skip_phase3 first
+    so Phase 4 cache keys see strategy.json reloaded into state.edit.strategy
+    before glue_remap_transcript runs."""
     edit = tmp_path / "edit"
     edit.mkdir()
     (edit / "final.mp4").write_bytes(b"x")
     (edit / "takes_packed.md").write_text("# t\n", encoding="utf-8")
     state = {"episode_dir": str(tmp_path)}
-    assert route_after_preflight(state) == "glue_remap_transcript"
+    assert route_after_preflight(state) == "rehydrate_skip_phase3"
 
 
 def test_routes_to_inventory_when_neither_exists(tmp_path):

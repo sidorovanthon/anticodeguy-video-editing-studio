@@ -112,7 +112,15 @@ def route_after_pickup(state) -> str:
 
 
 def route_after_preflight(state) -> str:
-    """preflight_canon -> glue_remap_transcript | p3_pre_scan | p3_inventory."""
+    """preflight_canon -> rehydrate_skip_phase3 | p3_pre_scan | p3_inventory.
+
+    HOM-160: when ``final.mp4`` exists, Phase 3 is skipped — but Phase 4
+    cache keys fingerprint ``state.edit.strategy``, which is empty on a
+    fresh thread. Route through ``rehydrate_skip_phase3`` first so it
+    loads ``<edit>/strategy.json`` (persisted by ``p3_strategy``) into
+    state before ``glue_remap_transcript`` runs. The rehydrate node
+    static-edges onward to ``glue_remap_transcript``.
+    """
     if _predecessor_just_failed(state, "preflight_canon"):
         return END
     episode_dir = state.get("episode_dir")
@@ -120,7 +128,7 @@ def route_after_preflight(state) -> str:
         return END
     edit_dir = Path(episode_dir) / "edit"
     if (edit_dir / "final.mp4").exists():
-        return "glue_remap_transcript"
+        return "rehydrate_skip_phase3"
     if (edit_dir / "takes_packed.md").exists():
         return "p3_pre_scan"
     return "p3_inventory"

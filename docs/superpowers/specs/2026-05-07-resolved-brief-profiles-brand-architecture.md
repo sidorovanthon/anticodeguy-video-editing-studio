@@ -492,7 +492,7 @@ Memory `feedback_creative_nodes_flagship_tier` уже фиксирует пол�
 | HOM-114 | Backlog | Расширяется до three-source loader (§9) |
 | HOM-132 | Done | Дает CachePolicy infra (база §5 fingerprint) |
 | HOM-157 | Done | Config fingerprint в LLM cache (база для brief fingerprint) |
-| HOM-160 | Backlog, High | Не блокер этой спеки, но §17.acceptance требует |
+| HOM-160 | Done (PR #88) | Closed by on-disk `strategy.json` + `rehydrate_skip_phase3` node — fresh-thread §17.acceptance unblocked |
 | HOM-77 | Backlog | Parent для HOM-137/155/156, комплементарно |
 | HOM-78 | Backlog | HITL Studio review, комплементарно |
 | HOM-154 | In Progress, High | Текущий E2E, симптомы которого закрывает эта спека |
@@ -615,7 +615,9 @@ HOM-77 family может закрываться **параллельно** с M6
    - editing `brand/anticodeguy/palette.yaml` инвалидирует `p4_design_system` и нижестоящие;
    - editing `brief.resolved.narrative_context` инвалидирует `p3_strategy` + `p3_edl_select`.
 
-**Зависимость от HOM-160.** Acceptance §17.3 требует чтобы fresh-thread на прогретом кэше не терял state channel-writes. Если HOM-160 ещё не закрыт — acceptance проверяется на одном непрерывном thread (resume через `update_state(as_node=...)`), не на cold dispatch.
+**Зависимость от HOM-160 (закрыт PR #88).** Acceptance §17.3 проверяется на cold-dispatch fresh-thread без оговорок: `route_after_preflight → rehydrate_skip_phase3 → glue_remap_transcript` восстанавливает `state.edit.strategy` из `<edit>/strategy.json`, и Phase 4 cache keys стабильны cross-thread. Старый workaround (resume через `update_state(as_node=...)`) сохраняется только как failsafe, не как primary acceptance механизм.
+
+**Поправка диагноза HOM-160 (2026-05-08).** Original ticket intuited cache-replay channel-writes loss; investigation showed langgraph 1.1.10 cache-replay applies all cached writes correctly cross-thread. Real root cause: `route_after_preflight` short-circuits Phase 3 when `final.mp4` exists (per CLAUDE.md "Idempotency" §, intentional), but Phase 4 cache keys (e.g. `p4_design_system._cache_key` extras) fingerprint `state.edit.strategy` — which is empty on a fresh thread because Phase 3 never ran. Fix: persist `<edit>/strategy.json` from `p3_strategy`; insert deterministic `rehydrate_skip_phase3` node on the skip edge to reload it. Architectural direction matches M6 (`brief.resolved.yaml` is on-disk source-of-truth). Implementation lands in this same PR family (HOM-160 branch); §17 acceptance harness can rely on rehydrate semantics.
 
 Если acceptance не достигнуто — возврат в systematic-debugging, не «ещё одна правка поверх».
 
