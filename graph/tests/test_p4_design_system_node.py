@@ -131,7 +131,7 @@ def test_runs_with_tools_and_writes_design_md_path(tmp_path):
 
     req, task = router.invoke.call_args.args[:2]
     kwargs = router.invoke.call_args.kwargs
-    assert req.tier == "smart"
+    assert req.tier == "expensive"
     assert req.needs_tools is True
     assert req.backends == ["claude"]
     assert kwargs["allowed_tools"] == ["Read", "Write"]

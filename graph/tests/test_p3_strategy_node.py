@@ -79,7 +79,7 @@ def test_runs_with_no_tools_and_embeds_inputs(tmp_path):
     assert update["llm_runs"][0]["node"] == "p3_strategy"
     req, task = router.invoke.call_args.args[:2]
     kwargs = router.invoke.call_args.kwargs
-    assert req.tier == "smart"
+    assert req.tier == "expensive"
     assert req.needs_tools is False
     assert req.backends == ["claude"]
     assert kwargs["allowed_tools"] == []

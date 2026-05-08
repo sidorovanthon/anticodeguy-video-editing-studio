@@ -138,7 +138,11 @@ def test_happy_path_dispatches_with_correct_requirements(tmp_path):
 
     req, task = router.invoke.call_args.args[:2]
     kwargs = router.invoke.call_args.kwargs
-    assert req.tier == "smart"
+    # HOM-115: config pins p4_beat to `tier: cheap` (Haiku) for fixture
+    # iteration; canonical production tier is `expensive` (Opus, per memory
+    # `feedback_creative_nodes_flagship_tier`). Bump the config override
+    # before a real wave-acceptance E2E.
+    assert req.tier == "cheap"
     assert req.needs_tools is True
     assert req.backends == ["claude"]
     assert kwargs["allowed_tools"] == ["Read", "Write"]

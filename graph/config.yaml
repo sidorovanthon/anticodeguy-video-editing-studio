@@ -11,107 +11,100 @@ concurrency:
 defaults:
   timeout_s: 120
 
+# Tier semantics (HOM-115): cheap=Haiku, smart=Sonnet, expensive=Opus.
+# See `graph/src/edit_episode_graph/backends/claude.py` for the mapping and
+# memory `feedback_creative_nodes_flagship_tier` for why creative nodes
+# (design / expansion / plan / beats / captions) are pinned to `expensive`.
 node_overrides:
   p3_pre_scan:
     tier: cheap
     backend_preference: ["claude", "codex"]
     timeout_s: 90
-    # Real-CLI smoke test (Task 18) routes through Haiku for minimal subscription
-    # spend. Remove or change to a Sonnet/Opus ID for production use.
-    model: claude-haiku-4-5-20251001
+    # Pre-scan is structured analysis over a known transcript shape — Haiku
+    # handles it. (Pre-HOM-115 this node was `tier: cheap` + an explicit
+    # Haiku model pin to override the old Sonnet→cheap mapping; with the
+    # three-tier rename `cheap` IS Haiku, so the pin is no longer needed.)
   p3_strategy:
-    tier: smart
+    tier: expensive
     backend_preference: ["claude"]
     timeout_s: 300
     # Opus 4.7 on full pre_scan context exceeds the global 120s default; aligned
-    # with sibling smart-tier creative nodes (edl_select 240, plan 240,
-    # prompt_expansion 300). Discovered in HOM-154 first clean E2E — Haiku-pinned
-    # smoke (per LLM-node DoD) hid this until production tier=smart resolution.
-    # Folded into HOM-157 PR — that fix makes future config bumps invalidate
-    # the cache automatically, so this is the last bump that needed a manual
-    # graph/.cache/langgraph.db wipe.
+    # with sibling expensive-tier creative nodes (edl_select 600, plan 240,
+    # prompt_expansion 600). Discovered in HOM-154 first clean E2E.
+    # HOM-157 cfg-fingerprint invalidates cache automatically on bumps.
   p3_edl_select:
     tier: smart
     backend_preference: ["claude"]
     timeout_s: 600
-    # Production default: Sonnet 4.6. EDL is the highest-stakes numeric step
-    # (HR 6/7 word-boundary + 30–200ms padding across all cuts); Haiku-4.5
-    # empirically fails the padding window, and Opus 4.7 (the default
-    # tier:smart resolution in claude.py) timed out at 180s in HOM-107
-    # smoke. Sonnet 4.6 hits the precision/latency sweet spot. Smoke
-    # scripts pin Haiku locally via per-run override, not here.
+    # EDL is the highest-stakes numeric step (HR 6/7 word-boundary +
+    # 30–200ms padding across all cuts); Haiku-4.5 empirically fails the
+    # padding window, and Opus 4.7 (`tier: expensive`) timed out at 180s
+    # in HOM-107 smoke. Sonnet 4.6 (`tier: smart`) hits the precision/
+    # latency sweet spot. (Pre-HOM-115 this was `tier: smart` + an
+    # explicit Sonnet model pin to override the old Opus→smart mapping;
+    # with the three-tier rename `smart` IS Sonnet, so the pin is no
+    # longer needed.)
     # 240→360→600 in HOM-154: two consecutive E2E runs on slug
     # 2026-05-06-who-else-is-tired-of-endless-monthly hit walltime 240.141s
-    # then 360.079s — exactly at each prior limit. Sonnet 4.6 + Read-tool
-    # iteration over a 4272-line Scribe raw.json + word-boundary HR 6/7
-    # math is genuinely long. HOM-157 cfg-fingerprint invalidates cache
-    # automatically. If 600s also fails, switch to Opus 4.7 or pre-trim
-    # transcript inputs in the brief.
-    model: claude-sonnet-4-6
+    # then 360.079s — exactly at each prior limit. If 600s also fails,
+    # switch to `tier: expensive` (Opus 4.7) or pre-trim transcript inputs.
   p3_self_eval:
     tier: cheap
     backend_preference: ["claude", "codex"]
     timeout_s: 180
-    # Real-CLI smoke (HOM-104) routes through Haiku for minimal subscription
-    # spend. Switch to a Sonnet ID for production use.
-    model: claude-haiku-4-5-20251001
+    # Self-eval is a structured pass/fail check; cheap (Haiku) is fine.
   p3_persist_session:
     tier: cheap
     backend_preference: ["claude", "codex"]
     timeout_s: 120
-    # Real-CLI smoke (HOM-105) routes through Haiku for minimal subscription
-    # spend. Switch to a Sonnet ID for production use.
-    model: claude-haiku-4-5-20251001
+    # Mechanical structured-write — cheap (Haiku).
   p4_persist_session:
     tier: cheap
     backend_preference: ["claude", "codex"]
     timeout_s: 120
     # Mechanical structured-write — sole Phase 4 LLM node that legitimately
     # stays cheap (per memory `feedback_creative_nodes_flagship_tier`
-    # exception list). Real-CLI smoke (HOM-126) routes through Haiku.
-    model: claude-haiku-4-5-20251001
+    # exception list).
   p4_design_system:
-    tier: smart
+    tier: expensive
     backend_preference: ["claude"]
     timeout_s: 240
     # Visual identity is creative — palette, typography, references,
-    # alternatives, anti-patterns. tier=smart resolves to Opus 4.7 in
-    # backends/claude.py. See memory `feedback_creative_nodes_flagship_tier`
-    # and HOM-118 for rationale (cheap models hollow out brand-defining
-    # creative work).
+    # alternatives, anti-patterns. tier=expensive resolves to Opus 4.7.
+    # See memory `feedback_creative_nodes_flagship_tier` and HOM-118 for
+    # rationale (cheap models hollow out brand-defining creative work).
   p4_prompt_expansion:
-    tier: smart
+    tier: expensive
     backend_preference: ["claude"]
     timeout_s: 600
     # Per canon `references/prompt-expansion.md`: "the quality gap between a
     # single-pass composition and a multi-scene-pipeline composition comes
-    # from this step." Highest-leverage creative node in Phase 4. tier=smart
-    # resolves to Opus 4.7 in backends/claude.py. See memory
-    # `feedback_creative_nodes_flagship_tier` and HOM-119.
+    # from this step." Highest-leverage creative node in Phase 4. tier=expensive
+    # resolves to Opus 4.7. See memory `feedback_creative_nodes_flagship_tier`
+    # and HOM-119.
     # 300→600 in HOM-154: first clean E2E hit walltime ~300s exactly at the
-    # prior limit. Multi-scene expansion is genuinely long on Opus 4.7;
-    # aligned with the EDL bump precedent in this same run.
+    # prior limit. Multi-scene expansion is genuinely long on Opus 4.7.
   p4_plan:
-    tier: smart
+    tier: expensive
     backend_preference: ["claude"]
     timeout_s: 240
     # Plan determines pacing, energy peaks, scene rhythm, per-boundary
     # transition mechanism — creative direction, not mechanical translation.
-    # Spec §6.3 originally `cheap`; HOM-120 amends to `smart` (memory
+    # Spec §6.3 originally `cheap`; HOM-120 amended to flagship tier (memory
     # `feedback_creative_nodes_flagship_tier`).
   p4_beat:
-    tier: smart
+    tier: cheap
     backend_preference: ["claude"]
     timeout_s: 300
-    # Per-scene Pattern A authoring (HOM-134). Real-CLI smoke (HOM-122d /
-    # smoke_hom122.py) routes through Haiku for ~$0.001/beat spend. Production
-    # is the smart tier (Opus 4.7) — scene composition is creative work and
-    # cheap models empirically hollow it out (memory
-    # `feedback_creative_nodes_flagship_tier`). Switch to a Sonnet/Opus ID for
-    # production use.
-    model: claude-haiku-4-5-20251001
+    # Per-scene Pattern A authoring (HOM-134). Currently pinned to Haiku
+    # (`tier: cheap`) for ~$0.001/beat spend during fixture iteration. The
+    # canonical production tier per memory
+    # `feedback_creative_nodes_flagship_tier` is `expensive` (Opus 4.7) —
+    # bump this to `expensive` before a real wave-acceptance E2E. The
+    # follow-up cost-experiment ticket re-evaluates per-creative-node tier
+    # against fixture replay diffs.
   p4_redispatch_beat:
-    tier: smart
+    tier: expensive
     backend_preference: ["claude"]
     timeout_s: 600
     # Re-authors one scene fragment after a cluster-gate fail. Same shape as
@@ -122,14 +115,14 @@ node_overrides:
     # E2E (PR #84 added attempts-detail in AllBackendsExhausted message;
     # the fix made the diagnosis trivial).
   p4_captions_layer:
-    tier: smart
+    tier: cheap
     backend_preference: ["claude"]
     timeout_s: 300
-    # Tone-adaptive captions (HOM-123). Spec §6.3 originally `cheap`; HOM-123
-    # amends to `smart`. Canon `references/captions.md` §"Style Detection"
-    # is explicitly tone-adaptive (4 dimensions × 5 tone profiles, per-word
-    # emphasis decisions) — creative styling, not boilerplate. Real-CLI
-    # smoke (smoke_hom123.py) routes through Haiku for ~$0.001 spend.
-    # Switch to a Sonnet/Opus ID for production use (memory
-    # `feedback_creative_nodes_flagship_tier`).
-    model: claude-haiku-4-5-20251001
+    # Tone-adaptive captions (HOM-123). Currently pinned to Haiku
+    # (`tier: cheap`) for ~$0.001 spend during fixture iteration. Canon
+    # `references/captions.md` §"Style Detection" is explicitly tone-adaptive
+    # (4 dimensions × 5 tone profiles, per-word emphasis decisions) — bump
+    # this to `expensive` (Opus 4.7) before a real wave-acceptance E2E per
+    # memory `feedback_creative_nodes_flagship_tier`. The follow-up
+    # cost-experiment ticket re-evaluates per-creative-node tier against
+    # fixture replay diffs.

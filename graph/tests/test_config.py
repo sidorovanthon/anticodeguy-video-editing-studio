@@ -74,7 +74,10 @@ def test_node_resolve_p3_strategy_smart_override():
     load_default_config.cache_clear()
     try:
         n = load_default_config().resolve_node("p3_strategy")
-        assert n.tier == "smart"
+        # HOM-115: p3_strategy was `tier: smart` (resolved to Opus under the
+        # old 2-tier mapping). After the 3-tier rename `expensive` is the
+        # Opus-resolving tier; behavior preserved.
+        assert n.tier == "expensive"
         assert n.backend_preference == ["claude"]
         # HOM-154/HOM-157: bumped 120 → 300 (Opus 4.7 on full pre_scan
         # context exceeds the 120s default).
