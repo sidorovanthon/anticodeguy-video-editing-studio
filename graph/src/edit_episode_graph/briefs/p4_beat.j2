@@ -74,11 +74,36 @@ Hard rules (orchestrator-house, derived from canon — surfaced so you don't mis
   const sceneDuration = {{ data_duration_s }};
   const cycleDuration = 1.2; // your tween duration in seconds
   tl.to(".aura", { scale: 1.08, yoyo: true,
-                   repeat: Math.ceil(sceneDuration / cycleDuration) - 1,
+                   repeat: Math.floor(sceneDuration / cycleDuration),
                    duration: cycleDuration }, 0);
   ```
-  Never write the literal token `repeat:` followed by the infinite sentinel — even inside JS comments — HF lint regex false-positives on the bare substring (memory `feedback_lint_regex_repeat_minus_one_in_comments`). Use a finite count (`Math.ceil(...) - 1`, or a large positive integer like `repeat: 999` for unbounded-feeling ambient motion).
+  Never write the literal token `repeat:` followed by the infinite sentinel — even inside JS comments — HF lint regex false-positives on the bare substring (memory `feedback_lint_regex_repeat_minus_one_in_comments`). Use a finite count (`Math.floor(...)`, or a large positive integer like `repeat: 999` for unbounded-feeling ambient motion).
 - **opacity initial state**: `0` for non-first scenes (the future transitions node fades them in). First scene starts visible.
+
+Explicit anti-patterns (DO NOT DO):
+
+These are patterns the LLM keeps re-introducing despite canon. Each iteration of the lint gate that catches them costs a redispatch — preventing them up front converges Phase 4 in fewer beats.
+
+1. **GSAP repeat math — use `Math.floor`, not `Math.ceil`.** Scenes have a fixed `data-duration`; if the total animation length (`(repeat + 1) * cycleDuration`) exceeds it, the capture engine truncates mid-cycle and a visible jump appears at scene boundary.
+   ```js
+   // ❌ overshoots scene duration — visible jump at the cut
+   repeat: Math.ceil(sceneDuration / cycleDuration) - 1
+   // ❌ also overshoots (Math.ceil rounds up)
+   repeat: Math.ceil(sceneDuration / cycleDuration)
+   // ✅ total animation never exceeds scene
+   repeat: Math.floor(sceneDuration / cycleDuration)
+   ```
+   Canon: `~/.agents/skills/hyperframes/references/motion-principles.md` — bullet "Hard-kill every scene boundary, not just captions." (the same principle: nothing animation-related may bleed past `data-duration`). Read it before writing repeat math.
+
+2. **Caption / element exit MUST be followed by a `tl.set(visibility: "hidden")` kill at fade-end.** A bare `tl.to(opacity: 0)` leaves the element in DOM at `opacity: 0` — later tweens (or sibling `immediateRender`) can resurrect it, and the element still participates in layout calc.
+   ```js
+   // ❌ fade alone — element can resurrect, still occupies layout
+   tl.to(captionEl, { opacity: 0, duration: 0.3 }, fadeStart);
+   // ✅ fade + deterministic kill at fade-end
+   tl.to(captionEl, { opacity: 0, duration: 0.3 }, fadeStart);
+   tl.set(captionEl, { visibility: "hidden" }, fadeStart + 0.3);
+   ```
+   Canon: `~/.agents/skills/hyperframes/references/captions.md` §"Caption Exit Guarantee" and `~/.agents/skills/hyperframes/references/motion-principles.md` — bullet "Hard-kill every scene boundary, not just captions." Read both BEFORE authoring any element with an exit animation. The principle generalises beyond captions: every element with a fade-out needs a paired `tl.set(... visibility: "hidden")` kill at the fade-end timestamp.
 
 Process:
 1. `Read` the canon list above (mandatory; do not rely on memory for shape or hard rules).
