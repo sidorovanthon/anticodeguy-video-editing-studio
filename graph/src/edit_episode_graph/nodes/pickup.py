@@ -4,21 +4,26 @@ import json
 import sys
 from pathlib import Path
 
-from .._paths import project_root
+from .._paths import project_root, scripts_root
 from ._deterministic import deterministic_node
 
 PROJECT_ROOT = project_root()
+SCRIPTS_ROOT = scripts_root()
 
 
 def _cmd(state) -> list[str]:
+    # Pass inbox/ and episodes/ as ABSOLUTE paths under the data root
+    # (project_root, honors HOMESTUDIO_PROJECT_ROOT); the subprocess cwd
+    # is the scripts package root (repo_root), so `python -m scripts.pickup`
+    # always resolves regardless of where the data lives.
     cmd = [
         sys.executable,
         "-m",
         "scripts.pickup",
         "--inbox",
-        "inbox",
+        str(PROJECT_ROOT / "inbox"),
         "--episodes",
-        "episodes",
+        str(PROJECT_ROOT / "episodes"),
     ]
     if state.get("slug"):
         cmd += ["--slug", state["slug"]]
@@ -59,5 +64,5 @@ pickup_node = deterministic_node(
     name="pickup",
     cmd_factory=_cmd,
     parser=_parse,
-    cwd=PROJECT_ROOT,
+    cwd=SCRIPTS_ROOT,
 )
