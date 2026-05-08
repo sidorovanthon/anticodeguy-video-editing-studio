@@ -25,9 +25,14 @@ from ._types import (
     Tier,
 )
 
+# Three-tier mapping (HOM-115). Codex offers two production models, so
+# `expensive` aliases `smart` (gpt-5) — when an Opus-tier (claude `expensive`)
+# request fails over to codex, gpt-5 is the closest available. See
+# `backends/claude.py` for the canonical tier semantics.
 _MODEL_BY_TIER: dict[str, str] = {
     "cheap": "gpt-5-mini",
     "smart": "gpt-5",
+    "expensive": "gpt-5",
 }
 
 _AUTH_SIGNALS = ("not authenticated", "codex login", "unauthorized", "session expired")
