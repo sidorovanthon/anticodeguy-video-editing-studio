@@ -617,6 +617,8 @@ HOM-77 family может закрываться **параллельно** с M6
 
 **Зависимость от HOM-160.** Acceptance §17.3 требует чтобы fresh-thread на прогретом кэше не терял state channel-writes. Если HOM-160 ещё не закрыт — acceptance проверяется на одном непрерывном thread (resume через `update_state(as_node=...)`), не на cold dispatch.
 
+**Поправка диагноза HOM-160 (2026-05-08).** Original ticket intuited cache-replay channel-writes loss; investigation showed langgraph 1.1.10 cache-replay applies all cached writes correctly cross-thread. Real root cause: `route_after_preflight` short-circuits Phase 3 when `final.mp4` exists (per CLAUDE.md "Idempotency" §, intentional), but Phase 4 cache keys (e.g. `p4_design_system._cache_key` extras) fingerprint `state.edit.strategy` — which is empty on a fresh thread because Phase 3 never ran. Fix: persist `<edit>/strategy.json` from `p3_strategy`; insert deterministic `rehydrate_skip_phase3` node on the skip edge to reload it. Architectural direction matches M6 (`brief.resolved.yaml` is on-disk source-of-truth). Implementation lands in this same PR family (HOM-160 branch); §17 acceptance harness can rely on rehydrate semantics.
+
 Если acceptance не достигнуто — возврат в systematic-debugging, не «ещё одна правка поверх».
 
 ## 18. Open questions
