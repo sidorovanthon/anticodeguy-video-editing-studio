@@ -14,6 +14,7 @@ and assert:
 from __future__ import annotations
 
 import json
+import sqlite3
 import subprocess
 import sys
 from pathlib import Path
@@ -21,7 +22,11 @@ from pathlib import Path
 import pytest
 from langgraph.cache.sqlite import SqliteCache
 
-from tests.dump_recordings import dump_recordings, main as cli_main
+from tests.dump_recordings import (
+    _node_name_from_ns,
+    dump_recordings,
+    main as cli_main,
+)
 
 _NS_A = ("p3_strategy",)
 _NS_B = ("p4_design_system",)
@@ -63,6 +68,8 @@ def test_dump_writes_one_file_per_node(tmp_path):
 
     rec_a = json.loads((episode / "recordings" / "p3_strategy.json").read_text(encoding="utf-8"))
     assert rec_a["node"] == "p3_strategy"
+    # 1-tuple synthetic ns: namespace cell is just the node name
+    assert rec_a["namespace"] == "p3_strategy"
     assert rec_a["fingerprint"] == "fp-a"
     assert rec_a["channel_writes"] == {"selected": ["scene-1", "scene-2"]}
     assert rec_a["recorded_at"] is None
@@ -242,3 +249,121 @@ def test_cli_module_invocation_smoke(tmp_path):
     assert proc.returncode == 0, f"stderr={proc.stderr}"
     assert "p3_strategy.json" in proc.stdout
     assert (episode / "recordings" / "p3_strategy.json").exists()
+
+
+# ---------- HOM-182 bug fix: pregel-namespace ns shape -------------------
+
+
+def test_node_name_extracted_from_pregel_namespace():
+    """``ns`` from real `SqliteCache` writes is comma-joined; last
+    segment is the canonical node name (per spec §4)."""
+    real_ns = (
+        "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat"
+    )
+    assert _node_name_from_ns(real_ns) == "p4_beat"
+    # 1-tuple namespace (synthetic seed) is already the bare node name
+    assert _node_name_from_ns("p3_strategy") == "p3_strategy"
+    # Deterministic-wrapper shape (closures show up as `<locals>`)
+    deterministic = (
+        "__pregel_ns_writes,edit_episode_graph.nodes._deterministic."
+        "deterministic_node.<locals>.node,p4_scaffold"
+    )
+    assert _node_name_from_ns(deterministic) == "p4_scaffold"
+
+
+def test_dump_uses_short_filename_under_pregel_namespace(tmp_path):
+    """Bypassing `SqliteCache.set` to write a real-shape pregel ``ns``,
+    we assert the produced filename is just ``<node>.json`` — short
+    enough to survive Windows MAX_PATH under nested worktree paths."""
+    slug = "fixture-mock"
+    fixtures_root, episode, cache_db = _build_layout(tmp_path, slug)
+
+    # Seed a row directly via raw SQL so we can plant a comma-joined
+    # pregel-style ``ns`` (`SqliteCache.set` only takes tuple-ns keys).
+    # Schema mirrors langgraph.cache.sqlite.SqliteCache.
+    conn = sqlite3.connect(str(cache_db))
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS cache ("
+        "ns TEXT NOT NULL, key TEXT NOT NULL, expiry REAL, "
+        "encoding TEXT NOT NULL, val BLOB NOT NULL, "
+        "PRIMARY KEY (ns, key))"
+    )
+    long_ns = (
+        "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat"
+    )
+    # Encode a trivial msgpack payload via the same serde the dump uses.
+    from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+
+    enc, raw = JsonPlusSerializer().dumps_typed({"v": 1})
+    conn.execute(
+        "INSERT INTO cache (ns, key, expiry, encoding, val) VALUES (?, ?, ?, ?, ?)",
+        (long_ns, "fp-a", None, enc, raw),
+    )
+    conn.commit()
+    conn.close()
+
+    written = dump_recordings(slug, fixtures_root=fixtures_root)
+    names = [p.name for p in written]
+    assert names == ["p4_beat.json"], names
+    rec = json.loads(written[0].read_text(encoding="utf-8"))
+    assert rec["node"] == "p4_beat"
+    assert rec["namespace"] == long_ns
+    assert rec["fingerprint"] == "fp-a"
+    # Sanity: filename length is reasonable (well under MAX_PATH-260
+    # even nested deep in worktree paths).
+    assert len(written[0].name) < 64
+
+
+def test_dump_aggregates_multiple_pregel_rows_for_same_node(tmp_path):
+    """Distinct pregel ``ns`` values that map to the same canonical
+    node (e.g. p4_beat fan-out shards) collapse into a single
+    ``<node>.json`` whose payload is a sorted list."""
+    slug = "fixture-mock"
+    fixtures_root, episode, cache_db = _build_layout(tmp_path, slug)
+
+    conn = sqlite3.connect(str(cache_db))
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS cache ("
+        "ns TEXT NOT NULL, key TEXT NOT NULL, expiry REAL, "
+        "encoding TEXT NOT NULL, val BLOB NOT NULL, "
+        "PRIMARY KEY (ns, key))"
+    )
+    from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+
+    serde = JsonPlusSerializer()
+    ns = (
+        "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat"
+    )
+    for fp, val in [("fp-z", {"v": 2}), ("fp-a", {"v": 1})]:
+        enc, raw = serde.dumps_typed(val)
+        conn.execute(
+            "INSERT INTO cache (ns, key, expiry, encoding, val) VALUES (?, ?, ?, ?, ?)",
+            (ns, fp, None, enc, raw),
+        )
+    conn.commit()
+    conn.close()
+
+    dump_recordings(slug, fixtures_root=fixtures_root)
+    payload = json.loads(
+        (episode / "recordings" / "p4_beat.json").read_text(encoding="utf-8")
+    )
+    assert isinstance(payload, list)
+    assert [r["fingerprint"] for r in payload] == ["fp-a", "fp-z"]
+    for r in payload:
+        assert r["namespace"] == ns
+        assert r["node"] == "p4_beat"
+
+
+def test_safe_filename_rejects_path_separators():
+    """Defensive: malformed ns mustn't escape recordings/."""
+    from tests.dump_recordings import _safe_filename
+
+    # Path separators are scrubbed (`.` is allowed since node names like
+    # `foo.bar` are legal — defence is against `/` and `\`).
+    assert _safe_filename("../etc/passwd") == ".._etc_passwd"
+    assert _safe_filename("p4/beat") == "p4_beat"
+    assert _safe_filename(r"p4\beat") == "p4_beat"
+    assert _safe_filename("") == "unknown"
+    # Allowed chars pass through.
+    assert _safe_filename("p3_strategy") == "p3_strategy"
+    assert _safe_filename("foo.bar-baz") == "foo.bar-baz"

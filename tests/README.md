@@ -118,6 +118,7 @@ Per-node JSON shape:
 ```json
 {
   "node": "p3_strategy",
+  "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p3_strategy.p3_strategy_node,p3_strategy",
   "fingerprint": "p3_strategy|v3|<slug>|<file-hashes>|cfg:<sha>",
   "channel_writes": { ... decoded payload ... },
   "recorded_at": null,
@@ -125,15 +126,26 @@ Per-node JSON shape:
 }
 ```
 
-If a node has multiple recordings (different fingerprints) they appear
-as a sorted list; otherwise the file holds the bare object.
+Filenames are `<node_name>.json` per spec §4 — the canonical node name
+extracted from the SQLite `ns` cell (last comma-segment of LangGraph's
+pregel-namespaced cache key). The full `ns` lives inside each record
+under `namespace` so pregel-write provenance is preserved without
+overrunning Windows MAX_PATH (260) under nested worktree paths.
+
+If a node has multiple recordings (different fingerprints, e.g.
+`p4_beat` fan-out shards) they appear as a sorted list; otherwise the
+file holds the bare object.
 
 **Field provenance** (full notes in `tests/dump_recordings.py`
 docstring):
 
-- `node` / `fingerprint`: live SQLite `ns` / `key` columns; the
-  fingerprint is what `make_llm_key` produces (already a stable
-  identifier; brief / schema / tier bumps flip it).
+- `node`: canonical node name — last comma-segment of the SQLite `ns`
+  cell. For LLM nodes `ns` is
+  `__pregel_ns_writes,<full_module_path>.<wrapper>,<node_name>`.
+- `namespace`: raw `ns` cell verbatim, retained in-record so reviewers
+  don't lose pregel-write context when the filename is shortened.
+- `fingerprint`: live SQLite `key` column; what `make_llm_key` produces
+  (a stable identifier; brief / schema / tier bumps flip it).
 - `channel_writes`: `serde.loads_typed` of the stored blob; non-JSON
   natives (datetimes, bytes, Pydantic models) are coerced to readable
   strings — for genuinely opaque values you get
