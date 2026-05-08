@@ -186,6 +186,60 @@ shows up first — that's by design. Update the brief, re-run with
 `--update-snapshots`, and commit both files together so the diff is
 self-evident.
 
+## Fingerprint invalidation tests (HOM-184)
+
+L0 layer (spec §3 «Fingerprint invalidation assertion»). Asserts the
+three creative-node cache-key invariants without spending a cent:
+
+1. **Brief / schema bump** — `_CACHE_VERSION` increment flips the key.
+2. **Routing-config bump** — `make_llm_key`'s HOM-157 `cfg:<sha>` extra
+   reflects `graph/config.yaml` changes (tier / model / timeout /
+   backend_preference).
+3. **Upstream artifact edit** — content-hash of every `files=` entry
+   actually feeds the key (`file_fingerprint` content-hashes, not
+   mtime-cheats).
+
+```powershell
+python -m pytest tests/test_fingerprint_invalidation.py
+```
+
+The helper lives in `tests/_helpers/fingerprint_assertions.py`. Adding
+a new creative node? Register it in `_NODE_REGISTRY` with a
+``base_state`` factory and a ``primary_artifact_pointer`` and the three
+parametrised tests automatically cover it.
+
+For one-off custom mutations, call `assert_fingerprint_changes_when`
+directly with your own `mutation_fn(state)`. Coverage at the time of
+HOM-184: `p3_strategy`, `p4_design_system`, `p4_beat` — extend as new
+creative nodes land.
+
+## Migrated `smoke_hom*.py` (HOM-184)
+
+The legacy `graph/smoke_hom*.py` scripts were per-ticket Haiku-tier
+real-CLI smokes. Under the new fixture-replay model (spec §6 DoD
+migration) they live in `tests/test_graph_replay.py` and run at $0
+against the recorded fixture cache:
+
+| Old smoke | Migrated to | Status |
+| --- | --- | --- |
+| `smoke_hom107.py` Case 1 (topology) | `test_phase3_topology` | green |
+| `smoke_hom107.py` Case 2 (Haiku p3_edl_select) | `test_p3_edl_select_smoke` | skipped until cache.db prewarm |
+| `smoke_hom107.py` Case 3 (gate eval) | covered by `graph/tests/test_edl_ok_gate.py` | n/a |
+| `smoke_hom118.py` (Opus p4_design_system) | `test_p4_design_system_smoke` | skipped until cache.db prewarm |
+| `smoke_hom119.py` (Haiku p4_prompt_expansion) | `test_p4_prompt_expansion_smoke` | skipped until cache.db prewarm |
+| `smoke_hom127.py` Case 1 (gate-cluster topology) | `test_post_assemble_gate_cluster_topology` | green |
+| `smoke_hom127.py` Case 2 (gate invocations against fixture) | covered by `graph/tests/test_*_gate.py` | n/a |
+| `smoke_hom127.py` Case 3 (halt notice) | `test_halt_notice_surfaces_gate_cluster_failure` | green |
+| `smoke_hom163.py` (gate_results_reducer) | `test_gate_results_reducer_through_runtime` | green |
+| `smoke_hom165.py` (Haiku p4_beat anti-patterns) | `test_p4_beat_smoke` | skipped until cache.db prewarm |
+| other `smoke_hom*.py` | superseded by L0 + L1 layers | deleted |
+
+The replay-mode smokes carry a `requires_fixture_cache` `skipif` mark
+that fires when `tests/fixtures/episodes/canonical-portrait-talking-head/cache.db`
+is missing, so the suite stays green while the operator prewarm step
+is pending and auto-enables the moment cache.db lands. No `pytest`
+flag is needed.
+
 ## Spec / canon links
 
 - Spec: `docs/superpowers/specs/2026-05-08-testing-infra-fixture-replay-design.md`
