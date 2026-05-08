@@ -64,6 +64,39 @@ langgraph dev
 Open the Studio URL printed to stdout. Create a thread; run with input `{"slug": "<inbox-stem>"}`
 or `{}` for auto-pick.
 
+## Tier mapping
+
+LLM nodes pick a `tier` (or pin an explicit `model`); the backend resolves the tier
+to a concrete model id at dispatch time. Three tiers, defined in
+`backends/claude.py::_MODEL_BY_TIER` (HOM-115):
+
+| Tier        | Claude model                  | Codex model | When to use |
+| ----------- | ----------------------------- | ----------- | --- |
+| `cheap`     | `claude-haiku-4-5-20251001`   | `gpt-5-mini`| Mechanical structured-write, tool loops with cheap retry, smoke |
+| `smart`     | `claude-sonnet-4-6`           | `gpt-5`     | General reasoning, EDL-style numeric precision work |
+| `expensive` | `claude-opus-4-7`             | `gpt-5`*    | Highest-stakes creative judgment (design / expansion / plan / beat / captions) |
+
+\* Codex offers two production models, so `expensive` aliases `smart` (gpt-5) on the
+Codex backend; cross-backend failover from a claude `expensive` request lands on
+gpt-5 — the closest available.
+
+**Creative LLM nodes default to `expensive`.** Per memory
+`feedback_creative_nodes_flagship_tier` and the HOM-154 retro: cheap-tier output
+on creative work hollows out brand-defining decisions and triggers gate redispatch
+loops costing more than one successful Opus run. Do not silently downgrade
+`p3_strategy`, `p4_design_system`, `p4_prompt_expansion`, `p4_plan`,
+`p4_beat`, `p4_redispatch_beat`, or `p4_captions_layer` from `expensive` without
+running a recorded fixture-replay diff against the canonical fixture episode and
+eyeballing the output (see the cost-experiment follow-up ticket to HOM-115).
+
+**`tier:` vs explicit `model:`.** Prefer `tier:` — it documents intent
+(*"this is creative work"*) and survives model id changes when Anthropic ships a
+new Sonnet/Opus revision. Use an explicit `model:` pin only for transient cost
+experiments (e.g. comparing Haiku vs Opus on a specific node against a fixture
+recording) — pinning bypasses the tier semantics and silently desyncs from any
+future tier remap. The HOM-115 cleanup dropped every then-current model pin in
+`graph/config.yaml` because each pin's intent is now expressible via `tier:`.
+
 ## Layout
 
 ```
