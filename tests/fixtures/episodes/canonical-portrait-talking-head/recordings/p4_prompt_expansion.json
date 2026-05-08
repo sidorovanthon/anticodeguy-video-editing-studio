@@ -1,0 +1,35 @@
+[
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_prompt_expansion', 'backend': 'claude', 'model': 'claude-opus-4-7', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 518.5150000000003, 'tokens_in': 18, 'tokens_out': 29017, 'timestamp': '2026-05-07T01:15:35.611580+00:00'}]], ['compose', {'expansion': {'expanded_prompt_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\.hyperframes\\\\expanded-prompt.md'}, 'expanded_prompt_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\.hyperframes\\\\expanded-prompt.md'}], ['branch:to:p4_plan', None]])",
+    "fingerprint": "2cf4a205afb3938d7296e890c6dbb65f",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_prompt_expansion.p4_prompt_expansion_node,p4_prompt_expansion",
+    "node": "p4_prompt_expansion",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 611
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_prompt_expansion', 'backend': 'claude', 'model': 'claude-opus-4-7', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 512.8589999999999, 'tokens_in': 16, 'tokens_out': 29141, 'timestamp': '2026-05-07T00:30:35.200409+00:00'}]], ['compose', {'expansion': {'expanded_prompt_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\.hyperframes\\\\expanded-prompt.md'}, 'expanded_prompt_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\.hyperframes\\\\expanded-prompt.md'}], ['branch:to:p4_plan', None]])",
+    "fingerprint": "67505bb7f102cad87e04d1df628c0e32",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_prompt_expansion.p4_prompt_expansion_node,p4_prompt_expansion",
+    "node": "p4_prompt_expansion",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 611
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_prompt_expansion', 'backend': 'claude', 'model': 'claude-opus-4-7', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 451.40599999999904, 'tokens_in': 7, 'tokens_out': 14433, 'timestamp': '2026-05-08T07:30:27.707622+00:00'}]], ['compose', {'expansion': {'expanded_prompt_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\.hyperframes\\\\expanded-prompt.md'}, 'expanded_prompt_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\.hyperframes\\\\expanded-prompt.md'}], ['branch:to:p4_plan', None]])",
+    "fingerprint": "79c07f50b9ad2aecc4697ad456bd87a6",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_prompt_expansion.p4_prompt_expansion_node,p4_prompt_expansion",
+    "node": "p4_prompt_expansion",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 609
+    }
+  }
+]

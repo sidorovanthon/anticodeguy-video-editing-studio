@@ -1,0 +1,24 @@
+[
+  {
+    "channel_writes": "deque([['edit', {'inventory': {'source_dir': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head', 'sources': [{'path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\raw.mp4', 'name': 'raw.mp4', 'stem': 'raw', 'duration_s': 35.0, 'video_codec': 'h264', 'audio_codec': 'aac', 'fps': 60.0, 'width': 1080, 'height': 1920}], 'transcript_json_paths': ['C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\edit\\\\transcripts\\\\raw.json'], 'takes_packed_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\edit\\\\takes_packed.md', 'timeline_view_samples': []}}], ['transcripts', {'raw_json_paths': ['C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\edit\\\\transcripts\\\\raw.json'], 'takes_packed_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\edit\\\\takes_packed.md'}], ['notices', ['timeline_view failed for raw.mp4: rc=1 Traceback (most recent call last):\\n  File \"C:\\\\Users\\\\sidor\\\\.claude\\\\skills\\\\video-use\\\\helpers\\\\timeline_view.py\", line 392, in <module>\\n    main()\\n  File \"C:\\\\Users\\\\sidor\\\\.claude\\\\skills\\\\video-use\\\\helpers\\\\t']], ['branch:to:p3_pre_scan', None]])",
+    "fingerprint": "5faba1af7eca41e6a507ce65134b4a7f",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p3_inventory.p3_inventory_node,p3_inventory",
+    "node": "p3_inventory",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 1330
+    }
+  },
+  {
+    "channel_writes": "deque([['edit', {'inventory': {'source_dir': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly', 'sources': [{'path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\raw.mp4', 'name': 'raw.mp4', 'stem': 'raw', 'duration_s': 106.182, 'video_codec': 'h264', 'audio_codec': 'aac', 'fps': 60.00075342336743, 'width': 1080, 'height': 1920}], 'transcript_json_paths': ['C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\edit\\\\transcripts\\\\raw.json'], 'takes_packed_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\edit\\\\takes_packed.md', 'timeline_view_samples': ['C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\edit\\\\verify\\\\inventory\\\\raw.png']}}], ['transcripts', {'raw_json_paths': ['C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\edit\\\\transcripts\\\\raw.json'], 'takes_packed_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\edit\\\\takes_packed.md'}], ['branch:to:p3_pre_scan', None]])",
+    "fingerprint": "66c8ec6b0b05df12e33e023b2faecba6",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p3_inventory.p3_inventory_node,p3_inventory",
+    "node": "p3_inventory",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 1227
+    }
+  }
+]

@@ -1,0 +1,24 @@
+[
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p3_strategy', 'backend': 'claude', 'model': 'claude-opus-4-7', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 31.54699999999866, 'tokens_in': 5, 'tokens_out': 1412, 'timestamp': '2026-05-06T13:45:43.260448+00:00'}]], ['edit', {'strategy': {'shape': 'hook → problem framing → pivot to one-time-pay thesis → user-side benefit → concrete buy-once promise → personal decision → CTA', 'takes': ['[006.06-011.32]', '[013.10-023.60]', '[028.80-040.80]', '[045.70-053.24]', '[056.26-073.68]', '[074.94-084.56]', '[091.22-099.30]', '[099.80-104.42]'], 'grade': \"Warm, slightly desaturated digital-indie look: lift shadows a touch, gentle S-curve for contrast, mild teal push in shadows and amber in midtones to read as 'cozy workshop' rather than corporate; keep skin tones natural, no heavy stylization — the message is reassurance/anti-hype, so grade should feel honest, not glossy.\", 'pacing': \"Tight and conversational — trim breaths and inter-phrase silences to ~150–250 ms; preserve a slightly longer beat (~400 ms) before the pivot at [028.80] and before the CTA at [099.80] so the thesis and call-to-action land. Cut the 'but how cool is it to...' trail at the end of [028.80-040.80] and the 'This is exact-' stutter at the head of [091.22-099.30].\", 'length_estimate_s': 74.0, 'source_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\edit\\\\takes_packed.md'}}], ['branch:to:strategy_confirmed_interrupt', None]])",
+    "fingerprint": "217c27e90f1f8bbe5b0243b329ecc13e",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p3_strategy.p3_strategy_node,p3_strategy",
+    "node": "p3_strategy",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 1426
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p3_strategy', 'backend': 'claude', 'model': 'claude-opus-4-7', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 21.46900000000096, 'tokens_in': 5, 'tokens_out': 465, 'timestamp': '2026-05-08T07:11:34.136128+00:00'}]], ['edit', {'strategy': {'shape': \"Single continuous monologue reflecting on returning to paid, owned software in the AI age. Open with the framing line about the age of AI, pivot through the speaker's growing use of free open-source tools enabled by AI agents, then land on the rhetorical question about returning to 'good old software that you pay for once and use for life.' Drop the false start ('When,') and the truncated final word ('but how cool is it to f-') so the piece ends cleanly on the business-point-of-view caveat.\", 'takes': ['raw[000.12-001.34]', 'raw[003.10-013.64]', 'raw[015.72-017.32]', 'raw[018.82-029.80]'], 'grade': 'Warm, slightly filmic look befitting a reflective monologue: gentle S-curve for contrast, mild highlight rolloff, skin tones pushed a touch warm (CDL offset +0.02 R, -0.01 B on midtones), saturation +5%. Keep it natural — portrait talking-head, no stylized teal/orange.', 'pacing': 'Conversational and unhurried. Preserve the natural 0.5s+ inter-phrase silences as breathing room between the three thought-beats (AI-age framing → open-source-via-AI explanation → return-to-paid-software pitch). Tight butt-cuts at the slip removals so the false start and truncation are invisible; no added pauses.', 'length_estimate_s': 25.6, 'source_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\edit\\\\takes_packed.md'}}], ['branch:to:strategy_confirmed_interrupt', None]])",
+    "fingerprint": "934be09dea90690fd82e705cf39f351d",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p3_strategy.p3_strategy_node,p3_strategy",
+    "node": "p3_strategy",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 1633
+    }
+  }
+]
