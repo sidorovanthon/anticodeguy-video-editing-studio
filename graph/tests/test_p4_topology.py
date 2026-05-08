@@ -75,6 +75,10 @@ def test_phase4_chain_edges_wired():
     graph = _compiled_graph_repr()
     edges = {(e.source, e.target) for e in graph.edges}
     expected_edges = {
+        # HOM-160: skip-Phase3 edge routes through rehydrate so Phase 4 cache
+        # keys see the same in-memory strategy that drove the original run.
+        ("preflight_canon", "rehydrate_skip_phase3"),
+        ("rehydrate_skip_phase3", "glue_remap_transcript"),
         ("glue_remap_transcript", "p4_scaffold"),
         ("p4_scaffold", "p4_design_system"),
         ("p4_design_system", "gate_design_ok"),
