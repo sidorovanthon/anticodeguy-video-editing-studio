@@ -87,11 +87,46 @@ fixture-replay layer. See its
 [README](fixtures/episodes/canonical-portrait-talking-head/README.md)
 for the source segment, ffmpeg command, and the prewarm command.
 
-`cache.db` is **not** in the repo at this stage — it is populated by a
-one-shot real-tier prewarm the user runs in a follow-up step after the
-fixture scaffold lands. Until then, `replay`-mode tests against this
-slug will (correctly) fail with `FileNotFoundError: replay mode
-requires fixture cache.db at .../cache.db`.
+`cache.db` **is committed** (PR #102, HOM-181 prewarm follow-up — 71
+recorded entries across 17 nodes, ~156 KB). The fixture is the
+deterministic, $0 surface every replay-mode test reads from. If you
+need to refresh it after a brief / schema change, see
+[Recording a fresh fixture](#recording-a-fresh-fixture) above and the
+[Studio replay](#studio-replay-operator-runbook) runbook below.
+
+## Studio replay (operator runbook)
+
+To pick up the recorded fixture episode in `langgraph dev` Studio and
+walk it through the full graph at $0 spend:
+
+```powershell
+copy tests\fixtures\episodes\canonical-portrait-talking-head\cache.db graph\.cache\langgraph.db
+$env:HOMESTUDIO_PROJECT_ROOT = "$PWD\tests\fixtures"
+cd graph
+.venv\Scripts\langgraph.exe dev --allow-blocking --no-browser
+# In the Studio UI: POST a run with slug = canonical-portrait-talking-head
+# Resume both interrupts with payload {"resume":"approved"}
+```
+
+- **`--allow-blocking`** is required: `_caching.py::file_fingerprint`
+  performs synchronous file I/O during graph draw (cache key
+  resolution). Without the flag, `langgraph dev` aborts on the first
+  sync read.
+- **`HOMESTUDIO_PROJECT_ROOT`** is mandatory — points
+  `_paths.project_root()` at `tests/fixtures` so the graph reads
+  `episodes/<slug>/` from the committed fixture tree rather than the
+  gitignored production `episodes/`. Without it, Studio sees an empty
+  episode folder and the run halts on pickup.
+- **Two HITL interrupts** fire on the recorded happy path:
+  `strategy_confirmed_interrupt` (after `p3_strategy`) and
+  `p3_review_interrupt` (after `p3_persist_session`). Resume each with
+  `{"resume":"approved"}` to advance.
+- **HF render is NOT in the graph** — HOM-78 (`p4_final_render`) is
+  future work. After the graph terminates at `p4_assemble_index` → gate
+  cluster → `p4_persist_session` → `studio_launch`, run
+  `npx hyperframes render` manually inside
+  `tests/fixtures/episodes/canonical-portrait-talking-head/hyperframes/`.
+  Don't conflate "graph terminated" with "pipeline complete".
 
 ## Dumping recordings to JSON for review (HOM-182)
 
@@ -239,21 +274,22 @@ against the recorded fixture cache:
 | Old smoke | Migrated to | Status |
 | --- | --- | --- |
 | `smoke_hom107.py` Case 1 (topology) | `test_phase3_topology` | green |
-| `smoke_hom107.py` Case 2 (Haiku p3_edl_select) | `test_p3_edl_select_smoke` | skipped until cache.db prewarm |
+| `smoke_hom107.py` Case 2 (Haiku p3_edl_select) | `test_p3_edl_select_smoke` | green (HOM-186) |
 | `smoke_hom107.py` Case 3 (gate eval) | covered by `graph/tests/test_edl_ok_gate.py` | n/a |
-| `smoke_hom118.py` (Opus p4_design_system) | `test_p4_design_system_smoke` | skipped until cache.db prewarm |
-| `smoke_hom119.py` (Haiku p4_prompt_expansion) | `test_p4_prompt_expansion_smoke` | skipped until cache.db prewarm |
+| `smoke_hom118.py` (Opus p4_design_system) | `test_p4_design_system_smoke` | green (HOM-186) |
+| `smoke_hom119.py` (Haiku p4_prompt_expansion) | `test_p4_prompt_expansion_smoke` | green (HOM-186) |
 | `smoke_hom127.py` Case 1 (gate-cluster topology) | `test_post_assemble_gate_cluster_topology` | green |
 | `smoke_hom127.py` Case 2 (gate invocations against fixture) | covered by `graph/tests/test_*_gate.py` | n/a |
 | `smoke_hom127.py` Case 3 (halt notice) | `test_halt_notice_surfaces_gate_cluster_failure` | green |
 | `smoke_hom163.py` (gate_results_reducer) | `test_gate_results_reducer_through_runtime` | green |
-| `smoke_hom165.py` (Haiku p4_beat anti-patterns) | `test_p4_beat_smoke` | skipped until cache.db prewarm |
+| `smoke_hom165.py` (Haiku p4_beat anti-patterns) | `test_p4_beat_smoke` | green (HOM-186) |
 | other `smoke_hom*.py` | superseded by L0 + L1 layers | deleted |
 
 The replay-mode smokes carry a `requires_fixture_cache` `skipif` mark
 that fires when `tests/fixtures/episodes/canonical-portrait-talking-head/cache.db`
-is missing, so the suite stays green while the operator prewarm step
-is pending and auto-enables the moment cache.db lands. No `pytest`
+is missing. With cache.db committed (PR #102), the smokes run by
+default — every replay served at $0 via
+`tests._helpers.replay_dispatch.dispatch_node` (HOM-186). No `pytest`
 flag is needed.
 
 ## Spec / canon links
