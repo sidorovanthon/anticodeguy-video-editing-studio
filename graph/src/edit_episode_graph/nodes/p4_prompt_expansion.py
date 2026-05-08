@@ -111,7 +111,7 @@ def _render_ctx(state: dict) -> dict:
 def _build_node() -> LLMNode:
     return LLMNode(
         name="p4_prompt_expansion",
-        requirements=NodeRequirements(tier="smart", needs_tools=True, backends=["claude"]),
+        requirements=NodeRequirements(tier="expensive", needs_tools=True, backends=["claude"]),
         brief_template=_load_brief("p4_prompt_expansion"),
         output_schema=ExpandedPrompt,
         result_namespace="compose",

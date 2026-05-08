@@ -190,7 +190,7 @@ def test_runs_with_smart_tier_and_passes_canon_paths(tmp_path):
 
     req, task = router.invoke.call_args.args[:2]
     kwargs = router.invoke.call_args.kwargs
-    assert req.tier == "smart"
+    assert req.tier == "expensive"
     assert req.needs_tools is True
     assert req.backends == ["claude"]
     assert kwargs["allowed_tools"] == ["Read"]

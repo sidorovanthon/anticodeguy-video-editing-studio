@@ -149,7 +149,7 @@ def _build_node() -> LLMNode:
     # promotes from disk instead.
     return LLMNode(
         name="p4_captions_layer",
-        requirements=NodeRequirements(tier="smart", needs_tools=True, backends=["claude"]),
+        requirements=NodeRequirements(tier="expensive", needs_tools=True, backends=["claude"]),
         brief_template=_load_brief("p4_captions_layer"),
         output_schema=None,
         result_namespace="compose",

@@ -31,9 +31,23 @@ from ._types import (
     Tier,
 )
 
+# Three-tier mapping (HOM-115). Naming follows model-line ordering rather than the
+# original two-tier shorthand so adding a new node is a single decision: pick
+# `cheap` for mechanical / tool-loop work where retry is cheap, `smart` for
+# general reasoning, `expensive` for highest-stakes creative judgment.
+#
+# - cheap     → Haiku 4.5: structured-write nodes, smoke / mechanical loops.
+# - smart     → Sonnet 4.6: general reasoning, EDL-style numeric precision work.
+# - expensive → Opus 4.7  : creative direction (design system, prompt expansion,
+#                            plan, beat composition) — opt-in per memory
+#                            `feedback_creative_nodes_flagship_tier` (creative
+#                            LLM nodes must NOT degrade to cheaper tiers; HOM-154
+#                            retro showed cheap-tier output triggered redispatch
+#                            loops costing more than one successful Opus run).
 _MODEL_BY_TIER: dict[str, str] = {
-    "cheap": "claude-sonnet-4-6",
-    "smart": "claude-opus-4-7",
+    "cheap": "claude-haiku-4-5-20251001",
+    "smart": "claude-sonnet-4-6",
+    "expensive": "claude-opus-4-7",
 }
 
 _AUTH_SIGNALS = ("not authenticated", "claude login", "unauthorized", "auth", "session expired")

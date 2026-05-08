@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 
-Tier = Literal["cheap", "smart"]
+Tier = Literal["cheap", "smart", "expensive"]
 
 
 @dataclass(frozen=True)

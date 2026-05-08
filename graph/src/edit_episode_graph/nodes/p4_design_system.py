@@ -108,7 +108,7 @@ def _render_ctx(state: dict) -> dict:
 def _build_node() -> LLMNode:
     return LLMNode(
         name="p4_design_system",
-        requirements=NodeRequirements(tier="smart", needs_tools=True, backends=["claude"]),
+        requirements=NodeRequirements(tier="expensive", needs_tools=True, backends=["claude"]),
         brief_template=_load_brief("p4_design_system"),
         output_schema=DesignDoc,
         result_namespace="compose",

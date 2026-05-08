@@ -74,8 +74,57 @@ def test_invoke_command_shape(monkeypatch, fixtures_dir):
     cmd_str = " ".join(cmd) if isinstance(cmd, list) else cmd
     assert "-p" in cmd_str
     assert "stream-json" in cmd_str
-    assert "claude-opus-4-7" in cmd_str   # smart tier
+    assert "claude-sonnet-4-6" in cmd_str   # smart tier (HOM-115: smart=Sonnet 4.6)
     assert captured["kwargs"]["timeout"] == 30
+
+
+def test_three_tier_mapping_table():
+    """HOM-115: cheap=Haiku, smart=Sonnet, expensive=Opus.
+
+    Regression-pin the table values. Memory `feedback_creative_nodes_flagship_tier`
+    requires creative LLM nodes use the flagship (`expensive` → Opus); a silent
+    downgrade here would re-trigger the HOM-154 redispatch-loop class of bug.
+    """
+    from edit_episode_graph.backends.claude import _MODEL_BY_TIER
+    assert _MODEL_BY_TIER == {
+        "cheap": "claude-haiku-4-5-20251001",
+        "smart": "claude-sonnet-4-6",
+        "expensive": "claude-opus-4-7",
+    }
+
+
+def test_invoke_expensive_tier_resolves_opus(monkeypatch, fixtures_dir):
+    raw = (fixtures_dir / "claude_stream_ok.jsonl").read_text(encoding="utf-8")
+    captured = {}
+
+    def fake_run(cmd, **kwargs):
+        captured["cmd"] = cmd
+        return SimpleNamespace(stdout=raw, stderr="", returncode=0)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    b = ClaudeCodeBackend()
+    b.invoke("hello", tier="expensive", cwd=Path.cwd(), timeout_s=30, output_schema=None)
+
+    cmd = captured["cmd"]
+    cmd_str = " ".join(cmd) if isinstance(cmd, list) else cmd
+    assert "claude-opus-4-7" in cmd_str
+
+
+def test_invoke_cheap_tier_resolves_haiku(monkeypatch, fixtures_dir):
+    raw = (fixtures_dir / "claude_stream_ok.jsonl").read_text(encoding="utf-8")
+    captured = {}
+
+    def fake_run(cmd, **kwargs):
+        captured["cmd"] = cmd
+        return SimpleNamespace(stdout=raw, stderr="", returncode=0)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    b = ClaudeCodeBackend()
+    b.invoke("hello", tier="cheap", cwd=Path.cwd(), timeout_s=30, output_schema=None)
+
+    cmd = captured["cmd"]
+    cmd_str = " ".join(cmd) if isinstance(cmd, list) else cmd
+    assert "claude-haiku-4-5-20251001" in cmd_str
 
 
 def test_empty_allowed_tools_disables_tools(monkeypatch, fixtures_dir):

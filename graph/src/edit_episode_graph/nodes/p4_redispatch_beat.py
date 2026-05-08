@@ -139,7 +139,7 @@ def _render_ctx(state: dict) -> dict:
 def _build_node() -> LLMNode:
     return LLMNode(
         name="p4_redispatch_beat",
-        requirements=NodeRequirements(tier="smart", needs_tools=True, backends=["claude"]),
+        requirements=NodeRequirements(tier="expensive", needs_tools=True, backends=["claude"]),
         brief_template=_load_brief("p4_redispatch_beat"),
         output_schema=None,
         result_namespace="compose",

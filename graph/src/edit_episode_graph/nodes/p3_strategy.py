@@ -113,7 +113,7 @@ def _render_ctx(state: dict) -> dict:
 def _build_node() -> LLMNode:
     return LLMNode(
         name="p3_strategy",
-        requirements=NodeRequirements(tier="smart", needs_tools=False, backends=["claude"]),
+        requirements=NodeRequirements(tier="expensive", needs_tools=False, backends=["claude"]),
         brief_template=_load_brief("p3_strategy"),
         output_schema=Strategy,
         result_namespace="edit",
