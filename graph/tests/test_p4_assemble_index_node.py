@@ -152,6 +152,28 @@ def test_build_visibility_shim_returns_none_for_empty_scenes():
     assert build_visibility_shim([], []) is None
 
 
+def test_build_visibility_shim_unpauses_child_timeline_before_nesting():
+    """HOM-164 regression: per-scene `gsap.timeline({ paused: true })` must
+    have its `paused` flag cleared before being added to root, otherwise the
+    HF runtime's `seek()` of `__timelines["root"]` does not advance the
+    child and every scene stays at the fromTo from-state — Phase 4 black
+    screen. Verified end-to-end against `npx hyperframes snapshot` in a
+    bare `hyperframes init` scaffold.
+    """
+    shim = build_visibility_shim(["hook", "payoff"], [0.0, 3.0])
+    assert shim is not None
+    # The shim must call `paused(false)` on the child timeline AND it must
+    # appear before the `root.add(...)` call so the unpause takes effect for
+    # the immediate-render of any `fromTo` initial values.
+    assert "sceneTl.paused(false)" in shim
+    paused_pos = shim.index("sceneTl.paused(false)")
+    add_pos = shim.index("root.add(sceneTl,")
+    assert paused_pos < add_pos, (
+        "sceneTl.paused(false) must precede root.add(sceneTl, ...) — "
+        "GSAP child-paused-under-parent.seek() bug, see HOM-164"
+    )
+
+
 def test_assemble_html_appends_shim_between_markers():
     shim = build_visibility_shim(["hook", "payoff"], [0.0, 3.0])
     out = assemble_html(
