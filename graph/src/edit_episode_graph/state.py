@@ -252,6 +252,7 @@ class EdlState(TypedDict, total=False):
     raw_text: str | None
     skipped: bool
     skip_reason: str | None
+    target_fps: int | None
     failure_resume: FailureResumeState
 
 
