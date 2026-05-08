@@ -234,7 +234,54 @@ def test_brief_references_canon_paths_without_embedding():
     # The brief must NOT lift canonical paragraphs verbatim.
     assert "Layout Before Animation" in brief  # section reference is OK
     # Sanity: the brief stays compact (path-references, ~70 lines target).
-    assert brief.count("\n") < 130, f"brief grew to {brief.count(chr(10))} lines — should reference canon, not embed"
+    assert brief.count("\n") < 160, f"brief grew to {brief.count(chr(10))} lines — should reference canon, not embed"
+
+
+# ---------------------------------------------------------------------------
+# HOM-165: explicit anti-pattern guards must survive future brief edits
+# ---------------------------------------------------------------------------
+
+
+def test_brief_contains_hom165_anti_pattern_section():
+    """HOM-165: the brief must explicitly call out the two recurring
+    LLM-introduced patterns — GSAP repeat overshoot and caption exit
+    without a kill-tween — so the lint gate doesn't pay redispatch tax
+    on every M6 sub-issue smoke. Markers chosen so an accidental revert
+    of the anti-patterns section trips this test.
+    """
+    brief = node_module._load_brief("p4_beat")
+
+    # Section header marker.
+    assert "Explicit anti-patterns (DO NOT DO)" in brief, (
+        "missing the HOM-165 anti-patterns section header"
+    )
+
+    # Anti-pattern 1: GSAP repeat math — Math.floor mandate.
+    assert "Math.floor(sceneDuration / cycleDuration)" in brief, (
+        "missing the Math.floor canonical replacement formula"
+    )
+    # Anti-pattern 1: explicit prohibition of Math.ceil for repeat math.
+    # Both bare ceil and the ceil-1 idiom are flagged.
+    assert "Math.ceil(sceneDuration / cycleDuration) - 1" in brief, (
+        "missing the Math.ceil-1 anti-example"
+    )
+    # The new repeat example in the existing infinite-repeats rule must
+    # also be Math.floor (we replaced the previous Math.ceil-1 example).
+    assert "Math.ceil(sceneDuration / cycleDuration) - 1," not in brief, (
+        "the canonical replacement example still uses the ceil-1 anti-pattern"
+    )
+
+    # Anti-pattern 2: caption exit kill-tween.
+    assert 'tl.set(captionEl, { visibility: "hidden" }' in brief, (
+        "missing the caption-exit kill-tween example"
+    )
+    assert "Caption Exit Guarantee" in brief, (
+        "missing the captions.md canon section reference"
+    )
+    # Generalisation phrase — exits beyond captions also need kills.
+    assert "Hard-kill every scene boundary" in brief, (
+        "missing the motion-principles.md canon bullet reference"
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -35,7 +35,10 @@ from .._caching import make_llm_key, stable_fingerprint
 from ._llm import LLMNode, _load_brief
 
 # Bump on brief / schema / tool-list change. See HOM-132 spec §8.
-_CACHE_VERSION = 1
+# v2 (HOM-165): brief gained "Explicit anti-patterns (DO NOT DO)" section
+# (GSAP repeat math → Math.floor; caption exit kill-tween) + repeat example
+# switched from Math.ceil-1 to Math.floor.
+_CACHE_VERSION = 2
 
 
 def _cache_key(state, *_args, **_kwargs):
