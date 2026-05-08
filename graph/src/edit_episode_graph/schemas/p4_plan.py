@@ -8,11 +8,18 @@ it through the `compose.plan` state slice, no on-disk artifact required at
 this step (plan is "thinking" upstream of HTML, not a downstream-readable
 file).
 
-Substance bounds (`beats ≥ 3`, transitions cover every interior boundary,
-mechanism enumerated to canon's three options) are load-bearing — they
+Substance bounds (transitions mechanism enumerated to canon's three
+options, per-beat catalog/custom + justification) are load-bearing — they
 prevent the LLM from emitting a one-line "fast cut" plan and calling it
 done. The gate re-asserts these so a schema regression never silently
 weakens enforcement.
+
+Beat count is NOT a schema invariant: short clips (e.g. a 22s fixture
+strategy) can legitimately produce a 2-beat plan, and an over-strict
+floor here turned every backend retry into a Pydantic `ValidationError`
+→ `AllBackendsExhausted` (HOM-190). The "≥3 beats for production-quality
+multi-scene composition" target is creative direction — it lives in the
+brief and `gate:plan_ok`, not in the schema.
 """
 
 from __future__ import annotations
@@ -99,11 +106,15 @@ class CompositionPlan(BaseModel):
                     "'fast-fast-SLOW-fast-SHADER-hold'. Forces explicit rhythm choice.",
     )
     beats: list[PlanBeat] = Field(
-        min_length=3,
-        description="Per-beat plan; ≥3 beats per spec §6.3 / canon multi-scene composition.",
+        min_length=1,
+        description="Per-beat plan; ≥1 beat. The multi-scene composition target (≥3 beats for "
+                    "production-quality narrative) lives in the brief and `gate:plan_ok`, not "
+                    "in the schema — short clips can legitimately produce 1-2 beats.",
     )
     transitions: list[BeatTransition] = Field(
-        min_length=1,
-        description="One entry per beat boundary — interior boundaries plus one final-fade exit "
-                    "on the last scene if applicable.",
+        min_length=0,
+        description="One entry per interior beat boundary; the last beat MAY add a final-fade "
+                    "exit (canon `references/transitions.md` §Animation Rules — final-fade is "
+                    "the only canon-allowed exit animation). A 1-beat plan with no final-fade "
+                    "has zero transitions.",
     )
