@@ -663,12 +663,17 @@ HOM-77 family может закрываться **параллельно** с M6
 **Бренд и профиль — это style-overlay поверх mechanics. Mechanics в шиме = overlay рисуется по сломанному canvas'у.** Поэтому строгая послойная последовательность:
 
 ```
-Layer 1: graph runtime          ✓ DONE  (M1, M2, M3 + M5 cleanup HOM-160/162/163/164/165/179)
+Layer 0: fixture-replay infra   PARTIAL (HOM-179 epic landed; HOM-189 + HOM-190 close gap surfaced 2026-05-08 attempt #2)
+Layer 1: graph runtime          ✓ DONE  (M1, M2, M3 + M5 cleanup HOM-160/162/163/164/165)
 Layer 2: canon-correct Phase 4  TODO    (M3 close: HOM-154 → HOM-77 family = HOM-137 + HOM-155 + HOM-156)
 Layer 3: feedback loop          TODO    (M4 v6: HOM-78 user_review + feedback routing + final_render)
 Layer 4: context resolution     TODO    (M6 epic HOM-161 — entire ticket map §15.1..§15.14)
 Layer 5: cutover                TODO    (M4 v7: HOM-79 thin-client)
 ```
+
+> **Amendment 2026-05-08 (post HOM-154 attempt #2 — fixture-replay infra).** Layer 0 is **new** in this revision. The original 2026-05-08 amendment listed HOM-179 inside Layer 1 «✓ DONE M5 cleanup» — a misjudgement. HOM-179 epic and its sub-issues (HOM-180..186) shipped harness code and a committed `cache.db`, but the second HOM-154 E2E attempt (autonomous Studio replay, evening of 2026-05-08) discovered the cache.db was prewarmed against the wrong source episode (production `episodes/2026-05-06-who-else-is-tired-of-endless-monthly/` rather than the 35s clip in `tests/fixtures/`). Every fingerprint missed; what looked like $0 replay was actually 7 paid LLM nodes burning ≈33k output tokens before halting at `p4_plan` `AllBackendsExhausted`. Replay smokes have been silently skipping via `requires_fixture_cache` — file existence is necessary but not sufficient evidence of a working fixture.
+>
+> **Practical effect:** HOM-154 cannot validate at $0 until HOM-189 (re-record fixture under correct `HOMESTUDIO_PROJECT_ROOT`) lands; HOM-189 cannot record cleanly until HOM-190 (lift `CompositionPlan.beats min_length=3` to admit short-clip 2-beat plans) lands. This adds a strict pre-L1 ordering: **HOM-190 → HOM-189 → HOM-154**, then the original §21 chain resumes.
 
 Каждый следующий слой имеет **архитектурную причину** ждать предыдущего:
 
@@ -682,7 +687,9 @@ Layer 5: cutover                TODO    (M4 v7: HOM-79 thin-client)
 
 | # | Тикет | Слой | Статус | Принцип |
 |---|---|---|---|---|
-| 1 | HOM-154 (parent HOM-76) | L1 close-out | In Progress | Доказать v4 traversal; budget cap ≤2 fix-PR'а на E2E попытку |
+| 0a | HOM-190 | L0 | Backlog | Lift `CompositionPlan.beats min_length=3` — schema must admit short-clip 2-beat plans before fixture can record cleanly |
+| 0b | HOM-189 | L0 | Backlog | Re-record `cache.db` + `recordings/` under correct `HOMESTUDIO_PROJECT_ROOT=tests/fixtures` so fingerprints match committed `raw.mp4` |
+| 1 | HOM-154 (parent HOM-76) | L1 close-out | In Progress | Доказать v4 traversal; budget cap ≤2 fix-PR'а на E2E попытку. **Blocked on L0** |
 | 2 | HOM-137 | L2 | Backlog | Root-timeline transitions; заменяет visibility shim |
 | 3 | HOM-155 | L2 | Backlog | beat_kills auto-inserter; структурно закрывает hard-kill |
 | 4 | HOM-156 | L2 | Backlog | gate:animation_map fix-or-justify; снимает redispatch-tax |
@@ -711,6 +718,8 @@ Layer 5: cutover                TODO    (M4 v7: HOM-79 thin-client)
 
 | Тикет | blockedBy | Основание |
 |---|---|---|
+| HOM-189 | HOM-190 | L0 inner: schema must admit ≤2 beats before re-record can succeed |
+| HOM-154 | HOM-189 | L1 keystone ждёт zero-cost replay infra (L0) |
 | HOM-137 | HOM-154 | L2 ждёт зелёный L1 traversal |
 | HOM-155 | HOM-154 | то же |
 | HOM-156 | HOM-154 | то же |
@@ -733,4 +742,6 @@ Layer 5: cutover                TODO    (M4 v7: HOM-79 thin-client)
 ### Ссылка из тикетов
 
 Каждый из HOM-77, HOM-137, HOM-155, HOM-156, HOM-78, HOM-161, HOM-167, HOM-114, HOM-79 несёт пинговый комментарий в Linear со ссылкой на эту секцию. Спека — single source of truth; комментарии — навигация.
+
+HOM-189 и HOM-190 (Layer 0, добавлены 2026-05-08 amendment) аналогично указывают на §21 — текущая редакция этой секции и есть авторитетное обоснование их позиции в очереди.
 
