@@ -17,10 +17,10 @@ from pathlib import Path
 from langgraph.types import CachePolicy
 
 from .._caching import make_key
-from .._paths import project_root
+from .._paths import scripts_root
 from ._deterministic import deterministic_node
 
-PROJECT_ROOT = project_root()
+SCRIPTS_ROOT = scripts_root()
 
 # Bump on script behavior / parser / output-shape change. Spec §8 review checkpoint.
 _CACHE_VERSION = 1
@@ -83,5 +83,5 @@ isolate_audio_node = deterministic_node(
     name="isolate_audio",
     cmd_factory=_cmd,
     parser=_parse,
-    cwd=PROJECT_ROOT,
+    cwd=SCRIPTS_ROOT,
 )

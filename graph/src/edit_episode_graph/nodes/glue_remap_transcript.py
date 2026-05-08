@@ -30,9 +30,9 @@ from pathlib import Path
 from langgraph.types import CachePolicy
 
 from .._caching import make_key
-from .._paths import project_root
+from .._paths import scripts_root
 
-PROJECT_ROOT = project_root()
+SCRIPTS_ROOT = scripts_root()
 
 # Bump on remap_transcript.py shape / output-schema change. Spec §8.
 _CACHE_VERSION = 1
@@ -139,7 +139,7 @@ def glue_remap_transcript_node(state):
         "--edl", str(edl_json),
         "--out", str(final_json),
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True, cwd=PROJECT_ROOT)
+    result = subprocess.run(cmd, capture_output=True, text=True, cwd=SCRIPTS_ROOT)
     if result.returncode != 0:
         combined = "\n".join(s for s in (result.stderr, result.stdout) if s).strip()
         return _error(combined or f"exit code {result.returncode}, no output")
