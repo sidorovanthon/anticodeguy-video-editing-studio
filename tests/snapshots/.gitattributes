@@ -1,0 +1,6 @@
+# Brief snapshot tests pin Jinja-rendered bytes verbatim. The Jinja
+# env emits LF (Unix) line endings; the assertion is byte-exact.
+# Without this, Windows checkouts with `core.autocrlf=true` would
+# rewrite the snapshot files to CRLF on `git checkout`, and the test
+# would fail with a phantom diff. Force LF on commit AND on checkout.
+*.txt text eol=lf

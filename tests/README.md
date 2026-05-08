@@ -147,6 +147,45 @@ mutate the canonical fixture. Round-trip-stable: re-running the dump
 on the same content produces byte-for-byte identical JSON
 (`test_round_trip_identical_bytes`).
 
+## Brief snapshot tests (HOM-183)
+
+L0 layer of the testing pyramid (spec §3): every creative LLM brief
+under `graph/src/edit_episode_graph/briefs/` is rendered through the
+production Jinja env (`edit_episode_graph.nodes._llm._BRIEF_ENV`) with
+a stable fixture context, and the output is pinned to
+`tests/snapshots/briefs/<node>.txt`.
+
+Coverage at the time of HOM-183:
+
+- `p3_strategy`, `p3_edl_select`
+- `p4_design_system`, `p4_prompt_expansion`, `p4_plan`, `p4_beat`,
+  `p4_captions_layer`
+
+```powershell
+# Default — assert every brief matches its snapshot
+python -m pytest tests/test_brief_snapshots.py
+
+# Intentional brief change — overwrite the snapshot, then commit
+python -m pytest tests/test_brief_snapshots.py --update-snapshots
+```
+
+The fixture render contexts live in
+`tests/_helpers/brief_render_contexts.py`. They use deterministic
+placeholder values (`slug = "snapshot-fixture"`,
+`episode_dir = "/tmp/snapshot-fixture/episode"`, etc.) so the
+snapshots are stable across operators and platforms.
+
+**Reviewer rule:** a snapshot diff in a PR is a flag to verify the
+canon-references-not-embeds rule (CLAUDE.md §"Decomposition via
+brief-references-canon" item 1). Briefs cite SKILL.md by path; they
+do NOT pre-paraphrase canon. If a diff shows the brief growing new
+prose that looks like it came out of a SKILL.md section, push back.
+
+When canonical paths or section names move upstream, the snapshot diff
+shows up first — that's by design. Update the brief, re-run with
+`--update-snapshots`, and commit both files together so the diff is
+self-evident.
+
 ## Spec / canon links
 
 - Spec: `docs/superpowers/specs/2026-05-08-testing-infra-fixture-replay-design.md`

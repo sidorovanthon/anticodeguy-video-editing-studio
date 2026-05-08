@@ -17,6 +17,16 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+# Make `edit_episode_graph` importable from this worktree even when the
+# editable install in site-packages points at a stale path (pip's
+# editable record is global, but each git worktree has its own
+# graph/src tree). Putting our worktree's tree first in sys.path
+# ensures tests always exercise the code in *this* checkout.
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_GRAPH_SRC = _REPO_ROOT / "graph" / "src"
+if _GRAPH_SRC.is_dir() and str(_GRAPH_SRC) not in sys.path:
+    sys.path.insert(0, str(_GRAPH_SRC))
+
 import pytest
 
 from tests._helpers.replay_harness import Mode, _resolve_mode
@@ -53,6 +63,16 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         help=(
             "After the session finishes, dump tests/fixtures/episodes/"
             "<SLUG>/cache.db rows to recordings/<node>.json (HOM-182)."
+        ),
+    )
+    parser.addoption(
+        "--update-snapshots",
+        action="store_true",
+        default=False,
+        help=(
+            "Overwrite tests/snapshots/briefs/<node>.txt with the "
+            "freshly-rendered output instead of asserting equality. "
+            "Use this after an intentional brief change (HOM-183)."
         ),
     )
 
