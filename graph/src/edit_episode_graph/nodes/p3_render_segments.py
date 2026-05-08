@@ -36,7 +36,7 @@ HELPERS_DIR = Path.home() / ".claude" / "skills" / "video-use" / "helpers"
 RENDER_PY = HELPERS_DIR / "render.py"
 
 # Bump on canon `render.py` shape / parser / output-schema change. Spec §8.
-_CACHE_VERSION = 2
+_CACHE_VERSION = 1
 
 
 def _edl_path_for_key(state: dict) -> str | None:
@@ -68,17 +68,31 @@ def _cache_key(state, *_args, **_kwargs):
     listing a file the node mutates forces every cold→warm transition to
     cache-miss, defeating idempotency). The node body's own `cached =
     final_path.exists()` check provides the missing-output recovery.
+
+    HOM-117: `target_fps` (optional EDL-author-controlled fps override) is
+    appended to `extras=` rather than versioned via `_CACHE_VERSION`. The
+    default path (`target_fps=None`) produces a byte-identical subprocess
+    command to the pre-HOM-117 behavior, so its key digest is unchanged
+    and existing fixture / prod cache.db rows remain valid. A run with
+    `target_fps=60` gets a distinct key (correct: subprocess output
+    differs). Pattern documented in CLAUDE.md §Idempotency / HOM-157.
     """
     if not isinstance(state, dict):
         raise TypeError(
             f"p3_render_segments cache key requires dict state, got {type(state).__name__}"
         )
     slug = state.get("slug") or "__unbound__"
+    edl_state = (state.get("edit") or {}).get("edl") or {}
+    target_fps = edl_state.get("target_fps")
+    extras: tuple[object, ...] = ()
+    if target_fps is not None:
+        extras = (f"target_fps={target_fps!r}",)
     return make_key(
         node="p3_render_segments",
         version=_CACHE_VERSION,
         slug=slug,
         files=[_edl_path_for_key(state)],
+        extras=extras,
     )
 
 
