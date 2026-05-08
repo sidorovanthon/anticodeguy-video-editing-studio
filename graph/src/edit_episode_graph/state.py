@@ -9,6 +9,9 @@ Reducer choice rationale (spec §5.1):
   the same namespace; shallow merge preserves siblings without per-node
   awareness of the full namespace shape.
 - `operator.add` for `errors` and `notices` (append-only).
+- `gate_results_reducer` for `gate_results` — additive by default with
+  sentinel-based clear/replace semantics for `update_state`-driven rewind
+  (HOM-163).
 - Last-write-wins (default) for identity fields (`slug`, `episode_dir`).
 """
 
@@ -21,6 +24,64 @@ def dict_merge(left: dict | None, right: dict | None) -> dict:
     out = dict(left or {})
     out.update(right or {})
     return out
+
+
+def gate_results_reducer(
+    left: list | None, right: list | dict | None
+) -> list:
+    """Reducer for ``gate_results`` with clear-on-replay semantics (HOM-163).
+
+    Default behavior is **additive append** — preserves backward compatibility
+    with all existing gate nodes that emit ``{"gate_results": [record]}``.
+
+    Two sentinel shapes are recognised when ``right`` is a ``dict``:
+
+    * ``{"_replace": True, "items": [...]}`` — replace the entire list with
+       ``items`` (or ``[]`` if absent). Functionally equivalent to LangGraph's
+       native :class:`langgraph.types.Overwrite`, but kept here for symmetry
+       with ``_clear_gate``: ``Overwrite`` only intercepts a binary-aggregate
+       reducer, so once we install a custom reducer the framework no longer
+       routes ``Overwrite`` for this channel — we have to provide the
+       full-replace path ourselves.
+    * ``{"_clear_gate": "<gate_name>"}`` — drop every existing record whose
+       ``gate`` field equals ``<gate_name>``. No-op if no records match.
+       Operators use this from
+       ``client.threads.update_state(values=..., as_node=...)`` to rewind out
+       of a stuck gate-failure cluster without losing unrelated history
+       (lint failures, eval_ok failures, etc. recorded by other gates).
+
+    Anything else (a plain ``list``, a single-record ``dict`` without
+    sentinel keys) is appended.
+
+    Refs:
+        * Ticket: HOM-163 (M5 cleanup, M6 acceptance dependency).
+        * LangGraph reducers concept page:
+          https://langchain-ai.github.io/langgraph/concepts/low_level/
+        * Native overwrite primitive verified present in
+          ``langgraph.types.Overwrite`` (LangGraph 0.x). It only handles full
+          replace and only via ``BinaryOperatorAggregate``; the ``_clear_gate``
+          filter requires reading the existing list, so we keep one custom
+          reducer that handles both replace and selective filter.
+    """
+    base = list(left or [])
+    if right is None:
+        return base
+    if isinstance(right, dict):
+        if right.get("_replace") is True:
+            return list(right.get("items") or [])
+        if "_clear_gate" in right:
+            gate = right["_clear_gate"]
+            return [
+                r for r in base
+                if not (isinstance(r, dict) and r.get("gate") == gate)
+            ]
+        # Plain single-record dict (no sentinel keys) — defensive append.
+        # Not the canonical writer shape (writers emit `[record]`), but
+        # historically a single-dict update would have been list-add'd
+        # via Python's list.__add__([dict]) semantics; keep that intact.
+        return base + [right]
+    # list / tuple / other iterable of records → append.
+    return base + list(right)
 
 
 class PickupState(TypedDict, total=False):
@@ -280,7 +341,7 @@ class GraphState(TypedDict, total=False):
     errors: Annotated[list[GraphError], add]
     notices: Annotated[list[str], add]
     llm_runs: Annotated[list[LLMRunRecord], add]
-    gate_results: Annotated[list[GateResult], add]
+    gate_results: Annotated[list[GateResult], gate_results_reducer]
     # Append-only operator feedback collected by strategy_confirmed_interrupt
     # when the resume payload is a revision rather than approval. p3_strategy
     # reads this list on each re-entry to refine the strategy. Top-level so
