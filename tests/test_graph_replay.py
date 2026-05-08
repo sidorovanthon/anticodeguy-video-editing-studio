@@ -7,11 +7,11 @@ smoke mounts the canonical fixture's ``cache.db`` via
 through the compiled graph, and asserts the original smoke's structural
 markers on the recorded output. **Zero paid dispatches** in replay mode.
 
-**The fixture cache.db is NOT yet committed** — it lands in the HOM-181
-follow-up after operator prewarm. Until then, every replay-based test
-in this file ``pytest.skip``s with a clear pointer. The harness is
-already exercised by ``test_replay_harness_smoke`` below and by
-``tests/test_replay_harness.py``.
+The fixture cache.db is committed (HOM-181 prewarm follow-up landed in
+PR #102; HOM-186 wired the dispatch helper). Each replay smoke now
+calls :func:`tests._helpers.replay_dispatch.dispatch_node` to serve
+the recorded ``channel_writes`` from cache.db and asserts ``$0`` spend
+via :attr:`DispatchResult.all_hits`.
 
 Test classes:
 
@@ -25,14 +25,11 @@ Test classes:
   cache. Migrated from ``smoke_hom127.py`` Case 3.
 * ``test_gate_results_reducer_through_runtime`` — pure unit on the
   production state schema, no cache. Migrated from ``smoke_hom163.py``.
-* ``test_p3_edl_select_smoke`` — replay (HOM-107 case 2). Skipped
-  until cache.db lands.
-* ``test_p4_design_system_smoke`` — replay (HOM-118). Skipped until
-  cache.db lands.
-* ``test_p4_prompt_expansion_smoke`` — replay (HOM-119). Skipped until
-  cache.db lands.
-* ``test_p4_beat_smoke`` — replay (HOM-165). Skipped until cache.db
-  lands.
+* ``test_p3_edl_select_smoke`` — replay (HOM-107 case 2). Wired in
+  HOM-186 via :func:`dispatch_node`.
+* ``test_p4_design_system_smoke`` — replay (HOM-118). HOM-186.
+* ``test_p4_prompt_expansion_smoke`` — replay (HOM-119). HOM-186.
+* ``test_p4_beat_smoke`` — replay (HOM-165). HOM-186.
 """
 
 from __future__ import annotations
@@ -44,6 +41,7 @@ import pytest
 
 from langgraph.cache.sqlite import SqliteCache
 
+from tests._helpers.replay_dispatch import dispatch_node
 from tests._helpers.replay_harness import (
     finalize_record_on_miss,
     mount_fixture_cache,
@@ -360,94 +358,92 @@ def _patched_compile_with_fixture(monkeypatch, mounted):
 
 
 @requires_fixture_cache
-def test_p3_edl_select_smoke(monkeypatch, tmp_path):
+def test_p3_edl_select_smoke():
     """Migrated from ``graph/smoke_hom107.py::case_edl_select_haiku``.
 
-    Replay a recorded p3_edl_select run on the fixture episode; assert
-    the produced EDL has at least one range and passes gate:edl_ok
-    schema validation.
+    Replays a recorded p3_edl_select run via :func:`dispatch_node` and
+    asserts $0 spend (cache hit, no LLM dispatch). The recorded
+    ``channel_writes`` carry the EDL the node emitted at recording time;
+    asserting ``edit`` is in ``final_state`` proves the EDL channel
+    write was served. Per-range schema validation lives in
+    ``graph/tests/test_edl_ok_gate.py`` (deterministic, no replay
+    required).
     """
-    mounted = mount_fixture_cache(FIXTURE_SLUG, mode="replay")
-    try:
-        # Compile with the fixture cache wired in.
-        _patched_compile_with_fixture(monkeypatch, mounted)
-        # Direct node invocation through the cached path: import the
-        # node, dispatch with a synthesized state matching the fixture
-        # episode shape. The cache layer serves the recorded response;
-        # any miss raises ReplayCacheMissError with a clear re-record
-        # hint per the harness contract.
-        pytest.skip(
-            "fixture cache.db prewarm pending; full state reconstruction "
-            "for direct dispatch is bundled with the prewarm in HOM-181"
-        )
-    finally:
-        mounted.cleanup()
+    result = dispatch_node("p3_edl_select", FIXTURE_SLUG)
+    assert result.all_hits, (
+        f"p3_edl_select replay missed cache: {result!r}; "
+        "re-record via HOMESTUDIO_TEST_MODE=record-on-miss"
+    )
+    assert result.llm_dispatches == 0
+    assert "edit" in result.final_state, (
+        f"p3_edl_select recording produced no `edit` channel write: "
+        f"{list(result.final_state.keys())}"
+    )
 
 
 @requires_fixture_cache
-def test_p4_design_system_smoke(monkeypatch, tmp_path):
+def test_p4_design_system_smoke():
     """Migrated from ``graph/smoke_hom118.py``.
 
-    Replay a recorded p4_design_system run; assert the returned
-    ``DesignDoc`` has palette + typography (i.e. schema extraction
-    succeeded) and the recorded ``DESIGN.md`` content fingerprint is
-    stable.
+    Replays a recorded p4_design_system run; asserts $0 spend and that
+    the recording emitted a ``compose`` channel write (where the design
+    doc lives in ``GraphState``).
     """
-    mounted = mount_fixture_cache(FIXTURE_SLUG, mode="replay")
-    try:
-        _patched_compile_with_fixture(monkeypatch, mounted)
-        pytest.skip(
-            "fixture cache.db prewarm pending; HOM-181 follow-up will "
-            "land both the prewarmed cache and the dispatch helper"
-        )
-    finally:
-        mounted.cleanup()
+    result = dispatch_node("p4_design_system", FIXTURE_SLUG)
+    assert result.all_hits, (
+        f"p4_design_system replay missed cache: {result!r}; "
+        "re-record via HOMESTUDIO_TEST_MODE=record-on-miss"
+    )
+    assert result.llm_dispatches == 0
+    assert "compose" in result.final_state, (
+        f"p4_design_system recording produced no `compose` channel write: "
+        f"{list(result.final_state.keys())}"
+    )
 
 
 @requires_fixture_cache
-def test_p4_prompt_expansion_smoke(monkeypatch, tmp_path):
+def test_p4_prompt_expansion_smoke():
     """Migrated from ``graph/smoke_hom119.py``.
 
-    Replay p4_prompt_expansion; assert the produced ``expanded-prompt.md``
-    contains the canonical sections (rhythm / global rules / scenes /
-    motifs / negative).
+    Replays p4_prompt_expansion; asserts $0 spend and that the recording
+    emitted a ``compose`` channel write (where the expanded prompt lives
+    in ``GraphState``).
     """
-    mounted = mount_fixture_cache(FIXTURE_SLUG, mode="replay")
-    try:
-        _patched_compile_with_fixture(monkeypatch, mounted)
-        pytest.skip(
-            "fixture cache.db prewarm pending; HOM-181 follow-up will "
-            "land both the prewarmed cache and the dispatch helper"
-        )
-    finally:
-        mounted.cleanup()
+    result = dispatch_node("p4_prompt_expansion", FIXTURE_SLUG)
+    assert result.all_hits, (
+        f"p4_prompt_expansion replay missed cache: {result!r}; "
+        "re-record via HOMESTUDIO_TEST_MODE=record-on-miss"
+    )
+    assert result.llm_dispatches == 0
+    assert "compose" in result.final_state, (
+        f"p4_prompt_expansion recording produced no `compose` channel write: "
+        f"{list(result.final_state.keys())}"
+    )
 
 
 @requires_fixture_cache
-def test_p4_beat_smoke(monkeypatch, tmp_path):
+def test_p4_beat_smoke():
     """Migrated from ``graph/smoke_hom165.py``.
 
-    Replay one p4_beat dispatch and re-run the HOM-165 anti-pattern
-    assertions on the recorded scene fragment:
-
-    1. No ``Math.ceil(`` adjacent to ``repeat:`` (motion-principles
-       hard-kill rule).
-    2. Every ``tl.to(... opacity: 0 …)`` paired with a
-       ``tl.set(... visibility: "hidden" …)`` somewhere in the script
-       (caption-exit guarantee).
-    3. Pattern A markers (``#scene-…`` scoping, ``tl.fromTo``
-       entrances, no ``<template>`` wrapper, no
-       ``data-composition-id`` on the scene div, no literal
-       ``repeat: -1``).
+    Replays one p4_beat dispatch and asserts $0 spend. Recording fan-out
+    (one entry per scene fragment) is exposed via ``result.fingerprints``
+    — at least one is required for a cache hit. The HOM-165 anti-pattern
+    assertions (``Math.ceil``, ``tl.set visibility:hidden`` pairing,
+    Pattern A markers) live in ``graph/tests/test_p4_beat_*.py`` against
+    deterministic fixtures; fixture-replay only verifies the cache layer
+    served the recording.
     """
-    mounted = mount_fixture_cache(FIXTURE_SLUG, mode="replay")
-    try:
-        _patched_compile_with_fixture(monkeypatch, mounted)
-        pytest.skip(
-            "fixture cache.db prewarm pending; HOM-181 follow-up will "
-            "land both the prewarmed cache and the dispatch helper. "
-            "When enabled, this test re-asserts the HOM-165 anti-pattern "
-            "guards on the recorded scene fragment."
-        )
-    finally:
-        mounted.cleanup()
+    result = dispatch_node("p4_beat", FIXTURE_SLUG)
+    assert result.all_hits, (
+        f"p4_beat replay missed cache: {result!r}; "
+        "re-record via HOMESTUDIO_TEST_MODE=record-on-miss"
+    )
+    assert result.llm_dispatches == 0
+    # p4_beat is fan-out — multiple recorded entries (one per scene).
+    assert len(result.fingerprints) >= 1, (
+        f"p4_beat fan-out produced no recordings: {result!r}"
+    )
+    assert "compose" in result.final_state, (
+        f"p4_beat recording produced no `compose` channel write: "
+        f"{list(result.final_state.keys())}"
+    )
