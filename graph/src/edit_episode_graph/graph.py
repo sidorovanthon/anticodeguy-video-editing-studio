@@ -32,14 +32,54 @@ from langgraph.graph import END, StateGraph
 from langgraph.types import RetryPolicy
 
 from ._paths import repo_root
-from .backends._types import BackendTimeout
+from .backends._types import AllBackendsExhausted
 
-# HOM-158: native LangGraph RetryPolicy
+
+def _retry_on_all_timeout_exhaustion(exc: BaseException) -> bool:
+    """RetryPolicy predicate: retry only when every backend attempt timed out.
+
+    HOM-162: `_llm.py` always wraps terminal failure into
+    `AllBackendsExhausted` before re-raising — `BackendTimeout` is a sibling
+    type that never propagates out of the node. The pre-HOM-162
+    `retry_on=(BackendTimeout,)` therefore never matched, leaving the
+    policy dead since HOM-158 merge (surfaced in
+    docs/retros/retro-2026-05-07-hom-154-clean-e2e-attempt.md finding #4).
+
+    This predicate inspects `AllBackendsExhausted.attempts` (the per-attempt
+    telemetry list the router builds; each entry has a `reason` set to
+    "timeout" / "auth" / "rate_limit" / "schema" / "cli_error" / "other")
+    and returns True iff every recorded attempt's reason is "timeout". Mixed
+    reasons (e.g. timeout + auth) are treated as non-transient and not
+    retried — auth/CLI/schema failures are deterministic and would just burn
+    the same dollar twice. An empty / missing attempts list is treated as
+    "do not retry" defensively.
+
+    LangGraph `RetryPolicy.retry_on` accepts
+    `type[Exception] | Sequence[type[Exception]] | Callable[[Exception], bool]`
+    (verified directly against `langgraph.types.RetryPolicy` source — the
+    field's docstring reads "a callable that returns True for exceptions
+    that should trigger a retry"). Doc:
+    https://langchain-ai.github.io/langgraph/reference/types/#langgraph.types.RetryPolicy
+    """
+    if not isinstance(exc, AllBackendsExhausted):
+        return False
+    attempts = getattr(exc, "attempts", None) or []
+    if not attempts:
+        return False
+    return all(a.get("reason") == "timeout" for a in attempts)
+
+
+# HOM-158 / HOM-162: native LangGraph RetryPolicy
 # (https://langchain-ai.github.io/langgraph/reference/types/#langgraph.types.RetryPolicy).
 # `_llm.py` raises `AllBackendsExhausted` on terminal failure (per HOM-158
-# contract change); pregel applies this policy on every Exception subclass
-# matched by `retry_on`. We retry only `BackendTimeout` — auth/CLI/schema
-# errors are deterministic and would just burn the same dollar twice.
+# contract change); pregel applies this policy on every exception matched
+# by `retry_on`. HOM-158 originally configured `retry_on=(BackendTimeout,)`,
+# but `_llm.py` always wraps `BackendTimeout` into `AllBackendsExhausted`
+# before re-raising — the sibling type never escapes the node, so the
+# policy was dead from the moment it shipped. HOM-162 swaps in the callable
+# predicate above, which inspects the wrapper's `attempts` list and retries
+# only when every attempt timed out — auth/CLI/schema errors are
+# deterministic and would just burn the same dollar twice.
 # `max_attempts=2` = one retry on top of the original call, since the LLM
 # subprocess timeout is already 240–300s on Opus-tier nodes; budgeting a
 # second 5-minute wait is enough to ride out a Windows shim hiccup without
@@ -48,7 +88,7 @@ from .backends._types import BackendTimeout
 # or model.
 _LLM_RETRY_POLICY = RetryPolicy(
     max_attempts=2,
-    retry_on=(BackendTimeout,),
+    retry_on=_retry_on_all_timeout_exhaustion,
 )
 from .gates.animation_map import animation_map_gate_node
 from .gates.captions_track import captions_track_gate_node
