@@ -75,6 +75,20 @@ which calls `compile(cache=SqliteCache(path=...))`. The harness yields a
 constructor — no production-side change needed. See
 `test_replay_harness_smoke` for a minimal example.
 
+## Canonical fixture episode
+
+`tests/fixtures/episodes/canonical-portrait-talking-head/` (HOM-181)
+holds the single canonical portrait talking-head clip used by the
+fixture-replay layer. See its
+[README](fixtures/episodes/canonical-portrait-talking-head/README.md)
+for the source segment, ffmpeg command, and the prewarm command.
+
+`cache.db` is **not** in the repo at this stage — it is populated by a
+one-shot real-tier prewarm the user runs in a follow-up step after the
+fixture scaffold lands. Until then, `replay`-mode tests against this
+slug will (correctly) fail with `FileNotFoundError: replay mode
+requires fixture cache.db at .../cache.db`.
+
 ## Spec / canon links
 
 - Spec: `docs/superpowers/specs/2026-05-08-testing-infra-fixture-replay-design.md`

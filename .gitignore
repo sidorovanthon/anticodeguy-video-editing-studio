@@ -1,6 +1,11 @@
 # Video pipeline working directories
 inbox/
 episodes/
+# ...except hermetic test fixtures (HOM-181). The bare `episodes/` rule above
+# matches `episodes/` anywhere in the tree, including under `tests/fixtures/`;
+# negate it explicitly for the fixtures subtree so committed fixture episodes
+# (canonical-portrait-talking-head, future siblings) survive `git add`.
+!tests/fixtures/episodes/
 
 # Git worktrees
 .worktrees/
@@ -32,3 +37,13 @@ graph/.langgraph_api/
 
 # Claude Code runtime artifacts
 .claude/scheduled_tasks.lock
+
+# Test-fixture transient files (HOM-181)
+# `cache.db.tmp` is the VACUUM INTO landing target the replay harness writes
+# to before the atomic rename to `cache.db`; never commit it.
+tests/fixtures/episodes/*/cache.db.tmp
+# SQLite WAL/SHM sidecars produced if a record-mode run is interrupted before
+# the WAL checkpoint + close in `finalize_record_on_miss`.
+tests/fixtures/episodes/*/cache.db-wal
+tests/fixtures/episodes/*/cache.db-shm
+tests/fixtures/episodes/*/cache.db-journal
