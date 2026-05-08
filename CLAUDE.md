@@ -141,17 +141,106 @@ orchestration. Empirically this produced canon deviations. The decomposed graph 
 trades looser intra-step canon-trust for structurally-enforced step boundaries plus
 deterministic gates between artifacts.
 
-**Definition of done for LLM-node tickets:** before opening the PR, the node MUST satisfy all three of:
+**Definition of done for LLM-node tickets** (fixture-replay model, HOM-179 / spec
+`docs/superpowers/specs/2026-05-08-testing-infra-fixture-replay-design.md`). Before opening
+the PR, the node MUST satisfy all mandatory items, plus any conditional items that apply.
 
-1. **Real-CLI smoke.** Run at least one real-CLI invocation through the cheapest available model (e.g. Haiku via per-node `model:` override in `graph/config.yaml`) — a `smoke_<ticket>.py` that synthesizes minimal state and dispatches the node. Mocked unit tests prove parser correctness; only a real subprocess invocation proves the integration (subprocess shape, stdout parsing, schema extraction, telemetry append) actually works. Cost is negligible (~$0.001 per smoke run on Haiku). Document the smoke result in the PR's Test plan.
+**Mandatory (every LLM-node PR):**
 
-2. **Topology wiring in the same PR — no deferring to "the integration ticket".** The node MUST be added to `graph.py` (`g.add_node(...)` + conditional/static edges connecting it to the chain) and reachable from the entry point. Defer-until-HOM-127 was the original plan and it bit us: HOM-118 and HOM-119 both shipped un-wired, which meant a re-run on the same slug couldn't actually pick up where it left off. The whole idempotency story is "re-run with same slug → graph resumes from first missing artifact"; that only works if the new node is in the graph. Add a routing helper to `nodes/_routing.py` if a conditional edge is needed; extend `tests/test_p4_topology.py`'s `expected_edges` set with the new edges; extend `smoke_hom107.py`'s `EXPECTED_NODES` set.
+1. **Brief snapshot test landed/updated (HOM-183).** If your node uses a Jinja brief under
+   `graph/src/edit_episode_graph/briefs/`, the corresponding snapshot at
+   `tests/snapshots/briefs/<node>.txt` must be updated in the same PR. Run
+   `pytest tests/test_brief_snapshots.py --update-snapshots` after authoring/editing
+   the brief, then commit both files together. Reviewer reads the brief diff to enforce
+   the canon-references-not-embeds rule (CLAUDE.md §"Decomposition via brief-references-canon"
+   item 1) — briefs cite `SKILL.md` by path, they do NOT pre-paraphrase canon.
 
-3. **Topology check (free, deterministic).** `tests/test_p4_topology.py` (compiled-graph node-set + edge-set assertions) must turn green with the new node added to its `expected_edges`. This is the cheapest gate — it catches "node added but edge not wired" without spending any LLM tokens.
+2. **Topology wiring in the same PR — no deferring to "the integration ticket".** The node
+   MUST be added to `graph.py` (`g.add_node(...)` + conditional/static edges connecting it
+   to the chain) and reachable from the entry point. Defer-until-HOM-127 was the original
+   plan and it bit us: HOM-118 and HOM-119 both shipped un-wired, which meant a re-run on
+   the same slug couldn't actually pick up where it left off. The whole idempotency story
+   is "re-run with same slug → graph resumes from first missing artifact"; that only works
+   if the new node is in the graph. Add a routing helper to `nodes/_routing.py` if a
+   conditional edge is needed; extend `tests/test_p4_topology.py`'s `expected_edges` set
+   with the new edges; extend `EXPECTED_NODES` in any topology test that enumerates the
+   compiled-graph node set. The topology test (compiled-graph node-set + edge-set
+   assertions) must turn green — this is the cheapest gate, catching "node added but edge
+   not wired" without spending any LLM tokens.
 
-4. **Update `halt_llm_boundary` notice text.** Whenever you wire a new node into the Phase 4 chain, the `halt_llm_boundary_node` notice currently advertises the old "latest reachable" artifact (e.g. it still says "render requires p3_render_segments (future)" even though we now reach `p4_prompt_expansion`). Update the notice string to mention the newly-reachable artifact and what comes next. The notice is the operator's only signal in Studio about why the run halted — stale text actively misleads.
+3. **Update `halt_llm_boundary` notice text.** Whenever you wire a new node into the Phase 4
+   chain, the `halt_llm_boundary_node` notice currently advertises the old "latest reachable"
+   artifact (e.g. it still says "render requires p3_render_segments (future)" even though we
+   now reach `p4_prompt_expansion`). Update the notice string to mention the newly-reachable
+   artifact and what comes next. The notice is the operator's only signal in Studio about
+   why the run halted — stale text actively misleads.
 
-End-to-end-on-a-real-episode smoke (Studio invoke from `pickup` through Phase 4 with a stable fixture episode) is HOM-127's responsibility — the per-ticket DoD does NOT require it, because no stable fixture episode is checked in (`episodes/` is gitignored). But the topology check and the per-ticket node smoke together cover the regressions that matter day-to-day.
+**Conditional (apply when the PR scope warrants):**
+
+4. **Schema migration test (L0).** Required if the PR touches a Pydantic state schema.
+   Assert the old shape still parses after loosening (forward-compat), so already-recorded
+   fixture cache.db rows survive a schema change.
+
+5. **Fingerprint invalidation assertion (HOM-184).** Required if a creative LLM node's
+   input set changes (new `files=` entry or new context key in the brief). Add an entry to
+   `_NODE_REGISTRY` in `tests/_helpers/fingerprint_assertions.py` so the three parametrised
+   invariants (`_CACHE_VERSION` bump, routing-config bump, upstream artifact edit) cover
+   the new node automatically. For one-off mutations not expressible via the registry,
+   call `assert_fingerprint_changes_when` directly with a custom `mutation_fn`.
+
+6. **Fixture-replay smoke (HOM-180..184).** Required for any creative LLM node. Add a
+   `test_<node>_smoke` to `tests/test_graph_replay.py` using `mount_fixture_cache` plus
+   the `requires_fixture_cache` `skipif` mark so the suite stays green while the canonical
+   fixture cache.db is missing. Recording the fixture is the operator's responsibility:
+   `HOMESTUDIO_TEST_MODE=record-on-miss pytest tests/test_graph_replay.py::test_<node>_smoke`
+   populates `tests/fixtures/episodes/canonical-portrait-talking-head/cache.db` and the
+   per-node JSON dump under `recordings/`. Replay-mode runs (the default) cost $0 once
+   the recording lands.
+
+**Removed:** the legacy "real-CLI Haiku smoke" item — `smoke_hom*.py` files were deleted
+in HOM-184. Haiku-tier production smokes proved a false economy (HOM-154 retro: Haiku
+output triggered `gate:lint` / `gate:design_adherence` redispatch loops costing more than
+one successful Opus run; synthetic state missed regressions a real episode caught).
+Production-tier replay against a committed cache.db is the new model — recorded once,
+replayed deterministically at $0.
+
+**Wave acceptance (L2)** is a separate manual step at M-wave close, NOT per-ticket:
+`HOMESTUDIO_TEST_MODE=record pytest tests/test_graph_replay.py` for a paid full E2E real-tier
+prewarm, plus eyeball acceptance vs the wave's spec criteria. End-to-end-on-a-real-episode
+runs through Studio (pickup through Phase 4 on a real episode) remain HOM-127's
+responsibility and are NOT part of the per-ticket DoD.
+
+### Testing infra — fixture replay
+
+Spec source-of-truth: `docs/superpowers/specs/2026-05-08-testing-infra-fixture-replay-design.md`
+(HOM-179 epic, sub-issues HOM-180..185). Operator runbook lives in `tests/README.md`.
+
+The harness wraps native LangGraph `langgraph.cache.sqlite.SqliteCache` — no parallel
+testing infrastructure was rolled, per the §"LangGraph primitives" rule. One env var
+picks the behaviour:
+
+| `HOMESTUDIO_TEST_MODE` | Default? | Cache file opened | LLM cost |
+| --- | --- | --- | --- |
+| `replay` | yes (CI + most dev runs) | fixture cache.db, `sqlite3 mode=ro` | $0 — fails on miss with `ReplayCacheMissError` |
+| `record-on-miss` | local dev while iterating on a node | tmp working copy seeded from fixture; misses run real | pay-as-you-go on misses, $0 on hits |
+| `record` | wave acceptance only | tmp working copy starts empty | full real-tier run |
+
+**Reviewer expectations on a creative-node PR:**
+
+- Brief snapshot diff — readable text, surfaces canon drift.
+- `cache.db` diff under `tests/fixtures/episodes/canonical-portrait-talking-head/` — binary
+  but canonical (`VACUUM INTO` + atomic rename produces a deterministic raw form, no WAL
+  artefacts).
+- JSON dump diff under `tests/fixtures/episodes/<slug>/recordings/<node>.json` — the
+  human-readable review surface; the binary cache.db is opaque, the JSON is what you
+  actually read. Generated via `python -m pytest --dump-recordings=<slug>` or
+  `python -m tests.dump_recordings <slug>` (HOM-182).
+- Topology test edits + (where applicable) `_NODE_REGISTRY` entry in
+  `tests/_helpers/fingerprint_assertions.py`.
+
+If a PR adds a creative node but ships no recording, the replay smoke skips with
+`requires_fixture_cache` — that's expected until the operator records. The PR is mergeable;
+recording is a follow-up step on the operator's machine (CI cannot do it, paid tier).
 
 ### LangGraph primitives — search docs before rolling custom
 

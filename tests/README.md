@@ -1,5 +1,9 @@
 # Orchestrator tests
 
+**See also:**
+- Spec: [`docs/superpowers/specs/2026-05-08-testing-infra-fixture-replay-design.md`](../docs/superpowers/specs/2026-05-08-testing-infra-fixture-replay-design.md) — three-layer pyramid (L0 / L1 / L2), recording mechanism, fixture choice.
+- DoD: [`CLAUDE.md` §"Definition of done for LLM-node tickets"](../CLAUDE.md) and §"Testing infra — fixture replay" — the rules every LLM-node PR must satisfy + reviewer checklist.
+
 Layout:
 
 ```
