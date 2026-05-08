@@ -2,9 +2,6 @@
 
 Per spec §4.3 / canon hyperframes SKILL.md §"Step 3: Plan":
   - Plan parseable and not skipped upstream.
-  - ≥3 beats. Multi-scene compositions need at least three to carry a
-    narrative arc; the schema also enforces this — re-asserted at the
-    gate so a schema regression never silently weakens enforcement.
   - Every interior beat boundary has an explicit transition with a
     canonical mechanism (`css` / `shader` / `final-fade` per memory
     `feedback_translucent_transitions`). `final-fade` is only valid as
@@ -16,6 +13,13 @@ Per spec §4.3 / canon hyperframes SKILL.md §"Step 3: Plan":
   - Beat coverage: every EDL beat has a matching `beats[].beat` entry,
     in EDL order. An unmapped or out-of-order beat means downstream beat
     sub-agents will mis-route the EDL ranges.
+
+Beat count is NOT enforced here. The structural floor of ≥1 lives in the
+schema (`CompositionPlan.beats: min_length=1`). The "≥3 beats for
+production-quality multi-scene narrative" target is creative direction
+that lives in the brief — short clips (e.g. the 35s canonical fixture
+producing a 22.5s 2-beat plan, HOM-190) are legitimate and must flow
+through this gate without re-dispatch.
 """
 
 from __future__ import annotations
@@ -50,8 +54,6 @@ class PlanOkGate(Gate):
             return ["plan unparseable (raw_text only — schema validation failed upstream)"]
 
         beats = plan.get("beats") or []
-        if len(beats) < 3:
-            violations.append(f"beats has {len(beats)} entries; need ≥ 3 for multi-scene narrative")
 
         # Per-beat catalog-vs-custom justification — orchestrator-house gate.
         for i, beat in enumerate(beats):

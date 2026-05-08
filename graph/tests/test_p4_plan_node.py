@@ -71,10 +71,38 @@ def test_plan_schema_accepts_valid_payload():
     CompositionPlan.model_validate(_good_plan_payload())
 
 
-def test_plan_schema_rejects_under_three_beats():
+def test_plan_schema_accepts_two_beats():
+    """HOM-190 regression: short-clip strategies (e.g. 22s fixture, takes=2)
+    legitimately produce a 2-beat plan; the schema must NOT reject this.
+    The "≥3 beats for production-quality narrative" target is creative
+    direction, enforced in the brief and `gate:plan_ok`, not the schema.
+    """
+    base = _good_plan_payload()
+    two_beats = base["beats"][:2]
+    one_transition = base["transitions"][:1]
+    CompositionPlan.model_validate({**base, "beats": two_beats, "transitions": one_transition})
+
+
+def test_plan_schema_accepts_single_beat():
+    """Lower bound: a 1-beat plan is schema-valid. Zero interior boundaries
+    means transitions[] may be empty (canon `transitions.md` — final-fade
+    is the only allowed exit animation, and it is OPTIONAL)."""
+    base = _good_plan_payload()
+    CompositionPlan.model_validate({**base, "beats": base["beats"][:1], "transitions": []})
+
+
+def test_plan_schema_rejects_zero_beats():
+    """Floor: a 0-beat plan is structurally invalid. We lowered min_length
+    to 1, not 0 — there must be at least one beat to compose anything."""
     base = _good_plan_payload()
     with pytest.raises(ValidationError):
-        CompositionPlan.model_validate({**base, "beats": base["beats"][:2]})
+        CompositionPlan.model_validate({**base, "beats": [], "transitions": []})
+
+
+def test_plan_schema_still_accepts_three_or_more_beats():
+    """Forward-compat: previously-recorded fixture cache.db rows that hold
+    a 3-beat plan must still parse after the floor relaxation."""
+    CompositionPlan.model_validate(_good_plan_payload())
 
 
 def test_plan_schema_rejects_bad_mechanism():

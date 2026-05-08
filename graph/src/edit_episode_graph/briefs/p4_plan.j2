@@ -39,12 +39,16 @@ artifact). Do not include prose outside the JSON.
 Substance bounds — the deterministic gate `gate:plan_ok` rejects anything
 below them and re-dispatches you with the violation list:
 
-- `beats` ≥ 3 entries, one per EDL beat, in EDL order.
+- `beats` has one entry per EDL beat, in EDL order. Aim for ≥ 3 beats
+  when the EDL length permits (production-quality multi-scene narrative);
+  ≥ 1 is the absolute minimum. Short clips (e.g. a 20-25s fixture)
+  legitimately produce 2 beats — match the EDL, do not pad.
 - For every interior beat boundary (n-1 transitions for n beats), there
   is an explicit `BeatTransition` entry with `mechanism ∈ {css, shader,
   final-fade}` and a specific transition `name` from canon
   `references/transitions.md` (e.g. "blur crossfade", "cinematic zoom").
-  `final-fade` is only valid as the terminal exit on the last beat.
+  `final-fade` is only valid as the terminal exit on the last beat. A
+  1-beat plan with no final-fade has zero transitions.
 - Per beat: `catalog_or_custom` must be set with a concrete one-sentence
   `justification` (orchestrator-house catalog-scan gate per memory
   `feedback_hf_catalog_orchestrator_gate`).
