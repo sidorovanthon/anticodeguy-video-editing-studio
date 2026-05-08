@@ -14,6 +14,7 @@ Schema of each ``<node_name>.json`` (per spec §4 / HOM-182):
 ```json
 {
   "node": "p3_strategy",
+  "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p3_strategy.p3_strategy_node,p3_strategy",
   "fingerprint": "p3_strategy|v3|fixture-canonical-portrait-talking-head|<hash>|cfg:<sha>",
   "channel_writes": <decoded payload, JSON-shaped where possible>,
   "recorded_at": "2026-05-08T12:34:56+00:00",
@@ -21,11 +22,28 @@ Schema of each ``<node_name>.json`` (per spec §4 / HOM-182):
 }
 ```
 
+When more than one cache row is recorded under the same node (e.g.
+``p4_beat`` fanned out across N beats produces N rows with distinct
+fingerprints), the JSON file becomes a sorted list of records instead of
+a single object. Single-entry files stay bare objects to match the spec
+example shape.
+
+Filenames are ``<node_name>.json`` per spec §4 — the canonical node name
+extracted from ``ns`` (the last comma-joined segment of LangGraph's
+pregel-namespaced cache key). The full ``ns`` string is preserved inside
+each record under ``namespace`` so reviewers don't lose the pregel-write
+context. This keeps paths short enough to survive Windows MAX_PATH (260)
+under nested worktree checkouts — the previous shape (full module path
+in the filename) hit ``Filename too long`` from ``git add``.
+
 Field provenance (matters for spec amendments / future readers):
 
-* ``node``: comes from the SQLite ``ns`` column (LangGraph `SqliteCache`
-  joins the namespace tuple with ``,``; for our LLM nodes the namespace
-  is a 1-tuple of node-name).
+* ``node``: canonical node name — last comma-segment of the SQLite
+  ``ns`` column. For LLM nodes ``ns`` looks like
+  ``__pregel_ns_writes,<full_module_path>.<wrapper>,<node_name>``; we
+  split and keep only ``<node_name>``.
+* ``namespace``: the raw ``ns`` column verbatim, retained in-record so
+  pregel-write provenance is not lost when the filename is shortened.
 * ``fingerprint``: comes from the SQLite ``key`` column verbatim. For
   LLM nodes this is a ``|``-delimited string produced by
   :func:`graph._caching.make_llm_key` (already a stable identifier;
@@ -99,8 +117,25 @@ def _episode_dir(slug: str, fixtures_root: Path) -> Path:
     return fixtures_root / "episodes" / slug
 
 
+def _node_name_from_ns(ns: str) -> str:
+    """Extract the canonical node name from a SQLite ``ns`` cell.
+
+    LangGraph's `SqliteCache` joins namespace tuples with ``,``. For the
+    pregel-write namespace shape — ``__pregel_ns_writes,<module>,<node>``
+    — the canonical node name is the last comma-segment. For 1-tuple
+    namespaces seeded directly (e.g. unit tests) the value is already
+    just the node name.
+    """
+    return ns.rsplit(",", 1)[-1].strip() or ns
+
+
 def _safe_filename(node_name: str) -> str:
-    """Sanitize ``ns`` value for use as a JSON filename."""
+    """Sanitize a node name for use as a JSON filename.
+
+    Node names are Python identifiers in practice, but we still defend
+    against path separators and control characters so a malformed ``ns``
+    can't escape the recordings directory.
+    """
     safe = "".join(
         ch if (ch.isalnum() or ch in "_.-") else "_" for ch in node_name
     )
@@ -179,7 +214,8 @@ def _build_record(
     """Build the per-row JSON record (one cache entry → one dict)."""
     decoded = _decode_value(serde, encoding, raw)
     rec: dict[str, Any] = {
-        "node": ns,
+        "node": _node_name_from_ns(ns),
+        "namespace": ns,
         "fingerprint": key,
         "channel_writes": decoded,
         "recorded_at": (
@@ -229,12 +265,16 @@ def dump_recordings(
             raw=raw,
             serde=serde,
         )
-        by_node.setdefault(ns, []).append(rec)
+        by_node.setdefault(_node_name_from_ns(ns), []).append(rec)
 
     recordings_dir.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []
     for node, records in sorted(by_node.items()):
-        records.sort(key=lambda r: r["fingerprint"])
+        # Stable sort key: (namespace, fingerprint). Namespace is the
+        # primary discriminator when two distinct ns rows happen to
+        # collapse onto the same canonical node name (defence-in-depth —
+        # in practice ns→node is many:one only for synthetic seeds).
+        records.sort(key=lambda r: (r.get("namespace", ""), r["fingerprint"]))
         # Single-entry: write a bare object (matches spec example shape).
         # Multi-entry: write a sorted list so all variants are visible.
         payload: Any = records[0] if len(records) == 1 else records
