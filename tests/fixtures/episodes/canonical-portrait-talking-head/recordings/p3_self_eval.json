@@ -1,0 +1,24 @@
+[
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p3_self_eval', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'cheap', 'success': True, 'reason': None, 'wall_time_s': 59.14100000000326, 'tokens_in': 37, 'tokens_out': 4132, 'timestamp': '2026-05-08T07:18:17.752013+00:00'}]], ['edit', {'eval': {'issues': [], 'passed': True, 'final_mp4_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\edit\\\\final.mp4'}}], ['branch:to:gate_eval_ok', None]])",
+    "fingerprint": "e242bea79f461e7b60d3fb4a6fef05ab",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p3_self_eval.p3_self_eval_node,p3_self_eval",
+    "node": "p3_self_eval",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 414
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p3_self_eval', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'cheap', 'success': True, 'reason': None, 'wall_time_s': 69.1400000000001, 'tokens_in': 34, 'tokens_out': 5844, 'timestamp': '2026-05-07T00:11:53.877675+00:00'}]], ['edit', {'eval': {'issues': [], 'passed': True, 'final_mp4_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\edit\\\\final.mp4'}}], ['branch:to:gate_eval_ok', None]])",
+    "fingerprint": "f73961cf9f38d26e8dbf959f20ea48f4",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p3_self_eval.p3_self_eval_node,p3_self_eval",
+    "node": "p3_self_eval",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 415
+    }
+  }
+]

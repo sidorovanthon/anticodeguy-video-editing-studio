@@ -1,0 +1,24 @@
+[
+  {
+    "channel_writes": "deque([['edit', {'render': {'final_mp4': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\edit\\\\final.mp4', 'clips_dir': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\edit\\\\clips_graded', 'duration_s': 74.313, 'expected_duration_s': 74.15, 'delta_ms': 163, 'n_segments': 8, 'cached': False}}], ['branch:to:p3_self_eval', None]])",
+    "fingerprint": "af318590f93a2a62f635ba74b638f4db",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p3_render_segments.p3_render_segments_node,p3_render_segments",
+    "node": "p3_render_segments",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 421
+    }
+  },
+  {
+    "channel_writes": "deque([['edit', {'render': {'final_mp4': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\edit\\\\final.mp4', 'clips_dir': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\edit\\\\clips_graded', 'duration_s': 24.286, 'expected_duration_s': 24.13, 'delta_ms': 156, 'n_segments': 4, 'cached': False}}], ['branch:to:p3_self_eval', None]])",
+    "fingerprint": "cba0851ca7589db05c152ee76473670d",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p3_render_segments.p3_render_segments_node,p3_render_segments",
+    "node": "p3_render_segments",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 419
+    }
+  }
+]

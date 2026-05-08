@@ -1,0 +1,222 @@
+[
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 135.4380000000001, 'tokens_in': 23, 'tokens_out': 15236, 'timestamp': '2026-05-07T00:37:27.340630+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\compositions\\\\user-benefit.html (12 elements, 9 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "2140e77a01f76d7997b186a2a080796a",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 463
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 134.60899999999992, 'tokens_in': 58, 'tokens_out': 15377, 'timestamp': '2026-05-07T00:39:41.950938+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\compositions\\\\concrete-promise.html (9 elements, 8 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "34c9e2a40acba5398a373a6c57211a4a",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 466
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 203.36000000000058, 'tokens_in': 58, 'tokens_out': 22640, 'timestamp': '2026-05-08T07:40:55.461811+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\compositions\\\\body.html (8 elements, 13 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "36afa07520a9acc5f8ef448489a76016",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 454
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 145.48400000000038, 'tokens_in': 53, 'tokens_out': 16641, 'timestamp': '2026-05-07T01:22:49.412377+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\compositions\\\\hook.html (11 elements, 4 tweens).\\n\\nThe fragment implements Pattern A (inlined) for the HOOK beat (beat_index=0, 5.26s) with:\\n- **Color palette** adhering to DESIGN.md: `#141414` bg, `#ededed` text, `#7a7a78` labels\\n- **Headline** \"WHO ELSE IS TIRED OF ENDLESS MONTHLY SUBSCRIPTIONS?\" — Space Grotesk 700, 5.5rem, asymmetric bottom-left, anchored via absolute positioning\\n- **Beat marker** `OBS-001 / HOOK` top-left, **timestamp** `2026-05-06 / 23:47` top-right (JetBrains Mono)\\n- **Decoratives**: registration marks (4, at padding-corners), hairline rule (y=84%), grain overlay (3% opacity), receipt-strip drift background\\n- **Animations**: \\n  - Beat marker slides from `x: -12` over 0.35s `power2.out` at t=0.1s\\n  - Timestamp mirrors from `x: +12` over 0.35s `power2.out` at t=0.15s\\n  - Headline words slam in from `y: 60` over 0.45s `expo.out` with 80ms stagger starting t=0.4s\\n  - Receipt-strip drifts vertically (12s cycle, `sine.inOut`)\\n- **3 distinct eases**: `power2.out`, `expo.out`, `sine.inOut`\\n- **8+ visible elements at hero**: beat marker, timestamp, 8 headline spans, 4 reg marks, hairline, grain, receipt-strip\\n- **All entrances use `tl.fromTo()`** per motion-principles.md §L115-122\\n- **No exit tweens** (not final scene)'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "5a83604c8a7291f51ab796a54ad9a6e0",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 1663
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 157.71899999999732, 'tokens_in': 23, 'tokens_out': 18066, 'timestamp': '2026-05-08T07:38:16.716107+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\compositions\\\\pivot-attempt.html (9 elements, 10 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "5baf69046a21e7e0f0548f6a5e21c96a",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 463
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 146.32799999999997, 'tokens_in': 30, 'tokens_out': 15676, 'timestamp': '2026-05-07T00:37:38.231753+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\compositions\\\\hook.html (14 elements, 7 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "6d42d6f144e6e030c0869412c893d9d3",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 455
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 211.20299999999952, 'tokens_in': 72, 'tokens_out': 26821, 'timestamp': '2026-05-07T01:26:20.620210+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\compositions\\\\cta.html (14 elements, 35+ tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "6d6e7490fffb0b2f6d7114a92786c04a",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 456
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 144.39100000000008, 'tokens_in': 35, 'tokens_out': 14607, 'timestamp': '2026-05-07T00:40:02.623935+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\compositions\\\\pivot.html (11 elements, 7 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "804d7cbee6b32b9140e15eea7fe3dbc1",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 456
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 165.28099999999995, 'tokens_in': 51, 'tokens_out': 18586, 'timestamp': '2026-05-07T01:30:11.329433+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\compositions\\\\personal-decision.html (13 elements, 9 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "8221fd510205afbbe62cf2e36eb10732",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 468
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 262.10899999999674, 'tokens_in': 44, 'tokens_out': 30420, 'timestamp': '2026-05-08T07:37:32.104604+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\compositions\\\\landing.html (8 elements, 11 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "8acfa7007a7ac9134ff88ef0c6a34089",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 457
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 123.14100000000008, 'tokens_in': 32, 'tokens_out': 15595, 'timestamp': '2026-05-07T00:42:05.764303+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\compositions\\\\personal-decision.html (15 elements, 10 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "94d2e20a2309935fca98a7762054b8bc",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 469
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 144.89100000000008, 'tokens_in': 32, 'tokens_out': 17523, 'timestamp': '2026-05-07T00:42:06.842936+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\compositions\\\\problem-framing.html (13 elements, 9 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "9982fa2ccb86ae95641e9b2262d65131",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 466
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 109.875, 'tokens_in': 30, 'tokens_out': 13892, 'timestamp': '2026-05-07T00:43:55.639156+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\compositions\\\\benefit-concrete.html (11 elements, 10 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "a3a3b38cf4debd1744dfdc3ed68137c7",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 468
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 149.0, 'tokens_in': 2230, 'tokens_out': 15744, 'timestamp': '2026-05-08T07:35:38.992462+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\compositions\\\\open.html (8 elements, 7 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "cb115a31e207e9662d476221d424f0af",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 455
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 172.75, 'tokens_in': 30, 'tokens_out': 20180, 'timestamp': '2026-05-07T00:44:59.592286+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\compositions\\\\cta.html (9 elements, 13 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "cd92a31dcf9a2a8035decdd4ce39f8e4",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 454
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 160.79700000000048, 'tokens_in': 95, 'tokens_out': 19824, 'timestamp': '2026-05-07T01:31:47.706059+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\compositions\\\\user-benefit.html (9 elements, 7 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "cff7051ed1cb445c0f2e72ef97df847f",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 462
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 164.92200000000048, 'tokens_in': 65, 'tokens_out': 21065, 'timestamp': '2026-05-07T01:27:26.036795+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\compositions\\\\problem-framing.html (30+ elements, 34+ tweens).\\n\\n**Scene 2 — PROBLEM_FRAMING complete:**\\n- Beat marker + timestamp entrances (power2.out)\\n- 20+ body-text words staggered reveal (power2.out, 40ms per word)\\n- 6 receipt rows cascading in (power3.out, 100ms stagger)\\n- Stat value \"$1,847\" entrance (expo.out) + breathing radial glow (sine.inOut, 1.0↔1.04)\\n- Stat label entrance (power3.out)\\n- All tweens use `tl.fromTo()` (deterministic under non-linear seek)\\n- Finite glow breathing: 2 complete cycles over 10.5s\\n- 4 distinct eases: power2.out, power3.out, expo.out, sine.inOut\\n- Scoped CSS, IIFE-wrapped, registered on `window.__sceneTimelines`'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "d7a0eb3fb6e30add597231cdf280d9cc",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 1069
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 176.8119999999999, 'tokens_in': 65, 'tokens_out': 21435, 'timestamp': '2026-05-07T01:33:08.149556+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'The system is asking for permission to write the file. The changes are ready once you approve them.\\n\\nWrote `C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\compositions\\\\pivot.html` (11 elements, 6 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "e45c74028f5fa4ace925679d8c607ff7",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 560
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 257.17199999999957, 'tokens_in': 72, 'tokens_out': 30722, 'timestamp': '2026-05-07T01:24:41.114341+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote `C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\compositions\\\\concrete-promise.html` (11 elements, 5 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "ed40d503beb4a86f55634690bbadd7af",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 469
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 166.28099999999995, 'tokens_in': 58, 'tokens_out': 20922, 'timestamp': '2026-05-07T01:29:06.895579+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\compositions\\\\benefit-concrete.html (17 elements, 8 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "ff3c9cb2e4a58606d62eb374aae88f16",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 467
+    }
+  }
+]
