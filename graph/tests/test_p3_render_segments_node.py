@@ -178,3 +178,72 @@ def test_render_errors_when_episode_dir_missing():
     update = p3_render_segments_node({})
     assert "errors" in update
     assert "episode_dir missing" in update["errors"][0]["message"]
+
+
+def test_render_omits_fps_flag_by_default(tmp_path, monkeypatch):
+    """When EDL has no target_fps, we don't pass --fps — canon defaults to 24."""
+    episode = _setup_episode(tmp_path, total=10.0, ranges_n=3)
+    final_path = episode / "edit" / "final.mp4"
+
+    monkeypatch.setattr(node_module, "_ensure_tools", lambda: None)
+    captured: list[list[str]] = []
+
+    def runner(cmd: list[str], *, cwd: Path) -> CompletedProcess[str]:
+        captured.append(cmd)
+        if cmd[0] == sys.executable and str(node_module.RENDER_PY) in cmd:
+            final_path.write_bytes(b"x")
+            return _ok()
+        if cmd[0] == "ffprobe":
+            return _ok(_ffprobe_payload(10.0))
+        raise AssertionError(cmd)
+
+    update = p3_render_segments_node(_state(episode), runner=runner)
+
+    assert "errors" not in update
+    render_calls = [c for c in captured if c[0] == sys.executable]
+    assert render_calls, "render.py must be invoked"
+    assert "--fps" not in render_calls[0]
+
+
+def test_render_forwards_target_fps_when_present(tmp_path, monkeypatch):
+    """EDL `target_fps` → canon `--fps <N>` (HOM-117)."""
+    episode = _setup_episode(tmp_path, total=10.0, ranges_n=3)
+    final_path = episode / "edit" / "final.mp4"
+
+    monkeypatch.setattr(node_module, "_ensure_tools", lambda: None)
+    captured: list[list[str]] = []
+
+    def runner(cmd: list[str], *, cwd: Path) -> CompletedProcess[str]:
+        captured.append(cmd)
+        if cmd[0] == sys.executable and str(node_module.RENDER_PY) in cmd:
+            final_path.write_bytes(b"x")
+            return _ok()
+        if cmd[0] == "ffprobe":
+            return _ok(_ffprobe_payload(10.0))
+        raise AssertionError(cmd)
+
+    state = _state(episode)
+    state["edit"]["edl"]["target_fps"] = 60
+
+    update = p3_render_segments_node(state, runner=runner)
+
+    assert "errors" not in update
+    render_calls = [c for c in captured if c[0] == sys.executable]
+    assert render_calls, "render.py must be invoked"
+    cmd = render_calls[0]
+    assert "--fps" in cmd
+    assert cmd[cmd.index("--fps") + 1] == "60"
+
+
+def test_render_errors_on_non_int_target_fps(tmp_path, monkeypatch):
+    """Bad target_fps surfaces a clear error rather than a canon stack trace."""
+    episode = _setup_episode(tmp_path, total=10.0, ranges_n=3)
+
+    monkeypatch.setattr(node_module, "_ensure_tools", lambda: None)
+    state = _state(episode)
+    state["edit"]["edl"]["target_fps"] = "not-a-number"
+
+    update = p3_render_segments_node(state, runner=lambda *a, **k: _ok())
+
+    assert "errors" in update
+    assert "target_fps" in update["errors"][0]["message"]

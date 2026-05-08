@@ -36,7 +36,7 @@ HELPERS_DIR = Path.home() / ".claude" / "skills" / "video-use" / "helpers"
 RENDER_PY = HELPERS_DIR / "render.py"
 
 # Bump on canon `render.py` shape / parser / output-schema change. Spec §8.
-_CACHE_VERSION = 1
+_CACHE_VERSION = 2
 
 
 def _edl_path_for_key(state: dict) -> str | None:
@@ -180,10 +180,19 @@ def p3_render_segments_node(state, *, runner=_run):
 
     cached = final_path.exists()
     if not cached:
-        result = runner(
-            [sys.executable, str(RENDER_PY), str(edl_path), "-o", str(final_path)],
-            cwd=HELPERS_DIR,
-        )
+        cmd = [sys.executable, str(RENDER_PY), str(edl_path), "-o", str(final_path)]
+        # Optional target_fps override (HOM-117). EDL may carry a `target_fps` int
+        # — if set, forward to canon's `--fps` flag; otherwise canon defaults to 24.
+        # Canon `SKILL.md` §"Output spec" recommends matching source fps. The
+        # decision of which fps to emit lives upstream (EDL author / strategy);
+        # this node just forwards the value.
+        target_fps = edl_state.get("target_fps")
+        if target_fps is not None:
+            try:
+                cmd += ["--fps", str(int(target_fps))]
+            except (TypeError, ValueError):
+                return _error(f"target_fps must be int-coercible, got {target_fps!r}")
+        result = runner(cmd, cwd=HELPERS_DIR)
         if result.returncode != 0:
             return _error(_combined_output(result) or f"render.py exited {result.returncode}")
         if not final_path.exists():
