@@ -14,7 +14,11 @@ from ..schemas.p3_strategy import Strategy
 from ._llm import LLMNode, _load_brief
 
 # Bump on brief / schema / tool-list change. Spec §8 review checkpoint.
-_CACHE_VERSION = 1
+# v2 (HOM-160): node body now persists <edit>/strategy.json as a side effect.
+# Bumping invalidates warm-cache rows for slugs run before this change so
+# the next re-run actually executes the body and produces strategy.json,
+# eliminating the one-run "legacy episode" notice path on the rehydrate node.
+_CACHE_VERSION = 2
 
 
 def _takes_packed_path(state: dict) -> Path:

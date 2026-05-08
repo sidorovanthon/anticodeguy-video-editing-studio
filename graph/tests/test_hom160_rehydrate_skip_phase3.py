@@ -97,6 +97,13 @@ def test_rehydrated_strategy_fingerprint_matches_original(tmp_path):
         "shape": "x", "takes": ["[001-005]"], "grade": "warm",
         "pacing": "tight", "length_estimate_s": 60.0,
         "source_path": "/tmp/takes_packed.md",  # excluded from fp
+        # HOM-160: in production, strategy_confirmed_interrupt sets these
+        # AFTER p3_strategy persists strategy.json but BEFORE p4_design_system
+        # computes its cache key. The original-thread fingerprint thus
+        # includes them; the rehydrated-thread fingerprint must match — so
+        # both must be in `strategy_fingerprint`'s exclusion set.
+        "approved": True,
+        "approval_payload": {"approved": True},
     }
     # Mirror p3_strategy's persist filter.
     persisted = {k: v for k, v in original.items()

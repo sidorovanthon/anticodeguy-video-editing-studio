@@ -38,10 +38,21 @@ def strategy_fingerprint(strategy: dict | None) -> str:
     `source_path` is a filesystem locator, not output-affecting content;
     `skipped`/`skip_reason` are transient skip markers that should not
     namespace a successful run away from a prior skipped run.
+
+    HOM-160: ``approved`` / ``approval_payload`` are operator-decision metadata
+    written by ``strategy_confirmed_interrupt`` AFTER ``p3_strategy`` produced
+    the strategy content. They do not change downstream brief input, so they
+    must be excluded — otherwise the rehydrate path (which loads the
+    pre-approval snapshot from ``<edit>/strategy.json``) computes a different
+    fingerprint than the original thread (post-approval), and Phase 4 cache
+    keys still mismatch despite the fix landing in the same PR. The persist
+    filter in ``p3_strategy_node`` strips both keys; this set must stay in
+    lockstep with that filter.
     """
     stable = {
         k: v for k, v in (strategy or {}).items()
-        if k not in {"source_path", "skipped", "skip_reason"}
+        if k not in {"source_path", "skipped", "skip_reason",
+                     "approved", "approval_payload"}
     }
     return stable_fingerprint(stable)
 
