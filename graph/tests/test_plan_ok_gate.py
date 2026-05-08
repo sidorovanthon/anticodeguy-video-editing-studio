@@ -57,14 +57,33 @@ def test_passes_on_clean_plan():
     assert record["gate"] == "gate:plan_ok"
 
 
-def test_fails_under_three_beats():
+def test_passes_with_two_beats():
+    """Short clips produce 2-beat plans (HOM-190 — 35s fixture, 22.5s strategy).
+
+    Beat-count floor lives in the schema (≥1); the gate enforces semantic
+    coverage, not creative-direction targets. A 2-beat plan with one
+    interior transition must pass cleanly.
+    """
     plan = _good_plan()
     plan["beats"] = plan["beats"][:2]
+    # Keep HOOK→PROBLEM interior transition; drop final-fade (optional).
     plan["transitions"] = plan["transitions"][:1]
     state = _state_with_edl(plan, ["HOOK", "PROBLEM"])
     record = plan_ok_gate_node(state)["gate_results"][0]
-    assert not record["passed"]
-    assert any("≥ 3" in v or ">= 3" in v or "need ≥" in v for v in record["violations"])
+    assert record["passed"], record["violations"]
+
+
+def test_passes_with_one_beat():
+    """A 1-beat plan has zero interior boundaries and zero required transitions.
+
+    Schema lower bound is 1 beat; the gate must let it through.
+    """
+    plan = _good_plan()
+    plan["beats"] = plan["beats"][:1]
+    plan["transitions"] = []
+    state = _state_with_edl(plan, ["HOOK"])
+    record = plan_ok_gate_node(state)["gate_results"][0]
+    assert record["passed"], record["violations"]
 
 
 def test_fails_when_interior_boundary_missing():

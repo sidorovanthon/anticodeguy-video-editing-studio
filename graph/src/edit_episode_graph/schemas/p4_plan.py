@@ -112,7 +112,6 @@ class CompositionPlan(BaseModel):
                     "in the schema — short clips can legitimately produce 1-2 beats.",
     )
     transitions: list[BeatTransition] = Field(
-        min_length=0,
         description="One entry per interior beat boundary; the last beat MAY add a final-fade "
                     "exit (canon `references/transitions.md` §Animation Rules — final-fade is "
                     "the only canon-allowed exit animation). A 1-beat plan with no final-fade "
