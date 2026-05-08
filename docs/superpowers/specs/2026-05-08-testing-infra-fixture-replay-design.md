@@ -82,6 +82,28 @@ L0  structural / cheap            $0 на каждом push'е
 2. Record-mode пишет через `VACUUM INTO temp.db` потом atomic rename — детерминированная raw-форма.
 3. Если LangGraph `SqliteCache` внутри использует non-deterministic indexing или auto-incrementing ROWID — fallback на JSON-canonical-form storage с custom `BaseCache` adapter (см. langgraph.cache contracts). Эту опцию проверяем при имплементации; не закладываем как required.
 
+**Studio replay (operator runbook — HOM-186):** to walk the recorded
+fixture episode through `langgraph dev` Studio at $0 spend:
+
+```powershell
+copy tests\fixtures\episodes\canonical-portrait-talking-head\cache.db graph\.cache\langgraph.db
+$env:HOMESTUDIO_PROJECT_ROOT = "$PWD\tests\fixtures"
+cd graph
+.venv\Scripts\langgraph.exe dev --allow-blocking --no-browser
+# POST run with slug=canonical-portrait-talking-head; resume both
+# interrupts (strategy_confirmed_interrupt, p3_review_interrupt) with
+# {"resume":"approved"}.
+```
+
+`--allow-blocking` is required because `_caching.py::file_fingerprint`
+issues synchronous file reads during graph draw. `HOMESTUDIO_PROJECT_ROOT`
+is mandatory so `_paths.project_root()` resolves `episodes/<slug>/`
+under the fixture tree, not the gitignored production `episodes/`. HF
+render is NOT in the graph (HOM-78 covers `p4_final_render`); after the
+graph terminates at `p4_assemble_index` → gate cluster →
+`p4_persist_session` → `studio_launch`, run `npx hyperframes render`
+manually inside the fixture's `hyperframes/` directory.
+
 **JSON dump CLI** (`pytest --dump-recordings <slug>`):
 - Парсит cache.db rows, группирует по node_name.
 - Экспортирует в `tests/fixtures/episodes/<slug>/recordings/<node_name>.json` со схемой `{node, fingerprint, channel_writes, recorded_at, recording_meta: {model, tier, response_length}}`.

@@ -242,6 +242,40 @@ If a PR adds a creative node but ships no recording, the replay smoke skips with
 `requires_fixture_cache` — that's expected until the operator records. The PR is mergeable;
 recording is a follow-up step on the operator's machine (CI cannot do it, paid tier).
 
+#### Studio replay (operator runbook)
+
+To pick up a recorded fixture episode in `langgraph dev` Studio and walk it
+through the full graph at $0 spend (every node hits the committed cache.db):
+
+```powershell
+copy tests\fixtures\episodes\canonical-portrait-talking-head\cache.db graph\.cache\langgraph.db
+$env:HOMESTUDIO_PROJECT_ROOT = "$PWD\tests\fixtures"
+cd graph
+.venv\Scripts\langgraph.exe dev --allow-blocking --no-browser
+# In the Studio UI: POST a run with slug = canonical-portrait-talking-head
+# Resume both interrupts with payload {"resume":"approved"}
+```
+
+- **`--allow-blocking`** is required because `_caching.py::file_fingerprint`
+  performs synchronous file I/O during graph draw (cache key resolution).
+  Without the flag, `langgraph dev` aborts on the first sync read.
+- **`HOMESTUDIO_PROJECT_ROOT`** must point at `tests/fixtures` so the
+  graph's `_paths.project_root()` resolves `episodes/<slug>/` under the
+  fixture tree rather than the repo's gitignored production `episodes/`.
+  Without it, Studio sees an empty episode folder and the run halts on
+  pickup.
+- **Two HITL interrupts** fire on the recorded happy path —
+  `strategy_confirmed_interrupt` (after `p3_strategy`) and
+  `p3_review_interrupt` (after `p3_persist_session`). Resume each with
+  `{"resume":"approved"}` to advance.
+- **HF render is NOT in the graph.** The graph terminates at
+  `p4_assemble_index` → `gate_*` cluster → `p4_persist_session` →
+  `studio_launch`. The actual `npx hyperframes render` call is HOM-78
+  (`p4_final_render` node, future). After Studio reports termination,
+  the operator runs `npx hyperframes render` manually inside
+  `tests/fixtures/episodes/canonical-portrait-talking-head/hyperframes/`.
+  Do not conflate "graph terminated" with "pipeline complete".
+
 ### LangGraph primitives — search docs before rolling custom
 
 For any LangGraph orchestration concept (idempotent re-run by slug, midpoint dispatch on injected state, per-node caching, conditional retry, durability/persistence tier, fan-out via `Send`, time-travel through thread checkpoints), **search the live LangGraph docs for the native primitive BEFORE designing custom code or scripts**.
