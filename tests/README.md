@@ -57,18 +57,53 @@ python -m pytest tests/test_graph_replay.py
 
 ## Recording a fresh fixture
 
+> **CRITICAL — set `HOMESTUDIO_PROJECT_ROOT` before recording.** Without it,
+> `_paths.project_root()` walks up to the **main git worktree** and resolves
+> `episodes/<slug>/` under the gitignored production `episodes/` tree — so
+> the recorded `source_path`, file fingerprints, and channel writes all
+> reference whatever production episode happens to share the slug
+> (or, more likely, none at all). Symptom: replay-mode tests silently
+> miss every fingerprint and skip via `requires_fixture_cache`, looking
+> green while verifying nothing. This was the HOM-189 bug — the
+> initial HOM-181 prewarm baked production paths into the cache.
+>
+> The env var must be set in the **same shell** that drives the record,
+> *before* `edit_episode_graph` is imported. Pickup captures
+> `project_root()` at module load time. Verify after recording by
+> dumping `recordings/p3_strategy.json` (or any deterministic node) and
+> grepping for `tests\fixtures\episodes\<slug>\...` — production
+> `episodes\YYYY-MM-DD-...` paths mean the env was wrong; abort and
+> re-record.
+>
+> **First-record mutates `raw.mp4`.** The `isolate_audio` deterministic
+> node remuxes the source clip to ensure a clean audio stream layout
+> (consistent with the production pipeline's audio-isolation step), then
+> writes the muxed file back to `episodes/<slug>/raw.mp4`. On a fresh
+> record run this means the committed fixture `raw.mp4` will change
+> bytes (and grow ~5%) as part of recording. **Commit the muxed
+> `raw.mp4` together with `cache.db` and `recordings/`** — once
+> committed, subsequent record runs are no-ops on `raw.mp4` because
+> `isolate_audio` is itself cached and replays $0. Do not try to revert
+> `raw.mp4` after a record run; the fixture clip on disk is whatever
+> the cache.db's first-stage fingerprint expects to consume.
+
 After M6 wave work or a node schema bump:
 
-1. Set `HOMESTUDIO_TEST_MODE=record-on-miss` (or `record` for a clean wipe).
-2. Run the relevant `pytest tests/test_graph_replay.py::test_<node>_smoke`.
-3. The harness writes the working cache.db back to
+1. Set `HOMESTUDIO_PROJECT_ROOT=tests/fixtures` (mandatory, see warning above).
+2. Set `HOMESTUDIO_TEST_MODE=record-on-miss` (or `record` for a clean wipe).
+3. Run the relevant `pytest tests/test_graph_replay.py::test_<node>_smoke`,
+   or for a full-graph re-record drive `python -m scripts.record_fixture
+   --slug <slug>` (handles the two HITL interrupts via
+   `Command(resume="approved")`; spec §"LangGraph primitives — search
+   docs first" — native `Command` resume, no Studio API roundtrip).
+4. The harness writes the working cache.db back to
    `tests/fixtures/episodes/<slug>/cache.db` via SQLite `VACUUM INTO` +
    atomic rename — deterministic raw form, no WAL artefacts, no journal
    leftover, no spurious diff.
-4. `git diff tests/fixtures/episodes/<slug>/cache.db` will show the
+5. `git diff tests/fixtures/episodes/<slug>/cache.db` will show the
    updated binary; commit it together with the brief / schema change
    in the same PR.
-5. Reviewer agent inspects the diff plus (later) the human-readable
+6. Reviewer agent inspects the diff plus the human-readable
    `recordings/<node>.json` companion dump.
 
 ## How it plugs into the compiled graph
@@ -87,8 +122,11 @@ fixture-replay layer. See its
 [README](fixtures/episodes/canonical-portrait-talking-head/README.md)
 for the source segment, ffmpeg command, and the prewarm command.
 
-`cache.db` **is committed** (PR #102, HOM-181 prewarm follow-up — 71
-recorded entries across 17 nodes, ~156 KB). The fixture is the
+`cache.db` **is committed** (HOM-189 re-record — 23 entries across
+15 nodes, ~60 KB; halts at `gate:design_adherence` after
+`p4_redispatch_beat` exhausts retries — that is the natural landing
+state for the 35s fixture clip and HOM-154 territory, not a recording
+defect). The fixture is the
 deterministic, $0 surface every replay-mode test reads from. If you
 need to refresh it after a brief / schema change, see
 [Recording a fresh fixture](#recording-a-fresh-fixture) above and the

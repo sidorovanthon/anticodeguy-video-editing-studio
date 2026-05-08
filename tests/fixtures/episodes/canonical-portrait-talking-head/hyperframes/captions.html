@@ -1,0 +1,108 @@
+<div id="captions-layer" class="captions-layer">
+  <style>
+    #captions-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    #captions-layer .cg {
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 1.5rem;
+      font-weight: 400;
+      line-height: 1.45;
+      color: #f4ebdc;
+      background-color: rgba(36, 31, 27, 0.78);
+      padding: 28px;
+      border-radius: 14px;
+      opacity: 0;
+      position: absolute;
+      bottom: 620px;
+      left: 64px;
+      width: fit-content;
+      max-width: 78%;
+      text-align: left;
+      white-space: normal;
+    }
+  </style>
+
+  <!-- Transcript groups synced to final.json word-level captions -->
+  <div class="cg" id="cg-0">Age of artificial intelligence</div>
+  <div class="cg" id="cg-1">when I'm increasingly using</div>
+  <div class="cg" id="cg-2">free open-source tools</div>
+  <div class="cg" id="cg-3">because I can simply deploy</div>
+  <div class="cg" id="cg-4">them for myself easily</div>
+  <div class="cg" id="cg-5">with the help of AI agents</div>
+  <div class="cg" id="cg-6">or just write the software</div>
+  <div class="cg" id="cg-7">I need for work myself</div>
+  <div class="cg" id="cg-8">I thought why don't we</div>
+  <div class="cg" id="cg-9">return to the roots</div>
+  <div class="cg" id="cg-10">to good old software</div>
+  <div class="cg" id="cg-11">that you pay for once</div>
+  <div class="cg" id="cg-12">and use for life</div>
+  <div class="cg" id="cg-13">Yes maybe it's not as</div>
+  <div class="cg" id="cg-14">interesting from a business point-of-view</div>
+
+  <script>
+    (function() {
+      // Reference transcript: final.json
+      var GROUPS = [
+        { id: "cg-0", start: 0.05, end: 1.27 },
+        { id: "cg-1", start: 1.4, end: 2.721 },
+        { id: "cg-2", start: 2.84, end: 3.98 },
+        { id: "cg-3", start: 4.06, end: 5.58 },
+        { id: "cg-4", start: 5.64, end: 7.021 },
+        { id: "cg-5", start: 7.08, end: 8.4 },
+        { id: "cg-6", start: 8.78, end: 9.981 },
+        { id: "cg-7", start: 10.04, end: 11.221 },
+        { id: "cg-8", start: 12.049, end: 13.049 },
+        { id: "cg-9", start: 13.109, end: 14.189 },
+        { id: "cg-10", start: 14.349, end: 15.629 },
+        { id: "cg-11", start: 15.689, end: 17.209 },
+        { id: "cg-12", start: 17.269, end: 18.389 },
+        { id: "cg-13", start: 18.809, end: 20.209 },
+        { id: "cg-14", start: 20.289, end: 22.15 }
+      ];
+
+      window.__captionTimelines = window.__captionTimelines || {};
+      var tl = gsap.timeline({ paused: true });
+
+      GROUPS.forEach(function (group) {
+        var el = document.getElementById(group.id);
+        if (!el) return;
+
+        // Entrance: fade in + subtle rise (sine.inOut from DESIGN.md motion)
+        tl.fromTo(
+          el,
+          { opacity: 0, y: 24 },
+          { opacity: 1, y: 0, duration: 0.9, ease: "sine.inOut" },
+          group.start
+        );
+
+        // Hard kill at group.end (canon §"Caption Exit Guarantee")
+        tl.set(el, { opacity: 0, visibility: "hidden" }, group.end);
+      });
+
+      // Self-lint per canon §"Caption Exit Guarantee"
+      GROUPS.forEach(function (group, gi) {
+        var el = document.getElementById(group.id);
+        if (!el) return;
+        tl.seek(group.end + 0.01);
+        var computed = window.getComputedStyle(el);
+        if (computed.opacity !== "0" && computed.visibility !== "hidden") {
+          console.warn(
+            "[caption-lint] group " + gi + " still visible at t=" + (group.end + 0.01).toFixed(2) + "s"
+          );
+        }
+      });
+      tl.seek(0);
+
+      window.__captionTimelines["captions"] = tl;
+
+      // Nest under the root timeline so it advances with composition seek
+      var root = window.__timelines && window.__timelines["root"];
+      if (root) root.add(tl, 0);
+    })();
+  </script>
+</div>

@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: #000;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="root"
+      data-start="0"
+      data-duration="22.367"
+      data-width="1080"
+      data-height="1920"
+    >
+      <video id="el-video" class="clip" data-start="0" data-track-index="0"
+             src="final.mp4" data-has-audio="false" muted playsinline></video>
+      <audio id="el-audio" class="clip" data-start="0" data-track-index="2"
+             src="final.mp4" data-volume="1"></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      // Example: tl.from("#title", { opacity: 0, y: -50, duration: 1 }, 0);
+      window.__timelines["root"] = tl;
+    </script>
+  
+
+
+
+
+
+<!-- p4_assemble_index: beats -->
+<!-- beat: hook -->
+<div id="scene-hook" class="scene clip"
+     data-start="0.0" data-duration="1.34" data-track-index="1"
+     data-width="1080" data-height="1920">
+  <style>
+    #scene-hook {
+      position: absolute;
+      inset: 0;
+      opacity: 1;
+      background-color: #1a1614;
+      overflow: hidden;
+    }
+
+    #scene-hook .scene-content {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+    }
+
+    #scene-hook .bg-grain {
+      position: absolute;
+      inset: 0;
+      opacity: 0.08;
+      pointer-events: none;
+      background-color: #1a1614;
+      background-image: radial-gradient(circle at 20% 50%, rgba(232, 161, 74, 0.04) 0%, transparent 55%);
+    }
+
+    #scene-hook .bg-vignette {
+      position: absolute;
+      inset: 0;
+      opacity: 0.18;
+      pointer-events: none;
+      background: radial-gradient(ellipse at center, transparent 30%, rgba(36, 31, 27, 0.6) 100%);
+    }
+
+    #scene-hook .ambient-glow {
+      position: absolute;
+      bottom: -120px;
+      left: -120px;
+      width: 540px;
+      height: 540px;
+      background: radial-gradient(circle at center, rgba(232, 161, 74, 0.08) 0%, transparent 65%);
+      pointer-events: none;
+    }
+
+    #scene-hook .ambient-rose {
+      position: absolute;
+      top: -100px;
+      right: -100px;
+      width: 460px;
+      height: 460px;
+      background: radial-gradient(circle at center, rgba(192, 140, 135, 0.10) 0%, transparent 65%);
+      pointer-events: none;
+    }
+
+    #scene-hook .beat-marker {
+      position: absolute;
+      top: 96px;
+      left: 64px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 10;
+    }
+
+    #scene-hook .beat-marker-dot {
+      width: 6px;
+      height: 6px;
+      background-color: #e8a14a;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    #scene-hook .beat-marker-text {
+      font-family: Inter, sans-serif;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #8a7e72;
+      white-space: nowrap;
+    }
+
+    #scene-hook .lower-stack {
+      position: absolute;
+      left: 64px;
+      right: 64px;
+      bottom: 96px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    #scene-hook .pull-line {
+      font-family: Playfair Display, serif;
+      font-size: 3.25rem;
+      font-weight: 400;
+      font-style: italic;
+      line-height: 1.2;
+      color: #f4ebdc;
+      max-width: 70%;
+      margin: 0;
+    }
+
+    #scene-hook .hairline-rule {
+      width: 240px;
+      height: 1px;
+      background-color: #e8a14a;
+      opacity: 0.6;
+      margin: 0;
+      transform-origin: left center;
+    }
+
+    #scene-hook .caption-plate {
+      padding: 28px;
+      background-color: rgba(36, 31, 27, 0.78);
+      border-radius: 14px;
+      margin: 0;
+    }
+
+    #scene-hook .caption-text {
+      font-family: Inter, sans-serif;
+      font-size: 1.5rem;
+      font-weight: 400;
+      line-height: 1.45;
+      color: #f4ebdc;
+      max-width: 78%;
+      margin: 0;
+    }
+  </style>
+
+  <div class="scene-content">
+    <div class="bg-grain"></div>
+    <div class="bg-vignette"></div>
+    <div class="ambient-glow"></div>
+    <div class="ambient-rose"></div>
+
+    <div class="beat-marker">
+      <div class="beat-marker-dot"></div>
+      <span class="beat-marker-text">HOOK &middot; 1 / 3</span>
+    </div>
+
+    <div class="lower-stack">
+      <div class="pull-line">the age of artificial intelligence</div>
+      <div class="hairline-rule"></div>
+      <div class="caption-plate">
+        <p class="caption-text">age of artificial intelligence.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      window.__sceneTimelines = window.__sceneTimelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      tl.fromTo("#scene-hook .bg-grain",
+        { x: 0, y: 0 },
+        { x: -3, y: -2, duration: 6, ease: "sine.inOut" },
+        0
+      );
+
+      tl.fromTo("#scene-hook .bg-vignette",
+        { scale: 1.0, transformOrigin: "center center" },
+        { scale: 1.05, duration: 7, ease: "sine.inOut" },
+        0
+      );
+
+      tl.fromTo("#scene-hook .ambient-glow",
+        { scale: 1.0, transformOrigin: "center center" },
+        { scale: 1.08, duration: 8, ease: "sine.inOut" },
+        0
+      );
+
+      tl.fromTo("#scene-hook .ambient-rose",
+        { opacity: 0.0 },
+        { opacity: 1.0, duration: 1.2, ease: "power1.out" },
+        0
+      );
+
+      tl.fromTo("#scene-hook .beat-marker",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.4, ease: "sine.inOut" },
+        0.10
+      );
+
+      tl.fromTo("#scene-hook .caption-plate",
+        { opacity: 0, y: 24 },
+        { opacity: 1, y: 0, duration: 0.9, ease: "power2.inOut" },
+        0.15
+      );
+
+      tl.fromTo("#scene-hook .caption-text",
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: 0.7, ease: "power1.out" },
+        0.30
+      );
+
+      tl.fromTo("#scene-hook .hairline-rule",
+        { scaleX: 0 },
+        { scaleX: 1, duration: 0.7, ease: "sine.inOut" },
+        0.35
+      );
+
+      tl.fromTo("#scene-hook .pull-line",
+        { opacity: 0, y: 18 },
+        { opacity: 1, y: 0, duration: 0.9, ease: "power3.out" },
+        0.45
+      );
+
+      window.__sceneTimelines["hook"] = tl;
+    })();
+  </script>
+</div>
+<!-- beat: thesis -->
+<div id="scene-thesis" class="scene clip"
+     data-start="1.34" data-duration="12.26" data-track-index="1"
+     data-width="1080" data-height="1920">
+  <style>
+    #scene-thesis {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+    }
+
+    #scene-thesis .scene-bg {
+      position: absolute;
+      inset: 0;
+      background: #1a1614;
+    }
+
+    #scene-thesis .warm-grain {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 20% 30%, rgba(180, 160, 140, 0.08), transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(180, 160, 140, 0.08), transparent 50%);
+      mix-blend-mode: overlay;
+    }
+
+    #scene-thesis .soft-vignette {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 30%, rgba(26, 22, 20, 0.12) 100%);
+    }
+
+    #scene-thesis .beat-marker {
+      position: absolute;
+      top: 96px;
+      left: 64px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: Inter, sans-serif;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    #scene-thesis .beat-marker-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #e8a14a;
+      flex-shrink: 0;
+    }
+
+    #scene-thesis .beat-marker-label {
+      color: #8a7e72;
+    }
+
+    #scene-thesis .hairline-rule {
+      position: absolute;
+      bottom: 131px;
+      left: 64px;
+      width: 240px;
+      height: 1px;
+      background: #e8a14a;
+      opacity: 0.6;
+    }
+
+    #scene-thesis .caption-plate {
+      position: absolute;
+      bottom: 96px;
+      left: 64px;
+      right: 64px;
+      padding: 28px;
+      background: rgba(36, 31, 27, 0.78);
+      border-radius: 14px;
+    }
+
+    #scene-thesis .caption-text {
+      font-family: Inter, sans-serif;
+      font-size: 1.5rem;
+      font-weight: 400;
+      line-height: 1.45;
+      color: #f4ebdc;
+      max-width: 78%;
+      margin: 0;
+      display: none;
+    }
+
+    #scene-thesis #ai-agents {
+      color: inherit;
+    }
+  </style>
+
+  <div class="scene-content">
+    <div class="scene-bg"></div>
+    <div class="warm-grain"></div>
+    <div class="soft-vignette"></div>
+
+    <div class="beat-marker">
+      <div class="beat-marker-dot"></div>
+      <span class="beat-marker-label">THESIS &middot; 2 / 3</span>
+    </div>
+
+    <div class="hairline-rule"></div>
+
+    <div class="caption-plate">
+      <p class="caption-text" id="caption-group-1">i'm increasingly using</p>
+      <p class="caption-text" id="caption-group-2">free open-source tools</p>
+      <p class="caption-text" id="caption-group-3">because i can deploy them for myself easily</p>
+      <p class="caption-text" id="caption-group-4">with the help of <span id="ai-agents">AI agents</span> &mdash; or just write the software I need</p>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      window.__sceneTimelines = window.__sceneTimelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      const g1Start = 0.52;
+      const g1Duration = 1.24;
+      const g2Start = 1.76;
+      const g2Duration = 1.98;
+      const g3Start = 3.74;
+      const g3Duration = 2.12;
+      const g4Start = 5.86;
+
+      // BG ambient motion (3 decoratives)
+      tl.to(".warm-grain", {
+        x: -2,
+        y: -1,
+        duration: 6,
+        ease: "sine.inOut"
+      }, 0);
+
+      tl.to(".soft-vignette", {
+        scale: 1.04,
+        transformOrigin: "center center",
+        duration: 7,
+        ease: "sine.inOut"
+      }, 0);
+
+      tl.to(".hairline-rule", {
+        opacity: 0.85,
+        duration: 2.5,
+        ease: "sine.inOut",
+        yoyo: true,
+        repeat: 1
+      }, 0);
+
+      // Caption 1 — entrance only, hard-cut exit (no overlapping opacity tween)
+      tl.set("#caption-group-1", { display: "block" }, g1Start);
+      tl.fromTo("#caption-group-1",
+        { opacity: 0, y: 8 },
+        { opacity: 1, y: 0, duration: 0.35, ease: "power1.out", immediateRender: false },
+        g1Start);
+      tl.set("#caption-group-1", { display: "none" }, g1Start + g1Duration);
+
+      // Caption 2
+      tl.set("#caption-group-2", { display: "block" }, g2Start);
+      tl.fromTo("#caption-group-2",
+        { opacity: 0, y: 8 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out", immediateRender: false },
+        g2Start);
+      tl.set("#caption-group-2", { display: "none" }, g2Start + g2Duration);
+
+      // Caption 3
+      tl.set("#caption-group-3", { display: "block" }, g3Start);
+      tl.fromTo("#caption-group-3",
+        { opacity: 0, y: 8 },
+        { opacity: 1, y: 0, duration: 0.35, ease: "power1.out", immediateRender: false },
+        g3Start);
+      tl.set("#caption-group-3", { display: "none" }, g3Start + g3Duration);
+
+      // Caption 4 — final, no exit; held to scene end
+      tl.set("#caption-group-4", { display: "block" }, g4Start);
+      tl.fromTo("#caption-group-4",
+        { opacity: 0, y: 8 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out", immediateRender: false },
+        g4Start);
+
+      // Highlight on AI agents
+      tl.to("#ai-agents", {
+        color: "#e8a14a",
+        duration: 0.4,
+        ease: "power3.out"
+      }, g4Start + 0.2);
+
+      window.__sceneTimelines["thesis"] = tl;
+    })();
+  </script>
+</div>
+<!-- beat: payoff -->
+<div id="scene-payoff" class="scene clip"
+     data-start="13.6" data-duration="9.0" data-track-index="1"
+     data-width="1080" data-height="1920">
+  <style>
+    #scene-payoff {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      background-color: #1a1614;
+      overflow: hidden;
+    }
+
+    #scene-payoff .scene-content {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    #scene-payoff .bg-grain {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 30% 40%, rgba(232, 161, 74, 0.06), transparent 60%);
+      mix-blend-mode: screen;
+      opacity: 0.55;
+      pointer-events: none;
+    }
+
+    #scene-payoff .bg-vignette {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 50%, transparent 35%, rgba(26, 22, 20, 0.55) 100%);
+      pointer-events: none;
+      opacity: 0.7;
+    }
+
+    #scene-payoff .bg-gradient-stop {
+      position: absolute;
+      bottom: -180px;
+      left: -120px;
+      width: 720px;
+      height: 720px;
+      background: radial-gradient(circle at 50% 50%, rgba(192, 140, 135, 0.20), transparent 70%);
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    #scene-payoff .beat-marker {
+      position: absolute;
+      top: 96px;
+      left: 64px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: Inter, sans-serif;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    #scene-payoff .beat-marker-dot {
+      width: 6px;
+      height: 6px;
+      background-color: #e8a14a;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    #scene-payoff .beat-marker-label {
+      color: #8a7e72;
+    }
+
+    #scene-payoff .pull-line {
+      position: absolute;
+      bottom: 380px;
+      left: 64px;
+      right: 64px;
+      font-family: Playfair Display, serif;
+      font-size: 3.25rem;
+      font-weight: 400;
+      font-style: italic;
+      color: #f4ebdc;
+      line-height: 1.2;
+      max-width: 70%;
+      margin: 0;
+    }
+
+    #scene-payoff .quote-glyph {
+      display: inline-block;
+      font-size: 0.6em;
+      color: #e8a14a;
+      margin-right: 0.3em;
+      vertical-align: 0.35em;
+    }
+
+    #scene-payoff .hairline-rule {
+      position: absolute;
+      bottom: 348px;
+      left: 64px;
+      width: 240px;
+      height: 1px;
+      background-color: #e8a14a;
+      opacity: 0.6;
+      transform-origin: left center;
+    }
+
+    #scene-payoff .sign-off-glow {
+      position: absolute;
+      bottom: 360px;
+      left: 32px;
+      width: 600px;
+      height: 80px;
+      background: radial-gradient(ellipse at center, rgba(232, 161, 74, 0.16), transparent 75%);
+      pointer-events: none;
+    }
+
+    #scene-payoff .caption-plate {
+      position: absolute;
+      bottom: 96px;
+      left: 64px;
+      right: 64px;
+      padding: 28px;
+      background-color: rgba(36, 31, 27, 0.78);
+      border-radius: 14px;
+    }
+
+    #scene-payoff .caption-text {
+      font-family: Inter, sans-serif;
+      font-size: 1.5rem;
+      font-weight: 400;
+      line-height: 1.45;
+      color: #f4ebdc;
+      max-width: 78%;
+      margin: 0;
+      display: none;
+    }
+
+    #scene-payoff .timestamp {
+      position: absolute;
+      bottom: 124px;
+      right: 96px;
+      font-family: Inter, sans-serif;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #8a7e72;
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+
+  <div class="scene-content">
+    <div class="bg-grain"></div>
+    <div class="bg-vignette"></div>
+    <div class="bg-gradient-stop"></div>
+
+    <div class="beat-marker">
+      <div class="beat-marker-dot"></div>
+      <div class="beat-marker-label">PAYOFF &middot; 3 / 3</div>
+    </div>
+
+    <div class="sign-off-glow"></div>
+
+    <div class="pull-line">
+      <span class="quote-glyph">&ldquo;</span>return to the roots.
+    </div>
+
+    <div class="hairline-rule"></div>
+
+    <div class="caption-plate">
+      <p class="caption-text" id="payoff-cg-1">i thought, why don't we return to the roots &mdash; good old software you pay for once and use for life?</p>
+      <p class="caption-text" id="payoff-cg-2">yes, maybe it's not as interesting from a business point-of-view.</p>
+    </div>
+
+    <div class="timestamp">0:13.6</div>
+  </div>
+
+  <script>
+    (function() {
+      window.__sceneTimelines = window.__sceneTimelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      tl.fromTo("#scene-payoff .bg-grain",
+        { x: 0, y: 0 },
+        { x: -2, y: -1, duration: 6, ease: "sine.inOut" },
+        0
+      );
+
+      tl.fromTo("#scene-payoff .bg-vignette",
+        { scale: 1.0 },
+        { scale: 1.04, transformOrigin: "center center", duration: 7, ease: "sine.inOut" },
+        0
+      );
+
+      tl.fromTo("#scene-payoff .bg-gradient-stop",
+        { scale: 1.0, opacity: 0.45 },
+        { scale: 1.06, opacity: 0.55, duration: 8, ease: "sine.inOut" },
+        0
+      );
+
+      tl.fromTo("#scene-payoff .beat-marker",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.4, ease: "sine.inOut" },
+        0.10
+      );
+
+      tl.fromTo("#scene-payoff .sign-off-glow",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.8, ease: "sine.inOut" },
+        0.20
+      );
+
+      tl.fromTo("#scene-payoff .hairline-rule",
+        { scaleX: 0 },
+        { scaleX: 1, duration: 0.7, ease: "sine.inOut" },
+        0.25
+      );
+
+      tl.fromTo("#scene-payoff .quote-glyph",
+        { opacity: 0, scale: 0.92 },
+        { opacity: 1, scale: 1, duration: 0.6, ease: "power1.out" },
+        0.30
+      );
+
+      tl.fromTo("#scene-payoff .pull-line",
+        { opacity: 0, y: 18 },
+        { opacity: 1, y: 0, duration: 0.9, ease: "power2.inOut" },
+        0.30
+      );
+
+      tl.fromTo("#scene-payoff .caption-plate",
+        { opacity: 0, y: 24 },
+        { opacity: 1, y: 0, duration: 0.9, ease: "power2.inOut" },
+        0.20
+      );
+
+      const cg1Start = 0.40;
+      const cg1End = 5.20;
+      tl.set("#payoff-cg-1", { display: "block" }, cg1Start);
+      tl.fromTo("#payoff-cg-1",
+        { opacity: 0, y: 8 },
+        { opacity: 1, y: 0, duration: 0.40, ease: "power1.out", immediateRender: false },
+        cg1Start
+      );
+      tl.set("#payoff-cg-1", { display: "none" }, cg1End);
+
+      const cg2Start = 5.25;
+      tl.set("#payoff-cg-2", { display: "block" }, cg2Start);
+      tl.fromTo("#payoff-cg-2",
+        { opacity: 0, y: 8 },
+        { opacity: 1, y: 0, duration: 0.40, ease: "power2.out", immediateRender: false },
+        cg2Start
+      );
+
+      tl.fromTo("#scene-payoff .timestamp",
+        { opacity: 0, y: 6 },
+        { opacity: 1, y: 0, duration: 0.6, ease: "power1.out" },
+        0.60
+      );
+
+      tl.to("#scene-payoff",
+        { opacity: 0, duration: 0.7, ease: "power1.inOut" },
+        8.30
+      );
+
+      window.__sceneTimelines["payoff"] = tl;
+    })();
+  </script>
+</div>
+<!-- p4_assemble_index: captions -->
+<div id="captions-layer" class="captions-layer">
+  <style>
+    #captions-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    #captions-layer .cg {
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 1.5rem;
+      font-weight: 400;
+      line-height: 1.45;
+      color: #f4ebdc;
+      background-color: rgba(36, 31, 27, 0.78);
+      padding: 28px;
+      border-radius: 14px;
+      opacity: 0;
+      position: absolute;
+      bottom: 620px;
+      left: 64px;
+      width: fit-content;
+      max-width: 78%;
+      text-align: left;
+      white-space: normal;
+    }
+  </style>
+
+  <!-- Transcript groups synced to final.json word-level captions -->
+  <div class="cg" id="cg-0">Age of artificial intelligence</div>
+  <div class="cg" id="cg-1">when I'm increasingly using</div>
+  <div class="cg" id="cg-2">free open-source tools</div>
+  <div class="cg" id="cg-3">because I can simply deploy</div>
+  <div class="cg" id="cg-4">them for myself easily</div>
+  <div class="cg" id="cg-5">with the help of AI agents</div>
+  <div class="cg" id="cg-6">or just write the software</div>
+  <div class="cg" id="cg-7">I need for work myself</div>
+  <div class="cg" id="cg-8">I thought why don't we</div>
+  <div class="cg" id="cg-9">return to the roots</div>
+  <div class="cg" id="cg-10">to good old software</div>
+  <div class="cg" id="cg-11">that you pay for once</div>
+  <div class="cg" id="cg-12">and use for life</div>
+  <div class="cg" id="cg-13">Yes maybe it's not as</div>
+  <div class="cg" id="cg-14">interesting from a business point-of-view</div>
+
+  <script>
+    (function() {
+      // Reference transcript: final.json
+      var GROUPS = [
+        { id: "cg-0", start: 0.05, end: 1.27 },
+        { id: "cg-1", start: 1.4, end: 2.721 },
+        { id: "cg-2", start: 2.84, end: 3.98 },
+        { id: "cg-3", start: 4.06, end: 5.58 },
+        { id: "cg-4", start: 5.64, end: 7.021 },
+        { id: "cg-5", start: 7.08, end: 8.4 },
+        { id: "cg-6", start: 8.78, end: 9.981 },
+        { id: "cg-7", start: 10.04, end: 11.221 },
+        { id: "cg-8", start: 12.049, end: 13.049 },
+        { id: "cg-9", start: 13.109, end: 14.189 },
+        { id: "cg-10", start: 14.349, end: 15.629 },
+        { id: "cg-11", start: 15.689, end: 17.209 },
+        { id: "cg-12", start: 17.269, end: 18.389 },
+        { id: "cg-13", start: 18.809, end: 20.209 },
+        { id: "cg-14", start: 20.289, end: 22.15 }
+      ];
+
+      window.__captionTimelines = window.__captionTimelines || {};
+      var tl = gsap.timeline({ paused: true });
+
+      GROUPS.forEach(function (group) {
+        var el = document.getElementById(group.id);
+        if (!el) return;
+
+        // Entrance: fade in + subtle rise (sine.inOut from DESIGN.md motion)
+        tl.fromTo(
+          el,
+          { opacity: 0, y: 24 },
+          { opacity: 1, y: 0, duration: 0.9, ease: "sine.inOut" },
+          group.start
+        );
+
+        // Hard kill at group.end (canon §"Caption Exit Guarantee")
+        tl.set(el, { opacity: 0, visibility: "hidden" }, group.end);
+      });
+
+      // Self-lint per canon §"Caption Exit Guarantee"
+      GROUPS.forEach(function (group, gi) {
+        var el = document.getElementById(group.id);
+        if (!el) return;
+        tl.seek(group.end + 0.01);
+        var computed = window.getComputedStyle(el);
+        if (computed.opacity !== "0" && computed.visibility !== "hidden") {
+          console.warn(
+            "[caption-lint] group " + gi + " still visible at t=" + (group.end + 0.01).toFixed(2) + "s"
+          );
+        }
+      });
+      tl.seek(0);
+
+      window.__captionTimelines["captions"] = tl;
+
+      // Nest under the root timeline so it advances with composition seek
+      var root = window.__timelines && window.__timelines["root"];
+      if (root) root.add(tl, 0);
+    })();
+  </script>
+</div>
+<!-- p4_assemble_index: end -->
+<!-- p4_assemble_index: shim begin -->
+<script>
+(function() {
+  var root = window.__timelines && window.__timelines["root"];
+  if (!root) return;
+  var ids = ["hook", "thesis", "payoff"];
+  var starts = [0.0, 1.34, 13.6];
+  ids.forEach(function(id, i) {
+    if (i > 0) {
+      root.set('#scene-' + id, { opacity: 1 }, starts[i]);
+    }
+    var sceneTl = window.__sceneTimelines && window.__sceneTimelines[id];
+    if (sceneTl) {
+      // HOM-164: unpause child timeline before nesting — GSAP does
+      // not advance a paused child under parent.seek(), which left
+      // every scene at fromTo from-state (Phase 4 black screen).
+      sceneTl.paused(false);
+      root.add(sceneTl, starts[i]);
+    }
+  });
+})();
+</script>
+<!-- p4_assemble_index: shim end -->
+</body>
+</html>

@@ -1,178 +1,46 @@
 [
   {
-    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-08T07:43:17.595726+00:00', 'beat_names': ['open', 'body', 'pivot-attempt', 'landing'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
-    "fingerprint": "170aaee62ca4e37a4dd3a19900a95104",
+    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\.worktrees\\\\hom-189\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-08T14:17:13.771359+00:00', 'beat_names': ['hook', 'thesis', 'payoff'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
+    "fingerprint": "10162f5e1afdbf7a61535ec2c0e4f147",
     "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
     "node": "p4_assemble_index",
     "recorded_at": null,
     "recording_meta": {
       "encoding": "msgpack",
-      "value_bytes": 326
+      "value_bytes": 332
     }
   },
   {
-    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-07T14:04:11.392437+00:00', 'beat_names': ['hook', 'problem-framing', 'pivot', 'user-benefit', 'concrete-promise', 'benefit-concrete', 'personal-decision', 'cta'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
-    "fingerprint": "176b5e9a9c2606b560eb32acefe3b664",
+    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\.worktrees\\\\hom-189\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-08T14:10:51.807103+00:00', 'beat_names': ['hook', 'thesis', 'payoff'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
+    "fingerprint": "260ffc9635a0bdf0cf796cc38aa3c01c",
     "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
     "node": "p4_assemble_index",
     "recorded_at": null,
     "recording_meta": {
       "encoding": "msgpack",
-      "value_bytes": 391
+      "value_bytes": 332
     }
   },
   {
-    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-07T01:35:45.029542+00:00', 'beat_names': ['hook', 'problem-framing', 'pivot', 'user-benefit', 'concrete-promise', 'benefit-concrete', 'personal-decision', 'cta'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
-    "fingerprint": "29594abf10d80d416f644e63146fd4d7",
+    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\.worktrees\\\\hom-189\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-08T14:15:03.883021+00:00', 'beat_names': ['hook', 'thesis', 'payoff'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
+    "fingerprint": "7d1b2992053f969113ae64ff9d91e96a",
     "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
     "node": "p4_assemble_index",
     "recorded_at": null,
     "recording_meta": {
       "encoding": "msgpack",
-      "value_bytes": 391
+      "value_bytes": 332
     }
   },
   {
-    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-07T14:08:32.780972+00:00', 'beat_names': ['hook', 'problem-framing', 'pivot', 'user-benefit', 'concrete-promise', 'benefit-concrete', 'personal-decision', 'cta'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
-    "fingerprint": "64941b56e99155c60b14eaaee3518b10",
+    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\.worktrees\\\\hom-189\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-08T14:12:54.381842+00:00', 'beat_names': ['hook', 'thesis', 'payoff'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
+    "fingerprint": "e60b2dca870301fbb25dc75970066314",
     "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
     "node": "p4_assemble_index",
     "recorded_at": null,
     "recording_meta": {
       "encoding": "msgpack",
-      "value_bytes": 391
-    }
-  },
-  {
-    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-07T00:44:59.592286+00:00', 'beat_names': ['hook', 'problem-framing', 'pivot', 'user-benefit', 'concrete-promise', 'benefit-concrete', 'personal-decision', 'cta'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
-    "fingerprint": "7761e0d8895e01e7db7b4e01c289398f",
-    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
-    "node": "p4_assemble_index",
-    "recorded_at": null,
-    "recording_meta": {
-      "encoding": "msgpack",
-      "value_bytes": 391
-    }
-  },
-  {
-    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-08T07:41:59.944889+00:00', 'beat_names': ['open', 'body', 'pivot-attempt', 'landing'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
-    "fingerprint": "8084303bb47b3de0e8dff7c2353426e6",
-    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
-    "node": "p4_assemble_index",
-    "recorded_at": null,
-    "recording_meta": {
-      "encoding": "msgpack",
-      "value_bytes": 326
-    }
-  },
-  {
-    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-07T14:01:52.110247+00:00', 'beat_names': ['hook', 'problem-framing', 'pivot', 'user-benefit', 'concrete-promise', 'benefit-concrete', 'personal-decision', 'cta'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
-    "fingerprint": "822c073f915b7ca28099811ce0c4bca6",
-    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
-    "node": "p4_assemble_index",
-    "recorded_at": null,
-    "recording_meta": {
-      "encoding": "msgpack",
-      "value_bytes": 391
-    }
-  },
-  {
-    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-07T01:34:21.669320+00:00', 'beat_names': ['hook', 'problem-framing', 'pivot', 'user-benefit', 'concrete-promise', 'benefit-concrete', 'personal-decision', 'cta'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
-    "fingerprint": "8c3ada27d2f29765686e3952909ddcb5",
-    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
-    "node": "p4_assemble_index",
-    "recorded_at": null,
-    "recording_meta": {
-      "encoding": "msgpack",
-      "value_bytes": 391
-    }
-  },
-  {
-    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-07T13:59:19.061375+00:00', 'beat_names': ['hook', 'problem-framing', 'pivot', 'user-benefit', 'concrete-promise', 'benefit-concrete', 'personal-decision', 'cta'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
-    "fingerprint": "9acd904871450f5e497a604f19814cbd",
-    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
-    "node": "p4_assemble_index",
-    "recorded_at": null,
-    "recording_meta": {
-      "encoding": "msgpack",
-      "value_bytes": 391
-    }
-  },
-  {
-    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-07T00:55:37.940971+00:00', 'beat_names': ['hook', 'problem-framing', 'pivot', 'user-benefit', 'concrete-promise', 'benefit-concrete', 'personal-decision', 'cta'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
-    "fingerprint": "a23f888fc0c4055295b200b4f068a470",
-    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
-    "node": "p4_assemble_index",
-    "recorded_at": null,
-    "recording_meta": {
-      "encoding": "msgpack",
-      "value_bytes": 391
-    }
-  },
-  {
-    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-08T07:44:56.933876+00:00', 'beat_names': ['open', 'body', 'pivot-attempt', 'landing'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
-    "fingerprint": "aa4695e11d6e0cbe6045c873b05c8c8e",
-    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
-    "node": "p4_assemble_index",
-    "recorded_at": null,
-    "recording_meta": {
-      "encoding": "msgpack",
-      "value_bytes": 326
-    }
-  },
-  {
-    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-07T00:57:20.177687+00:00', 'beat_names': ['hook', 'problem-framing', 'pivot', 'user-benefit', 'concrete-promise', 'benefit-concrete', 'personal-decision', 'cta'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
-    "fingerprint": "b247f9362ebea824109d87fa931b097c",
-    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
-    "node": "p4_assemble_index",
-    "recorded_at": null,
-    "recording_meta": {
-      "encoding": "msgpack",
-      "value_bytes": 391
-    }
-  },
-  {
-    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-07T01:33:08.158390+00:00', 'beat_names': ['hook', 'problem-framing', 'pivot', 'user-benefit', 'concrete-promise', 'benefit-concrete', 'personal-decision', 'cta'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
-    "fingerprint": "c749235a2f9213f879b355222654f6fe",
-    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
-    "node": "p4_assemble_index",
-    "recorded_at": null,
-    "recording_meta": {
-      "encoding": "msgpack",
-      "value_bytes": 391
-    }
-  },
-  {
-    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-07T14:00:24.888070+00:00', 'beat_names': ['hook', 'problem-framing', 'pivot', 'user-benefit', 'concrete-promise', 'benefit-concrete', 'personal-decision', 'cta'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
-    "fingerprint": "db856cd4e8dc0fa5368b100621c0c1bb",
-    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
-    "node": "p4_assemble_index",
-    "recorded_at": null,
-    "recording_meta": {
-      "encoding": "msgpack",
-      "value_bytes": 391
-    }
-  },
-  {
-    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-08T07:40:55.469237+00:00', 'beat_names': ['open', 'body', 'pivot-attempt', 'landing'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
-    "fingerprint": "dcc80acb44e02955193a61e6d46d30a4",
-    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
-    "node": "p4_assemble_index",
-    "recorded_at": null,
-    "recording_meta": {
-      "encoding": "msgpack",
-      "value_bytes": 326
-    }
-  },
-  {
-    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-07T14:05:55.732090+00:00', 'beat_names': ['hook', 'problem-framing', 'pivot', 'user-benefit', 'concrete-promise', 'benefit-concrete', 'personal-decision', 'cta'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
-    "fingerprint": "fc2e004da1fa7066d2afeb5578f0e923",
-    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
-    "node": "p4_assemble_index",
-    "recorded_at": null,
-    "recording_meta": {
-      "encoding": "msgpack",
-      "value_bytes": 391
+      "value_bytes": 332
     }
   }
 ]

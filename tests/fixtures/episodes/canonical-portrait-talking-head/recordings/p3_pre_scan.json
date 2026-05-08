@@ -1,24 +1,11 @@
-[
-  {
-    "channel_writes": "deque([['llm_runs', [{'node': 'p3_pre_scan', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'cheap', 'success': True, 'reason': None, 'wall_time_s': 57.68800000000192, 'tokens_in': 23, 'tokens_out': 5025, 'timestamp': '2026-05-08T07:11:12.667405+00:00'}]], ['edit', {'pre_scan': {'slips': [{'quote': 'When,', 'take_index': 0, 'reason': \"False start. Followed immediately by rephrased attempt: 'when I'm increasingly using...'\"}, {'quote': 'but how cool is it to f-', 'take_index': 0, 'reason': 'Incomplete word. Speaker started saying a word and did not complete it.'}], 'source_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\edit\\\\takes_packed.md'}}], ['branch:to:p3_strategy', None]])",
-    "fingerprint": "8f3561e71a7ef0742b0be5da8e0c8f5d",
-    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p3_pre_scan.p3_pre_scan_node,p3_pre_scan",
-    "node": "p3_pre_scan",
-    "recorded_at": null,
-    "recording_meta": {
-      "encoding": "msgpack",
-      "value_bytes": 656
-    }
-  },
-  {
-    "channel_writes": "deque([['llm_runs', [{'node': 'p3_pre_scan', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'cheap', 'success': True, 'reason': None, 'wall_time_s': 44.875, 'tokens_in': 23, 'tokens_out': 4519, 'timestamp': '2026-05-06T13:45:11.712342+00:00'}]], ['edit', {'pre_scan': {'slips': [{'quote': 'When,', 'take_index': None, 'reason': \"False start: incomplete utterance, speaker doesn't follow through with this thought\"}, {'quote': \"I thought, why don't we turn...\", 'take_index': None, 'reason': \"False start: speaker corrects to 'return' in the next phrase (028.80-040.80)\"}, {'quote': 'This is exactly the plan...', 'take_index': None, 'reason': 'Incomplete utterance: trails off without finishing the thought'}, {'quote': 'This is exact-', 'take_index': None, 'reason': \"Stutter: speaker stops mid-word before correcting to 'exactly' (091.22)\"}], 'source_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\edit\\\\takes_packed.md'}}], ['branch:to:p3_strategy', None]])",
-    "fingerprint": "dc93e2bf60885f802f55f4d68035a498",
-    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p3_pre_scan.p3_pre_scan_node,p3_pre_scan",
-    "node": "p3_pre_scan",
-    "recorded_at": null,
-    "recording_meta": {
-      "encoding": "msgpack",
-      "value_bytes": 896
-    }
+{
+  "channel_writes": "deque([['llm_runs', [{'node': 'p3_pre_scan', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'cheap', 'success': True, 'reason': None, 'wall_time_s': 41.875, 'tokens_in': 16, 'tokens_out': 2962, 'timestamp': '2026-05-08T13:34:53.632274+00:00'}]], ['edit', {'pre_scan': {'slips': [{'quote': 'When,', 'take_index': 1, 'reason': 'Fragment / false start, incomplete before phrase continues with \"when I\\'m increasingly using...\"'}, {'quote': \"Why don't we turn...\", 'take_index': 3, 'reason': 'Incomplete quoted phrase, appears to cut off mid-thought'}, {'quote': 'but how cool is it to...', 'take_index': 4, 'reason': 'Trailing incomplete phrase, sentence never completes'}], 'source_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\.worktrees\\\\hom-189\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\edit\\\\takes_packed.md'}}], ['branch:to:p3_strategy', None]])",
+  "fingerprint": "504efbee7bcb864a944120c1f65ad055",
+  "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p3_pre_scan.p3_pre_scan_node,p3_pre_scan",
+  "node": "p3_pre_scan",
+  "recorded_at": null,
+  "recording_meta": {
+    "encoding": "msgpack",
+    "value_bytes": 769
   }
-]
+}

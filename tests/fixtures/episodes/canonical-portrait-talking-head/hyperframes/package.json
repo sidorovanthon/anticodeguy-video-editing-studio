@@ -1,0 +1,8 @@
+{
+  "name": "canonical-portrait-talking-head",
+  "version": "0.1.0",
+  "private": true,
+  "devDependencies": {
+    "hyperframes": "^0.4.39"
+  }
+}
