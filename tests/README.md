@@ -89,6 +89,64 @@ fixture scaffold lands. Until then, `replay`-mode tests against this
 slug will (correctly) fail with `FileNotFoundError: replay mode
 requires fixture cache.db at .../cache.db`.
 
+## Dumping recordings to JSON for review (HOM-182)
+
+`cache.db` is the canonical fixture, but binary — PR diffs are
+unreadable. The `tests/dump_recordings.py` CLI walks the SQLite rows
+through the same serde the cache uses (`JsonPlusSerializer`), groups
+by node, and writes one canonically-sorted JSON file per node into
+`tests/fixtures/episodes/<slug>/recordings/`.
+
+```powershell
+# Dump explicitly:
+python -m tests.dump_recordings <slug>
+
+# Or via pytest (auto on session finish):
+python -m pytest --dump-recordings=<slug>
+
+# Auto-fires on a record-on-miss session if --dump-recordings is set:
+$env:HOMESTUDIO_TEST_MODE = "record-on-miss"
+python -m pytest tests/test_graph_replay.py --dump-recordings=<slug>
+```
+
+Per-node JSON shape:
+
+```json
+{
+  "node": "p3_strategy",
+  "fingerprint": "p3_strategy|v3|<slug>|<file-hashes>|cfg:<sha>",
+  "channel_writes": { ... decoded payload ... },
+  "recorded_at": null,
+  "recording_meta": {"encoding": "msgpack", "value_bytes": 1234}
+}
+```
+
+If a node has multiple recordings (different fingerprints) they appear
+as a sorted list; otherwise the file holds the bare object.
+
+**Field provenance** (full notes in `tests/dump_recordings.py`
+docstring):
+
+- `node` / `fingerprint`: live SQLite `ns` / `key` columns; the
+  fingerprint is what `make_llm_key` produces (already a stable
+  identifier; brief / schema / tier bumps flip it).
+- `channel_writes`: `serde.loads_typed` of the stored blob; non-JSON
+  natives (datetimes, bytes, Pydantic models) are coerced to readable
+  strings — for genuinely opaque values you get
+  `"<binary blob N bytes>"` so the diff still surfaces a delta.
+- `recorded_at`: `null` for the common no-TTL case (LangGraph's
+  `SqliteCache` doesn't store absolute set-time; only TTL expiry); use
+  the JSON file mtime as the fallback for review.
+- `recording_meta.model` / `tier` from the spec are **not** in the
+  output — that info is part of the cache *key* (one-way `cfg:<sha>`),
+  not the cached value. Reviewers spot model / tier shifts via a
+  fingerprint diff.
+
+The dump opens `cache.db` read-only (URI `mode=ro`) so a dump cannot
+mutate the canonical fixture. Round-trip-stable: re-running the dump
+on the same content produces byte-for-byte identical JSON
+(`test_round_trip_identical_bytes`).
+
 ## Spec / canon links
 
 - Spec: `docs/superpowers/specs/2026-05-08-testing-infra-fixture-replay-design.md`
