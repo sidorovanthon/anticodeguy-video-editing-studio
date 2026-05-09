@@ -97,40 +97,17 @@ def test_fails_on_collision_flag(tmp_path, monkeypatch):
     assert any("collision" in v and ".a" in v and ".b" in v for v in record["violations"])
 
 
-# ── HOM-156: paced-fast goes through LLM-justify helper ─────────────────────
+# ── HOM-156 (review S1): pace flags surface as `pending_justifiable` ─────────
+# The deterministic gate NEVER calls an LLM. paced-fast / paced-slow flags
+# are recorded as `pending_justifiable` on the gate record so the
+# `gate_animation_map_classify` LLM node (a separate graph node) can triage
+# them. Behavioural coverage of the classifier itself lives in
+# `tests/test_gate_animation_map_classify_node.py`.
 
 
-def _stub_dispatch(monkeypatch, *, decisions: dict[str, str], reasons: dict[str, str] | None = None,
-                   helper_errors: list[str] | None = None):
-    """Replace `_dispatch_justify` with a stub that returns canned decisions.
-
-    `decisions` maps `flag_id` → "justify" or "fix". `reasons` (optional) maps
-    flag_id → reason string; defaults to a placeholder. `helper_errors`, when
-    set, simulates a dispatch failure.
-    """
-    from edit_episode_graph.gates.animation_map import _FlagDecision
-
-    def fake(state, *, animation_map_path, flagged, router):
-        if helper_errors:
-            return {}, list(helper_errors)
-        out: dict[str, _FlagDecision] = {}
-        for f in flagged:
-            verdict = decisions.get(f["flag_id"])
-            if verdict is None:
-                continue
-            out[f["flag_id"]] = _FlagDecision(
-                flag_id=f["flag_id"],
-                decision=verdict,
-                reason=(reasons or {}).get(f["flag_id"], "stub reason"),
-            )
-        return out, []
-
-    monkeypatch.setattr(gate_mod, "_dispatch_justify", fake)
-
-
-def test_paced_fast_is_justified_passes(tmp_path, monkeypatch):
-    """HOM-156: when the LLM helper justifies all pace-flags, the gate passes
-    and records justifications on the gate record.
+def test_paced_fast_records_pending_justifiable(tmp_path, monkeypatch):
+    """paced-fast tween → record has pending_justifiable; passed=False
+    (router will dispatch the classifier next).
     """
     hf_dir = _hf_dir(tmp_path)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
@@ -140,44 +117,18 @@ def test_paced_fast_is_justified_passes(tmp_path, monkeypatch):
         ],
         "deadZones": [],
     })
-    flag_id = ".flash::1::paced-fast"
-    _stub_dispatch(
-        monkeypatch,
-        decisions={flag_id: "justify"},
-        reasons={flag_id: "HOOK beat is high-energy per plan.energy='high'"},
-    )
     record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
-    assert record["passed"], record["violations"]
-    assert record.get("justifications"), "expected justifications on the record"
-    assert record["justifications"][0]["flag"] == "paced-fast"
+    assert record["passed"] is False, "must not pass with pending_justifiable"
+    assert record["violations"] == [], "no always-fix violations from a lone paced-fast"
+    pending = record.get("pending_justifiable") or []
+    assert len(pending) == 1
+    assert pending[0]["flag"] == "paced-fast"
+    assert pending[0]["selector"] == ".flash"
+    assert pending[0]["flag_id"] == ".flash::1::paced-fast"
 
 
-def test_paced_fast_is_marked_fix_redispatches(tmp_path, monkeypatch):
-    """HOM-156: when the LLM helper marks a pace-flag as `fix`, the gate fails
-    with the model's reason in the violation.
-    """
-    hf_dir = _hf_dir(tmp_path)
-    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
-    _stub_helper(monkeypatch, report={
-        "tweens": [
-            {"index": 1, "selector": ".flash", "duration": 0.12, "flags": ["paced-fast"]},
-        ],
-        "deadZones": [],
-    })
-    flag_id = ".flash::1::paced-fast"
-    _stub_dispatch(
-        monkeypatch,
-        decisions={flag_id: "fix"},
-        reasons={flag_id: "HOOK beat is calm; flash slam is dictation mismatch"},
-    )
-    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
-    assert not record["passed"]
-    joined = " ".join(record["violations"])
-    assert "paced-fast" in joined and "dictation mismatch" in joined
-
-
-def test_paced_slow_is_justifiable_too(tmp_path, monkeypatch):
-    """HOM-156: paced-slow flags are also legitimate (sustained ambient hold)."""
+def test_paced_slow_records_pending_justifiable(tmp_path, monkeypatch):
+    """paced-slow flags are also surfaced as pending (sustained ambient hold)."""
     hf_dir = _hf_dir(tmp_path)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
@@ -186,18 +137,15 @@ def test_paced_slow_is_justifiable_too(tmp_path, monkeypatch):
         ],
         "deadZones": [],
     })
-    flag_id = ".ambient::2::paced-slow"
-    _stub_dispatch(
-        monkeypatch,
-        decisions={flag_id: "justify"},
-        reasons={flag_id: "HOLD beat is meditative per plan.energy='calm'"},
-    )
     record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
-    assert record["passed"], record["violations"]
+    assert record["passed"] is False
+    pending = record.get("pending_justifiable") or []
+    assert len(pending) == 1
+    assert pending[0]["flag"] == "paced-slow"
 
 
-def test_no_pace_flags_skips_llm_dispatch(tmp_path, monkeypatch):
-    """HOM-156: clean pace-flag set ⇒ no LLM dispatch (cheap path)."""
+def test_no_pace_flags_no_pending_passes_clean(tmp_path, monkeypatch):
+    """Clean pace-flag set ⇒ passed=True, no pending list."""
     hf_dir = _hf_dir(tmp_path)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
@@ -206,33 +154,33 @@ def test_no_pace_flags_skips_llm_dispatch(tmp_path, monkeypatch):
         ],
         "deadZones": [],
     })
-
-    def fail_dispatch(*a, **kw):
-        raise AssertionError("LLM helper must NOT dispatch when no pace flags present")
-
-    monkeypatch.setattr(gate_mod, "_dispatch_justify", fail_dispatch)
     record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
-    assert record["passed"]
+    assert record["passed"] is True
+    assert "pending_justifiable" not in record
 
 
-def test_justify_dispatch_failure_falls_back_to_strict_fail(tmp_path, monkeypatch):
-    """HOM-156: when the LLM helper errors, every pace flag becomes a violation
-    so we never silently pass on a broken classifier.
+def test_collision_takes_precedence_over_pending(tmp_path, monkeypatch):
+    """Always-fix flag + paced-fast on different tweens → both surface, but
+    the always-fix violation guarantees passed=False (no need to dispatch
+    the classifier; the cluster will redispatch).
     """
     hf_dir = _hf_dir(tmp_path)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
         "tweens": [
-            {"index": 1, "selector": ".flash", "duration": 0.12, "flags": ["paced-fast"]},
+            {"index": 1, "selector": ".a", "duration": 0.6, "flags": ["collision"]},
+            {"index": 2, "selector": ".b", "duration": 0.6, "flags": ["collision"]},
+            {"index": 3, "selector": ".flash", "duration": 0.12, "flags": ["paced-fast"]},
         ],
         "deadZones": [],
     })
-    _stub_dispatch(monkeypatch, decisions={}, helper_errors=["dispatch failed: stub"])
     record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
-    assert not record["passed"]
-    joined = " ".join(record["violations"])
-    assert "dispatch failed" in joined
-    assert "justify helper unavailable" in joined
+    assert record["passed"] is False
+    # Always-fix violation rendered.
+    assert any("collision" in v for v in record["violations"])
+    # Pace flag still recorded for downstream classifier visibility.
+    pending = record.get("pending_justifiable") or []
+    assert any(f["flag"] == "paced-fast" for f in pending)
 
 
 # ── Negative: dead zone > 1s ─────────────────────────────────────────────────

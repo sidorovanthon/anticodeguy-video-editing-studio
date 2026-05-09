@@ -85,14 +85,16 @@ def _p4_design_system_base(tmp_dir: Path) -> dict:
     }
 
 
-def _gate_animation_map_justify_base(tmp_dir: Path) -> dict:
-    """Base state for gate:animation_map's LLM-justify helper (HOM-156).
+def _gate_animation_map_classify_base(tmp_dir: Path) -> dict:
+    """Base state for the gate_animation_map_classify LLM node (HOM-156).
 
-    The helper's cache key reads:
+    The node's cache key reads:
       - `compose.hyperframes_dir` → derives the animation-map.json path,
         which is content-hashed.
       - `compose.design_md_path` → content-hashed.
       - `compose.plan.beats` → fingerprinted via stable_fingerprint.
+      - `gate_results[*].pending_justifiable` (latest gate:animation_map
+        record) → fingerprinted via stable_fingerprint.
     """
     hf_dir = tmp_dir / "hyperframes"
     hf_dir.mkdir(parents=True, exist_ok=True)
@@ -115,6 +117,19 @@ def _gate_animation_map_justify_base(tmp_dir: Path) -> dict:
                 ],
             },
         },
+        "gate_results": [
+            {
+                "gate": "gate:animation_map",
+                "passed": False,
+                "violations": [],
+                "iteration": 1,
+                "timestamp": "2026-05-09T00:00:00Z",
+                "pending_justifiable": [
+                    {"flag_id": ".flash::1::paced-fast", "selector": ".flash",
+                     "flag": "paced-fast", "duration": 0.12, "index": 1},
+                ],
+            },
+        ],
     }
 
 
@@ -160,12 +175,12 @@ _NODE_REGISTRY: dict[str, tuple[str, Callable[[Path], dict], Callable[[dict], Pa
         _p4_beat_base,
         lambda s: Path(s["compose"]["design_md_path"]),
     ),
-    # HOM-156: gate-internal LLM-justify helper. Module is the gate, not a
-    # node — but the fingerprint assertions only care that `_cache_key` and
-    # `_CACHE_VERSION` are importable, which they are on the gate module.
-    "gate_animation_map_justify": (
-        "edit_episode_graph.gates.animation_map",
-        _gate_animation_map_justify_base,
+    # HOM-156 (review S1): cheap-tier LLM classifier extracted into its own
+    # graph node so cache_policy= actually fires. Registry entry now points
+    # at the node module, not the gate module.
+    "gate_animation_map_classify": (
+        "edit_episode_graph.nodes.gate_animation_map_classify",
+        _gate_animation_map_classify_base,
         lambda s: Path(s["compose"]["hyperframes_dir"])
         / ".hyperframes" / "anim-map" / "animation-map.json",
     ),

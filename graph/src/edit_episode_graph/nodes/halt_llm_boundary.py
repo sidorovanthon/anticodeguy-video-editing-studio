@@ -147,17 +147,31 @@ def halt_llm_boundary_node(state):
         n_v = len(cluster_failure.get("violations") or [])
         gate_name = cluster_failure.get("gate")
         iter_n = cluster_failure.get("iteration") or 0
-        # HOM-156: gate:animation_map records `justifications` on a record
-        # when the cheap-tier LLM-justify helper accepted any pace-flags as
+        # HOM-156: gate:animation_map records `justifications` after the
+        # gate_animation_map_classify LLM node accepts any pace-flags as
         # legitimate. Surface count/sample so the operator sees what the
         # classifier let through alongside the violations that halted the run.
+        # Per CLAUDE.md §"DoD §3 — Update halt_llm_boundary notice text" —
+        # the classifier is the latest reachable artifact between
+        # gate_animation_map and gate_snapshot in the cluster chain.
         justify_part = ""
         justifications = cluster_failure.get("justifications") or []
         if justifications:
             justify_part = (
-                f"; {len(justifications)} pace-flag(s) justified by LLM classifier "
+                f"; {len(justifications)} pace-flag(s) justified by "
+                "gate_animation_map_classify "
                 "(see gate_results[*].justifications)"
             )
+        pending_part = ""
+        if cluster_failure.get("gate") == "gate:animation_map" and cluster_failure.get("pending_justifiable"):
+            # Only seen when the deterministic gate halted before the
+            # classifier ran (e.g. always-fix flags coexisting with pending
+            # ones — but that route runs the redispatch path; safety net).
+            pending_part = (
+                f"; {len(cluster_failure.get('pending_justifiable') or [])} "
+                "pace-flag(s) still pending classification"
+            )
+        justify_part += pending_part
         msg = (
             f"v4 halt: {gate_name} FAILED at iter {iter_n} ({n_v} violation(s)){justify_part} — "
             "see gate_results; "

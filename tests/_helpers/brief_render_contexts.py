@@ -157,7 +157,7 @@ def p4_beat_ctx() -> dict:
     }
 
 
-def gate_animation_map_justify_ctx() -> dict:
+def gate_animation_map_classify_ctx() -> dict:
     """HOM-156: cheap-tier fix-or-justify classifier brief context."""
     flagged = [
         {
@@ -214,5 +214,5 @@ NODE_CONTEXTS = {
     "p4_plan": p4_plan_ctx,
     "p4_beat": p4_beat_ctx,
     "p4_captions_layer": p4_captions_layer_ctx,
-    "gate_animation_map_justify": gate_animation_map_justify_ctx,
+    "gate_animation_map_classify": gate_animation_map_classify_ctx,
 }

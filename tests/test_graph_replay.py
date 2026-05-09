@@ -160,6 +160,7 @@ PHASE3_EXPECTED_NODES = {
     "gate_inspect",
     "gate_design_adherence",
     "gate_animation_map",
+    "gate_animation_map_classify",
     "gate_snapshot",
     "gate_captions_track",
     "p4_persist_session",
@@ -196,6 +197,7 @@ GATE_CLUSTER = (
     "gate_inspect",
     "gate_design_adherence",
     "gate_animation_map",
+    "gate_animation_map_classify",
     "gate_snapshot",
     "gate_captions_track",
 )
@@ -212,6 +214,11 @@ EXPECTED_CLUSTER_EDGES = {
     ("gate_design_adherence", "halt_llm_boundary"),
     ("gate_animation_map", "gate_snapshot"),
     ("gate_animation_map", "halt_llm_boundary"),
+    # HOM-156 (review S1): classify-node branch.
+    ("gate_animation_map", "gate_animation_map_classify"),
+    ("gate_animation_map_classify", "gate_snapshot"),
+    ("gate_animation_map_classify", "p4_redispatch_beat"),
+    ("gate_animation_map_classify", "halt_llm_boundary"),
     ("gate_snapshot", "gate_captions_track"),
     ("gate_snapshot", "halt_llm_boundary"),
     ("gate_captions_track", "p4_persist_session"),
@@ -421,27 +428,47 @@ def test_p4_prompt_expansion_smoke():
     )
 
 
-# HOM-156 gate:animation_map LLM-justify helper: no replay smoke.
-#
-# The cheap-tier LLM-justify helper dispatches from inside the gate body
-# (`gates/animation_map.py::_dispatch_justify` calls `LLMNode.__call__`
-# directly), not as a graph node. LangGraph's `cache_policy=` mechanism
-# applies only to whole graph nodes added via `g.add_node(...,
-# cache_policy=...)`. The gate is a class-2 deterministic node — caching
-# the gate would skip the deterministic `animation-map.mjs` re-run too,
-# which we don't want; the LLM dispatch is just a sub-step.
-#
-# Result: there is no `gate_animation_map_justify` pregel-cache namespace
-# to dispatch against. The fingerprint-registry entry in
-# `tests/_helpers/fingerprint_assertions.py` still validates the cache
-# key shape (HOM-184 invariants — version bump, cfg fingerprint, upstream
-# artifact edit) at L0 cost $0. A future ticket may extract the LLM
-# helper into a standalone graph node to unlock replay; until then,
-# stub-based unit coverage in `graph/tests/test_animation_map_gate.py`
-# (`test_paced_fast_is_justified_passes`,
-# `test_paced_fast_is_marked_fix_redispatches`,
-# `test_justify_dispatch_failure_falls_back_to_strict_fail`) is the
-# behavioural surface.
+# HOM-156 (review S1): the classifier was extracted into its own graph
+# node `gate_animation_map_classify` so LangGraph's cache_policy= actually
+# fires. That unlocks fixture replay — the smoke below is the L1 layer.
+
+@requires_fixture_cache
+def test_gate_animation_map_classify_smoke():
+    """HOM-156 (review S1): replay the cheap-tier LLM classifier from
+    fixture cache.
+
+    Replays a recorded ``gate_animation_map_classify`` dispatch via
+    :func:`dispatch_node` and asserts $0 spend (cache hit, no LLM
+    dispatch). The recording's channel writes carry the new
+    ``gate_results`` follow-up record; asserting ``gate_results`` is
+    present in ``final_state`` proves the classifier wrote a follow-up
+    gate:animation_map record at recording time.
+
+    Until the operator prewarms a recording for this node, the call
+    raises ``ReplayCacheMissError`` and we soft-skip — matches the
+    CLAUDE.md DoD §"Conditional ... Fixture-replay smoke": "If a PR
+    adds a creative node but ships no recording, the replay smoke
+    skips ... that's expected until the operator records."
+    """
+    from tests._helpers.replay_harness import ReplayCacheMissError
+
+    try:
+        result = dispatch_node("gate_animation_map_classify", FIXTURE_SLUG)
+    except ReplayCacheMissError as exc:
+        pytest.skip(
+            f"no recording for gate_animation_map_classify yet: {exc}; "
+            "operator runbook: HOMESTUDIO_TEST_MODE=record-on-miss "
+            "pytest tests/test_graph_replay.py::test_gate_animation_map_classify_smoke"
+        )
+    assert result.all_hits, (
+        f"gate_animation_map_classify replay missed cache: {result!r}; "
+        "re-record via HOMESTUDIO_TEST_MODE=record-on-miss"
+    )
+    assert result.llm_dispatches == 0
+    assert "gate_results" in result.final_state, (
+        "gate_animation_map_classify recording produced no `gate_results` "
+        f"channel write: {list(result.final_state.keys())}"
+    )
 
 
 @requires_fixture_cache

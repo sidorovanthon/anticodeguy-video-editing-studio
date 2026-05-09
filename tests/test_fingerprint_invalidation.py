@@ -30,10 +30,10 @@ CREATIVE_NODES = (
     "p3_strategy",
     "p4_design_system",
     "p4_beat",
-    # HOM-156: cheap-tier gate-internal LLM helper. Same three invariants
-    # apply (version bump, cfg fingerprint, upstream artifact edit) — the
-    # registry entry points at the gate module instead of a node module.
-    "gate_animation_map_justify",
+    # HOM-156 (review S1): cheap-tier classifier extracted into its own
+    # graph node so cache_policy= actually fires. Same three invariants
+    # apply (version bump, cfg fingerprint, upstream artifact edit).
+    "gate_animation_map_classify",
 )
 
 
