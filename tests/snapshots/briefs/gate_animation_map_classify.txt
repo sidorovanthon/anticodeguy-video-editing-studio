@@ -5,17 +5,24 @@ The deterministic helper `animation-map.mjs` has already run. It enumerated ever
 tween in the assembled `index.html`, sampled bounding boxes, and emitted per-tween
 flags (`paced-fast`, `paced-slow`, etc.) and composition-level dead zones into
 `/tmp/snapshot-fixture/episode/hyperframes/.hyperframes/anim-map/animation-map.json`. Your job is to classify each flag as either
-**`justify`** (legitimate intentional creative choice — pass) or **`fix`** (real
-defect — redispatch).
+**`justify`** (legitimate intentional creative choice) or **`fix`** (real defect).
 
-This task is canon. Read it BEFORE classifying — do not rely on memory:
+This is an **orchestrator-house QA helper** that complements canonical authoring. Canon
+(`~/.agents/skills/hyperframes/SKILL.md` §"Quality Checks" §"Animation Map", lines 366–388)
+describes `animation-map` as an optional review tool the author *may* run; the
+"Check every flag — fix or justify" mandate is on the human author, not on a
+deterministic gate. Your classifications are **advisory** — they are merged into the
+gate record's `advisory_findings.pending_classify` list and surface in Studio for
+operator review, but they **do not redispatch beats** and never affect routing
+(per HOM-204 demotion).
 
-- `~/.agents/skills/hyperframes/SKILL.md` §"Quality Checks" §"Animation Map"
-  (lines 366-388, the explicit "Check every flag — fix or justify" mandate).
+Read these two files before classifying (do not rely on memory):
+
+- `~/.agents/skills/hyperframes/SKILL.md` §"Quality Checks" §"Animation Map" — for
+  vocabulary (what each flag *means*).
 - `~/.agents/skills/hyperframes/references/beat-direction.md` §"Animation
-  choreography" — the Energy/Verbs table where `paced-fast` is described as
-  legitimate high-energy diction (SLAMS, CRASHES, PUNCHES); `paced-slow` is
-  legitimate calm/meditative diction.
+  choreography" — Energy/Verbs table; legitimate use of `paced-fast` (high-energy
+  diction: SLAMS, CRASHES, PUNCHES) / `paced-slow` (calm/meditative diction).
 
 Inputs (read each via the `Read` tool):
 
@@ -72,9 +79,12 @@ Hard rules:
 
 - **Read the canon files first.** Do not classify from memory; the Energy→Verbs
   table evolves and your decision must reflect the live shape.
-- **One flag → one decision.** No skipping. The output array length MUST equal the
-  input `flagged_tweens` array length.
 - **Cite the beat.** Every `reason` must reference the beat label (e.g. "HOOK
   beat is high-energy per plan.energy='high' + DESIGN.md hook concept").
-- **Do not modify any file.** Only `Read` is allowed. The gate decides routing
-  from your structured output.
+- **If you cannot decide for a flag, default to `decision: "fix"`** with a
+  brief explanation noting the uncertainty. Output is advisory and the operator
+  reviews `pending_classify` entries in Studio — a `fix` default surfaces the
+  flag for human review without affecting routing. Length parity with the input
+  is no longer required: omit a flag only if you genuinely cannot read it.
+- **Do not modify any file.** Only `Read` is allowed. Your structured output is
+  advisory metadata — it does not redispatch beats and does not affect routing.

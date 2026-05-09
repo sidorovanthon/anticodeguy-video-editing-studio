@@ -61,7 +61,13 @@ from ._llm import LLMNode, _load_brief
 #      ``advisory_findings.pending_classify`` (was: into ``violations`` /
 #      ``justifications``). Reads upstream input from
 #      ``advisory_findings.pending_classify`` (was: ``pending_justifiable``).
-_CACHE_VERSION = 2
+# v3 = HOM-206 — brief rewrite: drop "this task is canon" misclaim;
+#      reframe classifier output as advisory orchestrator-house QA (canon
+#      treats animation-map as optional QA tooling, not a mandate); allow
+#      partial output (no length-parity requirement). Brief content is
+#      part of the LLM dispatch's effective input — bump invalidates
+#      stale recorded classifications under the old framing.
+_CACHE_VERSION = 3
 
 
 # ---------------------------------------------------------------------------
