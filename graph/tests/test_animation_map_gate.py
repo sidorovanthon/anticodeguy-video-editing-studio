@@ -371,3 +371,90 @@ def test_fails_when_helper_exits_zero_but_no_json(tmp_path, monkeypatch):
     record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
     assert record["passed"] is False
     assert any("not found" in v for v in record["violations"])
+
+
+# ── HOM-205: canonical advisory notice format ────────────────────────────────
+#
+# Exact format strings are documented in the gate's module docstring under
+# "## Notice format". These assertions pin the format so future drift breaks
+# the unit suite before it can leak into Studio.
+
+
+def test_clean_run_notice_matches_canonical_format(tmp_path, monkeypatch):
+    """HOM-205: success-no-findings notice is exactly the canonical line."""
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={"tweens": [], "deadZones": []})
+    update = animation_map_gate_node(_state(hf_dir))
+    assert update["notices"] == [
+        "gate:animation_map: advisory — no findings (helper ran clean)"
+    ]
+
+
+def test_mixed_findings_notice_matches_canonical_format(tmp_path, monkeypatch):
+    """HOM-205: success-with-findings notice carries the canonical breakdown
+    line — `N finding(s) (always_fix: a, dead_zones: d, pending_classify: p)`
+    plus the JSON path so the operator can open the helper output without
+    hunting."""
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            {"index": 1, "selector": ".a", "duration": 0.6, "flags": ["collision"]},
+            {"index": 2, "selector": ".b", "duration": 0.6, "flags": ["collision"]},
+            {"index": 3, "selector": ".hairline", "duration": 0.4, "flags": ["degenerate"]},
+            {"index": 4, "selector": ".flash", "duration": 0.12, "flags": ["paced-fast"]},
+        ],
+        "deadZones": [
+            {"start": 10.0, "end": 12.0, "duration": 2.0, "note": "intentional hold"},
+        ],
+    })
+    notice = animation_map_gate_node(_state(hf_dir))["notices"][0]
+    # Severity prefix — load-bearing for Studio surfaces.
+    assert notice.startswith("gate:animation_map: advisory — ")
+    # Total + breakdown — single-glance view of finding mix.
+    assert "4 finding(s) (always_fix: 2, dead_zones: 1, pending_classify: 1)" in notice
+    # JSON path — operator can open helper output directly.
+    expected_path = gate_mod._animation_map_json_path(_state(hf_dir))
+    assert f"See {expected_path}." in notice
+    # No fallback hint when bundled helper resolved.
+    assert "global fallback" not in notice
+
+
+def test_fallback_helper_notice_appends_pin_deps_hint(tmp_path, monkeypatch):
+    """HOM-205: when the global fallback helper ran, the canonical notice
+    appends the pin-deps suggestion in parentheses."""
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs", used_fallback=True)
+    _stub_helper(monkeypatch, report={
+        "tweens": [{"index": 1, "selector": ".a", "duration": 0.6, "flags": ["collision"]}],
+        "deadZones": [],
+    })
+    notice = animation_map_gate_node(_state(hf_dir))["notices"][0]
+    assert notice.startswith("gate:animation_map: advisory — ")
+    assert "1 finding(s) (always_fix: 1, dead_zones: 0, pending_classify: 0)" in notice
+    assert (
+        "(via global fallback helper — consider pinning "
+        "@hyperframes/producer + sharp in the HF project)"
+    ) in notice
+
+
+def test_infrastructure_failure_notice_uses_strong_wording(tmp_path, monkeypatch):
+    """HOM-205: infra-failure notice is unchanged — 'infrastructure failure'
+    prefix (NOT 'advisory') so the operator sees the severity clearly."""
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    stderr = (
+        "Could not resolve required package(s): @hyperframes/producer\n"
+        "  npm install --save-dev @hyperframes/producer@0.4.45 sharp@0.33.0\n"
+    )
+    _stub_helper(monkeypatch, exit_code=1, stderr=stderr)
+    update = animation_map_gate_node(_state(hf_dir))
+    notice = update["notices"][0]
+    assert notice.startswith(
+        "gate:animation_map: infrastructure failure ("
+    )
+    assert "issue(s))" in notice
+    assert "see gate_results" in notice
+    # Critically: do NOT advertise this as "advisory".
+    assert "advisory" not in notice
