@@ -1,35 +1,11 @@
-[
-  {
-    "channel_writes": "deque([['llm_runs', [{'node': 'p4_captions_layer', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 91.625, 'tokens_in': 30, 'tokens_out': 9413, 'timestamp': '2026-05-08T07:33:09.963472+00:00'}]], ['compose', {'captions_block_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\captions.html', 'captions': {'captions_block_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\captions.html'}}], ['branch:to:p4_dispatch_beats', None]])",
-    "fingerprint": "73a7b8fa2d7492da6c42352841c5f2f0",
-    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_captions_layer.p4_captions_layer_node,p4_captions_layer",
-    "node": "p4_captions_layer",
-    "recorded_at": null,
-    "recording_meta": {
-      "encoding": "msgpack",
-      "value_bytes": 588
-    }
-  },
-  {
-    "channel_writes": "deque([['llm_runs', [{'node': 'p4_captions_layer', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 168.40599999999995, 'tokens_in': 44, 'tokens_out': 22162, 'timestamp': '2026-05-07T01:20:23.781145+00:00'}]], ['compose', {'captions_block_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\captions.html', 'captions': {'captions_block_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\captions.html'}}], ['branch:to:p4_dispatch_beats', None]])",
-    "fingerprint": "be5a5df6167c3fa29112c809929d28c0",
-    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_captions_layer.p4_captions_layer_node,p4_captions_layer",
-    "node": "p4_captions_layer",
-    "recorded_at": null,
-    "recording_meta": {
-      "encoding": "msgpack",
-      "value_bytes": 590
-    }
-  },
-  {
-    "channel_writes": "deque([['llm_runs', [{'node': 'p4_captions_layer', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'smart', 'success': True, 'reason': None, 'wall_time_s': 166.5, 'tokens_in': 44, 'tokens_out': 23066, 'timestamp': '2026-05-07T00:35:11.863875+00:00'}]], ['compose', {'captions_block_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\captions.html', 'captions': {'captions_block_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\episodes\\\\2026-05-06-who-else-is-tired-of-endless-monthly\\\\hyperframes\\\\captions.html'}}], ['branch:to:p4_dispatch_beats', None]])",
-    "fingerprint": "d65408dd2e77d67e72db8bd7f78f101f",
-    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_captions_layer.p4_captions_layer_node,p4_captions_layer",
-    "node": "p4_captions_layer",
-    "recorded_at": null,
-    "recording_meta": {
-      "encoding": "msgpack",
-      "value_bytes": 590
-    }
+{
+  "channel_writes": "deque([['llm_runs', [{'node': 'p4_captions_layer', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 148.21800000000076, 'tokens_in': 51, 'tokens_out': 15862, 'timestamp': '2026-05-08T13:50:09.275018+00:00'}]], ['compose', {'captions_block_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\.worktrees\\\\hom-189\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\captions.html', 'captions': {'captions_block_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\.worktrees\\\\hom-189\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\captions.html'}}], ['branch:to:p4_dispatch_beats', None]])",
+  "fingerprint": "0461683fe87837353cddd191ed7811e3",
+  "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_captions_layer.p4_captions_layer_node,p4_captions_layer",
+  "node": "p4_captions_layer",
+  "recorded_at": null,
+  "recording_meta": {
+    "encoding": "msgpack",
+    "value_bytes": 630
   }
-]
+}

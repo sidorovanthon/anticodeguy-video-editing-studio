@@ -1,0 +1,342 @@
+[
+  {
+    "text": "Age",
+    "start": 0.05,
+    "end": 0.071
+  },
+  {
+    "text": "of",
+    "start": 0.071,
+    "end": 0.15
+  },
+  {
+    "text": "artificial",
+    "start": 0.19,
+    "end": 0.611
+  },
+  {
+    "text": "intelligence.",
+    "start": 0.69,
+    "end": 1.27
+  },
+  {
+    "text": "when",
+    "start": 1.4,
+    "end": 1.521
+  },
+  {
+    "text": "I'm",
+    "start": 1.68,
+    "end": 1.801
+  },
+  {
+    "text": "increasingly",
+    "start": 1.86,
+    "end": 2.38
+  },
+  {
+    "text": "using",
+    "start": 2.52,
+    "end": 2.721
+  },
+  {
+    "text": "free",
+    "start": 2.84,
+    "end": 3.0
+  },
+  {
+    "text": "open-source",
+    "start": 3.1,
+    "end": 3.64
+  },
+  {
+    "text": "tools",
+    "start": 3.741,
+    "end": 3.98
+  },
+  {
+    "text": "because",
+    "start": 4.06,
+    "end": 4.32
+  },
+  {
+    "text": "I",
+    "start": 4.4,
+    "end": 4.44
+  },
+  {
+    "text": "can",
+    "start": 4.48,
+    "end": 4.58
+  },
+  {
+    "text": "simply",
+    "start": 4.7,
+    "end": 4.96
+  },
+  {
+    "text": "deploy",
+    "start": 5.08,
+    "end": 5.58
+  },
+  {
+    "text": "them",
+    "start": 5.64,
+    "end": 5.82
+  },
+  {
+    "text": "for",
+    "start": 5.94,
+    "end": 6.08
+  },
+  {
+    "text": "myself",
+    "start": 6.14,
+    "end": 6.601
+  },
+  {
+    "text": "easily",
+    "start": 6.721,
+    "end": 7.021
+  },
+  {
+    "text": "with",
+    "start": 7.08,
+    "end": 7.16
+  },
+  {
+    "text": "the",
+    "start": 7.2,
+    "end": 7.261
+  },
+  {
+    "text": "help",
+    "start": 7.32,
+    "end": 7.48
+  },
+  {
+    "text": "of",
+    "start": 7.521,
+    "end": 7.641
+  },
+  {
+    "text": "AI",
+    "start": 7.721,
+    "end": 7.96
+  },
+  {
+    "text": "agents",
+    "start": 8.061,
+    "end": 8.4
+  },
+  {
+    "text": "or",
+    "start": 8.78,
+    "end": 8.86
+  },
+  {
+    "text": "just",
+    "start": 8.92,
+    "end": 9.101
+  },
+  {
+    "text": "write",
+    "start": 9.261,
+    "end": 9.44
+  },
+  {
+    "text": "the",
+    "start": 9.5,
+    "end": 9.58
+  },
+  {
+    "text": "software",
+    "start": 9.641,
+    "end": 9.981
+  },
+  {
+    "text": "I",
+    "start": 10.04,
+    "end": 10.141
+  },
+  {
+    "text": "need",
+    "start": 10.2,
+    "end": 10.36
+  },
+  {
+    "text": "for",
+    "start": 10.4,
+    "end": 10.56
+  },
+  {
+    "text": "work",
+    "start": 10.62,
+    "end": 11.221
+  },
+  {
+    "text": "myself,",
+    "start": 11.301,
+    "end": 11.9
+  },
+  {
+    "text": "I",
+    "start": 12.049,
+    "end": 12.07
+  },
+  {
+    "text": "thought,",
+    "start": 12.129,
+    "end": 12.27
+  },
+  {
+    "text": "\"Why",
+    "start": 12.529,
+    "end": 12.709
+  },
+  {
+    "text": "don't",
+    "start": 12.769,
+    "end": 12.91
+  },
+  {
+    "text": "we",
+    "start": 12.949,
+    "end": 13.049
+  },
+  {
+    "text": "return",
+    "start": 13.109,
+    "end": 13.43
+  },
+  {
+    "text": "to",
+    "start": 13.469,
+    "end": 13.59
+  },
+  {
+    "text": "the",
+    "start": 13.629,
+    "end": 13.709
+  },
+  {
+    "text": "roots,",
+    "start": 13.83,
+    "end": 14.189
+  },
+  {
+    "text": "to",
+    "start": 14.349,
+    "end": 14.449
+  },
+  {
+    "text": "good",
+    "start": 14.65,
+    "end": 14.809
+  },
+  {
+    "text": "old",
+    "start": 14.849,
+    "end": 14.949
+  },
+  {
+    "text": "software",
+    "start": 15.089,
+    "end": 15.629
+  },
+  {
+    "text": "that",
+    "start": 15.689,
+    "end": 15.889
+  },
+  {
+    "text": "you",
+    "start": 15.99,
+    "end": 16.23
+  },
+  {
+    "text": "pay",
+    "start": 16.289,
+    "end": 16.449
+  },
+  {
+    "text": "for",
+    "start": 16.509,
+    "end": 16.789
+  },
+  {
+    "text": "once",
+    "start": 16.849,
+    "end": 17.209
+  },
+  {
+    "text": "and",
+    "start": 17.269,
+    "end": 17.43
+  },
+  {
+    "text": "use",
+    "start": 17.609,
+    "end": 17.749
+  },
+  {
+    "text": "for",
+    "start": 17.83,
+    "end": 18.029
+  },
+  {
+    "text": "life?\"",
+    "start": 18.07,
+    "end": 18.389
+  },
+  {
+    "text": "Yes,",
+    "start": 18.809,
+    "end": 18.969
+  },
+  {
+    "text": "maybe",
+    "start": 19.109,
+    "end": 19.289
+  },
+  {
+    "text": "it's",
+    "start": 19.309,
+    "end": 19.469
+  },
+  {
+    "text": "not",
+    "start": 19.57,
+    "end": 19.91
+  },
+  {
+    "text": "as",
+    "start": 19.99,
+    "end": 20.209
+  },
+  {
+    "text": "interesting",
+    "start": 20.289,
+    "end": 20.769
+  },
+  {
+    "text": "from",
+    "start": 20.91,
+    "end": 21.049
+  },
+  {
+    "text": "a",
+    "start": 21.089,
+    "end": 21.129
+  },
+  {
+    "text": "business",
+    "start": 21.249,
+    "end": 21.549
+  },
+  {
+    "text": "point-of-view,",
+    "start": 21.609,
+    "end": 22.15
+  }
+]

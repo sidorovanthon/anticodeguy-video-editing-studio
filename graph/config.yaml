@@ -95,7 +95,7 @@ node_overrides:
   p4_beat:
     tier: cheap
     backend_preference: ["claude"]
-    timeout_s: 300
+    timeout_s: 600
     # Per-scene Pattern A authoring (HOM-134). Currently pinned to Haiku
     # (`tier: cheap`) for ~$0.001/beat spend during fixture iteration. The
     # canonical production tier per memory

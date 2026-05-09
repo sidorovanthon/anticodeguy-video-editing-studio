@@ -1,0 +1,12 @@
+{
+  "shape": "hook → thesis → payoff",
+  "takes": [
+    "[000.12-001.34]",
+    "[003.10-013.60]",
+    "[018.82-029.50]"
+  ],
+  "grade": "warm neutral; gentle lift on midtones, slight desaturation in shadows to keep the talking-head intimate and unstyled",
+  "pacing": "deliberate; preserve natural pauses between phrases, no aggressive tightening — this is a reflective monologue, not a fast cut",
+  "length_estimate_s": 22.6,
+  "source_path": "C:\\Users\\sidor\\repos\\anticodeguy-video-editing-studio\\.worktrees\\hom-189\\tests\\fixtures\\episodes\\canonical-portrait-talking-head\\edit\\takes_packed.md"
+}
