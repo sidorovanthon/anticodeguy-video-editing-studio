@@ -38,7 +38,12 @@ from ._llm import LLMNode, _load_brief
 # v2 (HOM-165): brief gained "Explicit anti-patterns (DO NOT DO)" section
 # (GSAP repeat math → Math.floor; caption exit kill-tween) + repeat example
 # switched from Math.ceil-1 to Math.floor.
-_CACHE_VERSION = 2
+# v3 (HOM-201): brief gained "Palette discipline (strict ⊆)" hard-rule —
+# beats may use ONLY hexes from `state.compose.design.palette[*].hex` (now
+# pre-baked with gradient-stop / highlight derivatives upstream). Failing
+# example pinned to the HOM-154 `linear-gradient(#2a221c, #1f1a16, #14100e)`
+# regression that prompted the change.
+_CACHE_VERSION = 3
 
 
 def _cache_key(state, *_args, **_kwargs):
