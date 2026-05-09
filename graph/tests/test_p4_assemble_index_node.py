@@ -7,9 +7,12 @@ from pathlib import Path
 from edit_episode_graph.nodes.p4_assemble_index import (
     _SHIM_BEGIN_MARKER,
     _SHIM_END_MARKER,
+    _TOKENS_BEGIN_MARKER,
+    _TOKENS_END_MARKER,
     _ensure_inlined_script_iife,
     _ensure_scene_clip_class,
     assemble_html,
+    build_root_tokens_block,
     build_visibility_shim,
     p4_assemble_index_node,
 )
@@ -500,6 +503,140 @@ def test_assemble_html_wraps_unwrapped_scene_script():
     end_idx = out.index("p4_assemble_index: end")
     section = out[scene_idx:end_idx]
     assert "(function() {" in section
+
+
+# ---- HOM-191: design tokens :root block ----
+
+def test_build_root_tokens_block_emits_palette_and_typography():
+    block = build_root_tokens_block(
+        palette=[
+            {"role": "background", "hex": "#1a1614"},
+            {"role": "foreground", "hex": "#f4ebdc"},
+            {"role": "accent", "hex": "#e8a14a"},
+        ],
+        typography=[
+            {"role": "body", "family": "Inter", "weight": 400},
+            {"role": "headline", "family": "Playfair Display", "weight": 600},
+        ],
+    )
+    assert block is not None
+    assert _TOKENS_BEGIN_MARKER in block
+    assert _TOKENS_END_MARKER in block
+    assert ":root {" in block
+    assert "--bg: #1a1614;" in block
+    assert "--fg: #f4ebdc;" in block
+    assert "--accent: #e8a14a;" in block
+    assert "--font-body: Inter, sans-serif;" in block
+    # Multi-word family must be quoted.
+    assert '--font-display: "Playfair Display", sans-serif;' in block
+
+
+def test_build_root_tokens_block_returns_none_for_unknown_roles():
+    """No recognised palette/typography roles → no block, callers omit cleanly."""
+    assert (
+        build_root_tokens_block(
+            palette=[{"role": "exotic", "hex": "#abcdef"}],
+            typography=[{"role": "label", "family": "Foo"}],
+        )
+        is None
+    )
+    assert build_root_tokens_block(None, None) is None
+    assert build_root_tokens_block([], []) is None
+
+
+def test_build_root_tokens_block_skips_malformed_entries():
+    block = build_root_tokens_block(
+        palette=[
+            "not-a-dict",  # type: ignore[list-item]
+            {"role": "background", "hex": "#1a1614"},
+            {"role": "background", "hex": "#deadbe"},  # duplicate role — first wins
+        ],
+        typography=[
+            {"role": "body"},  # missing family
+            {"role": "body", "family": "Inter"},
+        ],
+    )
+    assert block is not None
+    # First-wins dedup on duplicate role.
+    assert block.count("--bg:") == 1
+    assert "#1a1614" in block
+    assert "#deadbe" not in block
+
+
+def test_assemble_html_injects_tokens_block_when_provided():
+    tokens = build_root_tokens_block(
+        palette=[{"role": "background", "hex": "#1a1614"}],
+        typography=[{"role": "body", "family": "Inter"}],
+    )
+    out = assemble_html(
+        root_html=SCAFFOLDED_INDEX,
+        beat_html_fragments=[("hook", _pattern_a_fragment("hook"))],
+        captions_html=None,
+        tokens_block=tokens,
+    )
+    assert _TOKENS_BEGIN_MARKER in out
+    assert _TOKENS_END_MARKER in out
+    assert "--bg: #1a1614;" in out
+    # Tokens block sits before the beats (so subsequent rules can reference vars).
+    assert out.index(_TOKENS_BEGIN_MARKER) < out.index("p4_assemble_index: beats")
+
+
+def test_assemble_html_tokens_block_is_idempotent_on_rerun():
+    tokens = build_root_tokens_block(
+        palette=[{"role": "background", "hex": "#1a1614"}],
+        typography=[{"role": "body", "family": "Inter"}],
+    )
+    once = assemble_html(
+        root_html=SCAFFOLDED_INDEX,
+        beat_html_fragments=[("hook", _pattern_a_fragment("hook"))],
+        captions_html=None,
+        tokens_block=tokens,
+    )
+    twice = assemble_html(
+        root_html=once,
+        beat_html_fragments=[("hook", _pattern_a_fragment("hook"))],
+        captions_html=None,
+        tokens_block=tokens,
+    )
+    assert twice.count(_TOKENS_BEGIN_MARKER) == 1
+    assert twice.count(_TOKENS_END_MARKER) == 1
+
+
+def test_node_writes_tokens_block_from_compose_design(tmp_path):
+    """End-to-end: state carries `compose.design.{palette,typography}` →
+    `:root { … }` block lands in the assembled `index.html` so
+    `p4_scaffold`'s `var(--bg, transparent)` placeholder resolves to the
+    DESIGN.md palette without a literal hex (HOM-191 fix).
+    """
+    state = _plan_state(tmp_path, [("Hook", 3.0)])
+    _write_fragment(state, "hook")
+    state["compose"]["design"] = {
+        "palette": [
+            {"role": "background", "hex": "#1a1614"},
+            {"role": "foreground", "hex": "#f4ebdc"},
+        ],
+        "typography": [{"role": "body", "family": "Inter"}],
+    }
+
+    update = p4_assemble_index_node(state)
+    assert "errors" not in update
+
+    on_disk = Path(state["compose"]["index_html_path"]).read_text(encoding="utf-8")
+    assert _TOKENS_BEGIN_MARKER in on_disk
+    assert "--bg: #1a1614;" in on_disk
+    assert "--fg: #f4ebdc;" in on_disk
+    assert "--font-body: Inter, sans-serif;" in on_disk
+
+
+def test_node_omits_tokens_block_when_design_missing(tmp_path):
+    """No `compose.design` → no tokens block injected, no marker pollution."""
+    state = _plan_state(tmp_path, [("Hook", 3.0)])
+    _write_fragment(state, "hook")
+    update = p4_assemble_index_node(state)
+    assert "errors" not in update
+    on_disk = Path(state["compose"]["index_html_path"]).read_text(encoding="utf-8")
+    assert _TOKENS_BEGIN_MARKER not in on_disk
+    assert _TOKENS_END_MARKER not in on_disk
 
 
 def test_node_errors_when_captions_path_missing(tmp_path):
