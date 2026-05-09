@@ -1,3 +1,11 @@
+<!--
+  Captions track for canonical-portrait-talking-head.
+  Source transcript: edit/transcripts/final.json (word-level timing).
+  Tone profile: storytelling/measured (Soft Signal reflective monologue).
+  Word-grouping band: 4-6 words per canon §"Word Grouping" (measured/calm).
+  Typography + palette inherited from DESIGN.md (Inter Light, foreground-highlight-1
+  on translucent background-highlight-1; no caps, no per-word color flips).
+-->
 <div id="captions-layer" class="captions-layer">
   <style>
     #captions-layer {
@@ -5,104 +13,145 @@
       inset: 0;
       pointer-events: none;
       overflow: visible;
+      font-family: "Inter", system-ui, -apple-system, sans-serif;
     }
-
     #captions-layer .cg {
-      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 1.5rem;
-      font-weight: 400;
-      line-height: 1.45;
-      color: #f4ebdc;
-      background-color: rgba(36, 31, 27, 0.78);
-      padding: 28px;
-      border-radius: 14px;
-      opacity: 0;
       position: absolute;
-      bottom: 620px;
-      left: 64px;
-      width: fit-content;
-      max-width: 78%;
-      text-align: left;
-      white-space: normal;
+      left: 0;
+      right: 0;
+      bottom: 96px;
+      margin: 0 auto;
+      max-width: 1500px;
+      padding: 16px 36px;
+      text-align: center;
+      font-family: "Inter", system-ui, sans-serif;
+      font-weight: 300;
+      font-size: 44px;
+      line-height: 1.4;
+      letter-spacing: 0.005em;
+      color: #404040;
+      background: rgba(255, 253, 248, 0.78);
+      border-radius: 8px;
+      opacity: 0;
+      visibility: hidden;
+      will-change: opacity, transform;
+      overflow: visible;
+    }
+    #captions-layer .cg .w-key {
+      font-weight: 500;
+      color: #2a2a2a;
     }
   </style>
 
-  <!-- Transcript groups synced to final.json word-level captions -->
-  <div class="cg" id="cg-0">Age of artificial intelligence</div>
-  <div class="cg" id="cg-1">when I'm increasingly using</div>
-  <div class="cg" id="cg-2">free open-source tools</div>
-  <div class="cg" id="cg-3">because I can simply deploy</div>
-  <div class="cg" id="cg-4">them for myself easily</div>
-  <div class="cg" id="cg-5">with the help of AI agents</div>
-  <div class="cg" id="cg-6">or just write the software</div>
-  <div class="cg" id="cg-7">I need for work myself</div>
-  <div class="cg" id="cg-8">I thought why don't we</div>
-  <div class="cg" id="cg-9">return to the roots</div>
-  <div class="cg" id="cg-10">to good old software</div>
-  <div class="cg" id="cg-11">that you pay for once</div>
-  <div class="cg" id="cg-12">and use for life</div>
-  <div class="cg" id="cg-13">Yes maybe it's not as</div>
-  <div class="cg" id="cg-14">interesting from a business point-of-view</div>
+  <!-- One caption group visible at a time. Source: edit/transcripts/final.json -->
+  <div class="cg" id="cg-0"><span>Age of </span><span class="w-key">artificial intelligence.</span></div>
+  <div class="cg" id="cg-1"><span>when I'm </span><span class="w-key">increasingly</span><span> using</span></div>
+  <div class="cg" id="cg-2"><span>free </span><span class="w-key">open-source tools</span></div>
+  <div class="cg" id="cg-3"><span>because I can simply </span><span class="w-key">deploy</span><span> them</span></div>
+  <div class="cg" id="cg-4"><span>for myself easily</span></div>
+  <div class="cg" id="cg-5"><span>with the help of </span><span class="w-key">AI agents</span></div>
+  <div class="cg" id="cg-6"><span>or just write the </span><span class="w-key">software</span></div>
+  <div class="cg" id="cg-7"><span>I need for work myself,</span></div>
+  <div class="cg" id="cg-8"><span>I thought,</span></div>
+  <div class="cg" id="cg-9"><span>&ldquo;Why don't we </span><span class="w-key">return</span></div>
+  <div class="cg" id="cg-10"><span>to the </span><span class="w-key">roots,</span></div>
+  <div class="cg" id="cg-11"><span>to good old </span><span class="w-key">software</span></div>
+  <div class="cg" id="cg-12"><span>that you </span><span class="w-key">pay for once</span></div>
+  <div class="cg" id="cg-13"><span>and </span><span class="w-key">use for life?&rdquo;</span></div>
+  <div class="cg" id="cg-14"><span>Yes, maybe it's not</span></div>
+  <div class="cg" id="cg-15"><span>as </span><span class="w-key">interesting</span><span> from a business</span></div>
+  <div class="cg" id="cg-16"><span class="w-key">point-of-view,</span></div>
 
   <script>
-    (function() {
-      // Reference transcript: final.json
+    (function () {
+      // Caption groups baked at build time from edit/transcripts/final.json.
+      // Static literal — deterministic per canon §"Constraints" (no fetches).
       var GROUPS = [
-        { id: "cg-0", start: 0.05, end: 1.27 },
-        { id: "cg-1", start: 1.4, end: 2.721 },
-        { id: "cg-2", start: 2.84, end: 3.98 },
-        { id: "cg-3", start: 4.06, end: 5.58 },
-        { id: "cg-4", start: 5.64, end: 7.021 },
-        { id: "cg-5", start: 7.08, end: 8.4 },
-        { id: "cg-6", start: 8.78, end: 9.981 },
-        { id: "cg-7", start: 10.04, end: 11.221 },
-        { id: "cg-8", start: 12.049, end: 13.049 },
-        { id: "cg-9", start: 13.109, end: 14.189 },
-        { id: "cg-10", start: 14.349, end: 15.629 },
-        { id: "cg-11", start: 15.689, end: 17.209 },
-        { id: "cg-12", start: 17.269, end: 18.389 },
-        { id: "cg-13", start: 18.809, end: 20.209 },
-        { id: "cg-14", start: 20.289, end: 22.15 }
+        { id: "cg-0",  start: 0.05,   end: 1.27   },
+        { id: "cg-1",  start: 1.40,   end: 2.721  },
+        { id: "cg-2",  start: 2.84,   end: 3.98   },
+        { id: "cg-3",  start: 4.06,   end: 5.82   },
+        { id: "cg-4",  start: 5.94,   end: 7.021  },
+        { id: "cg-5",  start: 7.08,   end: 8.40   },
+        { id: "cg-6",  start: 8.78,   end: 9.981  },
+        { id: "cg-7",  start: 10.04,  end: 11.90  },
+        { id: "cg-8",  start: 12.049, end: 12.27  },
+        { id: "cg-9",  start: 12.529, end: 13.43  },
+        { id: "cg-10", start: 13.469, end: 14.189 },
+        { id: "cg-11", start: 14.349, end: 15.629 },
+        { id: "cg-12", start: 15.689, end: 17.209 },
+        { id: "cg-13", start: 17.269, end: 18.389 },
+        { id: "cg-14", start: 18.809, end: 19.91  },
+        { id: "cg-15", start: 19.99,  end: 21.549 },
+        { id: "cg-16", start: 21.609, end: 22.15  }
       ];
 
       window.__captionTimelines = window.__captionTimelines || {};
-      var tl = gsap.timeline({ paused: true });
+      var capTl = gsap.timeline({ paused: true });
 
       GROUPS.forEach(function (group) {
         var el = document.getElementById(group.id);
         if (!el) return;
 
-        // Entrance: fade in + subtle rise (sine.inOut from DESIGN.md motion)
-        tl.fromTo(
+        // Reveal — flip visibility on at the group's start so the entrance tween
+        // is observable; CSS keeps the element hidden pre-entrance.
+        capTl.set(el, { visibility: "visible" }, group.start);
+
+        // Entrance — fromTo per motion-principles.md L115-123 (never tl.from).
+        // Soft Signal entry ease: sine.inOut over 0.5s.
+        capTl.fromTo(
           el,
-          { opacity: 0, y: 24 },
-          { opacity: 1, y: 0, duration: 0.9, ease: "sine.inOut" },
+          { opacity: 0, y: 16 },
+          { opacity: 1, y: 0, duration: 0.5, ease: "sine.inOut" },
           group.start
         );
 
-        // Hard kill at group.end (canon §"Caption Exit Guarantee")
-        tl.set(el, { opacity: 0, visibility: "hidden" }, group.end);
+        // Exit — soft fade-out over 0.32s with power1.inOut (DESIGN.md exit ease,
+        // distinct from entrance ease). Floored so very short groups still fade.
+        var exitDur = 0.32;
+        var exitStart = Math.max(group.start + 0.5, group.end - exitDur);
+        capTl.to(
+          el,
+          { opacity: 0, y: -8, duration: exitDur, ease: "power1.inOut" },
+          exitStart
+        );
+        // Final-frame compression — power2.in (third distinct ease).
+        capTl.to(
+          el,
+          { scale: 0.985, duration: 0.12, ease: "power2.in" },
+          Math.max(exitStart, group.end - 0.12)
+        );
+
+        // Deterministic kill — canon §"Caption Exit Guarantee" (non-negotiable).
+        capTl.set(el, { opacity: 0, visibility: "hidden" }, group.end);
       });
 
-      // Self-lint per canon §"Caption Exit Guarantee"
+      // Self-lint — surface caption-leak warnings to the console at composition init,
+      // before publishing to window.__timelines.
       GROUPS.forEach(function (group, gi) {
         var el = document.getElementById(group.id);
         if (!el) return;
-        tl.seek(group.end + 0.01);
+        capTl.seek(group.end + 0.01);
         var computed = window.getComputedStyle(el);
         if (computed.opacity !== "0" && computed.visibility !== "hidden") {
           console.warn(
-            "[caption-lint] group " + gi + " still visible at t=" + (group.end + 0.01).toFixed(2) + "s"
+            "[caption-lint] group " + gi + " still visible at t=" +
+              (group.end + 0.01).toFixed(2) + "s"
           );
         }
       });
-      tl.seek(0);
+      capTl.seek(0);
 
-      window.__captionTimelines["captions"] = tl;
+      window.__captionTimelines["captions"] = capTl;
 
-      // Nest under the root timeline so it advances with composition seek
-      var root = window.__timelines && window.__timelines["root"];
-      if (root) root.add(tl, 0);
+      // Nest under the root timeline so it advances with the composition seek.
+      // GSAP requires unpause before parent.add — see memory
+      // feedback_gsap_paused_child_under_parent_seek (HOM-164).
+      var rootTl = window.__timelines && window.__timelines["root"];
+      if (rootTl) {
+        capTl.paused(false);
+        rootTl.add(capTl, 0);
+      }
     })();
   </script>
 </div>

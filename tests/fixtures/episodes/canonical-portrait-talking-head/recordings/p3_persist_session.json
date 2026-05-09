@@ -1,11 +1,11 @@
 {
-  "channel_writes": "deque([['llm_runs', [{'node': 'p3_persist_session', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'cheap', 'success': True, 'reason': None, 'wall_time_s': 31.95300000000134, 'tokens_in': 30, 'tokens_out': 1708, 'timestamp': '2026-05-08T13:41:41.215526+00:00'}]], ['edit', {'persist': {'persisted_at': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\.worktrees\\\\hom-189\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\edit\\\\project.md', 'session_n': 1}}], ['branch:to:p3_review_interrupt', None]])",
+  "channel_writes": "deque([['llm_runs', [{'node': 'p3_persist_session', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'cheap', 'success': True, 'reason': None, 'wall_time_s': 31.95300000000134, 'tokens_in': 30, 'tokens_out': 1708, 'timestamp': '2026-05-08T13:41:41.215526+00:00'}]], ['edit', {'persist': {'persisted_at': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\edit\\\\project.md', 'session_n': 1}}], ['branch:to:p3_review_interrupt', None]])",
   "fingerprint": "33801677c0eb1687b10e2dc26fe38ce8",
   "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p3_persist_session.p3_persist_session_node,p3_persist_session",
   "node": "p3_persist_session",
   "recorded_at": null,
   "recording_meta": {
     "encoding": "msgpack",
-    "value_bytes": 443
+    "value_bytes": 424
   }
 }

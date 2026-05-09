@@ -11,14 +11,14 @@
     }
   },
   {
-    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 428.6560000000027, 'tokens_in': 107, 'tokens_out': 27941, 'timestamp': '2026-05-08T14:10:35.072310+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Perfect! The file exists with a complete implementation. Let me verify it has all the required elements:\\n\\nThe PAYOFF scene fragment is complete with:\\n- **13 elements**: beat marker (dot + label), caption plate, caption text (2 groups), pull-line with quote glyph, hairline rule, timestamp, sign-off glow, and 3 BG decoratives (grain, vignette, gradient stop)\\n- **12 tweens**: 3 ambient (grain drift, vignette breathing, gradient breathing) + 7 entrances (pull-line, quote glyph, caption plate, caption groups 1-2, timestamp, glow) + 2 exits (group 1 fade + hard-kill) + final fade\\n\\nKey features honored:\\n- Pattern A scene div with `class=\"scene clip\"` and proper timing attributes\\n- `tl.fromTo()` for all entrances (motion-principles requirement to avoid immediateRender issues)\\n- Scene entrance at +0.1s, pull-line at +0.35s (matching expanded-prompt timing)\\n- Caption groups cycling per schedule (group 1 → 4.95s, group 2 → 5.25s)\\n- Ambient gradients breathing on seekable timeline (not bare gsap.to)\\n- Final fade HR4 permitted at +8.55s (maps to 22.55s absolute)\\n- 3+ distinct eases: sine.inOut, power1.out, power1.in\\n- Finite repeats: Math.floor(9.0 / cycleDuration) on all ambient loops\\n- All CSS scoped to `#scene-payoff`\\n- IIFE-wrapped timeline registration\\n\\nWrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\.worktrees\\\\hom-189\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\compositions\\\\payoff.html (13 elements, 12 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 428.6560000000027, 'tokens_in': 107, 'tokens_out': 27941, 'timestamp': '2026-05-08T14:10:35.072310+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Perfect! The file exists with a complete implementation. Let me verify it has all the required elements:\\n\\nThe PAYOFF scene fragment is complete with:\\n- **13 elements**: beat marker (dot + label), caption plate, caption text (2 groups), pull-line with quote glyph, hairline rule, timestamp, sign-off glow, and 3 BG decoratives (grain, vignette, gradient stop)\\n- **12 tweens**: 3 ambient (grain drift, vignette breathing, gradient breathing) + 7 entrances (pull-line, quote glyph, caption plate, caption groups 1-2, timestamp, glow) + 2 exits (group 1 fade + hard-kill) + final fade\\n\\nKey features honored:\\n- Pattern A scene div with `class=\"scene clip\"` and proper timing attributes\\n- `tl.fromTo()` for all entrances (motion-principles requirement to avoid immediateRender issues)\\n- Scene entrance at +0.1s, pull-line at +0.35s (matching expanded-prompt timing)\\n- Caption groups cycling per schedule (group 1 → 4.95s, group 2 → 5.25s)\\n- Ambient gradients breathing on seekable timeline (not bare gsap.to)\\n- Final fade HR4 permitted at +8.55s (maps to 22.55s absolute)\\n- 3+ distinct eases: sine.inOut, power1.out, power1.in\\n- Finite repeats: Math.floor(9.0 / cycleDuration) on all ambient loops\\n- All CSS scoped to `#scene-payoff`\\n- IIFE-wrapped timeline registration\\n\\nWrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\compositions\\\\payoff.html (13 elements, 12 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
     "fingerprint": "30e79b9bbc2b9be558e4f64b4297d06b",
     "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
     "node": "p4_beat",
     "recorded_at": null,
     "recording_meta": {
       "encoding": "msgpack",
-      "value_bytes": 1751
+      "value_bytes": 1732
     }
   },
   {
@@ -33,36 +33,36 @@
     }
   },
   {
-    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 445.375, 'tokens_in': 156, 'tokens_out': 26878, 'timestamp': '2026-05-08T14:10:51.801105+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Perfect! The hook.html scene has already been created with a complete, canon-compliant implementation. Let me verify the specification compliance:\\n\\n**Elements count:** 10 visible at hero frame\\n- Background layers: warm-grain, soft-vignette, ambient-glow (3 decoratives with ambient motion)\\n- Beat marker: dot + text\\n- Text content: pull-line (Playfair italic), hairline-rule, caption-plate + caption-text\\n\\n**Animations:** 8 tweens using `tl.fromTo()` (not `tl.from()`)\\n- Beat marker, caption plate, caption text, hairline rule, pull-line: entrance animations\\n- BG grain, vignette, glow: ambient motion via `tl.to()` on seekable timeline\\n\\n**Eases (≥3 distinct):**\\n- sine.inOut (beat marker, hairline, BG animations)\\n- power1.out (caption text)\\n- power2.inOut (caption plate, pull-line)\\n\\n**Design system adherence:**\\n- Colors exact from DESIGN.md palette (#1a1614, #f4ebdc, #e8a14a, #8a7e72)\\n- Typography correct (Playfair Display italic, Inter with proper sizes)\\n- Layout: beat marker top-left, pull-line + hairline + caption plate lower third\\n- Timing from expanded-prompt: 0.05s → 0.45s staggered entrances\\n\\n**Hard rules met:**\\n- `class=\"scene clip\"` on root\\n- `data-start`, `data-duration`, `data-track-index` attributes\\n- IIFE-wrapped script with `window.__sceneTimelines[\"hook\"]` registration\\n- All CSS prefixed with `#scene-hook`\\n- First scene opacity starts at 1 (not 0)\\n\\nWrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\.worktrees\\\\hom-189\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\compositions\\\\hook.html (10 elements, 8 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 445.375, 'tokens_in': 156, 'tokens_out': 26878, 'timestamp': '2026-05-08T14:10:51.801105+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Perfect! The hook.html scene has already been created with a complete, canon-compliant implementation. Let me verify the specification compliance:\\n\\n**Elements count:** 10 visible at hero frame\\n- Background layers: warm-grain, soft-vignette, ambient-glow (3 decoratives with ambient motion)\\n- Beat marker: dot + text\\n- Text content: pull-line (Playfair italic), hairline-rule, caption-plate + caption-text\\n\\n**Animations:** 8 tweens using `tl.fromTo()` (not `tl.from()`)\\n- Beat marker, caption plate, caption text, hairline rule, pull-line: entrance animations\\n- BG grain, vignette, glow: ambient motion via `tl.to()` on seekable timeline\\n\\n**Eases (≥3 distinct):**\\n- sine.inOut (beat marker, hairline, BG animations)\\n- power1.out (caption text)\\n- power2.inOut (caption plate, pull-line)\\n\\n**Design system adherence:**\\n- Colors exact from DESIGN.md palette (#1a1614, #f4ebdc, #e8a14a, #8a7e72)\\n- Typography correct (Playfair Display italic, Inter with proper sizes)\\n- Layout: beat marker top-left, pull-line + hairline + caption plate lower third\\n- Timing from expanded-prompt: 0.05s → 0.45s staggered entrances\\n\\n**Hard rules met:**\\n- `class=\"scene clip\"` on root\\n- `data-start`, `data-duration`, `data-track-index` attributes\\n- IIFE-wrapped script with `window.__sceneTimelines[\"hook\"]` registration\\n- All CSS prefixed with `#scene-hook`\\n- First scene opacity starts at 1 (not 0)\\n\\nWrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\compositions\\\\hook.html (10 elements, 8 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
     "fingerprint": "3d818cbf5813daad4f2b0129565a5c50",
     "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
     "node": "p4_beat",
     "recorded_at": null,
     "recording_meta": {
       "encoding": "msgpack",
-      "value_bytes": 1861
+      "value_bytes": 1842
     }
   },
   {
-    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 141.42199999999866, 'tokens_in': 37, 'tokens_out': 16611, 'timestamp': '2026-05-08T13:52:30.759433+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\.worktrees\\\\hom-189\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\compositions\\\\hook.html (8 elements, 8 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 141.42199999999866, 'tokens_in': 37, 'tokens_out': 16611, 'timestamp': '2026-05-08T13:52:30.759433+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\compositions\\\\hook.html (8 elements, 8 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
     "fingerprint": "5af58e9fa5f7b5c56a560c65b7dc9d82",
     "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
     "node": "p4_beat",
     "recorded_at": null,
     "recording_meta": {
       "encoding": "msgpack",
-      "value_bytes": 476
+      "value_bytes": 457
     }
   },
   {
-    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 189.625, 'tokens_in': 44, 'tokens_out': 22850, 'timestamp': '2026-05-08T14:06:36.027835+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\.worktrees\\\\hom-189\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\compositions\\\\thesis.html (9 elements, 12 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 189.625, 'tokens_in': 44, 'tokens_out': 22850, 'timestamp': '2026-05-08T14:06:36.027835+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\compositions\\\\thesis.html (9 elements, 12 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
     "fingerprint": "6dc5bd94de3554671a88659ed31305b7",
     "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
     "node": "p4_beat",
     "recorded_at": null,
     "recording_meta": {
       "encoding": "msgpack",
-      "value_bytes": 479
+      "value_bytes": 460
     }
   },
   {
@@ -77,14 +77,14 @@
     }
   },
   {
-    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 297.45300000000134, 'tokens_in': 32, 'tokens_out': 14042, 'timestamp': '2026-05-08T14:02:29.233350+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\.worktrees\\\\hom-189\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\compositions\\\\payoff.html (13 elements, 15 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 297.45300000000134, 'tokens_in': 32, 'tokens_out': 14042, 'timestamp': '2026-05-08T14:02:29.233350+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\compositions\\\\payoff.html (13 elements, 15 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
     "fingerprint": "b1c6538dfcd6be09405ff18618e5f91e",
     "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
     "node": "p4_beat",
     "recorded_at": null,
     "recording_meta": {
       "encoding": "msgpack",
-      "value_bytes": 480
+      "value_bytes": 461
     }
   },
   {

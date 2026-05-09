@@ -1,13 +1,13 @@
 [
   {
-    "channel_writes": "deque([['llm_runs', [{'node': 'p4_captions_layer', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 148.21800000000076, 'tokens_in': 51, 'tokens_out': 15862, 'timestamp': '2026-05-08T13:50:09.275018+00:00'}]], ['compose', {'captions_block_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\.worktrees\\\\hom-189\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\captions.html', 'captions': {'captions_block_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\.worktrees\\\\hom-189\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\captions.html'}}], ['branch:to:p4_dispatch_beats', None]])",
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_captions_layer', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 148.21800000000076, 'tokens_in': 51, 'tokens_out': 15862, 'timestamp': '2026-05-08T13:50:09.275018+00:00'}]], ['compose', {'captions_block_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\captions.html', 'captions': {'captions_block_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\captions.html'}}], ['branch:to:p4_dispatch_beats', None]])",
     "fingerprint": "0461683fe87837353cddd191ed7811e3",
     "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_captions_layer.p4_captions_layer_node,p4_captions_layer",
     "node": "p4_captions_layer",
     "recorded_at": null,
     "recording_meta": {
       "encoding": "msgpack",
-      "value_bytes": 630
+      "value_bytes": 592
     }
   },
   {
