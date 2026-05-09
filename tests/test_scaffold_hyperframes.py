@@ -287,6 +287,132 @@ def test_hardlink_final_mp4_creates_link(tmp_path: Path):
     assert dst.read_bytes() == b"hello"
 
 
+def test_run_init_skips_when_index_html_exists(tmp_path: Path):
+    """HOM-194: `_run_init` must skip `npx hyperframes init` if hyperframes/index.html
+    already exists, so a `_CACHE_VERSION` bump on `p4_scaffold` can re-execute on top
+    of the prior on-disk artifact (e.g. canonical fixture tree) without tripping HF
+    CLI's "Directory already exists and is not empty" guard.
+
+    Asserts via sentinel content survival: if init had run, it would have wiped/refused
+    the existing file; the sentinel proves the existing file was preserved.
+    """
+    from scripts.scaffold_hyperframes import _run_init
+
+    episode_dir = tmp_path / "ep"
+    hf = episode_dir / "hyperframes"
+    hf.mkdir(parents=True)
+    sentinel = "<!-- HOM-194-SENTINEL: this file existed before _run_init -->"
+    (hf / "index.html").write_text(
+        f"<!doctype html><html><body>{sentinel}</body></html>",
+        encoding="utf-8",
+    )
+
+    out = _run_init(episode_dir)
+    assert out == hf
+    # File untouched — npx was NOT invoked.
+    assert sentinel in (hf / "index.html").read_text(encoding="utf-8")
+
+
+def test_scaffold_repatches_existing_hyperframes_dir(tmp_path: Path):
+    """HOM-194: `scaffold` on a populated hyperframes/ skips init but still applies
+    patches. Simulates the HOM-191 re-record scenario: an unpatched `index.html`
+    (literal `background: #000;`) sits in the fixture; re-running scaffold must
+    rewrite it to `var(--bg, transparent)` without re-invoking init.
+    """
+    from scripts.scaffold_hyperframes import scaffold
+
+    episode_dir = tmp_path / "ep"
+    (episode_dir / "edit").mkdir(parents=True)
+    (episode_dir / "edit" / "final.mp4").write_bytes(b"placeholder")
+
+    hf = episode_dir / "hyperframes"
+    hf.mkdir()
+    sentinel = "HOM-194-PRE-EXISTING-SENTINEL"
+    # Stub an unpatched index.html (literal #000 + sentinel comment).
+    (hf / "index.html").write_text(
+        DEFAULT_INDEX_HTML.replace(
+            "<!doctype html>",
+            f"<!doctype html>\n<!-- {sentinel} -->",
+        ),
+        encoding="utf-8",
+    )
+    # Stub the sibling artifacts that scaffold reads/writes after init.
+    (hf / "meta.json").write_text(
+        json.dumps({"id": "old", "name": "old", "createdAt": "2026-01-01T00:00:00Z"}),
+        encoding="utf-8",
+    )
+    (hf / "hyperframes.json").write_text("{}", encoding="utf-8")
+
+    scaffold(
+        episode_dir=episode_dir,
+        slug="2026-05-09-test-episode",
+        width=1080,
+        height=1920,
+        duration=10.0,
+        hyperframes_version="^0.4.39",
+    )
+
+    html = (hf / "index.html").read_text(encoding="utf-8")
+    # Sentinel survived: existing file was patched in-place, not regenerated.
+    assert sentinel in html
+    # HOM-191 patch applied on re-run.
+    assert "background: var(--bg, transparent);" in html
+    assert "background: #000" not in html
+    # Other patches applied as well.
+    assert 'data-width="1080"' in html
+    assert 'data-composition-id="root"' in html
+    # Sibling artifacts overwritten with new slug.
+    meta = json.loads((hf / "meta.json").read_text(encoding="utf-8"))
+    assert meta["id"] == "2026-05-09-test-episode"
+    assert meta["createdAt"] == "2026-01-01T00:00:00Z"  # preserved
+    pkg = json.loads((hf / "package.json").read_text(encoding="utf-8"))
+    assert pkg["devDependencies"]["hyperframes"] == "^0.4.39"
+
+
+def test_scaffold_second_call_is_no_op_on_index_html(tmp_path: Path):
+    """HOM-194: a second `scaffold` invocation on an already-scaffolded dir must
+    converge — the resulting `index.html` is byte-identical to the first run's
+    output, proving `patch_index_html` is idempotent on re-application.
+
+    Simulates the cache-bump replay path without invoking npx by pre-staging a
+    fully-patched `index.html` from `patch_index_html` itself.
+    """
+    from scripts.scaffold_hyperframes import scaffold, patch_index_html
+
+    episode_dir = tmp_path / "ep"
+    (episode_dir / "edit").mkdir(parents=True)
+    (episode_dir / "edit" / "final.mp4").write_bytes(b"placeholder")
+
+    hf = episode_dir / "hyperframes"
+    hf.mkdir()
+
+    # First "run" output — produced by patch_index_html on the canonical template.
+    first_html = patch_index_html(
+        DEFAULT_INDEX_HTML, width=1080, height=1920, duration=10.0,
+        video_src="final.mp4",
+    )
+    (hf / "index.html").write_text(first_html, encoding="utf-8")
+    (hf / "meta.json").write_text(
+        json.dumps({"id": "x", "name": "x", "createdAt": "2026-01-01T00:00:00Z"}),
+        encoding="utf-8",
+    )
+    (hf / "hyperframes.json").write_text("{}", encoding="utf-8")
+
+    scaffold(
+        episode_dir=episode_dir,
+        slug="2026-05-09-test-episode",
+        width=1080,
+        height=1920,
+        duration=10.0,
+        hyperframes_version="^0.4.39",
+    )
+
+    second_html = (hf / "index.html").read_text(encoding="utf-8")
+    assert second_html == first_html, (
+        "patch_index_html is not idempotent — re-running scaffold mutated index.html"
+    )
+
+
 def test_hardlink_final_mp4_is_idempotent(tmp_path: Path):
     """Running twice does not raise — second call is a no-op."""
     from scripts.scaffold_hyperframes import _hardlink_final_mp4

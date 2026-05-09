@@ -112,7 +112,24 @@ def _run_init(episode_dir: Path) -> Path:
     """Run `npx hyperframes init hyperframes --yes` from inside episode_dir.
 
     Returns path to the created hyperframes/ subdirectory.
+
+    Idempotent: if `<episode_dir>/hyperframes/index.html` already exists (e.g. a
+    prior `scaffold` run, or the canonical fixture's tracked artifact under
+    `tests/fixtures/episodes/<slug>/hyperframes/`), `npx hyperframes init` is
+    skipped entirely — upstream HF CLI hard-aborts on non-empty target dirs
+    (`Directory already exists and is not empty: hyperframes`), which would
+    block any re-execution after a `_CACHE_VERSION` bump on `p4_scaffold`
+    (HOM-194). The caller (`scaffold`) still re-applies `patch_index_html` on
+    the existing file; the patches are themselves idempotent so the final
+    artifact converges to the same shape regardless of starting state.
     """
+    hf = episode_dir / "hyperframes"
+    if (hf / "index.html").exists():
+        print(
+            f"[scaffold] {hf}/ already populated — skipping init, applying patches only",
+            file=sys.stderr,
+        )
+        return hf
     cmd = ["npx", "hyperframes", "init", "hyperframes", "--yes"]
     result = subprocess.run(
         cmd,
@@ -195,6 +212,15 @@ def scaffold(
 
     Steps 1-6 in order. If width/height/duration are not provided, ffprobe the
     final.mp4 to get them. Returns the hyperframes/ directory path.
+
+    Idempotent under re-runs (HOM-194): if `<episode_dir>/hyperframes/index.html`
+    already exists from a prior run (or from a tracked fixture artifact),
+    `_run_init` is skipped and `patch_index_html` is re-applied to the existing
+    file. Patches are themselves idempotent — re-applying on already-patched
+    output is a no-op — so a `_CACHE_VERSION` bump on `p4_scaffold` (e.g.
+    HOM-191's body-bg → CSS variable rewrite) re-executes safely on top of the
+    prior on-disk artifact instead of aborting on HF CLI's "Directory already
+    exists and is not empty" guard.
     """
     final_mp4 = episode_dir / "edit" / "final.mp4"
     final_json = episode_dir / "edit" / "transcripts" / "final.json"
