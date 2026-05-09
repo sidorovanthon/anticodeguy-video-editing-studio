@@ -1,189 +1,207 @@
 <div id="scene-thesis" class="scene clip"
-     data-start="1.34" data-duration="12.26" data-track-index="1"
+     data-start="4.0" data-duration="11.5" data-track-index="1"
      data-width="1080" data-height="1920">
   <style>
     #scene-thesis {
       position: absolute;
       inset: 0;
       opacity: 0;
-    }
-
-    #scene-thesis .scene-bg {
-      position: absolute;
-      inset: 0;
       background: #1a1614;
+      overflow: hidden;
+      font-family: "Inter", sans-serif;
+      color: #f4ebdc;
     }
 
-    #scene-thesis .warm-grain {
-      position: absolute;
-      inset: 0;
-      background:
-        radial-gradient(circle at 20% 30%, rgba(180, 160, 140, 0.08), transparent 50%),
-        radial-gradient(circle at 80% 70%, rgba(180, 160, 140, 0.08), transparent 50%);
-      mix-blend-mode: overlay;
+    #scene-thesis .bg-grain {
+      position: absolute; inset: 0; pointer-events: none;
+      background-image:
+        radial-gradient(rgba(36,31,27,0.55) 1px, transparent 1px),
+        radial-gradient(rgba(36,31,27,0.35) 1px, transparent 1px);
+      background-size: 3px 3px, 7px 7px;
+      background-position: 0 0, 1px 2px;
+      mix-blend-mode: multiply;
+      opacity: 0.10;
     }
 
-    #scene-thesis .soft-vignette {
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(ellipse at center, transparent 30%, rgba(26, 22, 20, 0.12) 100%);
+    #scene-thesis .bg-vignette {
+      position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(ellipse at 50% 48%,
+        rgba(26,22,20,0) 38%,
+        rgba(26,22,20,0.45) 88%,
+        rgba(26,22,20,0.78) 100%);
+      transform-origin: 50% 50%;
+    }
+
+    #scene-thesis .bg-halo {
+      position: absolute; left: -120px; top: 380px;
+      width: 720px; height: 720px; pointer-events: none;
+      background: radial-gradient(circle at 50% 50%,
+        rgba(232,161,74,0.18) 0%,
+        rgba(232,161,74,0.10) 32%,
+        rgba(192,140,135,0.06) 60%,
+        rgba(232,161,74,0) 78%);
+      filter: blur(8px);
+      opacity: 0.10;
+    }
+
+    #scene-thesis .bg-hairline-tick {
+      position: absolute; top: 80px; right: 64px;
+      width: 96px; height: 1px;
+      background: #e8a14a;
+      opacity: 0.30;
+      transform-origin: right center;
+    }
+
+    #scene-thesis .bg-ghost-type {
+      position: absolute; right: -140px; bottom: 120px;
+      font-family: "Playfair Display", serif;
+      font-style: italic; font-weight: 400;
+      font-size: 480px; line-height: 0.9;
+      color: #f4ebdc;
+      opacity: 0;
+      letter-spacing: -0.02em;
+      pointer-events: none;
+      white-space: nowrap;
     }
 
     #scene-thesis .beat-marker {
-      position: absolute;
-      top: 96px;
-      left: 64px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-family: Inter, sans-serif;
-      font-size: 0.75rem;
-      font-weight: 500;
+      position: absolute; top: 56px; left: 64px;
+      display: flex; align-items: center; gap: 12px;
+      opacity: 0;
+    }
+    #scene-thesis .beat-marker .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: #e8a14a;
+    }
+    #scene-thesis .beat-marker .label {
+      font-family: "Inter", sans-serif;
+      font-size: 0.75rem; font-weight: 500;
       letter-spacing: 0.18em;
       text-transform: uppercase;
-    }
-
-    #scene-thesis .beat-marker-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: #e8a14a;
-      flex-shrink: 0;
-    }
-
-    #scene-thesis .beat-marker-label {
       color: #8a7e72;
-    }
-
-    #scene-thesis .hairline-rule {
-      position: absolute;
-      bottom: 131px;
-      left: 64px;
-      width: 240px;
-      height: 1px;
-      background: #e8a14a;
-      opacity: 0.6;
     }
 
     #scene-thesis .caption-plate {
       position: absolute;
+      left: 64px; right: 64px;
       bottom: 96px;
-      left: 64px;
-      right: 64px;
-      padding: 28px;
-      background: rgba(36, 31, 27, 0.78);
+      padding: 28px 64px;
+      background: rgba(36,31,27,0.78);
       border-radius: 14px;
+      opacity: 0;
+      min-height: 140px;
     }
-
     #scene-thesis .caption-text {
-      font-family: Inter, sans-serif;
-      font-size: 1.5rem;
-      font-weight: 400;
+      position: absolute; left: 64px; right: 64px; top: 28px;
+      max-width: 78%;
+      font-family: "Inter", sans-serif;
+      font-size: 1.5rem; font-weight: 400;
       line-height: 1.45;
       color: #f4ebdc;
-      max-width: 78%;
+      opacity: 0;
       margin: 0;
-      display: none;
-    }
-
-    #scene-thesis #ai-agents {
-      color: inherit;
     }
   </style>
 
   <div class="scene-content">
-    <div class="scene-bg"></div>
-    <div class="warm-grain"></div>
-    <div class="soft-vignette"></div>
+    <div class="bg-grain"></div>
+    <div class="bg-vignette"></div>
+    <div class="bg-halo"></div>
+    <div class="bg-hairline-tick"></div>
+    <div class="bg-ghost-type">signal</div>
 
     <div class="beat-marker">
-      <div class="beat-marker-dot"></div>
-      <span class="beat-marker-label">THESIS &middot; 2 / 3</span>
+      <span class="dot"></span>
+      <span class="label">THESIS &middot; 2 / 3</span>
     </div>
 
-    <div class="hairline-rule"></div>
-
     <div class="caption-plate">
-      <p class="caption-text" id="caption-group-1">i'm increasingly using</p>
-      <p class="caption-text" id="caption-group-2">free open-source tools</p>
-      <p class="caption-text" id="caption-group-3">because i can deploy them for myself easily</p>
-      <p class="caption-text" id="caption-group-4">with the help of <span id="ai-agents">AI agents</span> &mdash; or just write the software I need</p>
+      <p class="caption-text phrase-1">the room has not changed &mdash; you have. you are listening at its pace now.</p>
+      <p class="caption-text phrase-2">the page where the reader's eye slows; the second movement of a chamber piece.</p>
+      <p class="caption-text phrase-3">the hold is the message. nothing competes with the voice in the room.</p>
     </div>
   </div>
 
   <script>
-    (function() {
+    (function () {
       window.__sceneTimelines = window.__sceneTimelines || {};
+      const root = document.getElementById("scene-thesis");
+      const q = (sel) => root.querySelector(sel);
+
+      const grain    = q(".bg-grain");
+      const vignette = q(".bg-vignette");
+      const halo     = q(".bg-halo");
+      const tick     = q(".bg-hairline-tick");
+      const ghost    = q(".bg-ghost-type");
+      const marker   = q(".beat-marker");
+      const plate    = q(".caption-plate");
+      const phrase1  = q(".caption-text.phrase-1");
+      const phrase2  = q(".caption-text.phrase-2");
+      const phrase3  = q(".caption-text.phrase-3");
+
+      const sceneDuration = 11.5;
       const tl = gsap.timeline({ paused: true });
 
-      const g1Start = 0.52;
-      const g1Duration = 1.24;
-      const g2Start = 1.76;
-      const g2Duration = 1.98;
-      const g3Start = 3.74;
-      const g3Duration = 2.12;
-      const g4Start = 5.86;
+      tl.fromTo(marker,
+        { opacity: 0 },
+        { opacity: 1, duration: 0.6, ease: "expo.out" }, 0.3);
 
-      // BG ambient motion (3 decoratives)
-      tl.to(".warm-grain", {
-        x: -2,
-        y: -1,
-        duration: 6,
-        ease: "sine.inOut"
-      }, 0);
+      tl.fromTo(ghost,
+        { opacity: 0 },
+        { opacity: 0.04, duration: 1.4, ease: "sine.inOut" }, 0.4);
 
-      tl.to(".soft-vignette", {
-        scale: 1.04,
-        transformOrigin: "center center",
-        duration: 7,
-        ease: "sine.inOut"
-      }, 0);
+      tl.fromTo(plate,
+        { opacity: 0, y: 24 },
+        { opacity: 1, y: 0, duration: 0.9, ease: "sine.inOut" }, 0.5);
 
-      tl.to(".hairline-rule", {
-        opacity: 0.85,
-        duration: 2.5,
-        ease: "sine.inOut",
-        yoyo: true,
-        repeat: 1
-      }, 0);
+      tl.fromTo(phrase1,
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: 0.8, ease: "sine.inOut" }, 0.65);
 
-      // Caption 1 — entrance only, hard-cut exit (no overlapping opacity tween)
-      tl.set("#caption-group-1", { display: "block" }, g1Start);
-      tl.fromTo("#caption-group-1",
+      const swap1 = 4.2;
+      const swap2 = 8.0;
+      const fadeDur = 0.4;
+
+      tl.to(phrase1,
+        { opacity: 0, duration: fadeDur, ease: "power1.inOut" }, swap1);
+      tl.set(phrase1, { visibility: "hidden" }, swap1 + fadeDur);
+
+      tl.fromTo(phrase2,
         { opacity: 0, y: 8 },
-        { opacity: 1, y: 0, duration: 0.35, ease: "power1.out", immediateRender: false },
-        g1Start);
-      tl.set("#caption-group-1", { display: "none" }, g1Start + g1Duration);
+        { opacity: 1, y: 0, duration: 0.7, ease: "sine.inOut" }, swap1 + 0.1);
 
-      // Caption 2
-      tl.set("#caption-group-2", { display: "block" }, g2Start);
-      tl.fromTo("#caption-group-2",
+      tl.to(phrase2,
+        { opacity: 0, duration: fadeDur, ease: "power1.inOut" }, swap2);
+      tl.set(phrase2, { visibility: "hidden" }, swap2 + fadeDur);
+
+      tl.fromTo(phrase3,
         { opacity: 0, y: 8 },
-        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out", immediateRender: false },
-        g2Start);
-      tl.set("#caption-group-2", { display: "none" }, g2Start + g2Duration);
+        { opacity: 1, y: 0, duration: 0.7, ease: "sine.inOut" }, swap2 + 0.1);
 
-      // Caption 3
-      tl.set("#caption-group-3", { display: "block" }, g3Start);
-      tl.fromTo("#caption-group-3",
-        { opacity: 0, y: 8 },
-        { opacity: 1, y: 0, duration: 0.35, ease: "power1.out", immediateRender: false },
-        g3Start);
-      tl.set("#caption-group-3", { display: "none" }, g3Start + g3Duration);
+      const grainCycle = 6;
+      tl.to(grain,
+        { opacity: 0.08, duration: grainCycle, ease: "sine.inOut",
+          yoyo: true, repeat: Math.floor(sceneDuration / grainCycle) }, 0);
 
-      // Caption 4 — final, no exit; held to scene end
-      tl.set("#caption-group-4", { display: "block" }, g4Start);
-      tl.fromTo("#caption-group-4",
-        { opacity: 0, y: 8 },
-        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out", immediateRender: false },
-        g4Start);
+      const vigCycle = 8;
+      tl.to(vignette,
+        { scale: 1.04, duration: vigCycle, ease: "sine.inOut",
+          yoyo: true, repeat: Math.floor(sceneDuration / vigCycle) }, 0);
 
-      // Highlight on AI agents
-      tl.to("#ai-agents", {
-        color: "#e8a14a",
-        duration: 0.4,
-        ease: "power3.out"
-      }, g4Start + 0.2);
+      const haloCycle = 4.5;
+      tl.to(halo,
+        { opacity: 0.14, x: 20, duration: haloCycle, ease: "sine.inOut",
+          yoyo: true, repeat: Math.floor(sceneDuration / haloCycle) }, 0);
+
+      const tickCycle = 5;
+      tl.to(tick,
+        { scaleX: 0.92, duration: tickCycle, ease: "sine.inOut",
+          yoyo: true, repeat: Math.floor(sceneDuration / tickCycle) }, 0);
+
+      const ghostCycle = 6;
+      tl.to(ghost,
+        { y: -12, duration: ghostCycle, ease: "sine.inOut",
+          yoyo: true, repeat: Math.floor(sceneDuration / ghostCycle) }, 1.8);
 
       window.__sceneTimelines["thesis"] = tl;
     })();

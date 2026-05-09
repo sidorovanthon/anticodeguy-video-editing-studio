@@ -1,5 +1,5 @@
 <div id="scene-hook" class="scene clip"
-     data-start="0.0" data-duration="1.34" data-track-index="1"
+     data-start="0.0" data-duration="4.0" data-track-index="1"
      data-width="1080" data-height="1920">
   <style>
     #scene-hook {
@@ -8,52 +8,64 @@
       opacity: 1;
       background-color: #1a1614;
       overflow: hidden;
+      font-family: "Inter", sans-serif;
+      color: #f4ebdc;
     }
-
     #scene-hook .scene-content {
-      position: relative;
-      z-index: 2;
-      width: 100%;
-      height: 100%;
+      position: absolute;
+      inset: 0;
     }
-
     #scene-hook .bg-grain {
       position: absolute;
       inset: 0;
-      opacity: 0.08;
+      background-image:
+        radial-gradient(rgba(244, 235, 220, 0.045) 1px, transparent 1px),
+        radial-gradient(rgba(232, 161, 74, 0.035) 1px, transparent 1px);
+      background-size: 3px 3px, 5px 5px;
+      background-position: 0 0, 1px 2px;
+      mix-blend-mode: overlay;
+      opacity: 0.10;
       pointer-events: none;
-      background-color: #1a1614;
-      background-image: radial-gradient(circle at 20% 50%, rgba(232, 161, 74, 0.04) 0%, transparent 55%);
     }
-
     #scene-hook .bg-vignette {
       position: absolute;
-      inset: 0;
-      opacity: 0.18;
+      inset: -4%;
+      background: radial-gradient(
+        ellipse at 48% 42%,
+        rgba(26, 22, 20, 0) 38%,
+        rgba(26, 22, 20, 0.45) 88%,
+        rgba(26, 22, 20, 0.7) 100%
+      );
       pointer-events: none;
-      background: radial-gradient(ellipse at center, transparent 30%, rgba(36, 31, 27, 0.6) 100%);
+      transform-origin: 48% 42%;
     }
-
-    #scene-hook .ambient-glow {
+    #scene-hook .bg-halo {
       position: absolute;
-      bottom: -120px;
-      left: -120px;
-      width: 540px;
-      height: 540px;
-      background: radial-gradient(circle at center, rgba(232, 161, 74, 0.08) 0%, transparent 65%);
+      top: -120px;
+      left: -160px;
+      width: 720px;
+      height: 720px;
+      background: radial-gradient(
+        circle at center,
+        rgba(232, 161, 74, 0.18) 0%,
+        rgba(232, 161, 74, 0.08) 38%,
+        rgba(192, 140, 135, 0.04) 65%,
+        rgba(232, 161, 74, 0) 80%
+      );
+      filter: blur(12px);
       pointer-events: none;
+      opacity: 0.10;
     }
-
-    #scene-hook .ambient-rose {
+    #scene-hook .bg-hairline-tick {
       position: absolute;
-      top: -100px;
-      right: -100px;
-      width: 460px;
-      height: 460px;
-      background: radial-gradient(circle at center, rgba(192, 140, 135, 0.10) 0%, transparent 65%);
-      pointer-events: none;
+      top: 80px;
+      right: 64px;
+      width: 96px;
+      height: 1px;
+      background: #e8a14a;
+      opacity: 0.30;
+      transform-origin: right center;
     }
-
     #scene-hook .beat-marker {
       position: absolute;
       top: 96px;
@@ -61,19 +73,17 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      z-index: 10;
+      opacity: 0;
     }
-
-    #scene-hook .beat-marker-dot {
+    #scene-hook .beat-dot {
       width: 6px;
       height: 6px;
-      background-color: #e8a14a;
       border-radius: 50%;
+      background: #e8a14a;
       flex-shrink: 0;
     }
-
-    #scene-hook .beat-marker-text {
-      font-family: Inter, sans-serif;
+    #scene-hook .beat-label {
+      font-family: "Inter", sans-serif;
       font-size: 0.75rem;
       font-weight: 500;
       letter-spacing: 0.18em;
@@ -81,7 +91,6 @@
       color: #8a7e72;
       white-space: nowrap;
     }
-
     #scene-hook .lower-stack {
       position: absolute;
       left: 64px;
@@ -91,123 +100,131 @@
       flex-direction: column;
       gap: 28px;
     }
-
     #scene-hook .pull-line {
-      font-family: Playfair Display, serif;
-      font-size: 3.25rem;
-      font-weight: 400;
+      font-family: "Playfair Display", serif;
       font-style: italic;
+      font-weight: 400;
+      font-size: 3.25rem;
       line-height: 1.2;
       color: #f4ebdc;
       max-width: 70%;
       margin: 0;
+      text-transform: lowercase;
+      opacity: 0;
     }
-
     #scene-hook .hairline-rule {
       width: 240px;
       height: 1px;
-      background-color: #e8a14a;
+      background: #e8a14a;
       opacity: 0.6;
-      margin: 0;
       transform-origin: left center;
+      margin: 0;
+      transform: scaleX(0);
     }
-
     #scene-hook .caption-plate {
-      padding: 28px;
-      background-color: rgba(36, 31, 27, 0.78);
+      padding: 28px 64px;
+      background: rgba(36, 31, 27, 0.78);
       border-radius: 14px;
       margin: 0;
+      box-sizing: border-box;
+      opacity: 0;
     }
-
     #scene-hook .caption-text {
-      font-family: Inter, sans-serif;
+      font-family: "Inter", sans-serif;
       font-size: 1.5rem;
       font-weight: 400;
       line-height: 1.45;
       color: #f4ebdc;
       max-width: 78%;
+      text-align: left;
       margin: 0;
+      opacity: 0;
     }
   </style>
 
   <div class="scene-content">
-    <div class="bg-grain"></div>
-    <div class="bg-vignette"></div>
-    <div class="ambient-glow"></div>
-    <div class="ambient-rose"></div>
+    <div class="bg-grain" aria-hidden="true"></div>
+    <div class="bg-vignette" aria-hidden="true"></div>
+    <div class="bg-halo" aria-hidden="true"></div>
+    <div class="bg-hairline-tick" aria-hidden="true"></div>
 
     <div class="beat-marker">
-      <div class="beat-marker-dot"></div>
-      <span class="beat-marker-text">HOOK &middot; 1 / 3</span>
+      <div class="beat-dot"></div>
+      <span class="beat-label">HOOK &middot; 1 / 3</span>
     </div>
 
     <div class="lower-stack">
-      <div class="pull-line">the age of artificial intelligence</div>
-      <div class="hairline-rule"></div>
+      <div class="pull-line">a thought already in motion, before the room knows it&rsquo;s listening.</div>
+      <div class="hairline-rule" aria-hidden="true"></div>
       <div class="caption-plate">
-        <p class="caption-text">age of artificial intelligence.</p>
+        <p class="caption-text">i&rsquo;ve been sitting with something quiet&mdash;</p>
       </div>
     </div>
   </div>
 
   <script>
-    (function() {
+    (function () {
       window.__sceneTimelines = window.__sceneTimelines || {};
+      const root = document.getElementById("scene-hook");
+      const q = (sel) => root.querySelector(sel);
+
+      const sceneDuration = 4.0;
+      const finiteCycles = (cycle) => Math.max(0, Math.floor(sceneDuration / cycle));
+
       const tl = gsap.timeline({ paused: true });
 
-      tl.fromTo("#scene-hook .bg-grain",
-        { x: 0, y: 0 },
-        { x: -3, y: -2, duration: 6, ease: "sine.inOut" },
-        0
-      );
+      const grainCycle = 2.0;
+      tl.fromTo(q(".bg-grain"),
+        { opacity: 0.08 },
+        { opacity: 0.13, duration: grainCycle, ease: "sine.inOut",
+          yoyo: true, repeat: finiteCycles(grainCycle) },
+        0);
 
-      tl.fromTo("#scene-hook .bg-vignette",
-        { scale: 1.0, transformOrigin: "center center" },
-        { scale: 1.05, duration: 7, ease: "sine.inOut" },
-        0
-      );
+      const vignetteCycle = 2.0;
+      tl.fromTo(q(".bg-vignette"),
+        { scale: 1.0 },
+        { scale: 1.04, duration: vignetteCycle, ease: "sine.inOut",
+          yoyo: true, repeat: finiteCycles(vignetteCycle) },
+        0);
 
-      tl.fromTo("#scene-hook .ambient-glow",
-        { scale: 1.0, transformOrigin: "center center" },
-        { scale: 1.08, duration: 8, ease: "sine.inOut" },
-        0
-      );
+      const haloCycle = 2.0;
+      tl.fromTo(q(".bg-halo"),
+        { opacity: 0.10, x: 0 },
+        { opacity: 0.14, x: 22, duration: haloCycle, ease: "sine.inOut",
+          yoyo: true, repeat: finiteCycles(haloCycle) },
+        0);
 
-      tl.fromTo("#scene-hook .ambient-rose",
-        { opacity: 0.0 },
-        { opacity: 1.0, duration: 1.2, ease: "power1.out" },
-        0
-      );
+      const tickCycle = 1.5;
+      tl.fromTo(q(".bg-hairline-tick"),
+        { scaleX: 0.92 },
+        { scaleX: 1.0, duration: tickCycle, ease: "sine.inOut",
+          yoyo: true, repeat: finiteCycles(tickCycle) },
+        0);
 
-      tl.fromTo("#scene-hook .beat-marker",
+      tl.fromTo(q(".beat-marker"),
         { opacity: 0 },
-        { opacity: 1, duration: 0.4, ease: "sine.inOut" },
-        0.10
-      );
+        { opacity: 1, duration: 0.6, ease: "expo.out" },
+        0.2);
 
-      tl.fromTo("#scene-hook .caption-plate",
+      tl.fromTo(q(".caption-plate"),
         { opacity: 0, y: 24 },
-        { opacity: 1, y: 0, duration: 0.9, ease: "power2.inOut" },
-        0.15
-      );
+        { opacity: 1, y: 0, duration: 0.9, ease: "sine.inOut" },
+        0.5);
 
-      tl.fromTo("#scene-hook .caption-text",
+      tl.fromTo(q(".caption-text"),
         { opacity: 0, y: 12 },
-        { opacity: 1, y: 0, duration: 0.7, ease: "power1.out" },
-        0.30
-      );
+        { opacity: 1, y: 0, duration: 0.8, ease: "power2.out" },
+        0.65);
 
-      tl.fromTo("#scene-hook .hairline-rule",
+      tl.fromTo(q(".hairline-rule"),
         { scaleX: 0 },
-        { scaleX: 1, duration: 0.7, ease: "sine.inOut" },
-        0.35
-      );
+        { scaleX: 1, duration: 0.7, ease: "power1.out" },
+        1.1);
 
-      tl.fromTo("#scene-hook .pull-line",
+      tl.fromTo(q(".pull-line"),
         { opacity: 0, y: 18 },
-        { opacity: 1, y: 0, duration: 0.9, ease: "power3.out" },
-        0.45
-      );
+        { opacity: 1, y: 0, duration: 0.95, ease: "power3.out" },
+        1.4);
 
       window.__sceneTimelines["hook"] = tl;
     })();
