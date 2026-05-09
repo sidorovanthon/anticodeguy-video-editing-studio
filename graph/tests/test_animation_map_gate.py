@@ -67,7 +67,7 @@ def test_passes_with_clean_report(tmp_path, monkeypatch):
         "duration": 12.0,
         "tweens": [
             {"index": 1, "selector": ".title", "duration": 0.6, "flags": []},
-            {"index": 2, "selector": ".body", "duration": 0.8, "flags": ["paced-slow"]},
+            {"index": 2, "selector": ".body", "duration": 0.8, "flags": []},
         ],
         "deadZones": [
             {"start": 5.0, "end": 6.0, "duration": 1.0, "note": "exactly 1s — allowed"},
@@ -97,9 +97,41 @@ def test_fails_on_collision_flag(tmp_path, monkeypatch):
     assert any("collision" in v and ".a" in v and ".b" in v for v in record["violations"])
 
 
-# ── Negative: paced-fast at v4 ───────────────────────────────────────────────
+# ── HOM-156: paced-fast goes through LLM-justify helper ─────────────────────
 
-def test_fails_on_paced_fast_at_v4(tmp_path, monkeypatch):
+
+def _stub_dispatch(monkeypatch, *, decisions: dict[str, str], reasons: dict[str, str] | None = None,
+                   helper_errors: list[str] | None = None):
+    """Replace `_dispatch_justify` with a stub that returns canned decisions.
+
+    `decisions` maps `flag_id` → "justify" or "fix". `reasons` (optional) maps
+    flag_id → reason string; defaults to a placeholder. `helper_errors`, when
+    set, simulates a dispatch failure.
+    """
+    from edit_episode_graph.gates.animation_map import _FlagDecision
+
+    def fake(state, *, animation_map_path, flagged, router):
+        if helper_errors:
+            return {}, list(helper_errors)
+        out: dict[str, _FlagDecision] = {}
+        for f in flagged:
+            verdict = decisions.get(f["flag_id"])
+            if verdict is None:
+                continue
+            out[f["flag_id"]] = _FlagDecision(
+                flag_id=f["flag_id"],
+                decision=verdict,
+                reason=(reasons or {}).get(f["flag_id"], "stub reason"),
+            )
+        return out, []
+
+    monkeypatch.setattr(gate_mod, "_dispatch_justify", fake)
+
+
+def test_paced_fast_is_justified_passes(tmp_path, monkeypatch):
+    """HOM-156: when the LLM helper justifies all pace-flags, the gate passes
+    and records justifications on the gate record.
+    """
     hf_dir = _hf_dir(tmp_path)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
@@ -108,9 +140,99 @@ def test_fails_on_paced_fast_at_v4(tmp_path, monkeypatch):
         ],
         "deadZones": [],
     })
+    flag_id = ".flash::1::paced-fast"
+    _stub_dispatch(
+        monkeypatch,
+        decisions={flag_id: "justify"},
+        reasons={flag_id: "HOOK beat is high-energy per plan.energy='high'"},
+    )
+    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
+    assert record["passed"], record["violations"]
+    assert record.get("justifications"), "expected justifications on the record"
+    assert record["justifications"][0]["flag"] == "paced-fast"
+
+
+def test_paced_fast_is_marked_fix_redispatches(tmp_path, monkeypatch):
+    """HOM-156: when the LLM helper marks a pace-flag as `fix`, the gate fails
+    with the model's reason in the violation.
+    """
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            {"index": 1, "selector": ".flash", "duration": 0.12, "flags": ["paced-fast"]},
+        ],
+        "deadZones": [],
+    })
+    flag_id = ".flash::1::paced-fast"
+    _stub_dispatch(
+        monkeypatch,
+        decisions={flag_id: "fix"},
+        reasons={flag_id: "HOOK beat is calm; flash slam is dictation mismatch"},
+    )
     record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
     assert not record["passed"]
-    assert any("paced-fast" in v and "v5" in v for v in record["violations"])
+    joined = " ".join(record["violations"])
+    assert "paced-fast" in joined and "dictation mismatch" in joined
+
+
+def test_paced_slow_is_justifiable_too(tmp_path, monkeypatch):
+    """HOM-156: paced-slow flags are also legitimate (sustained ambient hold)."""
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            {"index": 2, "selector": ".ambient", "duration": 3.0, "flags": ["paced-slow"]},
+        ],
+        "deadZones": [],
+    })
+    flag_id = ".ambient::2::paced-slow"
+    _stub_dispatch(
+        monkeypatch,
+        decisions={flag_id: "justify"},
+        reasons={flag_id: "HOLD beat is meditative per plan.energy='calm'"},
+    )
+    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
+    assert record["passed"], record["violations"]
+
+
+def test_no_pace_flags_skips_llm_dispatch(tmp_path, monkeypatch):
+    """HOM-156: clean pace-flag set ⇒ no LLM dispatch (cheap path)."""
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            {"index": 1, "selector": ".body", "duration": 0.6, "flags": []},
+        ],
+        "deadZones": [],
+    })
+
+    def fail_dispatch(*a, **kw):
+        raise AssertionError("LLM helper must NOT dispatch when no pace flags present")
+
+    monkeypatch.setattr(gate_mod, "_dispatch_justify", fail_dispatch)
+    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
+    assert record["passed"]
+
+
+def test_justify_dispatch_failure_falls_back_to_strict_fail(tmp_path, monkeypatch):
+    """HOM-156: when the LLM helper errors, every pace flag becomes a violation
+    so we never silently pass on a broken classifier.
+    """
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            {"index": 1, "selector": ".flash", "duration": 0.12, "flags": ["paced-fast"]},
+        ],
+        "deadZones": [],
+    })
+    _stub_dispatch(monkeypatch, decisions={}, helper_errors=["dispatch failed: stub"])
+    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
+    assert not record["passed"]
+    joined = " ".join(record["violations"])
+    assert "dispatch failed" in joined
+    assert "justify helper unavailable" in joined
 
 
 # ── Negative: dead zone > 1s ─────────────────────────────────────────────────

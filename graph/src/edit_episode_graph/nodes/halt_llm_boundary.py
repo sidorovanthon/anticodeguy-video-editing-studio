@@ -147,8 +147,19 @@ def halt_llm_boundary_node(state):
         n_v = len(cluster_failure.get("violations") or [])
         gate_name = cluster_failure.get("gate")
         iter_n = cluster_failure.get("iteration") or 0
+        # HOM-156: gate:animation_map records `justifications` on a record
+        # when the cheap-tier LLM-justify helper accepted any pace-flags as
+        # legitimate. Surface count/sample so the operator sees what the
+        # classifier let through alongside the violations that halted the run.
+        justify_part = ""
+        justifications = cluster_failure.get("justifications") or []
+        if justifications:
+            justify_part = (
+                f"; {len(justifications)} pace-flag(s) justified by LLM classifier "
+                "(see gate_results[*].justifications)"
+            )
         msg = (
-            f"v4 halt: {gate_name} FAILED at iter {iter_n} ({n_v} violation(s)) — "
+            f"v4 halt: {gate_name} FAILED at iter {iter_n} ({n_v} violation(s)){justify_part} — "
             "see gate_results; "
             f"{_persist_summary()}; "
             "p4_redispatch_beat retry-with-feedback exhausted (HOM-148, max 3 "
