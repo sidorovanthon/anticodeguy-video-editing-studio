@@ -86,15 +86,18 @@ def _p4_design_system_base(tmp_dir: Path) -> dict:
 
 
 def _gate_animation_map_classify_base(tmp_dir: Path) -> dict:
-    """Base state for the gate_animation_map_classify LLM node (HOM-156).
+    """Base state for the gate_animation_map_classify LLM node.
+
+    HOM-156 — initial extraction; HOM-204 — input shape moved from
+    ``pending_justifiable`` to ``advisory_findings.pending_classify``.
 
     The node's cache key reads:
       - `compose.hyperframes_dir` → derives the animation-map.json path,
         which is content-hashed.
       - `compose.design_md_path` → content-hashed.
       - `compose.plan.beats` → fingerprinted via stable_fingerprint.
-      - `gate_results[*].pending_justifiable` (latest gate:animation_map
-        record) → fingerprinted via stable_fingerprint.
+      - `gate_results[*].advisory_findings.pending_classify` (latest
+        gate:animation_map record) → fingerprinted via stable_fingerprint.
     """
     hf_dir = tmp_dir / "hyperframes"
     hf_dir.mkdir(parents=True, exist_ok=True)
@@ -120,14 +123,18 @@ def _gate_animation_map_classify_base(tmp_dir: Path) -> dict:
         "gate_results": [
             {
                 "gate": "gate:animation_map",
-                "passed": False,
+                "passed": True,  # HOM-204: advisory — successful helper run.
                 "violations": [],
+                "advisory_findings": {
+                    "always_fix": [],
+                    "dead_zones": [],
+                    "pending_classify": [
+                        {"flag_id": ".flash::1::paced-fast", "selector": ".flash",
+                         "flag": "paced-fast", "duration": 0.12, "index": 1},
+                    ],
+                },
                 "iteration": 1,
                 "timestamp": "2026-05-09T00:00:00Z",
-                "pending_justifiable": [
-                    {"flag_id": ".flash::1::paced-fast", "selector": ".flash",
-                     "flag": "paced-fast", "duration": 0.12, "index": 1},
-                ],
             },
         ],
     }
@@ -185,6 +192,12 @@ _NODE_REGISTRY: dict[str, tuple[str, Callable[[Path], dict], Callable[[dict], Pa
         / ".hyperframes" / "anim-map" / "animation-map.json",
     ),
 }
+
+# HOM-204: gate:animation_map is a deterministic gate (uses make_key, not
+# make_llm_key) — the parametrised CREATIVE_NODES tests in
+# test_fingerprint_invalidation.py exercise make_llm_key invariants, which
+# do NOT apply to make_key. Its version bump is asserted directly in
+# graph/tests/test_animation_map_gate.py instead of via parametrisation.
 
 
 def _load_node_module(node_name: str):

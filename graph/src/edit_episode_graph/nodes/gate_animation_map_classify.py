@@ -1,35 +1,43 @@
-"""gate_animation_map_classify — cheap-tier LLM fix-or-justify classifier (HOM-156).
+"""gate_animation_map_classify — cheap-tier LLM advisory classifier (HOM-156, HOM-204).
 
-Reads the gate_animation_map record's ``pending_justifiable`` list and
-dispatches a cheap-tier LLM helper that classifies each paced-fast /
-paced-slow flag as either ``justify`` (legitimate creative choice — pass)
-or ``fix`` (dictation mismatch — redispatch).
+Reads the gate_animation_map record's ``advisory_findings.pending_classify``
+list and dispatches a cheap-tier LLM helper that annotates each
+paced-fast / paced-slow flag with a per-flag decision (``justify`` /
+``fix``) and reason. **Output is advisory metadata** — it never affects
+routing.
 
 Per CLAUDE.md §"Idempotency" + spec
 ``docs/superpowers/specs/2026-05-06-langgraph-node-caching-design.md``:
 the LLM dispatch lives in its own graph node so LangGraph's
 ``cache_policy=`` mechanism applies — re-running the gate cluster
-on identical inputs produces zero LLM dispatches. (S1 review fix:
-the prior in-gate-body dispatch had ``CACHE_POLICY`` defined but
-unreachable — ``SqliteCache`` only fires on whole graph nodes.)
+on identical inputs produces zero LLM dispatches.
 
 Brief: ``briefs/gate_animation_map_classify.j2`` — references canon
 paths, never embeds canon (CLAUDE.md §"Decomposition via
 brief-references-canon").
 
-Output: appends a fresh ``gate:animation_map`` record (iteration N+1)
-to ``state.gate_results`` with merged classifier decisions:
+HOM-204 demotion (parent HOM-203): four clean ``hyperframes`` skill
+sessions never invoked ``animation-map.mjs`` at all — canon treats it
+as optional QA tooling, not a blocking gate. We keep the classifier
+because its per-flag justifications are operator-readable signal in
+Studio, but its decisions are advisory: classifier output merges into
+``advisory_findings.pending_classify`` (each entry gains
+``decision`` + ``reason`` keys) and the router always advances to
+``gate_snapshot``.
 
-  * ``violations`` — original always-fix list **plus** flags the
-    classifier marked ``fix`` (with the model's reason inlined).
-  * ``justifications`` — the ``justify`` decisions, one entry per
-    accepted pace flag (Studio reads this for operator visibility).
-  * ``passed`` — ``True`` iff merged ``violations`` is empty.
+Output: appends a fresh ``gate:animation_map`` record to
+``state.gate_results`` with:
 
-The router (``route_after_animation_map_classify``) reads the new
-record and routes accordingly: pass → ``gate_snapshot``;
-fail+iter<3 → ``p4_redispatch_beat``; fail+iter≥3 →
-``halt_llm_boundary``.
+  * ``passed`` — preserved from the upstream gate record (advisory
+    routing — successful helper run is always ``True``; infra
+    failures don't reach this node).
+  * ``violations`` — preserved as-is (gate base contract; carries
+    upstream infra failures only, ``[]`` on the happy path).
+  * ``advisory_findings`` — same three-key shape as the upstream
+    record, with ``pending_classify`` entries annotated per-flag.
+  * ``classifier_status`` — ``"ok"`` on a successful dispatch,
+    ``"failed: <reason>"`` on dispatch / schema failure. The router
+    does not read this; it's operator-facing.
 """
 
 from __future__ import annotations
@@ -48,7 +56,12 @@ from ..backends._types import NodeRequirements
 from ._llm import LLMNode, _load_brief
 
 # Bump on brief / schema / tool-list change. See HOM-132 spec §8.
-_CACHE_VERSION = 1
+# v1 = HOM-156 — initial cheap-tier extraction from gate body.
+# v2 = HOM-204 — output shape change: classifier decisions merge into
+#      ``advisory_findings.pending_classify`` (was: into ``violations`` /
+#      ``justifications``). Reads upstream input from
+#      ``advisory_findings.pending_classify`` (was: ``pending_justifiable``).
+_CACHE_VERSION = 2
 
 
 # ---------------------------------------------------------------------------
@@ -135,23 +148,25 @@ def _plan_beats(state: dict) -> list[dict]:
 
 
 def _latest_animation_map_record(state: dict) -> dict | None:
-    """Most recent gate:animation_map record (the one carrying pending_justifiable)."""
+    """Most recent gate:animation_map record (the one carrying advisory_findings)."""
     for record in reversed(state.get("gate_results") or []):
         if record.get("gate") == "gate:animation_map":
             return record
     return None
 
 
-def _pending_justifiable(state: dict) -> list[dict]:
+def _pending_classify(state: dict) -> list[dict]:
+    """Read pending pace-flags from the latest gate record (HOM-204 shape)."""
     record = _latest_animation_map_record(state)
     if not record:
         return []
-    return list(record.get("pending_justifiable") or [])
+    advisory = record.get("advisory_findings") or {}
+    return list(advisory.get("pending_classify") or [])
 
 
 def _render_ctx(state: dict) -> dict:
     anim_path = _animation_map_path(state)
-    flagged = _pending_justifiable(state)
+    flagged = _pending_classify(state)
     return {
         "animation_map_json_path": str(anim_path) if anim_path else "",
         "design_md_path": _design_md_path(state),
@@ -172,8 +187,9 @@ def _cache_key(state, *_args, **_kwargs):
         ⇒ different justification surface.
       - plan beats fingerprint (``extras=``) — beats live in-memory on
         ``state.compose.plan``, not on disk.
-      - pending_justifiable fingerprint (``extras=``) — the classifier's
-        actual input set, gated by the gate record's pending list.
+      - pending_classify fingerprint (``extras=``) — the classifier's
+        actual input set, gated by the gate record's pending list
+        (HOM-204 shape: ``advisory_findings.pending_classify``).
     """
     if not isinstance(state, dict):
         raise TypeError(
@@ -192,7 +208,7 @@ def _cache_key(state, *_args, **_kwargs):
         ],
         extras=(
             stable_fingerprint(_plan_beats(state)),
-            stable_fingerprint(_pending_justifiable(state)),
+            stable_fingerprint(_pending_classify(state)),
         ),
     )
 
@@ -224,61 +240,101 @@ def _build_node() -> LLMNode:
     )
 
 
-def _violation_for(flagged: dict, reason: str) -> str:
-    return (
-        f"{flagged['flag']} flag on {flagged['selector']} "
-        f"(duration {flagged['duration']}s) — fix per LLM classifier: {reason}"
-    )
-
-
 def _iteration(state: dict) -> int:
     prior = [r for r in (state.get("gate_results") or []) if r.get("gate") == "gate:animation_map"]
     return len(prior) + 1
 
 
+def _annotated_pending(
+    flagged_input: list[dict],
+    decisions_by_id: dict[str, "_FlagDecision"],
+    fallback_reason: str | None,
+) -> list[dict]:
+    """Return pending_classify entries annotated with the classifier's
+    per-flag decisions (or a fallback if classifier failed).
+
+    Output is always advisory (HOM-204) — even ``decision="fix"`` does
+    not affect routing. Each entry preserves its original keys
+    (``flag_id``, ``selector``, ``flag``, ``duration``, ``index``) and
+    gains ``decision`` + ``reason``.
+    """
+    out: list[dict] = []
+    for flagged in flagged_input:
+        entry = dict(flagged)
+        d = decisions_by_id.get(flagged.get("flag_id"))
+        if d is not None:
+            entry["decision"] = d.decision
+            entry["reason"] = d.reason
+        else:
+            entry["decision"] = "fix"
+            entry["reason"] = fallback_reason or (
+                "classifier returned no decision for this flag; "
+                "treating as advisory fix until the classifier is re-runnable"
+            )
+        out.append(entry)
+    return out
+
+
 def gate_animation_map_classify_node(state: dict, *, router: BackendRouter | None = None) -> dict:
-    """Classify pending pace flags, append a follow-up gate record."""
+    """Annotate pending pace flags with advisory decisions (HOM-204).
+
+    Always emits a follow-up ``gate:animation_map`` record. The record's
+    ``passed`` is preserved from the upstream gate record (advisory:
+    successful helper run is always ``True``). Routing always advances
+    to ``gate_snapshot`` regardless of what the classifier said — the
+    decisions are operator-facing metadata.
+    """
     record = _latest_animation_map_record(state)
-    flagged_input = list((record or {}).get("pending_justifiable") or [])
-    base_violations = list((record or {}).get("violations") or [])
+    upstream_advisory = (record or {}).get("advisory_findings") or {}
+    flagged_input = list(upstream_advisory.get("pending_classify") or [])
+    upstream_violations = list((record or {}).get("violations") or [])
+    upstream_passed = bool((record or {}).get("passed", True))
+
     extras: dict = {}
     for k in ("helper_path", "fallback_helper_used"):
         if record and k in record:
             extras[k] = record[k]
 
+    # Always-fix and dead-zones come straight through unchanged.
+    base_advisory = {
+        "always_fix": list(upstream_advisory.get("always_fix") or []),
+        "dead_zones": list(upstream_advisory.get("dead_zones") or []),
+        "pending_classify": [],  # filled in below
+    }
+
     if not flagged_input:
-        # Defensive: router should not send us here. Emit a passing record so
-        # the router sees a clean state and advances.
-        passing_record = {
+        # Defensive: router should not send us here, but be safe — emit a
+        # passing-through record so the router sees a clean state.
+        passthrough_record = {
             "gate": "gate:animation_map",
-            "passed": not base_violations,
-            "violations": base_violations,
+            "passed": upstream_passed,
+            "violations": upstream_violations,
+            "advisory_findings": {**base_advisory, "pending_classify": []},
+            "classifier_status": "skipped: no pending_classify entries",
             "iteration": _iteration(state),
             "timestamp": _now(),
             **extras,
         }
-        return {"gate_results": [passing_record]}
+        return {"gate_results": [passthrough_record]}
 
     node = _build_node()
     try:
         update = node(state, router=router)
     except Exception as exc:  # AllBackendsExhausted etc. — gate must not raise.
-        # Surface dispatch failure as a redispatch-routing decision: every
-        # pending flag becomes a fix-violation, classifier failure noted.
-        violations = list(base_violations)
-        violations.append(
-            f"animation-map classify dispatch failed: {type(exc).__name__}: {exc}"
+        annotated = _annotated_pending(
+            flagged_input,
+            decisions_by_id={},
+            fallback_reason=(
+                f"classifier dispatch failed ({type(exc).__name__}: {exc}); "
+                "advisory only — no routing impact"
+            ),
         )
-        for flagged in flagged_input:
-            violations.append(
-                f"{flagged['flag']} flag on {flagged['selector']} "
-                f"(duration {flagged['duration']}s) — classifier unavailable; "
-                "treat as fix until classifier is re-runnable"
-            )
         fail_record = {
             "gate": "gate:animation_map",
-            "passed": False,
-            "violations": violations,
+            "passed": upstream_passed,
+            "violations": upstream_violations,
+            "advisory_findings": {**base_advisory, "pending_classify": annotated},
+            "classifier_status": f"failed: {type(exc).__name__}: {exc}",
             "iteration": _iteration(state),
             "timestamp": _now(),
             **extras,
@@ -289,9 +345,8 @@ def gate_animation_map_classify_node(state: dict, *, router: BackendRouter | Non
     payload = compose_update.get("classify_decisions") or {}
     flags_out = payload.get("flags") if isinstance(payload, dict) else None
 
-    violations = list(base_violations)
-    justifications: list[dict] = []
     decisions_by_id: dict[str, _FlagDecision] = {}
+    classifier_status = "ok"
 
     if isinstance(flags_out, list):
         for entry in flags_out:
@@ -302,47 +357,42 @@ def gate_animation_map_classify_node(state: dict, *, router: BackendRouter | Non
             except Exception:
                 continue
             decisions_by_id[d.flag_id] = d
+        if not decisions_by_id:
+            classifier_status = "failed: classifier returned no valid decisions"
     else:
         # Output_schema validation failed and the router fell through to raw text,
-        # OR the payload missed the `flags` key. Treat as classifier failure.
+        # OR the payload missed the `flags` key.
         preview = ""
         if isinstance(payload, dict) and "raw_text" in payload:
             preview = (payload.get("raw_text") or "")[:300]
-        violations.append(
-            "animation-map classifier returned unstructured / malformed output"
+        classifier_status = (
+            "failed: classifier returned unstructured / malformed output"
             + (f"; first 300 chars: {preview!r}" if preview else "")
         )
 
-    for flagged in flagged_input:
-        d = decisions_by_id.get(flagged["flag_id"])
-        if d is None:
-            violations.append(
-                f"{flagged['flag']} flag on {flagged['selector']} "
-                f"(duration {flagged['duration']}s) — classifier returned no "
-                f"decision for flag_id={flagged['flag_id']!r}"
-            )
-            continue
-        if d.decision == "fix":
-            violations.append(_violation_for(flagged, d.reason))
-        else:
-            justifications.append({
-                "flag_id": flagged["flag_id"],
-                "selector": flagged["selector"],
-                "flag": flagged["flag"],
-                "duration": flagged["duration"],
-                "reason": d.reason,
-            })
+    fallback_reason = None
+    if classifier_status != "ok":
+        fallback_reason = (
+            f"classifier output unusable ({classifier_status}); "
+            "advisory only — no routing impact"
+        )
+
+    annotated = _annotated_pending(
+        flagged_input,
+        decisions_by_id=decisions_by_id,
+        fallback_reason=fallback_reason,
+    )
 
     follow_up = {
         "gate": "gate:animation_map",
-        "passed": not violations,
-        "violations": violations,
+        "passed": upstream_passed,
+        "violations": upstream_violations,
+        "advisory_findings": {**base_advisory, "pending_classify": annotated},
+        "classifier_status": classifier_status,
         "iteration": _iteration(state),
         "timestamp": _now(),
         **extras,
     }
-    if justifications:
-        follow_up["justifications"] = justifications
 
     # Drop the noisy LLMNode result_key from the compose namespace — the
     # gate_results record carries the only signal downstream nodes consume.

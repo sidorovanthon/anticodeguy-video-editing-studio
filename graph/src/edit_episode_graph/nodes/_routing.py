@@ -602,48 +602,58 @@ route_after_design_adherence = route_after_gate_with_retry(
 )
 def route_after_animation_map(state):
     """gate:animation_map → gate_animation_map_classify | gate_snapshot |
-    p4_redispatch_beat | halt_llm_boundary.
+    halt_llm_boundary.
 
-    HOM-156 (review S1): the deterministic gate may emit a record with
-    ``pending_justifiable`` flags but no always-fix violations. Those are
-    paced-fast / paced-slow tweens that need LLM classification before we
-    can decide pass vs. fix. Route to the dedicated classify node in that
-    case (``cache_policy=`` on the classify node makes re-runs free).
-    Otherwise the existing pass/retry/halt routing applies.
+    HOM-204: gate:animation_map is **advisory** — its findings never
+    redispatch beats. Routing has three outcomes only:
+
+      * infrastructure failure (``passed=False`` after helper-run failure)
+        → halt_llm_boundary so the operator sees the error and can fix
+        the install (actionable) before re-running.
+      * pace flags pending classification (``advisory_findings.pending_classify``
+        non-empty) → gate_animation_map_classify so the classifier
+        annotates per-flag decisions for operator visibility.
+        ``cache_policy=`` on the classify node makes repeats free.
+      * everything else → gate_snapshot (advance regardless of finding count).
+
+    No edge to ``p4_redispatch_beat`` — see HOM-203 canon-alignment
+    audit (4 clean ``hyperframes`` skill sessions, none invoked
+    ``animation-map.mjs``). The helper output is operator-facing
+    metadata; the human author makes the fix-or-justify call.
     """
     from ..gates._base import latest_gate_result
     record = latest_gate_result(state, "gate:animation_map")
     if record is None:
+        # Defensive: gate must have emitted a record before its outgoing
+        # edge fires. If state was injected mid-run, halt with a notice.
         return "halt_llm_boundary"
-    if record.get("passed"):
-        return "gate_snapshot"
-    if record.get("pending_justifiable") and not record.get("violations"):
-        # Pure pending: deterministic surface clean, classifier needs to run.
+    if not record.get("passed"):
+        # Infrastructure failure (helper missing, exit != 0, JSON unparseable).
+        return "halt_llm_boundary"
+    advisory = record.get("advisory_findings") or {}
+    if advisory.get("pending_classify"):
         return "gate_animation_map_classify"
-    if (record.get("iteration") or 0) < 3:
-        return "p4_redispatch_beat"
-    return "halt_llm_boundary"
+    return "gate_snapshot"
 
 
 def route_after_animation_map_classify(state):
-    """gate_animation_map_classify → gate_snapshot | p4_redispatch_beat |
-    halt_llm_boundary.
+    """gate_animation_map_classify → gate_snapshot | halt_llm_boundary.
 
-    The classify node appends a fresh ``gate:animation_map`` record with
-    merged decisions. Route on that record's pass/fail just like the
-    standard gate-with-retry helper does — but the classify node itself
-    counts toward the iteration cap (the post-classify record's
-    ``iteration`` reflects total gate:animation_map records on state).
+    HOM-204: classifier output is advisory metadata only. After it
+    appends its follow-up ``gate:animation_map`` record (carrying
+    per-flag decisions on ``advisory_findings.pending_classify``),
+    routing always advances to ``gate_snapshot``. No redispatch loop.
+
+    The ``halt_llm_boundary`` fallback covers the defensive case where
+    the classifier itself failed to emit a record at all. Everything
+    else moves on — the classifier's pass/fail signal is no longer
+    load-bearing.
     """
     from ..gates._base import latest_gate_result
     record = latest_gate_result(state, "gate:animation_map")
     if record is None:
         return "halt_llm_boundary"
-    if record.get("passed"):
-        return "gate_snapshot"
-    if (record.get("iteration") or 0) < 3:
-        return "p4_redispatch_beat"
-    return "halt_llm_boundary"
+    return "gate_snapshot"
 route_after_snapshot = route_after_gate_with_retry(
     gate_name="gate:snapshot",
     on_pass="gate_captions_track",

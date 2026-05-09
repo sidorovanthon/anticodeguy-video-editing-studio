@@ -1,9 +1,22 @@
 """Unit tests for gate:animation_map.
 
+HOM-204 demoted this gate to advisory: the helper still runs, but its
+findings (collision / degenerate / dead-zone / paced-fast / paced-slow)
+land under ``record["advisory_findings"]`` and never produce
+``passed=False``. Only **infrastructure failures** (helper missing,
+exit != 0, JSON unparseable) keep ``passed=False``.
+
 Exercises:
-  - the three v4 pass criteria (collision / paced-fast / dead zone >1s)
+  - successful helper runs always set ``passed=True`` regardless of
+    finding count
+  - ``advisory_findings`` always carries the canonical three-key shape
+    ``{"always_fix": [...], "dead_zones": [...], "pending_classify": [...]}``
+  - ``record["violations"]`` stays empty on successful runs (Gate base
+    contract preserved; routing layer no longer reads it)
   - bundled-path resolution (preferred over global fallback)
-  - bootstrap-failure triage emits an actionable `npm i -D` message
+  - bootstrap-failure triage emits an actionable ``npm i -D`` message
+    and keeps ``passed=False`` (infrastructure issue)
+  - cache version is 4 (HOM-204 bump)
 """
 
 from __future__ import annotations
@@ -58,9 +71,35 @@ def _stub_resolver(monkeypatch, helper_path: Path, used_fallback: bool = False):
     )
 
 
-# ── Positive ─────────────────────────────────────────────────────────────────
+# ── HOM-204: cache version bump ──────────────────────────────────────────────
 
-def test_passes_with_clean_report(tmp_path, monkeypatch):
+
+def test_cache_version_is_4():
+    """HOM-204 bumped 3→4 because output shape changed (advisory_findings).
+
+    The fingerprint registry's CREATIVE_NODES parametrisation does not
+    cover this deterministic gate (it uses ``make_key``, not
+    ``make_llm_key``); this direct assertion is the version-bump gate.
+    """
+    assert gate_mod._CACHE_VERSION == 4
+
+
+def test_cache_key_includes_version(tmp_path, monkeypatch):
+    """Editing _CACHE_VERSION must change the cache key (HOM-184 invariant
+    applied directly to a deterministic gate)."""
+    hf_dir = _hf_dir(tmp_path)
+    state = _state(hf_dir)
+    before = gate_mod._cache_key(state)
+    monkeypatch.setattr(gate_mod, "_CACHE_VERSION", gate_mod._CACHE_VERSION + 1)
+    after = gate_mod._cache_key(state)
+    assert before != after
+
+
+# ── HOM-204: successful helper runs always pass, findings are advisory ───────
+
+
+def test_clean_report_passes_with_empty_advisory_findings(tmp_path, monkeypatch):
+    """No flags, no dead zones ⇒ passed=True; advisory_findings has empty lists."""
     hf_dir = _hf_dir(tmp_path)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
@@ -75,14 +114,17 @@ def test_passes_with_clean_report(tmp_path, monkeypatch):
     })
     update = animation_map_gate_node(_state(hf_dir))
     record = update["gate_results"][0]
-    assert record["passed"], record["violations"]
-    assert record["gate"] == "gate:animation_map"
+    assert record["passed"] is True
+    assert record["violations"] == []
+    advisory = record["advisory_findings"]
+    assert advisory == {"always_fix": [], "dead_zones": [], "pending_classify": []}
     assert record["fallback_helper_used"] is False
+    notice = update["notices"][0]
+    assert "advisory" in notice and "no findings" in notice
 
 
-# ── Negative: collision flag ─────────────────────────────────────────────────
-
-def test_fails_on_collision_flag(tmp_path, monkeypatch):
+def test_collision_flag_is_advisory_not_blocking(tmp_path, monkeypatch):
+    """HOM-204: collision flag lands in advisory_findings.always_fix; passed=True."""
     hf_dir = _hf_dir(tmp_path)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
@@ -92,23 +134,20 @@ def test_fails_on_collision_flag(tmp_path, monkeypatch):
         ],
         "deadZones": [],
     })
-    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
-    assert not record["passed"]
-    assert any("collision" in v and ".a" in v and ".b" in v for v in record["violations"])
+    update = animation_map_gate_node(_state(hf_dir))
+    record = update["gate_results"][0]
+    assert record["passed"] is True, "successful helper run ⇒ pass even with findings"
+    assert record["violations"] == [], "violations field reserved for infra failures"
+    advisory = record["advisory_findings"]
+    assert len(advisory["always_fix"]) == 1
+    assert "collision" in advisory["always_fix"][0]
+    assert ".a" in advisory["always_fix"][0] and ".b" in advisory["always_fix"][0]
+    notice = update["notices"][0]
+    assert "advisory" in notice and "always_fix: 1" in notice
 
 
-# ── HOM-156 (review S1): pace flags surface as `pending_justifiable` ─────────
-# The deterministic gate NEVER calls an LLM. paced-fast / paced-slow flags
-# are recorded as `pending_justifiable` on the gate record so the
-# `gate_animation_map_classify` LLM node (a separate graph node) can triage
-# them. Behavioural coverage of the classifier itself lives in
-# `tests/test_gate_animation_map_classify_node.py`.
-
-
-def test_paced_fast_records_pending_justifiable(tmp_path, monkeypatch):
-    """paced-fast tween → record has pending_justifiable; passed=False
-    (router will dispatch the classifier next).
-    """
+def test_paced_fast_records_pending_classify(tmp_path, monkeypatch):
+    """paced-fast tween → advisory_findings.pending_classify; passed=True."""
     hf_dir = _hf_dir(tmp_path)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
@@ -118,17 +157,17 @@ def test_paced_fast_records_pending_justifiable(tmp_path, monkeypatch):
         "deadZones": [],
     })
     record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
-    assert record["passed"] is False, "must not pass with pending_justifiable"
-    assert record["violations"] == [], "no always-fix violations from a lone paced-fast"
-    pending = record.get("pending_justifiable") or []
+    assert record["passed"] is True
+    assert record["violations"] == []
+    pending = record["advisory_findings"]["pending_classify"]
     assert len(pending) == 1
     assert pending[0]["flag"] == "paced-fast"
     assert pending[0]["selector"] == ".flash"
     assert pending[0]["flag_id"] == ".flash::1::paced-fast"
 
 
-def test_paced_slow_records_pending_justifiable(tmp_path, monkeypatch):
-    """paced-slow flags are also surfaced as pending (sustained ambient hold)."""
+def test_paced_slow_records_pending_classify(tmp_path, monkeypatch):
+    """paced-slow flags also surface under pending_classify."""
     hf_dir = _hf_dir(tmp_path)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
@@ -138,54 +177,14 @@ def test_paced_slow_records_pending_justifiable(tmp_path, monkeypatch):
         "deadZones": [],
     })
     record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
-    assert record["passed"] is False
-    pending = record.get("pending_justifiable") or []
+    assert record["passed"] is True
+    pending = record["advisory_findings"]["pending_classify"]
     assert len(pending) == 1
     assert pending[0]["flag"] == "paced-slow"
 
 
-def test_no_pace_flags_no_pending_passes_clean(tmp_path, monkeypatch):
-    """Clean pace-flag set ⇒ passed=True, no pending list."""
-    hf_dir = _hf_dir(tmp_path)
-    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
-    _stub_helper(monkeypatch, report={
-        "tweens": [
-            {"index": 1, "selector": ".body", "duration": 0.6, "flags": []},
-        ],
-        "deadZones": [],
-    })
-    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
-    assert record["passed"] is True
-    assert "pending_justifiable" not in record
-
-
-def test_collision_takes_precedence_over_pending(tmp_path, monkeypatch):
-    """Always-fix flag + paced-fast on different tweens → both surface, but
-    the always-fix violation guarantees passed=False (no need to dispatch
-    the classifier; the cluster will redispatch).
-    """
-    hf_dir = _hf_dir(tmp_path)
-    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
-    _stub_helper(monkeypatch, report={
-        "tweens": [
-            {"index": 1, "selector": ".a", "duration": 0.6, "flags": ["collision"]},
-            {"index": 2, "selector": ".b", "duration": 0.6, "flags": ["collision"]},
-            {"index": 3, "selector": ".flash", "duration": 0.12, "flags": ["paced-fast"]},
-        ],
-        "deadZones": [],
-    })
-    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
-    assert record["passed"] is False
-    # Always-fix violation rendered.
-    assert any("collision" in v for v in record["violations"])
-    # Pace flag still recorded for downstream classifier visibility.
-    pending = record.get("pending_justifiable") or []
-    assert any(f["flag"] == "paced-fast" for f in pending)
-
-
-# ── Negative: dead zone > 1s ─────────────────────────────────────────────────
-
-def test_fails_on_dead_zone_over_one_second(tmp_path, monkeypatch):
+def test_dead_zone_over_one_second_is_advisory(tmp_path, monkeypatch):
+    """Dead zone > 1s ⇒ advisory_findings.dead_zones; passed=True (HOM-204)."""
     hf_dir = _hf_dir(tmp_path)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
@@ -195,11 +194,50 @@ def test_fails_on_dead_zone_over_one_second(tmp_path, monkeypatch):
         ],
     })
     record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
-    assert not record["passed"]
-    assert any("1.5" in v and "dead zone" in v for v in record["violations"])
+    assert record["passed"] is True
+    assert record["violations"] == []
+    dead_zones = record["advisory_findings"]["dead_zones"]
+    assert len(dead_zones) == 1
+    assert "1.5" in dead_zones[0] and "dead zone" in dead_zones[0]
+
+
+def test_collision_and_pace_and_dead_zone_all_advisory(tmp_path, monkeypatch):
+    """HOM-204 acceptance: a synth report with collision + degenerate +
+    dead-zone + paced-fast all land as advisory findings; passed=True;
+    violations=[]."""
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            {"index": 1, "selector": ".a", "duration": 0.6, "flags": ["collision"]},
+            {"index": 2, "selector": ".b", "duration": 0.6, "flags": ["collision"]},
+            {"index": 3, "selector": ".hairline", "duration": 0.4, "flags": ["degenerate"]},
+            {"index": 4, "selector": ".flash", "duration": 0.12, "flags": ["paced-fast"]},
+        ],
+        "deadZones": [
+            {"start": 10.0, "end": 12.0, "duration": 2.0, "note": "intentional hold"},
+        ],
+    })
+    update = animation_map_gate_node(_state(hf_dir))
+    record = update["gate_results"][0]
+    assert record["passed"] is True
+    assert record["violations"] == []
+    advisory = record["advisory_findings"]
+    assert any("collision" in s for s in advisory["always_fix"])
+    assert any("degenerate" in s for s in advisory["always_fix"])
+    assert len(advisory["dead_zones"]) == 1
+    assert len(advisory["pending_classify"]) == 1
+    assert advisory["pending_classify"][0]["flag"] == "paced-fast"
+    notice = update["notices"][0]
+    # Total = 2 always_fix (collision+degenerate) + 1 dead_zone + 1 pending.
+    assert "4 finding(s)" in notice
+    assert "always_fix: 2" in notice
+    assert "dead_zones: 1" in notice
+    assert "pending_classify: 1" in notice
 
 
 # ── Path resolution: bundled preferred over global fallback ──────────────────
+
 
 def test_resolves_bundled_helper_in_preference_to_global(tmp_path, monkeypatch):
     hf_dir = _hf_dir(tmp_path)
@@ -233,14 +271,16 @@ def test_fallback_use_emits_notice(tmp_path, monkeypatch):
     _stub_helper(monkeypatch, report={"tweens": [], "deadZones": []})
     update = animation_map_gate_node(_state(hf_dir))
     record = update["gate_results"][0]
-    assert record["passed"]
+    assert record["passed"] is True
     assert record["fallback_helper_used"] is True
     assert any("global fallback helper" in n for n in update.get("notices", []))
 
 
-# ── Bootstrap failure → actionable npm i -D message ──────────────────────────
+# ── Infrastructure failures keep passed=False ────────────────────────────────
+
 
 def test_bootstrap_failure_emits_actionable_npm_i_command(tmp_path, monkeypatch):
+    """HOM-204: bootstrap failure is infrastructure ⇒ passed=False stays."""
     hf_dir = _hf_dir(tmp_path)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     stderr = (
@@ -249,18 +289,18 @@ def test_bootstrap_failure_emits_actionable_npm_i_command(tmp_path, monkeypatch)
     )
     _stub_helper(monkeypatch, exit_code=1, stderr=stderr)
     record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
-    assert not record["passed"]
+    assert record["passed"] is False, "bootstrap failure is infrastructure"
     joined = " ".join(record["violations"])
     assert "npm i -D" in joined
     assert "@hyperframes/producer@0.4.45" in joined
     assert "sharp@0.33.0" in joined
+    # Advisory findings still present, just empty (no helper output to parse).
+    assert record["advisory_findings"] == {
+        "always_fix": [], "dead_zones": [], "pending_classify": []
+    }
 
 
 def test_bootstrap_failure_global_fallback_no_version_pin(tmp_path, monkeypatch):
-    """Surfaced by the smoke run: when the gate falls back to the global
-    helper copy and the helper can't determine a version, the error reads
-    `Could not determine the bundled HyperFrames version`. Ensure that
-    phrasing also triggers actionable triage."""
     hf_dir = _hf_dir(tmp_path)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     stderr = (
@@ -270,47 +310,44 @@ def test_bootstrap_failure_global_fallback_no_version_pin(tmp_path, monkeypatch)
     )
     _stub_helper(monkeypatch, exit_code=1, stderr=stderr)
     record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
-    assert not record["passed"]
+    assert record["passed"] is False
     joined = " ".join(record["violations"])
     assert "npm i -D" in joined
     assert "@hyperframes/producer" in joined
 
 
 def test_bootstrap_failure_without_install_line_uses_documented_fallback(tmp_path, monkeypatch):
-    """When the helper's stderr doesn't include the advisory line (e.g. EINVAL
-    raised before package-loader prints it), we still emit a usable command
-    pulled from CLAUDE.md."""
     hf_dir = _hf_dir(tmp_path)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     stderr = "spawnSync npm.cmd EINVAL\nRequired helper package(s) are missing.\n"
     _stub_helper(monkeypatch, exit_code=1, stderr=stderr)
     record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
-    assert not record["passed"]
+    assert record["passed"] is False
     joined = " ".join(record["violations"])
     assert "npm i -D" in joined
     assert "@hyperframes/producer" in joined
     assert "sharp" in joined
 
 
-# ── Misc state failures ──────────────────────────────────────────────────────
-
 def test_fails_when_no_hyperframes_dir_in_state():
     record = animation_map_gate_node({})["gate_results"][0]
-    assert not record["passed"]
+    assert record["passed"] is False
+    assert record["advisory_findings"] == {
+        "always_fix": [], "dead_zones": [], "pending_classify": []
+    }
 
 
 def test_fails_when_helper_not_found_anywhere(tmp_path, monkeypatch):
     hf_dir = _hf_dir(tmp_path)
     monkeypatch.setattr(gate_mod, "_GLOBAL_FALLBACK", tmp_path / "definitely-not-there.mjs")
     record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
-    assert not record["passed"]
+    assert record["passed"] is False
     assert any("animation-map.mjs not found" in v for v in record["violations"])
 
 
 def test_runtime_filenotfound_records_failure_does_not_raise(tmp_path, monkeypatch):
-    """Gates MUST NOT raise (per _base.py contract). If `node` is found by
-    `shutil.which` but disappears before subprocess.run completes, the
-    FileNotFoundError must surface as a violation, not an exception."""
+    """Gates MUST NOT raise (per _base.py contract). Infrastructure failure
+    surfaces as passed=False with violation text."""
     hf_dir = _hf_dir(tmp_path)
     helper = tmp_path / "fake-helper.mjs"
     helper.write_text("// stub", encoding="utf-8")
@@ -322,14 +359,15 @@ def test_runtime_filenotfound_records_failure_does_not_raise(tmp_path, monkeypat
 
     monkeypatch.setattr(gate_mod.subprocess, "run", boom)
     record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
-    assert not record["passed"]
+    assert record["passed"] is False
     assert any("node executable not found" in v for v in record["violations"])
 
 
 def test_fails_when_helper_exits_zero_but_no_json(tmp_path, monkeypatch):
+    """Exit 0 but missing animation-map.json is infrastructure failure."""
     hf_dir = _hf_dir(tmp_path)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, exit_code=0, report=None)
     record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
-    assert not record["passed"]
+    assert record["passed"] is False
     assert any("not found" in v for v in record["violations"])
