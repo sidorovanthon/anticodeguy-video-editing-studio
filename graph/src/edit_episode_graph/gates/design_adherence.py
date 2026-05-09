@@ -126,11 +126,26 @@ def _split_font_family_value(value: str) -> list[str]:
 
 
 # CSS generic font keywords aren't real families and shouldn't be flagged.
+# Also includes canonical system-UI fallback tokens (HOM-192) — defensive
+# fallback chains like `font-family: "Inter", -apple-system, BlinkMacSystemFont,
+# "Segoe UI", Roboto, sans-serif;` should validate against DESIGN.md typography
+# `["Inter"]`. The primary family is what's load-bearing; the fallback chain
+# is platform noise. Trade-off: if a designer omits a primary family entirely
+# and uses only fallback tokens (e.g. `font-family: -apple-system;`), the gate
+# won't flag it — that's acceptable; the gate's job is checking against
+# DESIGN.md, not enforcing that authors declare a primary family.
 _CSS_GENERIC_FAMILIES = frozenset(
     {
+        # CSS generic keywords (CSS Fonts Module).
         "serif", "sans-serif", "monospace", "cursive", "fantasy",
         "system-ui", "ui-serif", "ui-sans-serif", "ui-monospace", "ui-rounded",
         "math", "emoji", "fangsong", "inherit", "initial", "unset", "revert",
+        # Canonical system-UI fallback tokens (Apple, Microsoft, Google, Linux).
+        "-apple-system", "blinkmacsystemfont",
+        "segoe ui", "segoe ui emoji", "segoe ui symbol",
+        "roboto", "helvetica neue", "helvetica", "arial",
+        "noto sans", "noto color emoji", "apple color emoji",
+        "cantarell", "oxygen", "ubuntu", "liberation sans",
     }
 )
 

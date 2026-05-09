@@ -219,11 +219,63 @@ def test_extract_html_hexes():
 
 
 def test_extract_html_families_splits_stack():
-    html = "font-family: 'Helvetica Neue', Arial, sans-serif;"
+    html = "font-family: 'Garamond', 'Bodoni 72', cursive;"
     out = _extract_html_families(html)
-    assert "helvetica neue" in out
-    assert "arial" in out
-    assert "sans-serif" not in out  # generic stripped
+    assert "garamond" in out
+    assert "bodoni 72" in out
+    assert "cursive" not in out  # generic stripped
+
+
+def test_system_ui_fallbacks_whitelisted(tmp_path: Path):
+    """HOM-192: defensive system-UI fallback chains must not be flagged when
+    the primary family matches DESIGN.md typography."""
+    hf_dir = _hf_with(
+        tmp_path,
+        "<html><body><style>"
+        "body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "
+        "'Segoe UI', Roboto, 'Helvetica Neue', Arial, "
+        "'Noto Sans', sans-serif; }"
+        "</style></body></html>",
+    )
+    typography = [
+        {"role": "body", "family": "Inter"},
+        {"role": "headline", "family": "Playfair Display"},
+    ]
+    update = design_adherence_gate_node(_state(hf_dir, typography=typography))
+    record = update["gate_results"][0]
+    assert record["passed"], record["violations"]
+
+
+def test_non_fallback_primary_still_flagged_with_system_ui_chain(tmp_path: Path):
+    """A bogus primary family is still flagged even when accompanied by
+    canonical fallback tokens — whitelist is for fallbacks only."""
+    hf_dir = _hf_with(
+        tmp_path,
+        "<html><body><style>"
+        "h1 { font-family: 'Comic Sans MS', -apple-system, "
+        "BlinkMacSystemFont, 'Segoe UI', sans-serif; }"
+        "</style></body></html>",
+    )
+    typography = [
+        {"role": "body", "family": "Inter"},
+        {"role": "headline", "family": "Playfair Display"},
+    ]
+    update = design_adherence_gate_node(_state(hf_dir, typography=typography))
+    record = update["gate_results"][0]
+    assert not record["passed"]
+    assert any("comic sans ms" in v.lower() for v in record["violations"])
+
+
+def test_extract_html_families_strips_system_ui_tokens():
+    """All HOM-192 whitelisted tokens are dropped at extraction time."""
+    html = (
+        "font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', "
+        "Roboto, 'Helvetica Neue', Helvetica, Arial, 'Noto Sans', "
+        "Cantarell, Oxygen, Ubuntu, 'Liberation Sans', system-ui, "
+        "ui-sans-serif, sans-serif;"
+    )
+    out = _extract_html_families(html)
+    assert out == set()
 
 
 def test_avoidance_keywords_picks_only_negated_bullets_in_section():
