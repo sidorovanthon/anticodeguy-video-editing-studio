@@ -600,13 +600,50 @@ route_after_design_adherence = route_after_gate_with_retry(
     fail_route="halt_llm_boundary",
     max_iterations=3,
 )
-route_after_animation_map = route_after_gate_with_retry(
-    gate_name="gate:animation_map",
-    on_pass="gate_snapshot",
-    retry_node="p4_redispatch_beat",
-    fail_route="halt_llm_boundary",
-    max_iterations=3,
-)
+def route_after_animation_map(state):
+    """gate:animation_map → gate_animation_map_classify | gate_snapshot |
+    p4_redispatch_beat | halt_llm_boundary.
+
+    HOM-156 (review S1): the deterministic gate may emit a record with
+    ``pending_justifiable`` flags but no always-fix violations. Those are
+    paced-fast / paced-slow tweens that need LLM classification before we
+    can decide pass vs. fix. Route to the dedicated classify node in that
+    case (``cache_policy=`` on the classify node makes re-runs free).
+    Otherwise the existing pass/retry/halt routing applies.
+    """
+    from ..gates._base import latest_gate_result
+    record = latest_gate_result(state, "gate:animation_map")
+    if record is None:
+        return "halt_llm_boundary"
+    if record.get("passed"):
+        return "gate_snapshot"
+    if record.get("pending_justifiable") and not record.get("violations"):
+        # Pure pending: deterministic surface clean, classifier needs to run.
+        return "gate_animation_map_classify"
+    if (record.get("iteration") or 0) < 3:
+        return "p4_redispatch_beat"
+    return "halt_llm_boundary"
+
+
+def route_after_animation_map_classify(state):
+    """gate_animation_map_classify → gate_snapshot | p4_redispatch_beat |
+    halt_llm_boundary.
+
+    The classify node appends a fresh ``gate:animation_map`` record with
+    merged decisions. Route on that record's pass/fail just like the
+    standard gate-with-retry helper does — but the classify node itself
+    counts toward the iteration cap (the post-classify record's
+    ``iteration`` reflects total gate:animation_map records on state).
+    """
+    from ..gates._base import latest_gate_result
+    record = latest_gate_result(state, "gate:animation_map")
+    if record is None:
+        return "halt_llm_boundary"
+    if record.get("passed"):
+        return "gate_snapshot"
+    if (record.get("iteration") or 0) < 3:
+        return "p4_redispatch_beat"
+    return "halt_llm_boundary"
 route_after_snapshot = route_after_gate_with_retry(
     gate_name="gate:snapshot",
     on_pass="gate_captions_track",

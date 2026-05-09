@@ -40,6 +40,9 @@ def test_phase4_nodes_present_in_compiled_graph():
         "gate_inspect",
         "gate_design_adherence",
         "gate_animation_map",
+        # HOM-156 (review S1): cheap-tier LLM classifier extracted into its
+        # own graph node so cache_policy= actually fires.
+        "gate_animation_map_classify",
         "gate_snapshot",
         "gate_captions_track",
         "p4_persist_session",
@@ -117,6 +120,11 @@ def test_phase4_chain_edges_wired():
         ("gate_design_adherence", "halt_llm_boundary"),
         ("gate_animation_map", "gate_snapshot"),
         ("gate_animation_map", "halt_llm_boundary"),
+        # HOM-156 (review S1): classifier branch + classifier outbound edges.
+        ("gate_animation_map", "gate_animation_map_classify"),
+        ("gate_animation_map_classify", "gate_snapshot"),
+        ("gate_animation_map_classify", "p4_redispatch_beat"),
+        ("gate_animation_map_classify", "halt_llm_boundary"),
         ("gate_snapshot", "gate_captions_track"),
         ("gate_snapshot", "halt_llm_boundary"),
         ("gate_captions_track", "p4_persist_session"),

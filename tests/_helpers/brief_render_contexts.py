@@ -157,6 +157,41 @@ def p4_beat_ctx() -> dict:
     }
 
 
+def gate_animation_map_classify_ctx() -> dict:
+    """HOM-156: cheap-tier fix-or-justify classifier brief context."""
+    flagged = [
+        {
+            "flag_id": ".flash::1::paced-fast",
+            "selector": ".flash",
+            "flag": "paced-fast",
+            "duration": 0.12,
+            "index": 1,
+        },
+        {
+            "flag_id": ".ambient::2::paced-slow",
+            "selector": ".ambient",
+            "flag": "paced-slow",
+            "duration": 3.0,
+            "index": 2,
+        },
+    ]
+    plan_beats = [
+        {"beat": "HOOK", "concept": "Tight stat slam.", "mood": "Editorial.",
+         "energy": "high", "duration_s": 6.9},
+        {"beat": "HOLD", "concept": "Sustained ambient.", "mood": "Meditative.",
+         "energy": "calm", "duration_s": 5.0},
+    ]
+    return {
+        **_base(),
+        "animation_map_json_path": (
+            f"{EPISODE_DIR}/hyperframes/.hyperframes/anim-map/animation-map.json"
+        ),
+        "design_md_path": DESIGN_MD_PATH,
+        "plan_beats_json": json.dumps(plan_beats, ensure_ascii=False),
+        "flagged_tweens_json": json.dumps(flagged, ensure_ascii=False),
+    }
+
+
 def p4_captions_layer_ctx() -> dict:
     return {
         **_base(),
@@ -179,4 +214,5 @@ NODE_CONTEXTS = {
     "p4_plan": p4_plan_ctx,
     "p4_beat": p4_beat_ctx,
     "p4_captions_layer": p4_captions_layer_ctx,
+    "gate_animation_map_classify": gate_animation_map_classify_ctx,
 }

@@ -104,6 +104,7 @@ from .gates.static_guard import static_guard_gate_node
 from .gates.validate import validate_gate_node
 from .nodes._routing import (
     route_after_animation_map,
+    route_after_animation_map_classify,
     route_after_assemble_index,
     route_after_captions_layer,
     route_after_captions_track,
@@ -141,6 +142,10 @@ from .nodes._routing import (
 )
 from .nodes.edl_failure_interrupt import edl_failure_interrupt_node
 from .nodes.eval_failure_interrupt import eval_failure_interrupt_node
+from .nodes.gate_animation_map_classify import (
+    CACHE_POLICY as gate_animation_map_classify_cache_policy,
+    gate_animation_map_classify_node,
+)
 from .nodes.glue_remap_transcript import (
     CACHE_POLICY as glue_remap_transcript_cache_policy,
     glue_remap_transcript_node,
@@ -329,6 +334,16 @@ def build_graph_uncompiled() -> StateGraph:
     g.add_node("gate_inspect", inspect_gate_node)
     g.add_node("gate_design_adherence", design_adherence_gate_node)
     g.add_node("gate_animation_map", animation_map_gate_node)
+    # HOM-156 (review S1): cheap-tier LLM classifier extracted from the gate
+    # body into its own graph node so LangGraph's `cache_policy=` mechanism
+    # actually fires (the prior in-gate `CACHE_POLICY` was unreachable —
+    # `SqliteCache` only applies to whole graph nodes).
+    g.add_node(
+        "gate_animation_map_classify",
+        gate_animation_map_classify_node,
+        cache_policy=gate_animation_map_classify_cache_policy,
+        retry_policy=_LLM_RETRY_POLICY,
+    )
     g.add_node("gate_snapshot", snapshot_gate_node)
     g.add_node("gate_captions_track", captions_track_gate_node)
     # HOM-148: cluster-gate retry node — re-authors one offending scene
@@ -701,6 +716,19 @@ def build_graph_uncompiled() -> StateGraph:
     g.add_conditional_edges(
         "gate_animation_map",
         route_after_animation_map,
+        {
+            "gate_snapshot": "gate_snapshot",
+            "gate_animation_map_classify": "gate_animation_map_classify",
+            "p4_redispatch_beat": "p4_redispatch_beat",
+            "halt_llm_boundary": "halt_llm_boundary",
+        },
+    )
+    # HOM-156 (review S1): classifier node merges its decisions into a fresh
+    # gate_animation_map record, then routes pass→snapshot, fail+iter<3→
+    # redispatch, fail+iter≥3→halt — same shape as the standard cluster gates.
+    g.add_conditional_edges(
+        "gate_animation_map_classify",
+        route_after_animation_map_classify,
         {
             "gate_snapshot": "gate_snapshot",
             "p4_redispatch_beat": "p4_redispatch_beat",

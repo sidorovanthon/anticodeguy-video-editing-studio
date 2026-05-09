@@ -67,7 +67,7 @@ def test_passes_with_clean_report(tmp_path, monkeypatch):
         "duration": 12.0,
         "tweens": [
             {"index": 1, "selector": ".title", "duration": 0.6, "flags": []},
-            {"index": 2, "selector": ".body", "duration": 0.8, "flags": ["paced-slow"]},
+            {"index": 2, "selector": ".body", "duration": 0.8, "flags": []},
         ],
         "deadZones": [
             {"start": 5.0, "end": 6.0, "duration": 1.0, "note": "exactly 1s — allowed"},
@@ -97,9 +97,18 @@ def test_fails_on_collision_flag(tmp_path, monkeypatch):
     assert any("collision" in v and ".a" in v and ".b" in v for v in record["violations"])
 
 
-# ── Negative: paced-fast at v4 ───────────────────────────────────────────────
+# ── HOM-156 (review S1): pace flags surface as `pending_justifiable` ─────────
+# The deterministic gate NEVER calls an LLM. paced-fast / paced-slow flags
+# are recorded as `pending_justifiable` on the gate record so the
+# `gate_animation_map_classify` LLM node (a separate graph node) can triage
+# them. Behavioural coverage of the classifier itself lives in
+# `tests/test_gate_animation_map_classify_node.py`.
 
-def test_fails_on_paced_fast_at_v4(tmp_path, monkeypatch):
+
+def test_paced_fast_records_pending_justifiable(tmp_path, monkeypatch):
+    """paced-fast tween → record has pending_justifiable; passed=False
+    (router will dispatch the classifier next).
+    """
     hf_dir = _hf_dir(tmp_path)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
@@ -109,8 +118,69 @@ def test_fails_on_paced_fast_at_v4(tmp_path, monkeypatch):
         "deadZones": [],
     })
     record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
-    assert not record["passed"]
-    assert any("paced-fast" in v and "v5" in v for v in record["violations"])
+    assert record["passed"] is False, "must not pass with pending_justifiable"
+    assert record["violations"] == [], "no always-fix violations from a lone paced-fast"
+    pending = record.get("pending_justifiable") or []
+    assert len(pending) == 1
+    assert pending[0]["flag"] == "paced-fast"
+    assert pending[0]["selector"] == ".flash"
+    assert pending[0]["flag_id"] == ".flash::1::paced-fast"
+
+
+def test_paced_slow_records_pending_justifiable(tmp_path, monkeypatch):
+    """paced-slow flags are also surfaced as pending (sustained ambient hold)."""
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            {"index": 2, "selector": ".ambient", "duration": 3.0, "flags": ["paced-slow"]},
+        ],
+        "deadZones": [],
+    })
+    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
+    assert record["passed"] is False
+    pending = record.get("pending_justifiable") or []
+    assert len(pending) == 1
+    assert pending[0]["flag"] == "paced-slow"
+
+
+def test_no_pace_flags_no_pending_passes_clean(tmp_path, monkeypatch):
+    """Clean pace-flag set ⇒ passed=True, no pending list."""
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            {"index": 1, "selector": ".body", "duration": 0.6, "flags": []},
+        ],
+        "deadZones": [],
+    })
+    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
+    assert record["passed"] is True
+    assert "pending_justifiable" not in record
+
+
+def test_collision_takes_precedence_over_pending(tmp_path, monkeypatch):
+    """Always-fix flag + paced-fast on different tweens → both surface, but
+    the always-fix violation guarantees passed=False (no need to dispatch
+    the classifier; the cluster will redispatch).
+    """
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            {"index": 1, "selector": ".a", "duration": 0.6, "flags": ["collision"]},
+            {"index": 2, "selector": ".b", "duration": 0.6, "flags": ["collision"]},
+            {"index": 3, "selector": ".flash", "duration": 0.12, "flags": ["paced-fast"]},
+        ],
+        "deadZones": [],
+    })
+    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
+    assert record["passed"] is False
+    # Always-fix violation rendered.
+    assert any("collision" in v for v in record["violations"])
+    # Pace flag still recorded for downstream classifier visibility.
+    pending = record.get("pending_justifiable") or []
+    assert any(f["flag"] == "paced-fast" for f in pending)
 
 
 # ── Negative: dead zone > 1s ─────────────────────────────────────────────────

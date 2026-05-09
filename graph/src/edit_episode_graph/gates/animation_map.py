@@ -1,10 +1,12 @@
-"""gate:animation_map — runs the bundled `animation-map.mjs` helper.
+"""gate:animation_map — runs the bundled `animation-map.mjs` helper, parses
+the report, classifies flags into always-fix vs. justifiable buckets.
 
-Per canon `~/.claude/skills/hyperframes/SKILL.md` §"Quality Checks":
+Per canon `~/.agents/skills/hyperframes/SKILL.md` §"Quality Checks":
 `animation-map` enumerates every GSAP timeline tween, samples bounding
 boxes at N points per tween, computes per-tween flags
-(`paced-fast`, `collision`, …) and composition-level dead zones. Output
-is a single JSON file `animation-map.json`.
+(`paced-fast`, `paced-slow`, `collision`, `degenerate`, `offscreen`,
+`invisible`) and composition-level dead zones. Output is a single JSON
+file `animation-map.json`.
 
 ## Path resolution (bundled-first)
 
@@ -17,17 +19,34 @@ layout. So we prefer the bundled copy under the HF project's
 `fallback_helper_used=True` so the operator can see the project should
 have its dependencies pinned.
 
-## Pass criteria (v4)
+## Pass criteria — fix-or-justify split (HOM-156)
 
-The ticket pins these to the JSON output, derived from canon §
-"Quality Checks":
+Canon (SKILL.md §"Quality Checks" §"Animation Map", lines 384-385):
+> "Read the JSON. Scan summaries for anything unexpected. **Check every
+>  flag — fix or justify.** Verify the timeline shows the intended
+>  choreography rhythm. Re-run after fixes."
 
-  1. No tween has the `collision` flag.
-  2. No tween has the `paced-fast` flag (v4 — the LLM-justify helper
-     that would let `paced-fast` be intentional is HOM-77/v5; until
-     then ANY paced-fast tween fails).
-  3. No `deadZones` entry with `duration > 1.0` (helper only collects
-     zones ≥1.0; ticket criterion is strict greater-than).
+Two flag classes:
+
+- **Always-fix** — never legitimate; recorded as violations directly:
+  * `collision` (overlapping animated elements)
+  * `degenerate` (zero-size bbox throughout)
+  * `offscreen` (off-canvas throughout)
+  * `invisible` (zero opacity throughout)
+  * `deadZones` with `duration > 1.0`.
+
+- **Justifiable** — `paced-fast` (≤ 0.2s) and `paced-slow` (> 2.0s) flags
+  may be intentional creative choices (high-energy slam vs. sustained
+  ambient drift). They are NOT classified inside the gate; instead the
+  gate records them in the gate record's ``pending_justifiable`` list,
+  and the routing layer sends the run to the dedicated
+  ``gate_animation_map_classify`` LLM node, whose result merges back
+  into a follow-up gate record.
+
+The deterministic gate **never calls an LLM**. The LLM dispatch lives
+in ``nodes/gate_animation_map_classify.py`` so LangGraph's
+``cache_policy=`` mechanism can apply (CLAUDE.md §"Idempotency" — re-run
+on identical inputs produces zero LLM dispatches).
 
 ## Windows bootstrap blocker
 
@@ -52,7 +71,14 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .._caching import make_key
 from ._base import Gate, hyperframes_dir
+
+
+# Bump on brief / schema / pass-criteria change. See HOM-132 spec §8.
+# v3 = HOM-156 review-fix: gate is purely deterministic; LLM-justify dispatch
+#   moved to nodes/gate_animation_map_classify.py (its own _CACHE_VERSION).
+_CACHE_VERSION = 3
 
 
 # Helper script paths (relative to roots; joined with appropriate root).
@@ -66,26 +92,21 @@ _OUT_SUBDIR = Path(".hyperframes/anim-map")
 _OUT_FILE = "animation-map.json"
 
 # Markers in the helper's stderr that indicate dependency bootstrap failure.
-# `package-loader.mjs` emits one of two phrasings depending on whether it
-# never tried to install or tried and failed (Windows EINVAL falls in the
-# second). Match either.
 _MISSING_DEPS_MARKERS = (
     "Could not resolve required package(s)",
     "Required helper package(s) are missing",
     "HyperFrames helper package(s) are missing",
-    # Surfaced by the global fallback copy when it has no neighboring
-    # package.json from which to pin a version. Verified live on
-    # `~/.agents/skills/hyperframes/scripts/package-loader.mjs:51` —
-    # the fix is the same "install in the HF project" workaround.
     "Could not determine the bundled HyperFrames version",
 )
-# Pulled out of the helper's `npm install --save-dev <spec> <spec>` advisory line.
 _NPM_INSTALL_LINE = re.compile(
     r"npm install\s+(?:--[\w-]+\s+)*(.+?)(?:\n|$)",
     re.IGNORECASE,
 )
-# Windows spawn EINVAL marker — the helper's own bootstrap path stderr.
 _WINDOWS_EINVAL = re.compile(r"\bEINVAL\b|\bspawnSync\b.*\bnpm", re.IGNORECASE)
+
+# Flags the LLM-classify node is allowed to triage. Anything else stays
+# in the always-fix set and never reaches the helper.
+_JUSTIFIABLE_FLAGS = ("paced-fast", "paced-slow")
 
 
 def _now() -> str:
@@ -93,11 +114,6 @@ def _now() -> str:
 
 
 def _resolve_helper(hf_dir: Path) -> tuple[Path | None, bool]:
-    """Pick the helper script path, preferring the bundled copy.
-
-    Returns `(path, used_fallback)`. `path` is `None` when neither
-    location has the script — that's a hard failure.
-    """
     bundled = hf_dir / _BUNDLED_REL
     if bundled.is_file():
         return bundled, False
@@ -111,18 +127,10 @@ def _node_executable() -> str | None:
 
 
 def _format_npm_workaround(stderr: str) -> str | None:
-    """Extract `npm i -D <pkgs>` workaround from helper missing-deps stderr.
-
-    The helper emits a line like `npm install --save-dev <spec> <spec>`
-    when it can't resolve dependencies. We rewrite that as `npm i -D`
-    (matching the wording in CLAUDE.md §"Skill copies").
-    """
     match = _NPM_INSTALL_LINE.search(stderr)
     if not match:
         return None
     specs = match.group(1).strip()
-    # `--ignore-scripts --no-save` may sneak in if the line was the bootstrap
-    # subcommand rather than the user-facing advisory; drop them.
     specs = re.sub(r"--[\w-]+\s+", "", specs).strip()
     if not specs:
         return None
@@ -140,10 +148,6 @@ class _HelperResult:
 
 
 def _run_helper(hf_dir: Path, helper: Path, used_fallback: bool, timeout: float = 240.0) -> _HelperResult | str:
-    """Invoke the animation-map helper. Returns _HelperResult on launch
-    success (regardless of exit code) or a string violation when node
-    isn't reachable at all.
-    """
     node = _node_executable()
     if node is None:
         return "node executable not found on PATH — cannot run animation-map helper"
@@ -179,10 +183,6 @@ def _run_helper(hf_dir: Path, helper: Path, used_fallback: bool, timeout: float 
             out_dir=out_dir,
         )
     except FileNotFoundError as exc:
-        # Mirrors `_base.run_hf_cli`: gates must never raise — record a
-        # structured failure instead. Reachable when `shutil.which` found
-        # node but it disappeared (or when a Windows `.cmd` shim lookup
-        # raced a path mutation).
         return _HelperResult(
             exit_code=127,
             stdout="",
@@ -203,9 +203,6 @@ def _run_helper(hf_dir: Path, helper: Path, used_fallback: bool, timeout: float 
 
 
 def _bootstrap_failure_violation(result: _HelperResult, hf_dir: Path) -> str | None:
-    """If the helper failed for a missing-deps / Windows-EINVAL reason,
-    return a single actionable violation. Otherwise return None.
-    """
     blob = result.stderr + "\n" + result.stdout
     is_missing_deps = any(marker in blob for marker in _MISSING_DEPS_MARKERS)
     is_windows_einval = bool(_WINDOWS_EINVAL.search(blob)) and "npm" in blob.lower()
@@ -214,7 +211,6 @@ def _bootstrap_failure_violation(result: _HelperResult, hf_dir: Path) -> str | N
 
     workaround = _format_npm_workaround(blob)
     if workaround is None:
-        # Fallback to the wording documented in CLAUDE.md.
         workaround = "npm i -D @hyperframes/producer sharp"
 
     head = (
@@ -226,32 +222,72 @@ def _bootstrap_failure_violation(result: _HelperResult, hf_dir: Path) -> str | N
     return head
 
 
-def _evaluate_report(report: dict) -> list[str]:
-    """Apply the three v4 pass criteria to a parsed animation-map.json."""
-    violations: list[str] = []
-    tweens = report.get("tweens") or []
+# ---------------------------------------------------------------------------
+# Flag extraction
+# ---------------------------------------------------------------------------
 
+
+def _flag_id(selector: str, idx: int, flag: str) -> str:
+    sel = selector or f"tween#{idx}"
+    return f"{sel}::{idx}::{flag}"
+
+
+def _extract_flags(report: dict) -> tuple[list[str], list[dict], list[dict]]:
+    """Split helper output into (always_fix_violations, justifiable_flags, dead_zone_violations)."""
+    always_fix: list[str] = []
+    justifiable: list[dict] = []
+
+    tweens = report.get("tweens") or []
     collisions: list[str] = []
-    paced_fast: list[str] = []
+    degenerate: list[str] = []
+    offscreen: list[str] = []
+    invisible: list[str] = []
+
     for tw in tweens:
         flags = tw.get("flags") or []
-        sel = tw.get("selector") or f"tween#{tw.get('index')}"
+        idx = tw.get("index")
+        sel = tw.get("selector") or f"tween#{idx}"
+        duration = tw.get("duration")
         if "collision" in flags:
             collisions.append(sel)
-        if "paced-fast" in flags:
-            paced_fast.append(f"{sel} ({tw.get('duration')}s)")
+        if "degenerate" in flags:
+            degenerate.append(sel)
+        if "offscreen" in flags:
+            offscreen.append(sel)
+        if "invisible" in flags:
+            invisible.append(sel)
+        for flag in _JUSTIFIABLE_FLAGS:
+            if flag in flags:
+                justifiable.append({
+                    "flag_id": _flag_id(sel, idx if isinstance(idx, int) else -1, flag),
+                    "selector": sel,
+                    "flag": flag,
+                    "duration": duration,
+                    "index": idx,
+                })
 
     if collisions:
-        violations.append(
+        always_fix.append(
             "collision flag(s) on " + ", ".join(collisions)
             + " — overlapping animated elements; refine layout"
         )
-    if paced_fast:
-        violations.append(
-            "paced-fast flag(s) on " + ", ".join(paced_fast)
-            + " — at v4 ANY paced-fast fails (LLM-justify deferred to HOM-77/v5)"
+    if degenerate:
+        always_fix.append(
+            "degenerate flag(s) on " + ", ".join(degenerate)
+            + " — zero-size bbox throughout; element never renders"
+        )
+    if offscreen:
+        always_fix.append(
+            "offscreen flag(s) on " + ", ".join(offscreen)
+            + " — element off-canvas throughout the tween"
+        )
+    if invisible:
+        always_fix.append(
+            "invisible flag(s) on " + ", ".join(invisible)
+            + " — zero opacity throughout the tween"
         )
 
+    dead_zone_violations: list[str] = []
     for zone in report.get("deadZones") or []:
         try:
             dur = float(zone.get("duration", 0.0))
@@ -260,38 +296,92 @@ def _evaluate_report(report: dict) -> list[str]:
         if dur > 1.0:
             start = zone.get("start")
             end = zone.get("end")
-            violations.append(
+            dead_zone_violations.append(
                 f"dead zone {start}s–{end}s (duration {dur}s > 1.0s) — "
                 "no animation; intentional hold or missing entrance?"
             )
 
-    return violations
+    return always_fix, justifiable, dead_zone_violations
+
+
+# ---------------------------------------------------------------------------
+# Cache key — exposed for the L0 fingerprint-invalidation registry only.
+#
+# The gate is intentionally NOT bound to a `cache_policy=` in graph.py: the
+# deterministic helper subprocess (animation-map.mjs) is fast enough that
+# always re-running it on each gate visit is cheaper than fingerprint I/O,
+# AND we want every gate-cluster iteration to re-detect flags after a
+# p4_redispatch_beat re-author (caching would skip that). The LLM dispatch
+# that actually justifies caching lives in
+# `nodes/gate_animation_map_classify.py`, where it has its own
+# `CACHE_POLICY` wired via `g.add_node(... cache_policy=...)`.
+# ---------------------------------------------------------------------------
+
+
+def _gate_cache_key(state, *_args, **_kwargs):
+    """Deterministic cache key for gate_animation_map (post-helper-run)."""
+    if not isinstance(state, dict):
+        raise TypeError(
+            f"animation_map gate cache key requires dict state, got {type(state).__name__}"
+        )
+    slug = state.get("slug") or "__unbound__"
+    compose = state.get("compose") or {}
+    hf_dir = compose.get("hyperframes_dir")
+    if not hf_dir:
+        episode_dir = state.get("episode_dir")
+        hf_dir = str(Path(episode_dir) / "hyperframes") if episode_dir else ""
+    animation_map_path = (
+        Path(hf_dir) / _OUT_SUBDIR / _OUT_FILE if hf_dir else None
+    )
+    return make_key(
+        node="gate_animation_map",
+        version=_CACHE_VERSION,
+        slug=slug,
+        files=[
+            str(animation_map_path) if animation_map_path else None,
+        ],
+    )
+
+
+_cache_key = _gate_cache_key  # alias for the fingerprint registry
 
 
 class AnimationMapGate(Gate):
-    """gate:animation_map — bundled-helper invocation with bootstrap triage.
+    """gate:animation_map — bundled-helper invocation + flag classification.
 
     Overrides `Gate.__call__` so the gate record can carry helper-path
-    provenance (`helper_path`, `fallback_helper_used`) without abusing
-    the violations list.
+    provenance (`helper_path`, `fallback_helper_used`) and the list of
+    `pending_justifiable` flag dicts that the
+    `gate_animation_map_classify` LLM node will triage downstream.
+
+    Records `passed=False` whenever there are always-fix violations OR
+    pending justifiable flags. The router (`route_after_animation_map`)
+    distinguishes the two: pending-only ⇒ classify; violations present
+    or no pending ⇒ existing pass/fail routing.
     """
 
     def __init__(self) -> None:
         super().__init__(name="gate:animation_map")
 
-    def _run(self, state: dict) -> tuple[list[str], dict]:
+    def _run(self, state: dict) -> tuple[list[str], list[dict], dict]:
+        """Returns `(violations, pending_justifiable, extras)`.
+
+        `pending_justifiable` is a list of flag dicts to be classified by
+        the `gate_animation_map_classify` LLM node downstream. The gate
+        itself never dispatches an LLM.
+        """
         hf_dir = hyperframes_dir(state)
         if hf_dir is None:
-            return ["no hyperframes_dir / episode_dir in state — cannot run animation-map"], {}
+            return ["no hyperframes_dir / episode_dir in state — cannot run animation-map"], [], {}
         if not hf_dir.is_dir():
-            return [f"hyperframes dir not on disk: {hf_dir}"], {}
+            return [f"hyperframes dir not on disk: {hf_dir}"], [], {}
 
         helper, used_fallback = _resolve_helper(hf_dir)
         if helper is None:
             return [
                 "animation-map.mjs not found at bundled path "
                 f"{hf_dir / _BUNDLED_REL} or global fallback {_GLOBAL_FALLBACK}"
-            ], {}
+            ], [], {}
 
         extras: dict = {
             "helper_path": str(helper),
@@ -300,32 +390,40 @@ class AnimationMapGate(Gate):
 
         ran = _run_helper(hf_dir, helper, used_fallback)
         if isinstance(ran, str):
-            return [ran], extras
+            return [ran], [], extras
 
         if ran.exit_code != 0:
             bootstrap = _bootstrap_failure_violation(ran, hf_dir)
             if bootstrap is not None:
-                return [bootstrap], extras
+                return [bootstrap], [], extras
             tail = (ran.stderr or ran.stdout or "(no output)").strip()
             if len(tail) > 1500:
                 tail = tail[:1500] + "\n…(truncated)"
-            return [f"animation-map helper exit={ran.exit_code}:\n{tail}"], extras
+            return [f"animation-map helper exit={ran.exit_code}:\n{tail}"], [], extras
 
         report_path = ran.out_dir / _OUT_FILE
         if not report_path.is_file():
             return [
                 f"animation-map helper exited 0 but {_OUT_FILE} not found at {report_path}"
-            ], extras
+            ], [], extras
         try:
             report = json.loads(report_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
-            return [f"could not parse {report_path}: {exc}"], extras
+            return [f"could not parse {report_path}: {exc}"], [], extras
 
-        return _evaluate_report(report), extras
+        always_fix, justifiable, dead_zone_violations = _extract_flags(report)
+        violations = list(always_fix) + list(dead_zone_violations)
+        return violations, justifiable, extras
 
     def __call__(self, state: dict) -> dict:
-        violations, extras = self._run(state)
-        passed = not violations
+        violations, pending_justifiable, extras = self._run(state)
+        # `passed` reflects the deterministic surface only:
+        # - violations present  → False (always-fix or dead-zone fired)
+        # - violations empty AND pending_justifiable empty → True
+        # - violations empty AND pending_justifiable non-empty → False
+        #   (route to classifier; a follow-up gate record after classify
+        #   may then mark passed=True if the LLM justifies all flags)
+        passed = not violations and not pending_justifiable
         record = {
             "gate": self.name,
             "passed": passed,
@@ -334,10 +432,23 @@ class AnimationMapGate(Gate):
             "timestamp": _now(),
             **extras,
         }
+        if pending_justifiable:
+            record["pending_justifiable"] = pending_justifiable
         update: dict = {"gate_results": [record]}
-        if not passed:
+        if violations:
             update["notices"] = [
                 f"{self.name}: FAILED ({len(violations)} violation(s)) — see gate_results"
+            ]
+        elif pending_justifiable and extras.get("fallback_helper_used"):
+            update["notices"] = [
+                f"{self.name}: {len(pending_justifiable)} pace-flag(s) pending LLM "
+                "classification (via global fallback helper) — "
+                "consider pinning @hyperframes/producer + sharp in the HF project"
+            ]
+        elif pending_justifiable:
+            update["notices"] = [
+                f"{self.name}: {len(pending_justifiable)} pace-flag(s) pending LLM "
+                "classification — gate_animation_map_classify dispatches next"
             ]
         elif extras.get("fallback_helper_used"):
             update["notices"] = [

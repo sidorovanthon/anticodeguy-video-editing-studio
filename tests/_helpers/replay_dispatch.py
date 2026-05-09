@@ -71,6 +71,10 @@ _PREDECESSORS: dict[str, str] = {
     # `p4_beat` is fan-out via Send from `p4_dispatch_beats`; the closest
     # deterministic predecessor on the happy path is `p4_captions_layer`.
     "p4_beat": "p4_captions_layer",
+    # HOM-156 (review S1): cheap-tier classifier in the post-assemble cluster.
+    # Predecessor is the deterministic `gate_animation_map` whose record
+    # carries the `pending_justifiable` list the classifier consumes.
+    "gate_animation_map_classify": "gate_animation_map",
 }
 
 

@@ -160,6 +160,7 @@ PHASE3_EXPECTED_NODES = {
     "gate_inspect",
     "gate_design_adherence",
     "gate_animation_map",
+    "gate_animation_map_classify",
     "gate_snapshot",
     "gate_captions_track",
     "p4_persist_session",
@@ -196,6 +197,7 @@ GATE_CLUSTER = (
     "gate_inspect",
     "gate_design_adherence",
     "gate_animation_map",
+    "gate_animation_map_classify",
     "gate_snapshot",
     "gate_captions_track",
 )
@@ -212,6 +214,11 @@ EXPECTED_CLUSTER_EDGES = {
     ("gate_design_adherence", "halt_llm_boundary"),
     ("gate_animation_map", "gate_snapshot"),
     ("gate_animation_map", "halt_llm_boundary"),
+    # HOM-156 (review S1): classify-node branch.
+    ("gate_animation_map", "gate_animation_map_classify"),
+    ("gate_animation_map_classify", "gate_snapshot"),
+    ("gate_animation_map_classify", "p4_redispatch_beat"),
+    ("gate_animation_map_classify", "halt_llm_boundary"),
     ("gate_snapshot", "gate_captions_track"),
     ("gate_snapshot", "halt_llm_boundary"),
     ("gate_captions_track", "p4_persist_session"),
@@ -418,6 +425,49 @@ def test_p4_prompt_expansion_smoke():
     assert "compose" in result.final_state, (
         f"p4_prompt_expansion recording produced no `compose` channel write: "
         f"{list(result.final_state.keys())}"
+    )
+
+
+# HOM-156 (review S1): the classifier was extracted into its own graph
+# node `gate_animation_map_classify` so LangGraph's cache_policy= actually
+# fires. That unlocks fixture replay — the smoke below is the L1 layer.
+
+@requires_fixture_cache
+def test_gate_animation_map_classify_smoke():
+    """HOM-156 (review S1): replay the cheap-tier LLM classifier from
+    fixture cache.
+
+    Replays a recorded ``gate_animation_map_classify`` dispatch via
+    :func:`dispatch_node` and asserts $0 spend (cache hit, no LLM
+    dispatch). The recording's channel writes carry the new
+    ``gate_results`` follow-up record; asserting ``gate_results`` is
+    present in ``final_state`` proves the classifier wrote a follow-up
+    gate:animation_map record at recording time.
+
+    Until the operator prewarms a recording for this node, the call
+    raises ``ReplayCacheMissError`` and we soft-skip — matches the
+    CLAUDE.md DoD §"Conditional ... Fixture-replay smoke": "If a PR
+    adds a creative node but ships no recording, the replay smoke
+    skips ... that's expected until the operator records."
+    """
+    from tests._helpers.replay_harness import ReplayCacheMissError
+
+    try:
+        result = dispatch_node("gate_animation_map_classify", FIXTURE_SLUG)
+    except ReplayCacheMissError as exc:
+        pytest.skip(
+            f"no recording for gate_animation_map_classify yet: {exc}; "
+            "operator runbook: HOMESTUDIO_TEST_MODE=record-on-miss "
+            "pytest tests/test_graph_replay.py::test_gate_animation_map_classify_smoke"
+        )
+    assert result.all_hits, (
+        f"gate_animation_map_classify replay missed cache: {result!r}; "
+        "re-record via HOMESTUDIO_TEST_MODE=record-on-miss"
+    )
+    assert result.llm_dispatches == 0
+    assert "gate_results" in result.final_state, (
+        "gate_animation_map_classify recording produced no `gate_results` "
+        f"channel write: {list(result.final_state.keys())}"
     )
 
 
