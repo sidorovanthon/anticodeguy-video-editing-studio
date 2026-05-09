@@ -45,6 +45,19 @@ def patch_index_html(html: str, *, width: int, height: int, duration: float, vid
     html = re.sub(r'data-width="\d+"', f'data-width="{width}"', html)
     html = re.sub(r'data-height="\d+"', f'data-height="{height}"', html)
     html = re.sub(r'data-duration="[\d.]+"', f'data-duration="{duration}"', html)
+    # 3a. Defer body palette to p4_design_system via CSS custom property.
+    # `npx hyperframes init`'s template emits `background: #000;` in the inline
+    # `<style>` block. Without this rewrite the literal hex survives into the
+    # final index.html and `gate:design_adherence` flags it as out-of-palette
+    # (HOM-191). p4_assemble_index later writes a `:root { --bg: …; }` block
+    # consuming `compose.design.palette`; the fallback `transparent` keeps a
+    # bare scaffold render-safe before design tokens are bound.
+    html = re.sub(
+        r'background:\s*#[0-9a-fA-F]{3,8}\s*;',
+        'background: var(--bg, transparent);',
+        html,
+        count=1,
+    )
     # 4. inject video+audio pair, replace example-clip comment
     pair_html = VIDEO_AUDIO_PAIR_TEMPLATE.format(src=video_src)
     html = re.sub(

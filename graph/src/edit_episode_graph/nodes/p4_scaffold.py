@@ -20,7 +20,11 @@ from ._deterministic import deterministic_node
 SCRIPTS_ROOT = scripts_root()
 
 # Bump on scaffold_hyperframes.py shape / patch-set change. Spec §8.
-_CACHE_VERSION = 1
+# v2 (HOM-191): patch_index_html now rewrites literal `background: #000;` to
+# `background: var(--bg, transparent);` so palette tokens land via
+# p4_assemble_index's `:root` block instead of a hard-coded hex that
+# `gate:design_adherence` (rightly) flags as out-of-palette.
+_CACHE_VERSION = 2
 
 
 def _cache_key(state, *_args, **_kwargs):
