@@ -126,7 +126,14 @@ for the source segment, ffmpeg command, and the prewarm command.
 15 nodes, ~60 KB; halts at `gate:design_adherence` after
 `p4_redispatch_beat` exhausts retries — that is the natural landing
 state for the 35s fixture clip and HOM-154 territory, not a recording
-defect). The fixture is the
+defect). Smokes that walk the gate cluster will see this halt — that
+is the recorded baseline; do not retry until HOM-154 lands.
+`isolate_audio` and `p3_inventory` carry `CachePolicy` but are skipped
+by routing edges on this path (`route_after_pickup` and
+`route_after_inventory` short-circuit when their guard artifacts
+already exist) — they were not invoked on the recorded run, so no
+cache row was written and no `recordings/<node>.json` is present.
+The fixture is the
 deterministic, $0 surface every replay-mode test reads from. If you
 need to refresh it after a brief / schema change, see
 [Recording a fresh fixture](#recording-a-fresh-fixture) above and the

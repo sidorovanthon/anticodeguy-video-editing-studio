@@ -130,6 +130,7 @@ def main() -> int:
 
     if args.dry_run:
         print("[record_fixture] --dry-run: graph compiled, no invoke. Exiting clean.")
+        mounted.cleanup()
         return 0
 
     thread_id = f"hom-189-record-{int(time.time())}"
