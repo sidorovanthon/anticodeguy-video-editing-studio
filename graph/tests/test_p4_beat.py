@@ -138,11 +138,13 @@ def test_happy_path_dispatches_with_correct_requirements(tmp_path):
 
     req, task = router.invoke.call_args.args[:2]
     kwargs = router.invoke.call_args.kwargs
-    # HOM-115: config pins p4_beat to `tier: cheap` (Haiku) for fixture
-    # iteration; canonical production tier is `expensive` (Opus, per memory
-    # `feedback_creative_nodes_flagship_tier`). Bump the config override
-    # before a real wave-acceptance E2E.
-    assert req.tier == "cheap"
+    # HOM-193: p4_beat is canonically a creative node (Pattern A scene
+    # composition); per memory `feedback_creative_nodes_flagship_tier` it
+    # MUST resolve to `tier: expensive` (Opus 4.7). The prior `tier: cheap`
+    # pin (HOM-115/-136 fixture-iteration cost saver) was the root cause of
+    # HOM-154 gate-redispatch loops — see test_config_tier_routing.py for
+    # the production audit.
+    assert req.tier == "expensive"
     assert req.needs_tools is True
     assert req.backends == ["claude"]
     assert kwargs["allowed_tools"] == ["Read", "Write"]

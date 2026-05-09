@@ -93,16 +93,16 @@ node_overrides:
     # Spec §6.3 originally `cheap`; HOM-120 amended to flagship tier (memory
     # `feedback_creative_nodes_flagship_tier`).
   p4_beat:
-    tier: cheap
+    tier: expensive
     backend_preference: ["claude"]
     timeout_s: 600
-    # Per-scene Pattern A authoring (HOM-134). Currently pinned to Haiku
-    # (`tier: cheap`) for ~$0.001/beat spend during fixture iteration. The
-    # canonical production tier per memory
-    # `feedback_creative_nodes_flagship_tier` is `expensive` (Opus 4.7) —
-    # bump this to `expensive` before a real wave-acceptance E2E. The
-    # follow-up cost-experiment ticket re-evaluates per-creative-node tier
-    # against fixture replay diffs.
+    # Per-scene Pattern A authoring (HOM-134). Bumped cheap→expensive in
+    # HOM-193 — the prior `tier: cheap` pin (intended for fixture-iteration
+    # cost savings) silently violated memory `feedback_creative_nodes_flagship_tier`
+    # and was the root cause of HOM-154 gate-redispatch loops (Haiku output
+    # consistently failed gate:lint / gate:design_adherence, costing more
+    # than one successful Opus run). Routing-config fingerprint (HOM-157)
+    # auto-invalidates this node's cache on the tier bump.
   p4_redispatch_beat:
     tier: expensive
     backend_preference: ["claude"]
@@ -115,14 +115,12 @@ node_overrides:
     # E2E (PR #84 added attempts-detail in AllBackendsExhausted message;
     # the fix made the diagnosis trivial).
   p4_captions_layer:
-    tier: cheap
+    tier: expensive
     backend_preference: ["claude"]
     timeout_s: 300
-    # Tone-adaptive captions (HOM-123). Currently pinned to Haiku
-    # (`tier: cheap`) for ~$0.001 spend during fixture iteration. Canon
-    # `references/captions.md` §"Style Detection" is explicitly tone-adaptive
-    # (4 dimensions × 5 tone profiles, per-word emphasis decisions) — bump
-    # this to `expensive` (Opus 4.7) before a real wave-acceptance E2E per
-    # memory `feedback_creative_nodes_flagship_tier`. The follow-up
-    # cost-experiment ticket re-evaluates per-creative-node tier against
-    # fixture replay diffs.
+    # Tone-adaptive captions (HOM-123). Bumped cheap→expensive in HOM-193
+    # alongside p4_beat. Canon `references/captions.md` §"Style Detection"
+    # is explicitly tone-adaptive (4 dimensions × 5 tone profiles, per-word
+    # emphasis decisions); cheap-tier output is structurally insufficient.
+    # Aligns with memory `feedback_creative_nodes_flagship_tier`. Routing-
+    # config fingerprint (HOM-157) auto-invalidates cache on the bump.
