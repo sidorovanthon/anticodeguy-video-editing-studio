@@ -89,6 +89,18 @@ Hard rules (orchestrator-house, derived from canon — surfaced so you don't mis
   /* ✅ every stop is a literal palette[*].hex — pre-baked by p4_design_system */
   background: linear-gradient(180deg, var(--background) 0%, var(--background-stop-1) 55%, var(--background-stop-2) 100%);
   ```
+- **Typography fallback discipline.** In any `font-family` stack, use ONLY:
+  - named families from `state.compose.design.typography[*].family` (Playfair Display, Inter — whatever DESIGN.md declares),
+  - generic CSS keywords (`serif`, `sans-serif`, `monospace`),
+  - the system-UI whitelist (`system-ui`, `-apple-system`).
+
+  Do NOT add named fallbacks like Georgia, Helvetica, Times New Roman. `gate:design_adherence` (`~/.agents/skills/hyperframes/SKILL.md` §"Design Adherence" item 2) flags any token not in `typography[*].family` ∪ generics ∪ whitelist. Web fonts loaded by the root scaffold render reliably across the capture engine; named fallbacks would only fire if web-loading fails (it doesn't), and would render differently on different operator machines (Win/Mac may have Georgia, Linux Chromium resolves to Liberation/DejaVu Serif — divergent video output).
+  ```css
+  /* ❌ "Georgia" not in typography list — gate:design_adherence will fail */
+  font-family: "Playfair Display", "Georgia", serif;
+  /* ✅ design family + generic keyword */
+  font-family: "Playfair Display", serif;
+  ```
 
 Explicit anti-patterns (DO NOT DO):
 

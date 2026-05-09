@@ -43,7 +43,13 @@ from ._llm import LLMNode, _load_brief
 # pre-baked with gradient-stop / highlight derivatives upstream). Failing
 # example pinned to the HOM-154 `linear-gradient(#2a221c, #1f1a16, #14100e)`
 # regression that prompted the change.
-_CACHE_VERSION = 3
+# v4 (HOM-202): brief gained "Typography fallback discipline" hard-rule —
+# `font-family` stacks may use ONLY families from
+# `state.compose.design.typography[*].family`, generic CSS keywords, and the
+# system-UI whitelist. Failing example pinned to the HOM-154
+# `font-family: "Playfair Display", "Georgia", serif` regression that
+# halted gate:design_adherence at iter 3.
+_CACHE_VERSION = 4
 
 
 def _cache_key(state, *_args, **_kwargs):
