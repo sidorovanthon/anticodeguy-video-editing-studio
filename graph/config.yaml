@@ -114,6 +114,15 @@ node_overrides:
     # which on Windows immediately ENOENT's. Surfaced in HOM-154 first clean
     # E2E (PR #84 added attempts-detail in AllBackendsExhausted message;
     # the fix made the diagnosis trivial).
+  gate_animation_map_classify:
+    tier: cheap
+    backend_preference: ["claude"]
+    timeout_s: 120
+    # HOM-156 (review S2): cheap-tier fix-or-justify classifier. Pinned to
+    # claude-only because codex ENOENTs on Windows under the global default
+    # `["claude", "codex"]` (HOM-154 retro on p4_redispatch_beat). The
+    # HOM-157 cfg-fingerprint also relies on the per-node entry being
+    # node-specific rather than the global default.
   p4_captions_layer:
     tier: expensive
     backend_preference: ["claude"]
