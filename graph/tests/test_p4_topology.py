@@ -118,14 +118,18 @@ def test_phase4_chain_edges_wired():
         ("gate_inspect", "halt_llm_boundary"),
         ("gate_design_adherence", "gate_animation_map"),
         ("gate_design_adherence", "halt_llm_boundary"),
-        # HOM-204: gate:animation_map is advisory — no redispatch edge.
-        # Three outcomes: classify (pace flags pending), snapshot
-        # (advance), halt (infrastructure failure). The classifier
-        # likewise routes only to snapshot or halt — its decisions are
-        # advisory metadata.
+        # HOM-212: gate:animation_map is advisory by default, with per-flag
+        # blocking carve-outs. Four outcomes: classify (pace flags
+        # pending), snapshot (advance), redispatch (beat-actionable
+        # blocking carve-out, iter<3), halt (infra failure / dead-zone
+        # blocking / iter≥3). HOM-204 had dropped the redispatch edge
+        # wholesale; restored here for the structural-violation subset.
+        # The classifier likewise routes only to snapshot or halt — its
+        # decisions are advisory metadata.
         ("gate_animation_map", "gate_snapshot"),
         ("gate_animation_map", "halt_llm_boundary"),
         ("gate_animation_map", "gate_animation_map_classify"),
+        ("gate_animation_map", "p4_redispatch_beat"),
         ("gate_animation_map_classify", "gate_snapshot"),
         ("gate_animation_map_classify", "halt_llm_boundary"),
         ("gate_snapshot", "gate_captions_track"),
@@ -157,8 +161,8 @@ def test_phase4_chain_edges_wired():
         # Each gate now has THREE outgoing edges: pass→next, retry→
         # p4_redispatch_beat (fail+iter<3), halt (fail+iter≥3). Pass and
         # halt edges are already asserted above; the new retry edges are:
-        # HOM-204: gate:animation_map dropped from this list — its
-        # findings no longer redispatch beats (advisory).
+        # HOM-212: gate:animation_map's redispatch edge is asserted in
+        # the per-flag-carve-out block above — restored from HOM-204.
         ("gate_lint", "p4_redispatch_beat"),
         ("gate_validate", "p4_redispatch_beat"),
         ("gate_inspect", "p4_redispatch_beat"),

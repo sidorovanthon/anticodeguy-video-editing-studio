@@ -11,6 +11,8 @@ halted and what would unblock it. Same pattern as the post-`p4_scaffold`
 notice in `p4_scaffold.py` — a small marker, not an error.
 """
 
+import re
+
 
 def halt_llm_boundary_node(state):
     edit = state.get("edit") or {}
@@ -173,6 +175,49 @@ def halt_llm_boundary_node(state):
                     f"(always_fix: {n_always}, dead_zones: {n_dead}, "
                     f"pending_classify: {n_pending})"
                 )
+        # HOM-212: dead-zone-only blocking is structural — dead zones
+        # live on the root timeline (gaps between scenes), not inside
+        # any individual beat composition. `p4_redispatch_beat` cannot
+        # fix them; the gate halts on the first record without entering
+        # the retry loop. The cluster-default notice ("retry-with-feedback
+        # exhausted (max 3 attempts)") would mislead the operator into
+        # thinking 3 redispatches already ran. Branch on the prefix the
+        # gate emits (`gates/animation_map.py::_extract_flags` —
+        # "blocking dead zone — …"); if EVERY blocking finding is a
+        # dead zone string, route to a structural-only notice that
+        # points at p4_assemble_index (root timeline = scene durations).
+        # If even one non-dead-zone blocking finding is present, the
+        # mixed case keeps the iter-exhausted text — beat-actionable
+        # findings did exhaust their retry budget.
+        if gate_name == "gate:animation_map":
+            blocking_findings = cluster_failure.get("blocking_findings") or []
+            if blocking_findings and all(
+                s.startswith("blocking dead zone") for s in blocking_findings
+            ):
+                worst_part = ""
+                # Surface the worst dead-zone duration parsed back from the
+                # canonical violation string ("max duration X.Xs exceeds
+                # threshold Y.Ys"). Best-effort; on parse failure fall
+                # through to the generic "structural" message.
+                m = re.search(
+                    r"max duration ([\d.]+)s exceeds threshold ([\d.]+)s",
+                    blocking_findings[0],
+                )
+                if m:
+                    worst_part = (
+                        f"dead zone {m.group(1)}s > threshold "
+                        f"{m.group(2)}s; "
+                    )
+                msg = (
+                    f"v4 halt: {gate_name} FAILED at iter {iter_n} "
+                    f"({n_v} violation(s)){advisory_part} — "
+                    f"{worst_part}structural — adjust scene durations on "
+                    "root timeline (p4_assemble_index concern); "
+                    f"{_persist_summary()}; "
+                    "dead zones are not beat-actionable so "
+                    "p4_redispatch_beat is not invoked"
+                )
+                return {"notices": [msg]}
         msg = (
             f"v4 halt: {gate_name} FAILED at iter {iter_n} ({n_v} violation(s)){advisory_part} — "
             "see gate_results; "

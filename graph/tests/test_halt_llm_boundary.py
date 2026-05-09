@@ -206,6 +206,79 @@ def test_halt_notice_on_eval_resume_abort():
     assert "operator aborted" in msg
 
 
+def test_v4_halt_animation_map_dead_zone_only_blocking():
+    """HOM-212 review S1: dead-zone-only blocking failures are structural
+    (root timeline). The halt notice must say "structural — adjust scene
+    durations on root timeline (p4_assemble_index concern)" instead of the
+    misleading "retry-with-feedback exhausted (max 3 attempts)" — dead
+    zones never enter the redispatch loop."""
+    state = {
+        "compose": {"assemble": {"assembled_at": "now", "beat_names": ["A"]}},
+        "gate_results": [
+            {
+                "gate": "gate:animation_map",
+                "passed": False,
+                "violations": [
+                    "blocking dead zone — max duration 3.7s exceeds threshold 2.0s (HOM-212)",
+                ],
+                "blocking_findings": [
+                    "blocking dead zone — max duration 3.7s exceeds threshold 2.0s (HOM-212)",
+                ],
+                "advisory_findings": {
+                    "always_fix": [],
+                    "dead_zones": ["dead zone 5s–8.7s (duration 3.7s > 1.0s) — …"],
+                    "pending_classify": [],
+                },
+                "iteration": 1,
+                "timestamp": "now",
+            },
+        ],
+    }
+    msg = halt_llm_boundary_node(state)["notices"][0]
+    assert "structural" in msg
+    assert "scene durations on root timeline" in msg
+    assert "p4_assemble_index" in msg
+    # Dead-zone-only must NOT advertise retry-exhaustion; it never retries.
+    assert "retry-with-feedback exhausted" not in msg
+    assert "max 3 attempts" not in msg
+    # Worst dead-zone duration parsed back from the violation string.
+    assert "3.7s" in msg
+    assert "2.0s" in msg
+
+
+def test_v4_halt_animation_map_mixed_blocking_keeps_retry_exhausted_text():
+    """Mixed (dead-zone + beat-actionable) keeps the iter-exhausted text:
+    the beat-actionable findings DID enter the retry loop."""
+    state = {
+        "compose": {"assemble": {"assembled_at": "now", "beat_names": ["A"]}},
+        "gate_results": [
+            {
+                "gate": "gate:animation_map",
+                "passed": False,
+                "violations": [
+                    "blocking dead zone — max duration 3.7s exceeds threshold 2.0s (HOM-212)",
+                    "blocking offscreen flag(s) on #title — element off-canvas throughout the tween (HOM-212)",
+                ],
+                "blocking_findings": [
+                    "blocking dead zone — max duration 3.7s exceeds threshold 2.0s (HOM-212)",
+                    "blocking offscreen flag(s) on #title — element off-canvas throughout the tween (HOM-212)",
+                ],
+                "advisory_findings": {
+                    "always_fix": ["offscreen flag(s) on #title — …"],
+                    "dead_zones": ["dead zone 5s–8.7s (duration 3.7s > 1.0s) — …"],
+                    "pending_classify": [],
+                },
+                "iteration": 3,
+                "timestamp": "now",
+            },
+        ],
+    }
+    msg = halt_llm_boundary_node(state)["notices"][0]
+    assert "retry-with-feedback exhausted" in msg
+    assert "max 3 attempts" in msg
+    assert "structural" not in msg
+
+
 def test_halt_notice_on_phase3_review_abort():
     """HOM-146: explicit abort at p3_review_interrupt must surface its own
     notice — not the stale 'final.mp4 rendered' one that would otherwise

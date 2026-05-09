@@ -74,14 +74,16 @@ def _stub_resolver(monkeypatch, helper_path: Path, used_fallback: bool = False):
 # ── HOM-204: cache version bump ──────────────────────────────────────────────
 
 
-def test_cache_version_is_4():
-    """HOM-204 bumped 3→4 because output shape changed (advisory_findings).
+def test_cache_version_is_5():
+    """HOM-212 bumps 4→5 because verdict logic changed (per-flag blocking
+    carve-outs flip `passed` from True→False on structural findings).
 
+    HOM-204 bumped 3→4 for the original advisory output-shape change.
     The fingerprint registry's CREATIVE_NODES parametrisation does not
     cover this deterministic gate (it uses ``make_key``, not
     ``make_llm_key``); this direct assertion is the version-bump gate.
     """
-    assert gate_mod._CACHE_VERSION == 4
+    assert gate_mod._CACHE_VERSION == 5
 
 
 def test_cache_key_includes_version(tmp_path, monkeypatch):
@@ -123,25 +125,36 @@ def test_clean_report_passes_with_empty_advisory_findings(tmp_path, monkeypatch)
     assert "advisory" in notice and "no findings" in notice
 
 
-def test_collision_flag_is_advisory_not_blocking(tmp_path, monkeypatch):
-    """HOM-204: collision flag lands in advisory_findings.always_fix; passed=True."""
+def test_collision_on_decorative_is_advisory_not_blocking(tmp_path, monkeypatch):
+    """HOM-212: collision flag on chrome decoratives (caption-strip, glow,
+    grain, hairline, etc.) is by-construction FP — entrance + ambient yoyo
+    on the same element. Lands in advisory_findings.always_fix, passed=True.
+
+    Pre-HOM-212 wording was 'collision flag lands in advisory; passed=True'
+    unconditionally — the carve-out only catches the FP class; off-canon
+    selectors (e.g. `.headline`) now flip to BLOCKING (see
+    `test_collision_on_content_element_is_blocking`).
+    """
     hf_dir = _hf_dir(tmp_path)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
         "tweens": [
-            {"index": 1, "selector": ".a", "duration": 0.6, "flags": ["collision"]},
-            {"index": 2, "selector": ".b", "duration": 0.6, "flags": ["collision"]},
+            # Both selectors hit the default decorative allowlist — `glow`
+            # and `grain` substrings — so the collision flag is carved out.
+            {"index": 1, "selector": "div.glow", "duration": 0.6, "flags": ["collision"]},
+            {"index": 2, "selector": "div.grain", "duration": 0.6, "flags": ["collision"]},
         ],
         "deadZones": [],
     })
     update = animation_map_gate_node(_state(hf_dir))
     record = update["gate_results"][0]
-    assert record["passed"] is True, "successful helper run ⇒ pass even with findings"
-    assert record["violations"] == [], "violations field reserved for infra failures"
+    assert record["passed"] is True, "decoratives carved out ⇒ pass"
+    assert record["violations"] == [], "no blocking violations on decorative collisions"
+    assert record["blocking_findings"] == []
     advisory = record["advisory_findings"]
     assert len(advisory["always_fix"]) == 1
     assert "collision" in advisory["always_fix"][0]
-    assert ".a" in advisory["always_fix"][0] and ".b" in advisory["always_fix"][0]
+    assert "div.glow" in advisory["always_fix"][0] and "div.grain" in advisory["always_fix"][0]
     notice = update["notices"][0]
     assert "advisory" in notice and "always_fix: 1" in notice
 
@@ -202,19 +215,24 @@ def test_dead_zone_over_one_second_is_advisory(tmp_path, monkeypatch):
 
 
 def test_collision_and_pace_and_dead_zone_all_advisory(tmp_path, monkeypatch):
-    """HOM-204 acceptance: a synth report with collision + degenerate +
-    dead-zone + paced-fast all land as advisory findings; passed=True;
+    """HOM-204 acceptance, refined for HOM-212: a synth report with all-
+    decorative collisions + 1px hairline degenerate + sub-threshold dead-
+    zone + paced-fast all land as advisory findings; passed=True;
     violations=[]."""
     hf_dir = _hf_dir(tmp_path)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
         "tweens": [
-            {"index": 1, "selector": ".a", "duration": 0.6, "flags": ["collision"]},
-            {"index": 2, "selector": ".b", "duration": 0.6, "flags": ["collision"]},
-            {"index": 3, "selector": ".hairline", "duration": 0.4, "flags": ["degenerate"]},
+            # Decorative substring → carved out.
+            {"index": 1, "selector": "div.glow", "duration": 0.6, "flags": ["collision"]},
+            {"index": 2, "selector": "div.grain", "duration": 0.6, "flags": ["collision"]},
+            # 1px hairline → degenerate is carved out (max h = 1 < 2).
+            {"index": 3, "selector": "div.hairline", "duration": 0.4, "flags": ["degenerate"],
+             "bboxes": [{"t": 0.0, "x": 0, "y": 0, "w": 100, "h": 1}]},
             {"index": 4, "selector": ".flash", "duration": 0.12, "flags": ["paced-fast"]},
         ],
         "deadZones": [
+            # 2.0s == default threshold — strictly NOT > threshold ⇒ advisory.
             {"start": 10.0, "end": 12.0, "duration": 2.0, "note": "intentional hold"},
         ],
     })
@@ -222,6 +240,7 @@ def test_collision_and_pace_and_dead_zone_all_advisory(tmp_path, monkeypatch):
     record = update["gate_results"][0]
     assert record["passed"] is True
     assert record["violations"] == []
+    assert record["blocking_findings"] == []
     advisory = record["advisory_findings"]
     assert any("collision" in s for s in advisory["always_fix"])
     assert any("degenerate" in s for s in advisory["always_fix"])
@@ -400,12 +419,16 @@ def test_mixed_findings_notice_matches_canonical_format(tmp_path, monkeypatch):
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
         "tweens": [
-            {"index": 1, "selector": ".a", "duration": 0.6, "flags": ["collision"]},
-            {"index": 2, "selector": ".b", "duration": 0.6, "flags": ["collision"]},
-            {"index": 3, "selector": ".hairline", "duration": 0.4, "flags": ["degenerate"]},
+            # Decoratives — collision flag carved out (advisory).
+            {"index": 1, "selector": "div.glow", "duration": 0.6, "flags": ["collision"]},
+            {"index": 2, "selector": "div.grain", "duration": 0.6, "flags": ["collision"]},
+            # 1px hairline degenerate carved out.
+            {"index": 3, "selector": "div.hairline", "duration": 0.4, "flags": ["degenerate"],
+             "bboxes": [{"t": 0.0, "x": 0, "y": 0, "w": 100, "h": 1}]},
             {"index": 4, "selector": ".flash", "duration": 0.12, "flags": ["paced-fast"]},
         ],
         "deadZones": [
+            # 2.0s == threshold — strictly NOT > 2.0 ⇒ advisory.
             {"start": 10.0, "end": 12.0, "duration": 2.0, "note": "intentional hold"},
         ],
     })
@@ -427,7 +450,9 @@ def test_fallback_helper_notice_appends_pin_deps_hint(tmp_path, monkeypatch):
     hf_dir = _hf_dir(tmp_path)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs", used_fallback=True)
     _stub_helper(monkeypatch, report={
-        "tweens": [{"index": 1, "selector": ".a", "duration": 0.6, "flags": ["collision"]}],
+        # HOM-212: decorative selector → carved out, stays advisory so the
+        # canonical advisory notice format is exercised.
+        "tweens": [{"index": 1, "selector": "div.grain", "duration": 0.6, "flags": ["collision"]}],
         "deadZones": [],
     })
     notice = animation_map_gate_node(_state(hf_dir))["notices"][0]
@@ -458,3 +483,410 @@ def test_infrastructure_failure_notice_uses_strong_wording(tmp_path, monkeypatch
     assert "see gate_results" in notice
     # Critically: do NOT advertise this as "advisory".
     assert "advisory" not in notice
+
+
+# ── HOM-212: per-flag blocking carve-outs ────────────────────────────────────
+#
+# HOM-204 demoted the gate wholesale; HOM-212 refines that with per-flag
+# carve-outs. The HOM-211 reviewer caveat established that the bare ticket
+# rule (`always_fix.count > 0 → block`) regresses to the HOM-203 redispatch
+# loop because the canonical fixture's collision aggregate folds in 51
+# `#cg-N` caption-canon findings + chrome-decorative entrance+yoyo FPs;
+# carve-outs are the structural fix.
+
+
+def test_collision_on_content_element_is_blocking(tmp_path, monkeypatch):
+    """HOM-212 — Test 1 of 5 (ticket DoD).
+
+    Collision on a non-canon, non-decorative selector → blocking. The
+    routing layer reads `violations` (the standard cluster-retry-helper
+    contract) so this routes to p4_redispatch_beat with iter<3.
+    """
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            # `.headline` is neither caption-canon (`#cg-N`) nor a chrome
+            # decorative (no allowlist substring match) — so this collision
+            # represents a real layout overlap the author should fix.
+            {"index": 1, "selector": ".headline", "duration": 0.6, "flags": ["collision"]},
+        ],
+        "deadZones": [],
+    })
+    update = animation_map_gate_node(_state(hf_dir))
+    record = update["gate_results"][0]
+    assert record["passed"] is False, "non-canon non-decorative collision is blocking"
+    assert record["blocking_findings"], "blocking_findings populated"
+    assert any("blocking collision" in v for v in record["violations"]), (
+        "violations carries the blocking strings for the cluster-retry router"
+    )
+    assert any(".headline" in v for v in record["violations"])
+    notice = update["notices"][0]
+    assert notice.startswith("gate:animation_map: BLOCKING — ")
+    assert ".headline" in notice
+
+
+def test_dead_zone_over_threshold_is_blocking(tmp_path, monkeypatch):
+    """HOM-212 — Test 2 of 5 (ticket DoD).
+
+    Dead-zone duration > config threshold (default 2.0s) → blocking with
+    the threshold value cited in the violation. Sub-threshold dead zones
+    (≤ 2.0s) stay advisory."""
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [{"index": 1, "selector": "div.grain", "duration": 0.6, "flags": []}],
+        "deadZones": [
+            # 4s > 2.0s default threshold ⇒ blocking.
+            {"start": 22.5, "end": 26.5, "duration": 4.0, "note": "tail silence"},
+        ],
+    })
+    update = animation_map_gate_node(_state(hf_dir))
+    record = update["gate_results"][0]
+    assert record["passed"] is False
+    assert any("blocking dead zone" in v for v in record["violations"])
+    assert any("4.0" in v and "2.0" in v for v in record["violations"]), (
+        "violation cites the offending duration AND the threshold"
+    )
+
+
+def test_pending_classify_only_stays_advisory_no_redispatch(tmp_path, monkeypatch):
+    """HOM-212 — Test 3 of 5 (ticket DoD).
+
+    `pending_classify`-only run is HOM-203's correct case: paced flags
+    are LLM-judgement territory; routing must stay advisory and advance
+    to the classifier (or snapshot if no pending), never redispatch."""
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            {"index": 1, "selector": "div.grain", "duration": 5.0, "flags": ["paced-slow"]},
+            {"index": 2, "selector": "div.flash", "duration": 0.12, "flags": ["paced-fast"]},
+        ],
+        "deadZones": [],
+    })
+    update = animation_map_gate_node(_state(hf_dir))
+    record = update["gate_results"][0]
+    assert record["passed"] is True
+    assert record["violations"] == []
+    assert record["blocking_findings"] == []
+    assert len(record["advisory_findings"]["pending_classify"]) == 2
+    notice = update["notices"][0]
+    assert notice.startswith("gate:animation_map: advisory — ")
+    assert "BLOCKING" not in notice
+
+
+def test_caption_canon_collision_stays_advisory(tmp_path, monkeypatch):
+    """HOM-212 — Test 4 of 5 (canonical FP cross-check).
+
+    The `#cg-N` caption set+fromTo+to chain produces by-construction
+    bbox-overlap collisions on every caption group (51 of 109 collision
+    findings on the canonical fixture). Promoting these wholesale to
+    blocking would re-introduce the HOM-203 redispatch loop on the
+    canonical fixture. Carved out — must stay advisory."""
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            {"index": 1, "selector": "#cg-7", "duration": 0.32, "flags": ["collision"]},
+            {"index": 2, "selector": "#cg-12", "duration": 0.32, "flags": ["collision"]},
+        ],
+        "deadZones": [],
+    })
+    update = animation_map_gate_node(_state(hf_dir))
+    record = update["gate_results"][0]
+    assert record["passed"] is True, "caption canon carved out ⇒ pass"
+    assert record["violations"] == []
+    assert record["blocking_findings"] == []
+
+
+def test_decorative_collision_stays_advisory(tmp_path, monkeypatch):
+    """HOM-212 — Test 5 of 5 (canonical FP cross-check).
+
+    Chrome decoratives (entrance fromTo + ambient yoyo on the same
+    element) trigger helper bbox-overlap by construction. Default
+    decorative allowlist covers grain/glow/hairline/vignette/overline/
+    corner-mark/footer-mark/caption-strip/margin-tick. Operator can
+    extend via `gates.animation_map.collision_decorative_allowlist`.
+    """
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            {"index": 1, "selector": "div.glow", "duration": 0.6, "flags": ["collision"]},
+            {"index": 2, "selector": "div.pf-grain", "duration": 0.8, "flags": ["collision"]},
+            {"index": 3, "selector": "div.hairline-rule", "duration": 0.4, "flags": ["collision"]},
+            {"index": 4, "selector": "div.vignette-top", "duration": 0.5, "flags": ["collision"]},
+        ],
+        "deadZones": [],
+    })
+    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
+    assert record["passed"] is True
+    assert record["violations"] == []
+    assert record["blocking_findings"] == []
+
+
+# ── HOM-212: per-flag carve-out details ──────────────────────────────────────
+
+
+def test_degenerate_on_1px_hairline_stays_advisory(tmp_path, monkeypatch):
+    """1-px hairline → degenerate flag carved out; bbox h=1 < 2px default.
+
+    HOM-211 found 5/5 canonical degenerate findings on `pf-hairline` /
+    `margin-tick` / `kw-underline` — all 1-2 px decoratives whose
+    `scaleX:0` initial state samples to zero-size bbox by construction."""
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            {"index": 1, "selector": "div.pf-hairline", "duration": 0.6,
+             "flags": ["degenerate"],
+             "bboxes": [
+                 {"t": 0.1, "x": 0, "y": 0, "w": 0, "h": 1},
+                 {"t": 0.3, "x": 0, "y": 0, "w": 200, "h": 1},
+             ]},
+        ],
+        "deadZones": [],
+    })
+    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
+    assert record["passed"] is True
+    assert record["blocking_findings"] == []
+
+
+def test_degenerate_on_real_element_is_blocking(tmp_path, monkeypatch):
+    """Degenerate flag on an element with bbox >= 2px both dimensions IS
+    blocking — that's the failure mode the canon Step 4 mandate targets."""
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            # 100×50 — far above the 2px floor; still degenerate-flagged
+            # by the helper means a real authoring defect.
+            {"index": 1, "selector": ".content-card", "duration": 0.6,
+             "flags": ["degenerate"],
+             "bboxes": [
+                 {"t": 0.1, "x": 0, "y": 0, "w": 100, "h": 50},
+                 {"t": 0.3, "x": 0, "y": 0, "w": 100, "h": 50},
+             ]},
+        ],
+        "deadZones": [],
+    })
+    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
+    assert record["passed"] is False
+    assert any("blocking degenerate" in v for v in record["violations"])
+    assert any(".content-card" in v for v in record["violations"])
+
+
+def test_offscreen_is_unconditionally_blocking(tmp_path, monkeypatch):
+    """No FP class identified for offscreen — element off-canvas the
+    entire tween means audience never sees it. Blocking always."""
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            # Even a decorative-named selector — offscreen has no carve-out.
+            {"index": 1, "selector": "div.grain", "duration": 0.6,
+             "flags": ["offscreen"]},
+        ],
+        "deadZones": [],
+    })
+    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
+    assert record["passed"] is False
+    assert any("blocking offscreen" in v for v in record["violations"])
+
+
+def test_invisible_is_unconditionally_blocking(tmp_path, monkeypatch):
+    """Same as offscreen — zero-opacity throughout = element never renders."""
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            {"index": 1, "selector": "div.glow", "duration": 0.6,
+             "flags": ["invisible"]},
+        ],
+        "deadZones": [],
+    })
+    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
+    assert record["passed"] is False
+    assert any("blocking invisible" in v for v in record["violations"])
+
+
+def test_blocking_notice_lists_offending_categories(tmp_path, monkeypatch):
+    """HOM-212 ticket DoD: 'blocking findings call out the offending
+    category explicitly'. Notice format is
+    `gate:animation_map: BLOCKING — N finding(s) require fix. <cat strs>. See <path>.`
+    """
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            {"index": 1, "selector": ".headline", "duration": 0.6, "flags": ["collision"]},
+            {"index": 2, "selector": ".off-bar", "duration": 0.6, "flags": ["offscreen"]},
+        ],
+        "deadZones": [],
+    })
+    update = animation_map_gate_node(_state(hf_dir))
+    notice = update["notices"][0]
+    assert notice.startswith("gate:animation_map: BLOCKING — ")
+    assert "blocking collision" in notice
+    assert "blocking offscreen" in notice
+    # Operator can still find the JSON for full triage.
+    assert "See " in notice and ".hyperframes" in notice
+
+
+def test_dead_zone_threshold_is_strict_greater_than(tmp_path, monkeypatch):
+    """HOM-212: threshold comparison is `>`, not `>=`. A dead zone whose
+    duration equals the threshold stays advisory (intentional pacing
+    beat at the boundary). Only strictly-greater-than blocks."""
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [{"index": 1, "selector": "div.glow", "duration": 0.6, "flags": []}],
+        "deadZones": [
+            {"start": 5.0, "end": 7.0, "duration": 2.0, "note": "right at threshold"},
+        ],
+    })
+    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
+    assert record["passed"] is True, "dead-zone == threshold ⇒ advisory (strict >)"
+    assert record["blocking_findings"] == []
+
+
+def test_dead_zone_threshold_overridable_via_config(tmp_path, monkeypatch):
+    """`gates.animation_map.dead_zone_threshold_s` from graph/config.yaml
+    overrides the 2.0s default. Lower threshold ⇒ more dead-zones flip
+    to blocking; higher threshold ⇒ fewer."""
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [{"index": 1, "selector": "div.glow", "duration": 0.6, "flags": []}],
+        "deadZones": [
+            {"start": 5.0, "end": 6.5, "duration": 1.5, "note": "1.5s hold"},
+        ],
+    })
+    # Override config: drop the threshold to 1.0s so the 1.5s zone blocks.
+    monkeypatch.setattr(
+        gate_mod, "_gate_config",
+        lambda: {"dead_zone_threshold_s": 1.0},
+    )
+    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
+    assert record["passed"] is False
+    assert any("1.0" in v and "1.5" in v for v in record["violations"])
+
+
+def test_route_after_animation_map_blocking_collision_redispatches():
+    """HOM-212 routing: blocking collision (beat-actionable) at iter<3
+    routes to p4_redispatch_beat — the cluster-retry contract."""
+    from edit_episode_graph.nodes._routing import route_after_animation_map
+    state = {
+        "gate_results": [{
+            "gate": "gate:animation_map",
+            "passed": False,
+            "violations": ["blocking collision flag(s) on .headline — refine layout (HOM-212)"],
+            "blocking_findings": ["blocking collision flag(s) on .headline — refine layout (HOM-212)"],
+            "advisory_findings": {"always_fix": [], "dead_zones": [], "pending_classify": []},
+            "iteration": 1,
+        }],
+    }
+    assert route_after_animation_map(state) == "p4_redispatch_beat"
+
+
+def test_route_after_animation_map_blocking_dead_zone_only_halts():
+    """HOM-212 routing: dead-zone-only blocking is a root-timeline /
+    assembler concern, NOT beat-actionable. Routes to halt rather than
+    redispatching a beat that can't fix the issue."""
+    from edit_episode_graph.nodes._routing import route_after_animation_map
+    state = {
+        "gate_results": [{
+            "gate": "gate:animation_map",
+            "passed": False,
+            "violations": ["blocking dead zone — max duration 4.0s exceeds threshold 2.0s (HOM-212)"],
+            "blocking_findings": ["blocking dead zone — max duration 4.0s exceeds threshold 2.0s (HOM-212)"],
+            "advisory_findings": {"always_fix": [], "dead_zones": [], "pending_classify": []},
+            "iteration": 1,
+        }],
+    }
+    assert route_after_animation_map(state) == "halt_llm_boundary"
+
+
+def test_route_after_animation_map_iter_cap_halts():
+    """Beat-actionable blocking but iter>=3: halts (no infinite loop)."""
+    from edit_episode_graph.nodes._routing import route_after_animation_map
+    state = {
+        "gate_results": [{
+            "gate": "gate:animation_map",
+            "passed": False,
+            "violations": ["blocking collision flag(s) on .headline — refine layout (HOM-212)"],
+            "blocking_findings": ["blocking collision flag(s) on .headline — refine layout (HOM-212)"],
+            "advisory_findings": {"always_fix": [], "dead_zones": [], "pending_classify": []},
+            "iteration": 3,
+        }],
+    }
+    assert route_after_animation_map(state) == "halt_llm_boundary"
+
+
+def test_route_after_animation_map_advisory_advances():
+    """HOM-212: advisory-only run with no pending classify advances to snapshot."""
+    from edit_episode_graph.nodes._routing import route_after_animation_map
+    state = {
+        "gate_results": [{
+            "gate": "gate:animation_map",
+            "passed": True,
+            "violations": [],
+            "blocking_findings": [],
+            "advisory_findings": {
+                "always_fix": ["collision flag(s) on div.glow — overlapping animated elements; refine layout"],
+                "dead_zones": [],
+                "pending_classify": [],
+            },
+            "iteration": 1,
+        }],
+    }
+    assert route_after_animation_map(state) == "gate_snapshot"
+
+
+def test_route_after_animation_map_pending_classify_routes_to_classifier():
+    """HOM-212: advisory + pending pace flags route to the LLM classifier
+    (HOM-204 behaviour preserved on the no-blocking branch)."""
+    from edit_episode_graph.nodes._routing import route_after_animation_map
+    state = {
+        "gate_results": [{
+            "gate": "gate:animation_map",
+            "passed": True,
+            "violations": [],
+            "blocking_findings": [],
+            "advisory_findings": {
+                "always_fix": [],
+                "dead_zones": [],
+                "pending_classify": [
+                    {"flag_id": "div.grain::1::paced-slow", "selector": "div.grain",
+                     "flag": "paced-slow", "duration": 5.2, "index": 1},
+                ],
+            },
+            "iteration": 1,
+        }],
+    }
+    assert route_after_animation_map(state) == "gate_animation_map_classify"
+
+
+def test_decorative_allowlist_overridable_via_config(tmp_path, monkeypatch):
+    """Operator can extend / shrink the decorative allowlist via
+    `gates.animation_map.collision_decorative_allowlist`. With an empty
+    allowlist, even the chrome decoratives flip to blocking — useful as
+    a strict-mode toggle."""
+    hf_dir = _hf_dir(tmp_path)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            {"index": 1, "selector": "div.glow", "duration": 0.6, "flags": ["collision"]},
+        ],
+        "deadZones": [],
+    })
+    # Empty allowlist ⇒ no decorative carve-out.
+    monkeypatch.setattr(
+        gate_mod, "_gate_config",
+        lambda: {"collision_decorative_allowlist": []},
+    )
+    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
+    assert record["passed"] is False
+    assert any("blocking collision" in v for v in record["violations"])
+    assert any("div.glow" in v for v in record["violations"])

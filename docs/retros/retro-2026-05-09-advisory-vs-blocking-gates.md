@@ -43,3 +43,75 @@ session-level быстрого pickup'а. Pattern parent — `feedback_external_
 half-step. HOM-203 завершил demotion. Соответствующие изменения в spec'е и
 memory сделают так, что следующая инстинктивная попытка "давай сделаем gate
 для X helper'а" остановится на verification-step ещё до написания routing-кода.
+
+---
+
+## Amendment — HOM-212 per-flag carve-outs (2026-05-09)
+
+**Что добавилось.** HOM-203 wholesale-advisory оказался слишком coarse. Из
+`gate:animation_map` findings три семантически разных класса:
+
+* `pending_classify` (paced-fast / paced-slow) — LLM-judgement territory; **advisory** ✅ (это HOM-203 покрыл правильно).
+* `always_fix` aggregate — структурно неоднородный: каноническая caption-цепочка
+  `#cg-N` (set+fromTo+to+to+set) и chrome-decoratives (entrance + ambient yoyo
+  на одном и том же элементе) дают bbox-overlap **по построению** — это
+  false-positives, не дефекты авторинга. А вот collision на content-element
+  (e.g. `.headline`), `offscreen` и `invisible` — структурные нарушения,
+  фиксятся переавторингом сцены.
+* `dead_zones` — visible-but-static intervals; ≤ N секунд это намеренный
+  pacing beat, > N секунд — провисание. Threshold-based.
+
+**Фикс HOM-212.** Per-flag verdict:
+
+* `collision` blocking ⟺ селектор НЕ caption-canon (`^#cg-\d+$`) И НЕ chrome-
+  decorative substring (по умолчанию: `grain`, `glow`, `hairline`, `vignette`,
+  `overline`, `corner-mark`, `footer-mark`, `caption-strip`, `margin-tick`).
+  Carve-out list — operator-tunable через
+  `gates.animation_map.collision_decorative_allowlist` в `graph/config.yaml`.
+* `degenerate` blocking ⟺ max(width, height) ≥ 2 px по всем bbox-samples.
+  1-2 px hairlines / margin-ticks / underscores carved out by construction.
+  Threshold — `gates.animation_map.degenerate_min_bbox_px`, default 2.0.
+* `offscreen` / `invisible` — unconditionally blocking. На canonical fixture
+  HOM-211 audit'е таких findings нет, FP-класс не идентифицирован, оставляем
+  блокирующими (audience элемент не видит — это всегда дефект).
+* `dead_zones` blocking ⟺ max duration > threshold. Default 2.0 s, через
+  `gates.animation_map.dead_zone_threshold_s`. Routing — **не redispatch**:
+  dead-zones живут на root-timeline (composition duration / scene layout),
+  это `p4_assemble_index` concern, а не beat-author concern. Dead-zone-only
+  blocking → halt с явным notice'ом.
+
+**Routing.** `route_after_animation_map` имеет 4 исхода:
+
+* infrastructure failure → halt
+* blocking + beat-actionable (collision/degenerate/offscreen/invisible) + iter<3 → `p4_redispatch_beat`
+* blocking + iter≥3 ИЛИ только dead-zone → halt
+* pending_classify только → `gate_animation_map_classify`
+* clean / advisory only → `gate_snapshot`
+
+Edge `gate_animation_map → p4_redispatch_beat` восстанавливает то, что
+HOM-204 убрал wholesale (PR #119). Симметрично, но gated на per-flag
+classification — caption canon и chrome decoratives остаются advisory,
+как HOM-203 хотел.
+
+**Notice format.** Blocking notices начинаются с `gate:animation_map: BLOCKING — `
+(prefix load-bearing для Studio severity routing); advisory остаются
+`gate:animation_map: advisory — ` per HOM-205. Infrastructure failure —
+`infrastructure failure (...)`. Три prefix'а, три severity tier'а.
+
+**Урок.** Wholesale advisory → wholesale blocking — две ошибочные крайности.
+Правильный design point: per-flag classification with named carve-outs that
+are config-tunable. HOM-211 reviewer caveat поймал бы это раньше, если бы
+HOM-203 audit включал не только "did the canonical author invoke
+animation-map.mjs?" но и "*if* they did, *which* findings would they actually
+fix?" — на canonical fixture'е ответ был бы: 0 из 109 collision (все на
+captions/chrome), 0 из 5 degenerate (все на 1px hairlines). HOM-203's coarse
+advisory был эмпирически правильным для тех findings; HOM-212 расширяет
+покрытие на ту малую долю findings, которые all-and-only-actionable —
+без re-introducing redispatch loop'а.
+
+**Spec/memory cross-link.** Spec §6.2 в `2026-05-02-langgraph-pipeline-design.md`
+уже несёт правило "advisory unless canon mandates"; HOM-212 не отменяет это,
+а уточняет: gate может быть **advisory by default + per-flag blocking carve-outs**
+для подсчитываемо-малого подмножества findings, где canon-author *would*
+fix-on-sight (a content-element collision, an offscreen-throughout tween,
+а 4-secondный tail dead zone) и где LLM-redispatch может реально починить.

@@ -3,6 +3,38 @@
 
 backend_preference: ["claude", "codex"]
 
+# HOM-212: per-gate deterministic config (thresholds, carve-out lists).
+# Schema decided per-gate; see each gate module for canonical defaults.
+gates:
+  animation_map:
+    # Dead zones longer than this threshold (seconds) flip from advisory
+    # to blocking. Default 2.0 — matches HOM-212 ticket. Sub-threshold
+    # holds (≤ 2s) are intentional pacing beats per canon; blocking
+    # treatment would produce false positives on canonical pacing.
+    dead_zone_threshold_s: 2.0
+    # Selector-substring allowlist for collision-flag carve-outs (chrome
+    # decoratives where helper bbox-overlap on entrance + breathing yoyo
+    # is FP-by-construction; HOM-211 reviewer caveat). Each entry is
+    # a substring matched against the helper-reported `selector` string;
+    # any hit demotes the collision flag from blocking to advisory.
+    # Caption canon (`#cg-N`) is matched separately by regex and is
+    # always carved out — this list covers the chrome decoratives only.
+    collision_decorative_allowlist:
+      - "grain"
+      - "glow"
+      - "hairline"
+      - "vignette"
+      - "overline"
+      - "corner-mark"
+      - "footer-mark"
+      - "caption-strip"
+      - "margin-tick"
+    # Minimum bbox dimension (pixels) for a `degenerate` flag to be
+    # blocking. Smaller-than-this on either width or height across all
+    # bbox samples means the element is a 1-2px decorative (hairline /
+    # tick / underline) where degenerate-by-construction is intentional.
+    degenerate_min_bbox_px: 2.0
+
 concurrency:
   claude: 2
   codex: 2
