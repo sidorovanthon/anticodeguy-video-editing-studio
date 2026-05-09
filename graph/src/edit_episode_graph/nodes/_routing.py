@@ -600,26 +600,62 @@ route_after_design_adherence = route_after_gate_with_retry(
     fail_route="halt_llm_boundary",
     max_iterations=3,
 )
+_ANIMATION_MAP_BLOCKING_REDISPATCH_PREFIXES = (
+    "blocking collision",
+    "blocking degenerate",
+    "blocking offscreen",
+    "blocking invisible",
+)
+
+
+def _animation_map_blocking_is_beat_actionable(violations: list[str]) -> bool:
+    """Classify HOM-212 blocking findings into beat-actionable vs. halt-only.
+
+    Per-flag findings (collision/degenerate/offscreen/invisible) are
+    authored inside individual beat scripts — re-dispatching the
+    offending beat's authoring node lets the LLM redo the scene with
+    prior violations injected into the brief. Dead-zone findings, by
+    contrast, live on the root timeline (composition duration / scene
+    layout) — they're a `p4_assemble_index` concern (HOM-214). For
+    those we halt directly; iter-3 redispatch on the assembler doesn't
+    have a retry hook here and would just churn.
+    """
+    return any(
+        any(v.lower().startswith(prefix) for prefix in _ANIMATION_MAP_BLOCKING_REDISPATCH_PREFIXES)
+        for v in violations or []
+    )
+
+
 def route_after_animation_map(state):
     """gate:animation_map → gate_animation_map_classify | gate_snapshot |
-    halt_llm_boundary.
+    p4_redispatch_beat | halt_llm_boundary.
 
-    HOM-204: gate:animation_map is **advisory** — its findings never
-    redispatch beats. Routing has three outcomes only:
+    HOM-212 refines the HOM-204 wholesale-advisory model with per-flag
+    blocking carve-outs. Outcomes:
 
-      * infrastructure failure (``passed=False`` after helper-run failure)
-        → halt_llm_boundary so the operator sees the error and can fix
-        the install (actionable) before re-running.
-      * pace flags pending classification (``advisory_findings.pending_classify``
-        non-empty) → gate_animation_map_classify so the classifier
-        annotates per-flag decisions for operator visibility.
-        ``cache_policy=`` on the classify node makes repeats free.
-      * everything else → gate_snapshot (advance regardless of finding count).
+      * infrastructure failure (`passed=False` with infra strings in
+        ``violations`` and empty ``blocking_findings``) → halt_llm_boundary
+        so the operator sees the install error.
+      * blocking findings (``passed=False`` with non-empty
+        ``blocking_findings``):
+          - any beat-actionable category present (collision /
+            degenerate / offscreen / invisible) AND iteration < 3
+            → p4_redispatch_beat (re-author offending scene with
+            prior violations in brief);
+          - iter ≥ 3 OR only dead-zone findings present (root-timeline
+            concern, not beat-author concern) → halt_llm_boundary so
+            the boundary's notice surfaces.
+      * pace flags pending classification (`advisory_findings.pending_classify`
+        non-empty AND no blocking) → gate_animation_map_classify so
+        the classifier annotates per-flag decisions for operator visibility.
+      * otherwise → gate_snapshot (advance — clean run or only-advisory
+        findings under all carve-outs).
 
-    No edge to ``p4_redispatch_beat`` — see HOM-203 canon-alignment
-    audit (4 clean ``hyperframes`` skill sessions, none invoked
-    ``animation-map.mjs``). The helper output is operator-facing
-    metadata; the human author makes the fix-or-justify call.
+    No router-layer iteration-cap hard-code: the gate's own
+    `_iteration` counter (records the number of times this gate
+    emitted a record on the thread) drives the iter < 3 retry
+    decision, mirroring the `route_after_gate_with_retry` helper
+    used by sibling cluster gates.
     """
     from ..gates._base import latest_gate_result
     record = latest_gate_result(state, "gate:animation_map")
@@ -627,8 +663,18 @@ def route_after_animation_map(state):
         # Defensive: gate must have emitted a record before its outgoing
         # edge fires. If state was injected mid-run, halt with a notice.
         return "halt_llm_boundary"
+    blocking = record.get("blocking_findings") or []
+    if blocking:
+        if _animation_map_blocking_is_beat_actionable(blocking):
+            iteration = record.get("iteration") or 0
+            if iteration < 3:
+                return "p4_redispatch_beat"
+        # iter≥3, or dead-zone-only (not beat-actionable) → halt.
+        return "halt_llm_boundary"
     if not record.get("passed"):
-        # Infrastructure failure (helper missing, exit != 0, JSON unparseable).
+        # Infrastructure failure (helper missing, exit != 0, JSON
+        # unparseable). `violations` carries the infra strings and
+        # `blocking_findings` is empty.
         return "halt_llm_boundary"
     advisory = record.get("advisory_findings") or {}
     if advisory.get("pending_classify"):

@@ -309,6 +309,20 @@ All gates pure-functional: state in, decision + state-update out. Skipping is st
 
 **Empirical grounding.** HOM-203 demoted `gate:animation_map` after a 4-session audit of `docs/clean-skills-usage-examples/hyperframes/*.jsonl` showed 0/4 canonical HF authoring sessions invoke `animation-map.mjs`. The helper had been promoted to a blocking gate that produced false-positive halts on caption strips (transparent-text collisions) and hairline decoratives (zero-bbox measurement artifact). HOM-156 was the first half-step (LLM-justify branch for paced-fast/paced-slow only); HOM-203 (sub-issues HOM-204..207) completed the demotion for all flag classes.
 
+**Per-flag carve-outs (HOM-212).** Wholesale advisory was empirically too coarse — content-element collisions, `offscreen`/`invisible` flags, and >2s dead zones ARE structural defects an author would fix on sight. HOM-212 introduces a refined model: *advisory by default + per-flag blocking carve-outs*. Verdict per finding class:
+
+| Finding | Blocking when | Routing on blocking |
+|---------|---------------|---------------------|
+| `collision` | selector ∉ caption canon (`^#cg-\d+$`) AND ∉ chrome-decorative allowlist (`grain`/`glow`/`hairline`/`vignette`/`overline`/`corner-mark`/`footer-mark`/`caption-strip`/`margin-tick`) | `p4_redispatch_beat` (iter<3) |
+| `degenerate` | max(bbox width, bbox height) ≥ `degenerate_min_bbox_px` (default 2.0) — excludes 1-2px hairlines | `p4_redispatch_beat` (iter<3) |
+| `offscreen` / `invisible` | always — no canon-known FP class | `p4_redispatch_beat` (iter<3) |
+| `dead_zones` | max duration > `dead_zone_threshold_s` (default 2.0) | `halt_llm_boundary` (root-timeline / `p4_assemble_index` concern, not beat-author concern) |
+| `paced-fast` / `paced-slow` | never — LLM-judgement territory | `gate_animation_map_classify` (advisory metadata only) |
+
+All carve-out parameters live under `gates.animation_map.*` in `graph/config.yaml` (HOM-212 added the top-level `gates:` config section + `RouterConfig.resolve_gate(name)` accessor). The router uses the gate's own `iteration` counter (gates._base.Gate._iteration) for the iter<3 retry decision, mirroring the cluster-retry helper used by sibling gates. Studio surfaces three notice prefixes — `BLOCKING` / `advisory` / `infrastructure failure` — load-bearing for severity routing.
+
+**Doctrine extension.** A gate can be *both* advisory (default verdict) and blocking (carved-out structural-violation subset) on the same helper output. The verification rule (above) still applies: blocking carve-outs require canon-grounded justification — for animation-map this is "an author iterating canon Step 4 *would* fix this on sight". The empirical test: against the canonical fixture's animation-map.json (109 collision + 5 degenerate + 1 dead-zone-4s + 8 paced-slow), the HOM-212 carve-outs produce **0 beat-redispatchable blocking findings** (the 4s dead-zone is the lone blocking finding and routes to halt, not redispatch). HOM-203's advisory pattern is preserved for the FP classes; HOM-212 only restores blocking for the small actionable subset.
+
 ### 6.3 LLM node — authorized CLI invocation
 
 Builds a short task descriptor from state + Jinja2 template, dispatches to `LLMBackend`, parses through Pydantic schema, returns state update.

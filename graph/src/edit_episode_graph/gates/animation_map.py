@@ -1,5 +1,6 @@
 """gate:animation_map — runs the bundled `animation-map.mjs` helper, parses
-the report, surfaces findings as **advisory** metadata.
+the report, surfaces findings as **advisory** metadata by default with
+per-flag blocking carve-outs (HOM-212).
 
 Per canon `~/.agents/skills/hyperframes/SKILL.md` §"Quality Checks":
 `animation-map` enumerates every GSAP timeline tween, samples bounding
@@ -19,7 +20,7 @@ layout. So we prefer the bundled copy under the HF project's
 `fallback_helper_used=True` so the operator can see the project should
 have its dependencies pinned.
 
-## Pass criteria — ADVISORY (HOM-204)
+## Pass criteria — ADVISORY by default + per-flag blocking carve-outs (HOM-212)
 
 Canon (SKILL.md §"Quality Checks" §"Animation Map"):
 
@@ -30,11 +31,27 @@ Canon (SKILL.md §"Quality Checks" §"Animation Map"):
 The mandate is on the *author*, not on a deterministic gate. Per HOM-203
 (canon-alignment audit of 4 clean Claude Code sessions using the
 `hyperframes` skill standalone — none invoked `animation-map.mjs`),
-this gate is now **advisory**: it runs the helper, surfaces findings,
-and never blocks the run.
+this gate started as **advisory only**: it ran the helper, surfaced
+findings, and never blocked the run (HOM-204).
 
-`passed = True` whenever the helper itself ran successfully and its
-JSON output parsed. Only **infrastructure failures** keep `passed=False`:
+HOM-212 refines that: most findings remain advisory, but a small set of
+**structural carve-outs** flip to blocking because they cannot be
+justified post-hoc by an author (e.g. an `offscreen` flag on a content
+element means the audience never sees it). The HOM-211 reviewer caveat
+(`always_fix.count > 0` regresses to the HOM-203 redispatch loop on
+canonical caption-chains and chrome decoratives) drove the per-flag
+classification rather than per-category — see `_blocking_classification`
+below for the precise rules.
+
+`passed = True` whenever the helper itself ran successfully AND no
+finding crossed a blocking threshold. Findings that are blocking-by-rule
+populate ``record["violations"]`` so the routing layer (which still
+reads ``violations`` for its retry decision) re-dispatches the offending
+beat — symmetric to the wiring HOM-204 removed, but only for the
+structurally-actionable subset.
+
+Only **infrastructure failures** keep `passed=False` regardless of
+findings:
 
 * helper not found at bundled path or global fallback
 * `node` executable not found on PATH
@@ -132,7 +149,12 @@ from ._base import Gate, hyperframes_dir
 # v4 = HOM-204: demote to advisory. `passed=True` on any successful helper
 #   run; findings move to `advisory_findings`; routing no longer reads
 #   `violations` from this gate. Output shape change ⇒ cache invalidation.
-_CACHE_VERSION = 4
+# v5 = HOM-212: per-flag blocking carve-outs. Pass criteria now depends on
+#   carved-out blocking conditions (collision off-canon, degenerate ≥ 2px,
+#   offscreen, invisible, dead_zone > threshold); routing reads `violations`
+#   again on the blocking branch. Output shape unchanged but verdict logic
+#   changed ⇒ cache invalidation.
+_CACHE_VERSION = 5
 
 
 # Helper script paths (relative to roots; joined with appropriate root).
@@ -162,6 +184,111 @@ _WINDOWS_EINVAL = re.compile(r"\bEINVAL\b|\bspawnSync\b.*\bnpm", re.IGNORECASE)
 # `advisory_findings.pending_classify`; everything else with structural
 # significance lands under `advisory_findings.always_fix`.
 _JUSTIFIABLE_FLAGS = ("paced-fast", "paced-slow")
+
+# HOM-212 carve-out defaults. Operator-tunable via `gates.animation_map.*`
+# in `graph/config.yaml`; these are the fall-throughs when the YAML key is
+# absent. Rationale lives in the HOM-211 reviewer caveat (Linear comment
+# `0b8c433d-96c0-4b9f-9c4d-941178279564`, AMENDMENT section).
+
+# Caption canonical chain. The `set(visible) → fromTo(entrance) → to(exit)
+# → set(hidden)` pattern at each cg-N start/end produces by-construction
+# bbox-overlap collision flags on every caption group. These are not
+# authoring defects — refusing to demote them re-introduces the HOM-203
+# redispatch loop on the canonical fixture's 17 caption groups (51 of 109
+# collision findings).
+_CG_SELECTOR_RE = re.compile(r"^#cg-\d+$")
+
+# Default ambient-decorative selector substrings. The chrome decoratives
+# (entrance fromTo + breathing yoyo on the same element) trigger
+# helper bbox-overlap by construction; these are the elements canon DESIGN
+# patterns explicitly call ambient. Operator can extend / shrink via
+# `gates.animation_map.collision_decorative_allowlist` in graph/config.yaml.
+_DEFAULT_DECORATIVE_ALLOWLIST = (
+    "grain", "glow", "hairline", "vignette", "overline",
+    "corner-mark", "footer-mark", "caption-strip", "margin-tick",
+)
+
+# Default minimum bbox dimension (pixels) for a degenerate flag to be
+# blocking. < this on either width or height across all bbox samples
+# means the element is a 1-2px decorative (hairline / tick / underline)
+# where degenerate-by-construction is the intended visual.
+_DEFAULT_DEGENERATE_MIN_BBOX_PX = 2.0
+
+# Default dead-zone-duration threshold (seconds). Above this, the dead
+# zone flips from advisory to blocking. The ticket specifies 2.0s default.
+_DEFAULT_DEAD_ZONE_THRESHOLD_S = 2.0
+
+
+def _gate_config() -> dict:
+    """Resolve the operator-tunable carve-out config from graph/config.yaml.
+
+    Lazy-imported to keep module import-time side-effect-free for the
+    fingerprint registry. Falls back to an empty dict (→ defaults) if the
+    config file is absent (test environments without a graph/ root).
+    """
+    from ..config import load_default_config
+    return load_default_config().resolve_gate("animation_map")
+
+
+def _is_caption_canon(selector: str) -> bool:
+    """`#cg-N` selectors emit by-construction collision flags from the
+    canon caption authoring pattern. Always carved out."""
+    return bool(_CG_SELECTOR_RE.match(selector or ""))
+
+
+def _is_decorative(selector: str, allowlist: tuple[str, ...]) -> bool:
+    """Substring match against the chrome-decorative allowlist."""
+    sel = (selector or "").lower()
+    return any(needle.lower() in sel for needle in allowlist)
+
+
+def _max_bbox_dim(tween: dict) -> tuple[float, float]:
+    """Returns (max_width_observed, max_height_observed) across bbox
+    samples on a tween. Used by the degenerate carve-out — a tween
+    whose bbox stays below `degenerate_min_bbox_px` on either dimension
+    is by-construction (1-2px hairline / tick).
+
+    Returns (0.0, 0.0) when the helper emitted no bbox data (older
+    helper versions; treated as "cannot prove decorative" → keep
+    blocking, since the actual concern is content elements with zero
+    bbox throughout, which is exactly what missing-bbox-data implies)."""
+    boxes = tween.get("bboxes") or []
+    if not boxes:
+        return 0.0, 0.0
+    max_w = 0.0
+    max_h = 0.0
+    for b in boxes:
+        try:
+            w = float(b.get("w") or 0.0)
+            h = float(b.get("h") or 0.0)
+        except (TypeError, ValueError):
+            continue
+        if w > max_w:
+            max_w = w
+        if h > max_h:
+            max_h = h
+    return max_w, max_h
+
+
+def _collision_is_blocking(tween: dict, selector: str, *, decorative_allowlist: tuple[str, ...]) -> bool:
+    """Per HOM-211 reviewer caveat: collision flags are blocking unless
+    the element is caption canon (`#cg-N`) or a chrome decorative whose
+    entrance + ambient yoyo overlap by construction."""
+    if _is_caption_canon(selector):
+        return False
+    if _is_decorative(selector, decorative_allowlist):
+        return False
+    return True
+
+
+def _degenerate_is_blocking(tween: dict, *, min_bbox_px: float) -> bool:
+    """Degenerate flag is blocking only when the bbox is large enough
+    that an authoring fix is plausible. 1-2px hairlines / ticks are
+    intentional (HOM-211 caveat: 5/5 canonical degenerate findings are
+    on `pf-hairline` / `margin-tick` / `kw-underline`)."""
+    max_w, max_h = _max_bbox_dim(tween)
+    # Both dimensions must clear the threshold to count as a "real" element.
+    return (max_w >= min_bbox_px) and (max_h >= min_bbox_px)
 
 
 def _now() -> str:
@@ -287,19 +414,43 @@ def _flag_id(selector: str, idx: int, flag: str) -> str:
     return f"{sel}::{idx}::{flag}"
 
 
-def _extract_flags(report: dict) -> tuple[list[str], list[dict], list[str]]:
-    """Split helper output into (always_fix, pending_classify, dead_zones).
+def _extract_flags(
+    report: dict,
+    *,
+    decorative_allowlist: tuple[str, ...] | None = None,
+    degenerate_min_bbox_px: float | None = None,
+    dead_zone_threshold_s: float | None = None,
+) -> tuple[list[str], list[dict], list[str], list[str]]:
+    """Split helper output into (always_fix, pending_classify, dead_zones,
+    blocking_violations).
 
-    All three are advisory — no `passed=False` consequence. The classifier
-    LLM node still runs against `pending_classify` to give the operator
-    per-flag justify/fix metadata, but its output is advisory too.
+    HOM-212: returns a fourth element — `blocking_violations` — populated
+    when a finding crosses a per-flag carve-out (see
+    `_collision_is_blocking` / `_degenerate_is_blocking` /
+    threshold-based dead-zones / unconditional offscreen+invisible).
+
+    The first three return values keep their HOM-204 shape (advisory
+    metadata for Studio). Findings that ARE blocking still appear in the
+    advisory lists too — they're not mutually exclusive — so the operator
+    sees the full picture; the routing layer keys solely off
+    `blocking_violations`.
     """
+    if decorative_allowlist is None:
+        decorative_allowlist = _DEFAULT_DECORATIVE_ALLOWLIST
+    if degenerate_min_bbox_px is None:
+        degenerate_min_bbox_px = _DEFAULT_DEGENERATE_MIN_BBOX_PX
+    if dead_zone_threshold_s is None:
+        dead_zone_threshold_s = _DEFAULT_DEAD_ZONE_THRESHOLD_S
+
     always_fix: list[str] = []
     pending_classify: list[dict] = []
+    blocking: list[str] = []
 
     tweens = report.get("tweens") or []
     collisions: list[str] = []
+    blocking_collisions: list[str] = []
     degenerate: list[str] = []
+    blocking_degenerate: list[str] = []
     offscreen: list[str] = []
     invisible: list[str] = []
 
@@ -310,11 +461,19 @@ def _extract_flags(report: dict) -> tuple[list[str], list[dict], list[str]]:
         duration = tw.get("duration")
         if "collision" in flags:
             collisions.append(sel)
+            if _collision_is_blocking(tw, sel, decorative_allowlist=decorative_allowlist):
+                blocking_collisions.append(sel)
         if "degenerate" in flags:
             degenerate.append(sel)
+            if _degenerate_is_blocking(tw, min_bbox_px=degenerate_min_bbox_px):
+                blocking_degenerate.append(sel)
         if "offscreen" in flags:
+            # No canon-known FP class. Content element off-canvas throughout
+            # is structurally always wrong (audience never sees it).
             offscreen.append(sel)
         if "invisible" in flags:
+            # Same: zero-opacity throughout = element never renders. No FP
+            # class identified in the HOM-211 audit.
             invisible.append(sel)
         for flag in _JUSTIFIABLE_FLAGS:
             if flag in flags:
@@ -347,7 +506,31 @@ def _extract_flags(report: dict) -> tuple[list[str], list[dict], list[str]]:
             + " — zero opacity throughout the tween"
         )
 
+    # Blocking violations — distinct, structured strings the routing layer
+    # reads. Decoratives + caption canon collisions are filtered out.
+    if blocking_collisions:
+        blocking.append(
+            "blocking collision flag(s) on " + ", ".join(blocking_collisions)
+            + " — overlapping animated content; refine layout (HOM-212)"
+        )
+    if blocking_degenerate:
+        blocking.append(
+            "blocking degenerate flag(s) on " + ", ".join(blocking_degenerate)
+            + f" — bbox ≥ {degenerate_min_bbox_px}px throughout but element never renders"
+        )
+    if offscreen:
+        blocking.append(
+            "blocking offscreen flag(s) on " + ", ".join(offscreen)
+            + " — element off-canvas throughout the tween (HOM-212)"
+        )
+    if invisible:
+        blocking.append(
+            "blocking invisible flag(s) on " + ", ".join(invisible)
+            + " — zero opacity throughout the tween (HOM-212)"
+        )
+
     dead_zones: list[str] = []
+    blocking_dead_zone_durs: list[float] = []
     for zone in report.get("deadZones") or []:
         try:
             dur = float(zone.get("duration", 0.0))
@@ -360,8 +543,16 @@ def _extract_flags(report: dict) -> tuple[list[str], list[dict], list[str]]:
                 f"dead zone {start}s–{end}s (duration {dur}s > 1.0s) — "
                 "no animation; intentional hold or missing entrance?"
             )
+            if dur > dead_zone_threshold_s:
+                blocking_dead_zone_durs.append(dur)
+    if blocking_dead_zone_durs:
+        worst = max(blocking_dead_zone_durs)
+        blocking.append(
+            f"blocking dead zone — max duration {worst}s exceeds threshold "
+            f"{dead_zone_threshold_s}s (HOM-212)"
+        )
 
-    return always_fix, pending_classify, dead_zones
+    return always_fix, pending_classify, dead_zones, blocking
 
 
 # ---------------------------------------------------------------------------
@@ -440,8 +631,8 @@ class AnimationMapGate(Gate):
     def __init__(self) -> None:
         super().__init__(name="gate:animation_map")
 
-    def _run(self, state: dict) -> tuple[list[str], dict, dict]:
-        """Returns ``(infra_failures, advisory_findings, extras)``.
+    def _run(self, state: dict) -> tuple[list[str], dict, list[str], dict]:
+        """Returns ``(infra_failures, advisory_findings, blocking_violations, extras)``.
 
         ``infra_failures`` is non-empty only when the helper itself could
         not run — these become hard `passed=False` violations. On any
@@ -451,6 +642,15 @@ class AnimationMapGate(Gate):
         ``advisory_findings`` always has the canonical three-key shape:
         ``{"always_fix": [...], "dead_zones": [...], "pending_classify": [...]}``
         — empty lists on a clean run, populated otherwise.
+
+        ``blocking_violations`` (HOM-212) is the carved-out subset of
+        findings that should redispatch the offending beat. Empty list
+        on a clean run OR on a run where every finding fell into a
+        carve-out (caption canon, chrome decorative, sub-threshold
+        dead zone, sub-2px degenerate). When non-empty AND no infra
+        failure, the gate emits ``passed=False`` with these strings as
+        ``violations`` so the routing layer's existing retry helper
+        re-dispatches.
         """
         empty_advisory: dict = {"always_fix": [], "dead_zones": [], "pending_classify": []}
 
@@ -459,10 +659,11 @@ class AnimationMapGate(Gate):
             return (
                 ["no hyperframes_dir / episode_dir in state — cannot run animation-map"],
                 empty_advisory,
+                [],
                 {},
             )
         if not hf_dir.is_dir():
-            return ([f"hyperframes dir not on disk: {hf_dir}"], empty_advisory, {})
+            return ([f"hyperframes dir not on disk: {hf_dir}"], empty_advisory, [], {})
 
         helper, used_fallback = _resolve_helper(hf_dir)
         if helper is None:
@@ -472,6 +673,7 @@ class AnimationMapGate(Gate):
                     f"{hf_dir / _BUNDLED_REL} or global fallback {_GLOBAL_FALLBACK}"
                 ],
                 empty_advisory,
+                [],
                 {},
             )
 
@@ -482,18 +684,19 @@ class AnimationMapGate(Gate):
 
         ran = _run_helper(hf_dir, helper, used_fallback)
         if isinstance(ran, str):
-            return ([ran], empty_advisory, extras)
+            return ([ran], empty_advisory, [], extras)
 
         if ran.exit_code != 0:
             bootstrap = _bootstrap_failure_violation(ran, hf_dir)
             if bootstrap is not None:
-                return ([bootstrap], empty_advisory, extras)
+                return ([bootstrap], empty_advisory, [], extras)
             tail = (ran.stderr or ran.stdout or "(no output)").strip()
             if len(tail) > 1500:
                 tail = tail[:1500] + "\n…(truncated)"
             return (
                 [f"animation-map helper exit={ran.exit_code}:\n{tail}"],
                 empty_advisory,
+                [],
                 extras,
             )
 
@@ -502,36 +705,62 @@ class AnimationMapGate(Gate):
             return (
                 [f"animation-map helper exited 0 but {_OUT_FILE} not found at {report_path}"],
                 empty_advisory,
+                [],
                 extras,
             )
         try:
             report = json.loads(report_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
-            return ([f"could not parse {report_path}: {exc}"], empty_advisory, extras)
+            return ([f"could not parse {report_path}: {exc}"], empty_advisory, [], extras)
 
-        always_fix, pending_classify, dead_zones = _extract_flags(report)
+        # HOM-212: resolve operator-tunable carve-out config.
+        cfg = _gate_config()
+        # Distinguish "absent" (use defaults) from "explicit empty list"
+        # (operator strict-mode toggle — no carve-out at all).
+        if "collision_decorative_allowlist" in cfg:
+            decorative_allowlist = tuple(cfg["collision_decorative_allowlist"] or ())
+        else:
+            decorative_allowlist = _DEFAULT_DECORATIVE_ALLOWLIST
+        degenerate_min_bbox_px = float(
+            cfg.get("degenerate_min_bbox_px", _DEFAULT_DEGENERATE_MIN_BBOX_PX)
+        )
+        dead_zone_threshold_s = float(
+            cfg.get("dead_zone_threshold_s", _DEFAULT_DEAD_ZONE_THRESHOLD_S)
+        )
+
+        always_fix, pending_classify, dead_zones, blocking = _extract_flags(
+            report,
+            decorative_allowlist=decorative_allowlist,
+            degenerate_min_bbox_px=degenerate_min_bbox_px,
+            dead_zone_threshold_s=dead_zone_threshold_s,
+        )
         advisory_findings = {
             "always_fix": always_fix,
             "dead_zones": dead_zones,
             "pending_classify": pending_classify,
         }
-        # Successful helper run: no infrastructure failures regardless of
-        # how many findings surfaced. Findings are advisory.
-        return ([], advisory_findings, extras)
+        return ([], advisory_findings, blocking, extras)
 
     def __call__(self, state: dict) -> dict:
-        infra_failures, advisory_findings, extras = self._run(state)
-        passed = not infra_failures
+        infra_failures, advisory_findings, blocking, extras = self._run(state)
+        # HOM-212: passed=False on infra failure OR blocking carve-out hit.
+        # `violations` carries either the infra strings (existing operator-
+        # error UI) or the blocking strings (routing-layer retry helper).
+        passed = not infra_failures and not blocking
+        if infra_failures:
+            violations = list(infra_failures)
+        else:
+            violations = list(blocking)
         record: dict = {
             "gate": self.name,
             "passed": passed,
-            # Gate base contract: keep the `violations` field on every
-            # record. On a successful helper run it stays `[]` — routing
-            # no longer reads it for animation-map (advisory). Infra
-            # failures populate it so existing operator-error UI surfaces
-            # unchanged.
-            "violations": list(infra_failures),
+            "violations": violations,
             "advisory_findings": advisory_findings,
+            # HOM-212: blocking findings are also persisted as their own key
+            # so Studio surfaces (and downstream test introspection) can
+            # distinguish "blocking" from "infra-failure" violations even
+            # though both populate the standard `violations` field.
+            "blocking_findings": list(blocking),
             "iteration": self._iteration(state),
             "timestamp": _now(),
             **extras,
@@ -556,6 +785,19 @@ class AnimationMapGate(Gate):
             if extras.get("fallback_helper_used")
             else ""
         )
+
+        if blocking:
+            # HOM-212: blocking notice calls out the offending categories
+            # explicitly so the operator can act before redispatch fires.
+            # Notice prefix is `BLOCKING` (load-bearing — Studio surfaces /
+            # halt_llm_boundary key off the prefix to choose severity).
+            update["notices"] = [
+                f"{self.name}: BLOCKING — {len(blocking)} finding(s) require fix. "
+                + " | ".join(blocking)
+                + f". See {anim_map_path}.{fallback_hint}"
+            ]
+            return update
+
         if total == 0:
             update["notices"] = [
                 f"{self.name}: advisory — no findings (helper ran clean){fallback_hint}"

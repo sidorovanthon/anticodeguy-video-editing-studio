@@ -31,6 +31,22 @@ class RouterConfig:
     concurrency: dict[str, int]
     defaults: dict[str, Any]
     node_overrides: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # HOM-212: per-gate deterministic config (thresholds, carve-out lists).
+    # Keyed by gate name without the `gate:` prefix, e.g. `animation_map`.
+    # Values are plain dicts; each gate decides its own schema. Kept separate
+    # from `node_overrides` because deterministic-gate config is not LLM-tier
+    # routing and re-using NodeConfig would conflate the two surfaces.
+    gates: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+    def resolve_gate(self, name: str) -> dict[str, Any]:
+        """Returns the (possibly empty) config dict for a given gate name.
+
+        Gate name is the bare suffix (e.g. ``animation_map``), not the
+        canonical ``gate:animation_map`` form — the YAML key matches the
+        Python module name under ``gates/``. Missing keys return ``{}``,
+        leaving the gate to apply its hard-coded defaults.
+        """
+        return dict(self.gates.get(name) or {})
 
     def resolve_node(self, name: str) -> NodeConfig:
         override = self.node_overrides.get(name)
@@ -55,6 +71,7 @@ def load_config(path: Path) -> RouterConfig:
         concurrency=dict(raw.get("concurrency") or {}),
         defaults=dict(raw.get("defaults") or {}),
         node_overrides=dict(raw.get("node_overrides") or {}),
+        gates=dict(raw.get("gates") or {}),
     )
 
 

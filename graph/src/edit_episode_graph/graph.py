@@ -713,15 +713,21 @@ def build_graph_uncompiled() -> StateGraph:
             "halt_llm_boundary": "halt_llm_boundary",
         },
     )
-    # HOM-204: gate:animation_map is advisory — no redispatch edge. The
-    # router has three outcomes: classify (pace flags pending), snapshot
-    # (advance), or halt (helper infrastructure failure).
+    # HOM-212: gate:animation_map is advisory by default, with per-flag
+    # blocking carve-outs. The router has four outcomes: classify (pace
+    # flags pending), snapshot (advance), redispatch (beat-actionable
+    # blocking carve-out, iter < 3), or halt (infra failure / dead-zone
+    # blocking / iter ≥ 3). HOM-204 had removed the redispatch edge
+    # wholesale; HOM-212 restores it for the carved-out structural-
+    # violation subset only — caption-canon collisions and chrome-
+    # decorative collisions remain advisory.
     g.add_conditional_edges(
         "gate_animation_map",
         route_after_animation_map,
         {
             "gate_snapshot": "gate_snapshot",
             "gate_animation_map_classify": "gate_animation_map_classify",
+            "p4_redispatch_beat": "p4_redispatch_beat",
             "halt_llm_boundary": "halt_llm_boundary",
         },
     )
