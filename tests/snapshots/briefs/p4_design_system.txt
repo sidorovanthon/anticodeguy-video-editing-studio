@@ -45,13 +45,46 @@ Outputs (BOTH are required):
      one-sentence treatment (palette emphasis, type scale, motion intensity,
      decoratives).
 
+**Palette pre-bake (orchestrator-house extension).** The canonical palette
+shape (see `~/.agents/skills/hyperframes/references/design-picker.md` —
+"Colors" section) is `palette: [{role, hex}]`, an open-ended flat list. We
+do not change that shape. We DO require the palette to **pre-bake gradient-
+stop derivatives** so downstream beat sub-agents (`p4_beat`) never need to
+improvise off-palette hexes for gradients, shadow tints, or hover states.
+The HF canon `gate:design_adherence` (see `~/.agents/skills/hyperframes/SKILL.md`
+§"Design Adherence" item 1 — strict palette ⊆) rejects any hex in
+`index.html` that isn't literally in `palette[*].hex`. Pre-baking derivatives
+upstream eliminates that whole class of redispatch.
+
+For each named *base* color (background, foreground, accent, midtone — name
+them as the design calls for), emit:
+
+* the canonical hex with the bare role (e.g. `background`)
+* 1-2 darker tints (gradient bottoms / shadow stops) ~10% / ~20% darker,
+  named with a structured `-stop-N` suffix (e.g. `background-stop-1`,
+  `background-stop-2`)
+* 1-2 lighter tints (highlight / rim stops) ~10% / ~20% lighter, named with
+  a `-highlight-N` suffix (e.g. `background-highlight-1`)
+
+The palette grows from ~3-5 entries to ~8-12 entries. Shape stays flat
+`{role, hex}` — the gate reads `palette[*].hex` and is shape-agnostic; it
+just needs the derived hexes present.
+
 ```json
 {
   "style_name": "Swiss Pulse",
   "palette": [
-    {"role": "background", "hex": "#0a0a0a"},
-    {"role": "foreground", "hex": "#f0f0f0"},
-    {"role": "accent",     "hex": "#0066FF"}
+    {"role": "background",             "hex": "#0a0a0a"},
+    {"role": "background-stop-1",      "hex": "#080808"},
+    {"role": "background-stop-2",      "hex": "#050505"},
+    {"role": "background-highlight-1", "hex": "#141414"},
+    {"role": "foreground",             "hex": "#f0f0f0"},
+    {"role": "foreground-stop-1",      "hex": "#d8d8d8"},
+    {"role": "foreground-highlight-1", "hex": "#ffffff"},
+    {"role": "accent",                 "hex": "#0066FF"},
+    {"role": "accent-stop-1",          "hex": "#0052cc"},
+    {"role": "accent-stop-2",          "hex": "#003d99"},
+    {"role": "accent-highlight-1",     "hex": "#3385ff"}
   ],
   "typography": [
     {"role": "headline", "family": "Helvetica Neue", "weight": 700, "size": "5rem"},

@@ -27,7 +27,10 @@ from ._llm import LLMNode, _load_brief
 
 # Bump on brief / schema / tool-list change. See HOM-132 spec §8 review
 # checkpoint and `feedback_code_review_before_merge` memory.
-_CACHE_VERSION = 1
+# v2 (HOM-201): brief now mandates pre-baked gradient-stop / highlight
+# derivatives in the palette so downstream `p4_beat` never improvises
+# off-palette hexes for gradients / shadows. Shape unchanged ({role, hex}).
+_CACHE_VERSION = 2
 
 
 def _cache_key(state, *_args, **_kwargs):
