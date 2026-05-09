@@ -303,6 +303,12 @@ The `p3_edl_select` brief calls out HR 7 explicitly for the trailing edge — co
 
 All gates pure-functional: state in, decision + state-update out. Skipping is structurally impossible.
 
+**Advisory vs blocking gates.** A gate is **blocking** only when canon explicitly mandates the underlying check — e.g. `hyperframes lint` Hard Rule 1, exit-tween Hard Rule 3, DESIGN.md adherence per SKILL.md §"Visual Identity". When canon describes a helper as optional review tooling — wording like "may run", "scan for unexpected", "fix *or* justify" — the corresponding gate is **advisory**: it runs the helper, parses the output, records findings under `advisory_findings`, but never redispatches.
+
+**Verification before introducing a new blocking gate.** Cite a canonical Hard Rule or non-negotiable section in the live `SKILL.md`. If the citation is "Quality Checks" or "QA helpers" or similar, the gate must be advisory. The router emits the next-node name unconditionally on a successful helper run; only infrastructure failures (helper missing, dependency-bootstrap failure, JSON unparseable) keep `passed=False`.
+
+**Empirical grounding.** HOM-203 demoted `gate:animation_map` after a 4-session audit of `docs/clean-skills-usage-examples/hyperframes/*.jsonl` showed 0/4 canonical HF authoring sessions invoke `animation-map.mjs`. The helper had been promoted to a blocking gate that produced false-positive halts on caption strips (transparent-text collisions) and hairline decoratives (zero-bbox measurement artifact). HOM-156 was the first half-step (LLM-justify branch for paced-fast/paced-slow only); HOM-203 (sub-issues HOM-204..207) completed the demotion for all flag classes.
+
 ### 6.3 LLM node — authorized CLI invocation
 
 Builds a short task descriptor from state + Jinja2 template, dispatches to `LLMBackend`, parses through Pydantic schema, returns state update.
