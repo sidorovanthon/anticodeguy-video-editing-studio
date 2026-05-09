@@ -82,6 +82,17 @@ def main() -> int:
         help="Mount + compile but do not invoke (smoke test wiring without LLM spend).",
     )
     parser.add_argument(
+        "--mode",
+        choices=["replay", "record-on-miss", "record"],
+        default="record-on-miss",
+        help=(
+            "Cache mount mode. 'replay' opens fixture cache.db read-only and "
+            "raises ReplayCacheMissError on the first miss — $0 dry-run for "
+            "auditing recording coverage. 'record-on-miss' (default) pays "
+            "only for misses. 'record' starts empty + pays for the full run."
+        ),
+    )
+    parser.add_argument(
         "--max-resumes",
         type=int,
         default=8,
@@ -116,7 +127,7 @@ def main() -> int:
 
     # Mount fixture in record mode — empty tmp working file. finalize_record_on_miss
     # will VACUUM INTO the canonical fixture path on success.
-    mounted = mount_fixture_cache(args.slug, mode="record-on-miss", fixtures_root=fixture_root)
+    mounted = mount_fixture_cache(args.slug, mode=args.mode, fixtures_root=fixture_root)
     print(f"[record_fixture] mounted cache mode={mounted.mode}")
     print(f"[record_fixture]   working_path={mounted.working_path}")
     print(f"[record_fixture]   fixture_path={mounted.fixture_path}")

@@ -1,11 +1,11 @@
 {
-  "channel_writes": "deque([['llm_runs', [{'node': 'p3_pre_scan', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'cheap', 'success': True, 'reason': None, 'wall_time_s': 41.875, 'tokens_in': 16, 'tokens_out': 2962, 'timestamp': '2026-05-08T13:34:53.632274+00:00'}]], ['edit', {'pre_scan': {'slips': [{'quote': 'When,', 'take_index': 1, 'reason': 'Fragment / false start, incomplete before phrase continues with \"when I\\'m increasingly using...\"'}, {'quote': \"Why don't we turn...\", 'take_index': 3, 'reason': 'Incomplete quoted phrase, appears to cut off mid-thought'}, {'quote': 'but how cool is it to...', 'take_index': 4, 'reason': 'Trailing incomplete phrase, sentence never completes'}], 'source_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\.worktrees\\\\hom-189\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\edit\\\\takes_packed.md'}}], ['branch:to:p3_strategy', None]])",
+  "channel_writes": "deque([['llm_runs', [{'node': 'p3_pre_scan', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'cheap', 'success': True, 'reason': None, 'wall_time_s': 41.875, 'tokens_in': 16, 'tokens_out': 2962, 'timestamp': '2026-05-08T13:34:53.632274+00:00'}]], ['edit', {'pre_scan': {'slips': [{'quote': 'When,', 'take_index': 1, 'reason': 'Fragment / false start, incomplete before phrase continues with \"when I\\'m increasingly using...\"'}, {'quote': \"Why don't we turn...\", 'take_index': 3, 'reason': 'Incomplete quoted phrase, appears to cut off mid-thought'}, {'quote': 'but how cool is it to...', 'take_index': 4, 'reason': 'Trailing incomplete phrase, sentence never completes'}], 'source_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\edit\\\\takes_packed.md'}}], ['branch:to:p3_strategy', None]])",
   "fingerprint": "504efbee7bcb864a944120c1f65ad055",
   "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p3_pre_scan.p3_pre_scan_node,p3_pre_scan",
   "node": "p3_pre_scan",
   "recorded_at": null,
   "recording_meta": {
     "encoding": "msgpack",
-    "value_bytes": 769
+    "value_bytes": 750
   }
 }

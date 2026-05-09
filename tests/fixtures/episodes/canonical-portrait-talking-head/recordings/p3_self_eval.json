@@ -1,11 +1,11 @@
 {
-  "channel_writes": "deque([['llm_runs', [{'node': 'p3_self_eval', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'cheap', 'success': True, 'reason': None, 'wall_time_s': 92.0, 'tokens_in': 130, 'tokens_out': 5221, 'timestamp': '2026-05-08T13:41:09.170764+00:00'}]], ['edit', {'eval': {'issues': [], 'passed': True, 'final_mp4_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\.worktrees\\\\hom-189\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\edit\\\\final.mp4'}}], ['branch:to:gate_eval_ok', None]])",
+  "channel_writes": "deque([['llm_runs', [{'node': 'p3_self_eval', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'cheap', 'success': True, 'reason': None, 'wall_time_s': 92.0, 'tokens_in': 130, 'tokens_out': 5221, 'timestamp': '2026-05-08T13:41:09.170764+00:00'}]], ['edit', {'eval': {'issues': [], 'passed': True, 'final_mp4_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\edit\\\\final.mp4'}}], ['branch:to:gate_eval_ok', None]])",
   "fingerprint": "146d4f99be20556c2dec1a7a93f7137a",
   "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p3_self_eval.p3_self_eval_node,p3_self_eval",
   "node": "p3_self_eval",
   "recorded_at": null,
   "recording_meta": {
     "encoding": "msgpack",
-    "value_bytes": 434
+    "value_bytes": 415
   }
 }

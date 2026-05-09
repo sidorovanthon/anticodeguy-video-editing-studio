@@ -11,14 +11,14 @@
     }
   },
   {
-    "channel_writes": "deque([['compose', {'hyperframes_dir': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\.worktrees\\\\hom-189\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes', 'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\.worktrees\\\\hom-189\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\index.html'}], ['notices', ['v1 halt: scaffold complete; next phase `p4_design_system` requires LLM (v2+)']], ['branch:to:p4_design_system', None]])",
+    "channel_writes": "deque([['compose', {'hyperframes_dir': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes', 'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\index.html'}], ['notices', ['v1 halt: scaffold complete; next phase `p4_design_system` requires LLM (v2+)']], ['branch:to:p4_design_system', None]])",
     "fingerprint": "fd5851a47ec0777e49e34b430c3bda29",
     "namespace": "__pregel_ns_writes,edit_episode_graph.nodes._deterministic.deterministic_node.<locals>.node,p4_scaffold",
     "node": "p4_scaffold",
     "recorded_at": null,
     "recording_meta": {
       "encoding": "msgpack",
-      "value_bytes": 478
+      "value_bytes": 440
     }
   }
 ]

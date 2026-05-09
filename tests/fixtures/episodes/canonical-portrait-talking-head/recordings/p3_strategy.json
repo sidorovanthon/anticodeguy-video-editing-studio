@@ -1,11 +1,11 @@
 {
-  "channel_writes": "deque([['llm_runs', [{'node': 'p3_strategy', 'backend': 'claude', 'model': 'claude-opus-4-7', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 22.85899999999674, 'tokens_in': 5, 'tokens_out': 478, 'timestamp': '2026-05-08T13:35:16.496080+00:00'}]], ['edit', {'strategy': {'shape': 'hook → thesis → payoff', 'takes': ['[000.12-001.34]', '[003.10-013.60]', '[018.82-029.50]'], 'grade': 'warm neutral; gentle lift on midtones, slight desaturation in shadows to keep the talking-head intimate and unstyled', 'pacing': 'deliberate; preserve natural pauses between phrases, no aggressive tightening — this is a reflective monologue, not a fast cut', 'length_estimate_s': 22.6, 'source_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\.worktrees\\\\hom-189\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\edit\\\\takes_packed.md'}}], ['branch:to:strategy_confirmed_interrupt', None]])",
+  "channel_writes": "deque([['llm_runs', [{'node': 'p3_strategy', 'backend': 'claude', 'model': 'claude-opus-4-7', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 22.85899999999674, 'tokens_in': 5, 'tokens_out': 478, 'timestamp': '2026-05-08T13:35:16.496080+00:00'}]], ['edit', {'strategy': {'shape': 'hook → thesis → payoff', 'takes': ['[000.12-001.34]', '[003.10-013.60]', '[018.82-029.50]'], 'grade': 'warm neutral; gentle lift on midtones, slight desaturation in shadows to keep the talking-head intimate and unstyled', 'pacing': 'deliberate; preserve natural pauses between phrases, no aggressive tightening — this is a reflective monologue, not a fast cut', 'length_estimate_s': 22.6, 'source_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\edit\\\\takes_packed.md'}}], ['branch:to:strategy_confirmed_interrupt', None]])",
   "fingerprint": "7f5b1f99a198154a9fcf71027b273c2f",
   "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p3_strategy.p3_strategy_node,p3_strategy",
   "node": "p3_strategy",
   "recorded_at": null,
   "recording_meta": {
     "encoding": "msgpack",
-    "value_bytes": 810
+    "value_bytes": 791
   }
 }

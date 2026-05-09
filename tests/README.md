@@ -96,6 +96,14 @@ After M6 wave work or a node schema bump:
    --slug <slug>` (handles the two HITL interrupts via
    `Command(resume="approved")`; spec §"LangGraph primitives — search
    docs first" — native `Command` resume, no Studio API roundtrip).
+
+   `record_fixture.py` also accepts a `--mode {replay,record-on-miss,record}`
+   CLI flag as an additive convenience — equivalent to setting
+   `HOMESTUDIO_TEST_MODE`, but explicit at the call site. `--mode replay`
+   is the recommended $0 dry-run / coverage audit before paying for a
+   record run: it opens the committed cache.db through
+   `_ReadOnlySqliteCache` and fails loudly on the first miss, so you
+   see exactly which fingerprints would re-spend before you do.
 4. The harness writes the working cache.db back to
    `tests/fixtures/episodes/<slug>/cache.db` via SQLite `VACUUM INTO` +
    atomic rename — deterministic raw form, no WAL artefacts, no journal

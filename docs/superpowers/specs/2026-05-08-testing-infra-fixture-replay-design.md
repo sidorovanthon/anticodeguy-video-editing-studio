@@ -75,6 +75,8 @@ L0  structural / cheap            $0 на каждом push'е
 - **`record-on-miss`** (default для local dev пока работаешь над тикетом) — replay'ятся существующие, missed запускаются реально (production tier per `graph/config.yaml` или per-node override), results пишутся обратно в cache.db. После работы один `git diff tests/fixtures/.../cache.db` показывает что обновилось; companion JSON dump пересоздаётся для review.
 - **`record`** (явная команда `HOMESTUDIO_TEST_MODE=record pytest --record-fixtures`) — wipe cache.db и full real-prod прогон. Использование редкое: либо первичная инициализация fixture-эпизода (DoD этого тикета), либо ситуация когда крупная схема state поменялась и проще перезаписать всё.
 
+`scripts/record_fixture.py` дополнительно принимает эквивалентный `--mode {replay,record-on-miss,record}` CLI flag (HOM-154) — additive convenience поверх `HOMESTUDIO_TEST_MODE`, удобно для $0 dry-run перед платным record прогоном.
+
 **Cache invalidation:** через существующий `make_llm_key` (HOM-157) — fingerprint включает brief content, NodeConfig (tier/model/timeout), и upstream artifact hashes. Меняешь brief — fingerprint меняется — cache miss для затронутой ноды и всех downstream чьи fingerprints зависят от её output'а (через `key_func` extras chain). Detёрministic ноды (ffmpeg, persist) используют `make_key` без NodeConfig fingerprint — не реагируют на model/tier change.
 
 **Stability concern:** SQLite журналирование может писать non-deterministic timestamp metadata, что вызовет spurious git-diff'ы на каждый prewarmed prerun. Решения по приоритету:

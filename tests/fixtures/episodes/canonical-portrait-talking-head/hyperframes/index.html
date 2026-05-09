@@ -58,246 +58,280 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 <!-- p4_assemble_index: tokens begin -->
 <style>
 :root {
-  --bg: #1a1614;
-  --fg: #f4ebdc;
-  --surface: #241f1b;
-  --accent: #e8a14a;
+  --bg: #FFF8EC;
+  --fg: #2a2a2a;
+  --accent: #F5A623;
   --font-display: "Playfair Display", sans-serif;
+  --font-body: Inter, sans-serif;
 }
 </style>
 <!-- p4_assemble_index: tokens end -->
 <!-- p4_assemble_index: beats -->
 <!-- beat: hook -->
 <div id="scene-hook" class="scene clip"
-     data-start="0.0" data-duration="4.0" data-track-index="1"
+     data-start="0.0" data-duration="1.2" data-track-index="1"
      data-width="1080" data-height="1920">
   <style>
     #scene-hook {
-      position: absolute;
-      inset: 0;
-      opacity: 1;
-      background-color: #1a1614;
-      overflow: hidden;
-      font-family: "Inter", sans-serif;
-      color: #f4ebdc;
+      position: absolute; inset: 0; opacity: 1; overflow: hidden;
+      background: linear-gradient(180deg, #FFF8EC 0%, #E6DFD4 100%);
+      font-family: "Inter", system-ui, sans-serif;
+      color: #2a2a2a;
     }
-    #scene-hook .scene-content {
-      position: absolute;
-      inset: 0;
-    }
-    #scene-hook .bg-grain {
-      position: absolute;
-      inset: 0;
+    #scene-hook .scene-content { position: absolute; inset: 0; }
+
+    #scene-hook .grain {
+      position: absolute; inset: -24px;
       background-image:
-        radial-gradient(rgba(244, 235, 220, 0.045) 1px, transparent 1px),
-        radial-gradient(rgba(232, 161, 74, 0.035) 1px, transparent 1px);
+        radial-gradient(rgba(42, 42, 42, 0.22) 1px, transparent 1px),
+        radial-gradient(rgba(42, 42, 42, 0.14) 1px, transparent 1px);
       background-size: 3px 3px, 5px 5px;
       background-position: 0 0, 1px 2px;
-      mix-blend-mode: overlay;
-      opacity: 0.10;
+      mix-blend-mode: multiply;
+      opacity: 0.04;
+      will-change: transform;
       pointer-events: none;
     }
-    #scene-hook .bg-vignette {
+
+    #scene-hook .speaker-plate {
       position: absolute;
-      inset: -4%;
-      background: radial-gradient(
-        ellipse at 48% 42%,
-        rgba(26, 22, 20, 0) 38%,
-        rgba(26, 22, 20, 0.45) 88%,
-        rgba(26, 22, 20, 0.7) 100%
-      );
-      pointer-events: none;
-      transform-origin: 48% 42%;
+      left: 0; right: 0;
+      top: 12%; height: 56%;
+      background:
+        radial-gradient(ellipse at 50% 38%, rgba(196, 163, 163, 0.55) 0%, rgba(176, 146, 146, 0.32) 38%, rgba(204, 198, 189, 0) 72%),
+        linear-gradient(180deg, #E6DFD4 0%, #CCC6BD 100%);
     }
-    #scene-hook .bg-halo {
+
+    #scene-hook .speaker-rim {
       position: absolute;
-      top: -120px;
-      left: -160px;
-      width: 720px;
-      height: 720px;
-      background: radial-gradient(
-        circle at center,
-        rgba(232, 161, 74, 0.18) 0%,
-        rgba(232, 161, 74, 0.08) 38%,
-        rgba(192, 140, 135, 0.04) 65%,
-        rgba(232, 161, 74, 0) 80%
-      );
-      filter: blur(12px);
-      pointer-events: none;
-      opacity: 0.10;
+      left: 0; right: 0;
+      top: 12%;
+      height: 4px;
+      background: linear-gradient(90deg, rgba(196, 163, 163, 0) 0%, #C4A3A3 50%, rgba(196, 163, 163, 0) 100%);
+      opacity: 0.5;
     }
-    #scene-hook .bg-hairline-tick {
+
+    #scene-hook .vignette-top {
       position: absolute;
-      top: 80px;
-      right: 64px;
-      width: 96px;
-      height: 1px;
-      background: #e8a14a;
-      opacity: 0.30;
-      transform-origin: right center;
-    }
-    #scene-hook .beat-marker {
-      position: absolute;
-      top: 96px;
-      left: 64px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
+      left: 0; right: 0; top: 0;
+      height: 360px;
+      background: radial-gradient(ellipse at 50% 0%, #FFFDF8 0%, rgba(255, 253, 248, 0) 75%);
       opacity: 0;
+      will-change: opacity;
+      pointer-events: none;
     }
-    #scene-hook .beat-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: #e8a14a;
-      flex-shrink: 0;
+
+    #scene-hook .glow {
+      position: absolute;
+      left: calc(50% - 360px);
+      top: calc(60% - 360px);
+      width: 720px; height: 720px;
+      background: radial-gradient(circle, #F5A623 0%, rgba(245, 166, 35, 0) 60%);
+      opacity: 0.08;
+      will-change: transform, opacity;
+      pointer-events: none;
     }
-    #scene-hook .beat-label {
+
+    #scene-hook .hairline {
+      position: absolute;
+      top: 96px; left: 96px; right: 96px;
+      height: 1px;
+      background: #C4A3A3;
+      opacity: 0;
+      transform-origin: right center;
+      transform: scaleX(0);
+      will-change: transform, opacity;
+    }
+
+    #scene-hook .corner-mark {
+      position: absolute;
+      top: 60px; left: 96px;
       font-family: "Inter", sans-serif;
-      font-size: 0.75rem;
       font-weight: 500;
+      font-size: 0.75rem;
       letter-spacing: 0.18em;
       text-transform: uppercase;
-      color: #8a7e72;
-      white-space: nowrap;
+      color: #404040;
+      opacity: 0;
+      will-change: transform, opacity;
     }
-    #scene-hook .lower-stack {
+
+    #scene-hook .overline {
       position: absolute;
-      left: 64px;
-      right: 64px;
-      bottom: 96px;
-      display: flex;
-      flex-direction: column;
-      gap: 28px;
-    }
-    #scene-hook .pull-line {
-      font-family: "Playfair Display", serif;
-      font-style: italic;
-      font-weight: 400;
-      font-size: 3.25rem;
-      line-height: 1.2;
-      color: #f4ebdc;
-      max-width: 70%;
-      margin: 0;
-      text-transform: lowercase;
-      opacity: 0;
-    }
-    #scene-hook .hairline-rule {
-      width: 240px;
-      height: 1px;
-      background: #e8a14a;
-      opacity: 0.6;
-      transform-origin: left center;
-      margin: 0;
-      transform: scaleX(0);
-    }
-    #scene-hook .caption-plate {
-      padding: 28px 64px;
-      background: rgba(36, 31, 27, 0.78);
-      border-radius: 14px;
-      margin: 0;
-      box-sizing: border-box;
-      opacity: 0;
-    }
-    #scene-hook .caption-text {
+      top: 60px; right: 96px;
       font-family: "Inter", sans-serif;
-      font-size: 1.5rem;
-      font-weight: 400;
-      line-height: 1.45;
-      color: #f4ebdc;
-      max-width: 78%;
-      text-align: left;
-      margin: 0;
+      font-weight: 500;
+      font-size: 0.75rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #404040;
       opacity: 0;
+      will-change: transform, opacity;
+    }
+
+    #scene-hook .overline-rule {
+      position: absolute;
+      top: 84px; right: 96px;
+      width: 24px; height: 2px;
+      background: #F5A623;
+      transform: scaleX(0);
+      transform-origin: left center;
+      will-change: transform;
+    }
+
+    #scene-hook .caption-strip {
+      position: absolute;
+      left: 96px; right: 96px; bottom: 96px;
+      padding: 18px 28px;
+      background: rgba(255, 253, 248, 0.82);
+      border-radius: 16px;
+      font-family: "Inter", sans-serif;
+      font-weight: 300;
+      font-size: 1.125rem;
+      line-height: 1.7;
+      color: #404040;
+      opacity: 0;
+      will-change: transform, opacity;
+    }
+
+    #scene-hook .footer-mark {
+      position: absolute;
+      left: 96px; bottom: 56px;
+      font-family: "Inter", sans-serif;
+      font-weight: 500;
+      font-size: 0.75rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #404040;
+      opacity: 0;
+      will-change: transform, opacity;
     }
   </style>
 
   <div class="scene-content">
-    <div class="bg-grain" aria-hidden="true"></div>
-    <div class="bg-vignette" aria-hidden="true"></div>
-    <div class="bg-halo" aria-hidden="true"></div>
-    <div class="bg-hairline-tick" aria-hidden="true"></div>
-
-    <div class="beat-marker">
-      <div class="beat-dot"></div>
-      <span class="beat-label">HOOK &middot; 1 / 3</span>
-    </div>
-
-    <div class="lower-stack">
-      <div class="pull-line">a thought already in motion, before the room knows it&rsquo;s listening.</div>
-      <div class="hairline-rule" aria-hidden="true"></div>
-      <div class="caption-plate">
-        <p class="caption-text">i&rsquo;ve been sitting with something quiet&mdash;</p>
-      </div>
-    </div>
+    <div class="grain"></div>
+    <div class="speaker-plate"></div>
+    <div class="speaker-rim"></div>
+    <div class="vignette-top"></div>
+    <div class="glow"></div>
+    <div class="hairline"></div>
+    <div class="corner-mark">soft signal</div>
+    <div class="overline">01 / Reflection</div>
+    <div class="overline-rule"></div>
+    <div class="caption-strip">a thought already in motion.</div>
+    <div class="footer-mark">take 01 &middot; cream seamless</div>
   </div>
 
   <script>
     (function () {
       window.__sceneTimelines = window.__sceneTimelines || {};
       const root = document.getElementById("scene-hook");
-      const q = (sel) => root.querySelector(sel);
-
-      const sceneDuration = 4.0;
-      const finiteCycles = (cycle) => Math.max(0, Math.floor(sceneDuration / cycle));
-
+      const q = (s) => root.querySelector(s);
       const tl = gsap.timeline({ paused: true });
 
-      const grainCycle = 2.0;
-      tl.fromTo(q(".bg-grain"),
-        { opacity: 0.08 },
-        { opacity: 0.13, duration: grainCycle, ease: "sine.inOut",
-          yoyo: true, repeat: finiteCycles(grainCycle) },
-        0);
+      const sceneDuration = 1.2;
 
-      const vignetteCycle = 2.0;
-      tl.fromTo(q(".bg-vignette"),
-        { scale: 1.0 },
-        { scale: 1.04, duration: vignetteCycle, ease: "sine.inOut",
-          yoyo: true, repeat: finiteCycles(vignetteCycle) },
-        0);
-
-      const haloCycle = 2.0;
-      tl.fromTo(q(".bg-halo"),
-        { opacity: 0.10, x: 0 },
-        { opacity: 0.14, x: 22, duration: haloCycle, ease: "sine.inOut",
-          yoyo: true, repeat: finiteCycles(haloCycle) },
-        0);
-
-      const tickCycle = 1.5;
-      tl.fromTo(q(".bg-hairline-tick"),
-        { scaleX: 0.92 },
-        { scaleX: 1.0, duration: tickCycle, ease: "sine.inOut",
-          yoyo: true, repeat: finiteCycles(tickCycle) },
-        0);
-
-      tl.fromTo(q(".beat-marker"),
+      tl.fromTo(q(".vignette-top"),
         { opacity: 0 },
-        { opacity: 1, duration: 0.6, ease: "expo.out" },
-        0.2);
+        { opacity: 0.08, duration: 0.6, ease: "power1.inOut" },
+        0.10
+      );
 
-      tl.fromTo(q(".caption-plate"),
-        { opacity: 0, y: 24 },
-        { opacity: 1, y: 0, duration: 0.9, ease: "sine.inOut" },
-        0.5);
+      tl.fromTo(q(".hairline"),
+        { scaleX: 0, opacity: 0 },
+        { scaleX: 1, opacity: 0.6, duration: 0.6, ease: "sine.out" },
+        0.10
+      );
 
-      tl.fromTo(q(".caption-text"),
-        { opacity: 0, y: 12 },
-        { opacity: 1, y: 0, duration: 0.8, ease: "power2.out" },
-        0.65);
+      tl.fromTo(q(".overline"),
+        { y: 24, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.9, ease: "sine.inOut" },
+        0.10
+      );
 
-      tl.fromTo(q(".hairline-rule"),
+      tl.fromTo(q(".corner-mark"),
+        { y: 24, opacity: 0 },
+        { y: 0, opacity: 0.55, duration: 0.9, ease: "sine.inOut" },
+        0.12
+      );
+
+      tl.fromTo(q(".overline-rule"),
         { scaleX: 0 },
-        { scaleX: 1, duration: 0.7, ease: "power1.out" },
-        1.1);
+        { scaleX: 1, duration: 0.6, ease: "power2.out" },
+        0.18
+      );
 
-      tl.fromTo(q(".pull-line"),
-        { opacity: 0, y: 18 },
-        { opacity: 1, y: 0, duration: 0.95, ease: "power3.out" },
-        1.4);
+      tl.fromTo(q(".caption-strip"),
+        { y: 24, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.9, ease: "sine.inOut" },
+        0.22
+      );
+
+      tl.fromTo(q(".footer-mark"),
+        { y: 16, opacity: 0 },
+        { y: 0, opacity: 0.45, duration: 0.7, ease: "power1.out" },
+        0.28
+      );
+
+      const glowHalf = 0.6;
+      tl.to(q(".glow"),
+        {
+          scale: 1.04,
+          opacity: 0.10,
+          duration: glowHalf,
+          ease: "sine.inOut",
+          yoyo: true,
+          repeat: Math.floor(sceneDuration / glowHalf)
+        },
+        0
+      );
+
+      tl.to(q(".grain"),
+        { x: 4, y: -3, duration: sceneDuration, ease: "sine.inOut" },
+        0
+      );
+
+      const hairHalf = 0.6;
+      tl.to(q(".hairline"),
+        {
+          opacity: 0.5,
+          duration: hairHalf,
+          ease: "sine.inOut",
+          yoyo: true,
+          repeat: Math.floor(sceneDuration / hairHalf)
+        },
+        0.6
+      );
 
       window.__sceneTimelines["hook"] = tl;
     })();
@@ -305,209 +339,231 @@
 </div>
 <!-- beat: thesis -->
 <div id="scene-thesis" class="scene clip"
-     data-start="4.0" data-duration="11.5" data-track-index="1"
+     data-start="1.2" data-duration="10.5" data-track-index="1"
      data-width="1080" data-height="1920">
   <style>
     #scene-thesis {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      background: #1a1614;
-      overflow: hidden;
-      font-family: "Inter", sans-serif;
-      color: #f4ebdc;
+      position: absolute; inset: 0; opacity: 0; overflow: hidden;
+      background: linear-gradient(180deg, #FFF8EC 0%, #E6DFD4 100%);
+      font-family: 'Inter', system-ui, sans-serif;
+      color: #2a2a2a;
+    }
+    #scene-thesis .scene-content { position: absolute; inset: 0; }
+
+    #scene-thesis .speaker-plate {
+      position: absolute; left: 0; right: 0;
+      top: 12%; height: 56%;
+      background:
+        radial-gradient(ellipse at 50% 38%, rgba(196, 163, 163, 0.45) 0%, rgba(176, 146, 146, 0.28) 38%, rgba(204, 198, 189, 0) 72%),
+        linear-gradient(180deg, #E6DFD4 0%, #CCC6BD 100%);
     }
 
-    #scene-thesis .bg-grain {
-      position: absolute; inset: 0; pointer-events: none;
+    #scene-thesis .speaker-rim {
+      position: absolute; left: 0; right: 0;
+      top: 12%; height: 4px;
+      background: linear-gradient(90deg, rgba(196, 163, 163, 0) 0%, #C4A3A3 50%, rgba(196, 163, 163, 0) 100%);
+      opacity: 0.55;
+    }
+
+    #scene-thesis .vignette-top {
+      position: absolute; top: 0; left: 0; right: 0; height: 360px;
+      background: radial-gradient(ellipse at 50% 0%, #FFFDF8 0%, rgba(255, 253, 248, 0) 75%);
+      opacity: 0.6;
+      pointer-events: none;
+      will-change: opacity;
+    }
+
+    #scene-thesis .grain {
+      position: absolute; inset: -24px;
       background-image:
-        radial-gradient(rgba(36,31,27,0.55) 1px, transparent 1px),
-        radial-gradient(rgba(36,31,27,0.35) 1px, transparent 1px);
-      background-size: 3px 3px, 7px 7px;
+        radial-gradient(rgba(42, 42, 42, 0.22) 1px, transparent 1px),
+        radial-gradient(rgba(42, 42, 42, 0.14) 1px, transparent 1px);
+      background-size: 3px 3px, 5px 5px;
       background-position: 0 0, 1px 2px;
       mix-blend-mode: multiply;
-      opacity: 0.10;
-    }
-
-    #scene-thesis .bg-vignette {
-      position: absolute; inset: 0; pointer-events: none;
-      background: radial-gradient(ellipse at 50% 48%,
-        rgba(26,22,20,0) 38%,
-        rgba(26,22,20,0.45) 88%,
-        rgba(26,22,20,0.78) 100%);
-      transform-origin: 50% 50%;
-    }
-
-    #scene-thesis .bg-halo {
-      position: absolute; left: -120px; top: 380px;
-      width: 720px; height: 720px; pointer-events: none;
-      background: radial-gradient(circle at 50% 50%,
-        rgba(232,161,74,0.18) 0%,
-        rgba(232,161,74,0.10) 32%,
-        rgba(192,140,135,0.06) 60%,
-        rgba(232,161,74,0) 78%);
-      filter: blur(8px);
-      opacity: 0.10;
-    }
-
-    #scene-thesis .bg-hairline-tick {
-      position: absolute; top: 80px; right: 64px;
-      width: 96px; height: 1px;
-      background: #e8a14a;
-      opacity: 0.30;
-      transform-origin: right center;
-    }
-
-    #scene-thesis .bg-ghost-type {
-      position: absolute; right: -140px; bottom: 120px;
-      font-family: "Playfair Display", serif;
-      font-style: italic; font-weight: 400;
-      font-size: 480px; line-height: 0.9;
-      color: #f4ebdc;
-      opacity: 0;
-      letter-spacing: -0.02em;
+      opacity: 0.05;
       pointer-events: none;
-      white-space: nowrap;
+      will-change: transform;
     }
 
-    #scene-thesis .beat-marker {
-      position: absolute; top: 56px; left: 64px;
-      display: flex; align-items: center; gap: 12px;
-      opacity: 0;
-    }
-    #scene-thesis .beat-marker .dot {
-      width: 6px; height: 6px; border-radius: 50%;
-      background: #e8a14a;
-    }
-    #scene-thesis .beat-marker .label {
-      font-family: "Inter", sans-serif;
-      font-size: 0.75rem; font-weight: 500;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: #8a7e72;
-    }
-
-    #scene-thesis .caption-plate {
+    #scene-thesis .glow {
       position: absolute;
-      left: 64px; right: 64px;
-      bottom: 96px;
-      padding: 28px 64px;
-      background: rgba(36,31,27,0.78);
-      border-radius: 14px;
-      opacity: 0;
-      min-height: 140px;
+      left: calc(50% - 360px);
+      top: calc(60% - 360px);
+      width: 720px; height: 720px;
+      background: radial-gradient(circle, #F5A623 0%, rgba(245, 166, 35, 0) 60%);
+      opacity: 0.10;
+      transform-origin: center center;
+      will-change: transform, opacity;
+      pointer-events: none;
     }
-    #scene-thesis .caption-text {
-      position: absolute; left: 64px; right: 64px; top: 28px;
-      max-width: 78%;
-      font-family: "Inter", sans-serif;
-      font-size: 1.5rem; font-weight: 400;
-      line-height: 1.45;
-      color: #f4ebdc;
+
+    #scene-thesis .hairline-rule {
+      position: absolute; top: 96px; left: 96px; right: 96px; height: 1px;
+      background-color: #C4A3A3; opacity: 0.55;
+      transform-origin: right center;
+      will-change: opacity;
+    }
+
+    #scene-thesis .margin-tick {
+      position: absolute; bottom: 320px; left: 96px;
+      width: 24px; height: 1px;
+      background: #C4A3A3; opacity: 0.55;
+      transform: scaleX(0); transform-origin: left center;
+      will-change: transform;
+    }
+
+    #scene-thesis .corner-mark {
+      position: absolute; top: 60px; left: 96px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500; font-size: 0.75rem;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      color: #404040; opacity: 0;
+      will-change: transform, opacity;
+    }
+
+    #scene-thesis .overline {
+      position: absolute; top: 60px; right: 96px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500; font-size: 0.75rem;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      color: #404040; opacity: 0;
+      will-change: transform, opacity;
+    }
+
+    #scene-thesis .overline-rule {
+      position: absolute; top: 84px; right: 96px;
+      width: 24px; height: 2px;
+      background: #F5A623;
+      transform: scaleX(0); transform-origin: left center;
+      will-change: transform;
+    }
+
+    #scene-thesis .headline {
+      position: absolute;
+      left: 96px; right: 96px; bottom: 360px;
+      font-family: 'Playfair Display', serif;
+      font-style: italic; font-weight: 400;
+      font-size: 4.5rem; line-height: 1.05; letter-spacing: -0.01em;
+      color: #2a2a2a;
+      max-width: 80%; margin-left: -0.05em;
+      font-variant-numeric: oldstyle-nums;
       opacity: 0;
-      margin: 0;
+      will-change: transform, opacity;
+    }
+    #scene-thesis .keyword { position: relative; display: inline-block; }
+    #scene-thesis .kw-underline {
+      position: absolute; left: 0; right: 0; bottom: 0.04em;
+      height: 2px; background-color: #F5A623;
+      transform: scaleX(0); transform-origin: left center;
+      will-change: transform;
+    }
+
+    #scene-thesis .caption-strip {
+      position: absolute; left: 96px; right: 96px; bottom: 96px;
+      padding: 18px 28px; border-radius: 16px;
+      background: rgba(255, 253, 248, 0.82);
+      font-family: 'Inter', sans-serif;
+      font-weight: 300; font-size: 1.125rem; line-height: 1.7;
+      color: #404040; opacity: 0;
+      will-change: transform, opacity;
+    }
+
+    #scene-thesis .footer-mark {
+      position: absolute; left: 96px; bottom: 56px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500; font-size: 0.75rem;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      color: #404040; opacity: 0.45;
     }
   </style>
 
   <div class="scene-content">
-    <div class="bg-grain"></div>
-    <div class="bg-vignette"></div>
-    <div class="bg-halo"></div>
-    <div class="bg-hairline-tick"></div>
-    <div class="bg-ghost-type">signal</div>
-
-    <div class="beat-marker">
-      <span class="dot"></span>
-      <span class="label">THESIS &middot; 2 / 3</span>
-    </div>
-
-    <div class="caption-plate">
-      <p class="caption-text phrase-1">the room has not changed &mdash; you have. you are listening at its pace now.</p>
-      <p class="caption-text phrase-2">the page where the reader's eye slows; the second movement of a chamber piece.</p>
-      <p class="caption-text phrase-3">the hold is the message. nothing competes with the voice in the room.</p>
-    </div>
+    <div class="speaker-plate"></div>
+    <div class="speaker-rim"></div>
+    <div class="vignette-top"></div>
+    <div class="grain"></div>
+    <div class="glow"></div>
+    <div class="hairline-rule"></div>
+    <div class="margin-tick"></div>
+    <div class="corner-mark">soft signal</div>
+    <div class="overline">02 / Thesis</div>
+    <div class="overline-rule"></div>
+    <div class="headline">the <span class="keyword">held<span class="kw-underline" aria-hidden="true"></span></span> breath of the moment.</div>
+    <div class="caption-strip">when you stop reaching for the next thing &mdash; that&rsquo;s where the real work begins.</div>
+    <div class="footer-mark">take 02 &middot; cream seamless</div>
   </div>
 
   <script>
     (function () {
       window.__sceneTimelines = window.__sceneTimelines || {};
-      const root = document.getElementById("scene-thesis");
+      const root = document.getElementById('scene-thesis');
       const q = (sel) => root.querySelector(sel);
 
-      const grain    = q(".bg-grain");
-      const vignette = q(".bg-vignette");
-      const halo     = q(".bg-halo");
-      const tick     = q(".bg-hairline-tick");
-      const ghost    = q(".bg-ghost-type");
-      const marker   = q(".beat-marker");
-      const plate    = q(".caption-plate");
-      const phrase1  = q(".caption-text.phrase-1");
-      const phrase2  = q(".caption-text.phrase-2");
-      const phrase3  = q(".caption-text.phrase-3");
+      const grain    = q('.grain');
+      const glow     = q('.glow');
+      const hairline = q('.hairline-rule');
+      const tick     = q('.margin-tick');
+      const overline = q('.overline');
+      const corner   = q('.corner-mark');
+      const ovrRule  = q('.overline-rule');
+      const headline = q('.headline');
+      const kwUnder  = q('.kw-underline');
+      const caption  = q('.caption-strip');
 
-      const sceneDuration = 11.5;
       const tl = gsap.timeline({ paused: true });
+      const sceneDuration = 10.5;
 
-      tl.fromTo(marker,
-        { opacity: 0 },
-        { opacity: 1, duration: 0.6, ease: "expo.out" }, 0.3);
+      // Foreground text entrances (every entrance via tl.fromTo).
+      tl.fromTo(overline,
+        { y: 24, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.9, ease: 'sine.inOut' }, 0.10);
 
-      tl.fromTo(ghost,
-        { opacity: 0 },
-        { opacity: 0.04, duration: 1.4, ease: "sine.inOut" }, 0.4);
+      tl.fromTo(corner,
+        { y: 24, opacity: 0 },
+        { y: 0, opacity: 0.55, duration: 0.9, ease: 'sine.inOut' }, 0.14);
 
-      tl.fromTo(plate,
-        { opacity: 0, y: 24 },
-        { opacity: 1, y: 0, duration: 0.9, ease: "sine.inOut" }, 0.5);
+      tl.fromTo(tick,
+        { scaleX: 0 },
+        { scaleX: 1, duration: 0.5, ease: 'power2.out' }, 0.20);
 
-      tl.fromTo(phrase1,
-        { opacity: 0, y: 12 },
-        { opacity: 1, y: 0, duration: 0.8, ease: "sine.inOut" }, 0.65);
+      tl.fromTo(ovrRule,
+        { scaleX: 0 },
+        { scaleX: 1, duration: 0.6, ease: 'power2.out' }, 0.22);
 
-      const swap1 = 4.2;
-      const swap2 = 8.0;
-      const fadeDur = 0.4;
+      tl.fromTo(headline,
+        { y: 24, opacity: 0 },
+        { y: 0, opacity: 1, duration: 1.0, ease: 'sine.inOut' }, 0.32);
 
-      tl.to(phrase1,
-        { opacity: 0, duration: fadeDur, ease: "power1.inOut" }, swap1);
-      tl.set(phrase1, { visibility: "hidden" }, swap1 + fadeDur);
+      tl.fromTo(caption,
+        { y: 24, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.9, ease: 'power1.inOut' }, 0.55);
 
-      tl.fromTo(phrase2,
-        { opacity: 0, y: 8 },
-        { opacity: 1, y: 0, duration: 0.7, ease: "sine.inOut" }, swap1 + 0.1);
+      tl.fromTo(kwUnder,
+        { scaleX: 0 },
+        { scaleX: 1, duration: 0.6, ease: 'sine.out' }, 1.05);
 
-      tl.to(phrase2,
-        { opacity: 0, duration: fadeDur, ease: "power1.inOut" }, swap2);
-      tl.set(phrase2, { visibility: "hidden" }, swap2 + fadeDur);
+      // Ambient motion (BG decoratives) — finite repeats only.
+      const glowCycle = 1.2;
+      tl.to(glow,
+        { scale: 1.04, opacity: 0.14, yoyo: true,
+          duration: glowCycle, ease: 'sine.inOut',
+          repeat: Math.floor(sceneDuration / glowCycle) },
+        0);
 
-      tl.fromTo(phrase3,
-        { opacity: 0, y: 8 },
-        { opacity: 1, y: 0, duration: 0.7, ease: "sine.inOut" }, swap2 + 0.1);
-
-      const grainCycle = 6;
+      const grainCycle = 5.2;
       tl.to(grain,
-        { opacity: 0.08, duration: grainCycle, ease: "sine.inOut",
-          yoyo: true, repeat: Math.floor(sceneDuration / grainCycle) }, 0);
+        { x: 4, y: -3, yoyo: true,
+          duration: grainCycle, ease: 'sine.inOut',
+          repeat: Math.floor(sceneDuration / grainCycle) },
+        0);
 
-      const vigCycle = 8;
-      tl.to(vignette,
-        { scale: 1.04, duration: vigCycle, ease: "sine.inOut",
-          yoyo: true, repeat: Math.floor(sceneDuration / vigCycle) }, 0);
-
-      const haloCycle = 4.5;
-      tl.to(halo,
-        { opacity: 0.14, x: 20, duration: haloCycle, ease: "sine.inOut",
-          yoyo: true, repeat: Math.floor(sceneDuration / haloCycle) }, 0);
-
-      const tickCycle = 5;
-      tl.to(tick,
-        { scaleX: 0.92, duration: tickCycle, ease: "sine.inOut",
-          yoyo: true, repeat: Math.floor(sceneDuration / tickCycle) }, 0);
-
-      const ghostCycle = 6;
-      tl.to(ghost,
-        { y: -12, duration: ghostCycle, ease: "sine.inOut",
-          yoyo: true, repeat: Math.floor(sceneDuration / ghostCycle) }, 1.8);
+      const hairlineCycle = 4.0;
+      tl.to(hairline,
+        { opacity: 0.35, yoyo: true,
+          duration: hairlineCycle, ease: 'sine.inOut',
+          repeat: Math.floor(sceneDuration / hairlineCycle) },
+        0.7);
 
       window.__sceneTimelines["thesis"] = tl;
     })();
@@ -515,332 +571,394 @@
 </div>
 <!-- beat: payoff -->
 <div id="scene-payoff" class="scene clip"
-     data-start="15.5" data-duration="7.1" data-track-index="1"
+     data-start="11.7" data-duration="10.7" data-track-index="1"
      data-width="1080" data-height="1920">
   <style>
     #scene-payoff {
       position: absolute;
       inset: 0;
       opacity: 0;
-      background-color: #1a1614;
       overflow: hidden;
+      background: linear-gradient(180deg, #FFF8EC 0%, #E6DFD4 100%);
+      font-family: "Inter", system-ui, sans-serif;
+      color: #2a2a2a;
     }
-
     #scene-payoff .scene-content {
-      position: relative;
+      position: absolute;
+      inset: 0;
       width: 100%;
       height: 100%;
     }
-
-    #scene-payoff .bg-grain {
+    #scene-payoff .pf-speaker-plate {
       position: absolute;
-      inset: 0;
+      left: 0;
+      right: 0;
+      top: 12%;
+      height: 56%;
+      background:
+        radial-gradient(ellipse at 50% 45%, rgba(255, 253, 248, 0.55) 0%, rgba(204, 198, 189, 0) 70%),
+        linear-gradient(180deg, #E6DFD4 0%, #CCC6BD 100%);
+    }
+    #scene-payoff .pf-vignette-top {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 18%;
+      background: radial-gradient(ellipse at 50% 0%, #FFFDF8 0%, rgba(255, 253, 248, 0) 75%);
+      opacity: 0;
+      pointer-events: none;
+    }
+    #scene-payoff .pf-grain {
+      position: absolute;
+      inset: -2%;
+      opacity: 0.04;
+      mix-blend-mode: multiply;
       background-image:
-        radial-gradient(rgba(36, 31, 27, 0.55) 1px, transparent 1px),
-        radial-gradient(rgba(36, 31, 27, 0.30) 1px, transparent 1px);
-      background-size: 3px 3px, 5px 5px;
-      background-position: 0 0, 1px 2px;
-      mix-blend-mode: overlay;
-      opacity: 0;
+        repeating-radial-gradient(circle at 17% 23%, #2a2a2a 0px, #2a2a2a 1px, transparent 1px, transparent 3px),
+        repeating-radial-gradient(circle at 73% 61%, #1f1f1f 0px, #1f1f1f 1px, transparent 1px, transparent 4px);
       pointer-events: none;
     }
-
-    #scene-payoff .bg-vignette {
+    #scene-payoff .pf-radial-glow {
       position: absolute;
-      inset: 0;
-      background: radial-gradient(ellipse at 50% 55%,
-        rgba(26, 22, 20, 0) 0%,
-        rgba(26, 22, 20, 0.18) 55%,
-        rgba(26, 22, 20, 0.45) 100%);
-      pointer-events: none;
-      opacity: 0;
-    }
-
-    #scene-payoff .bg-halo {
-      position: absolute;
-      top: 22%;
-      left: 12%;
+      left: 50%;
+      top: 60%;
       width: 720px;
       height: 720px;
-      background: radial-gradient(circle,
-        rgba(232, 161, 74, 0.12) 0%,
-        rgba(232, 161, 74, 0.06) 35%,
-        rgba(192, 140, 135, 0.04) 60%,
-        transparent 80%);
-      filter: blur(8px);
-      opacity: 0;
+      margin-left: -360px;
+      margin-top: -360px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 50% 50%, #F5A623 0%, rgba(245, 166, 35, 0) 60%);
+      opacity: 0.12;
       pointer-events: none;
+      transform-origin: 50% 50%;
     }
-
-    #scene-payoff .bg-tick {
-      position: absolute;
-      top: 80px;
-      right: 64px;
-      width: 96px;
-      height: 1px;
-      background-color: #e8a14a;
-      opacity: 0;
-      transform-origin: right center;
-    }
-
-    #scene-payoff .beat-marker {
+    #scene-payoff .pf-hairline {
       position: absolute;
       top: 96px;
-      left: 64px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      opacity: 0;
-    }
-
-    #scene-payoff .beat-marker-dot {
-      width: 6px;
-      height: 6px;
-      background-color: #e8a14a;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
-    #scene-payoff .beat-marker-label {
-      font-family: Inter, sans-serif;
-      font-size: 0.75rem;
-      font-weight: 500;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: #8a7e72;
-    }
-
-    #scene-payoff .pull-line {
-      position: absolute;
-      bottom: 472px;
-      left: 64px;
-      right: 64px;
-      font-family: "Playfair Display", serif;
-      font-size: 3.25rem;
-      font-weight: 400;
-      font-style: italic;
-      color: #f4ebdc;
-      line-height: 1.18;
-      max-width: 70%;
-      margin: 0;
-      text-transform: lowercase;
-      opacity: 0;
-    }
-
-    #scene-payoff .hairline-rule {
-      position: absolute;
-      bottom: 432px;
-      left: 64px;
-      width: 240px;
+      left: 96px;
+      right: 96px;
       height: 1px;
-      background-color: #e8a14a;
+      background: #C4A3A3;
+      opacity: 0.6;
+      transform-origin: right center;
+    }
+    #scene-payoff .pf-margin-tick {
+      position: absolute;
+      bottom: 320px;
+      left: 96px;
+      width: 24px;
+      height: 1px;
+      background: #C4A3A3;
       opacity: 0.6;
       transform-origin: left center;
-      transform: scaleX(0);
     }
-
-    #scene-payoff .caption-plate {
+    #scene-payoff .pf-overline {
       position: absolute;
-      bottom: 152px;
-      left: 64px;
-      right: 64px;
-      padding: 28px 64px;
-      background-color: rgba(36, 31, 27, 0.78);
-      border-radius: 14px;
-      opacity: 0;
-    }
-
-    #scene-payoff .caption-text {
-      font-family: Inter, sans-serif;
-      font-size: 1.5rem;
-      font-weight: 400;
-      line-height: 1.45;
-      color: #f4ebdc;
-      max-width: 78%;
-      margin: 0;
-      opacity: 0;
-    }
-
-    #scene-payoff .caption-timestamp {
-      position: absolute;
-      bottom: 16px;
-      right: 28px;
-      font-family: Inter, sans-serif;
-      font-size: 0.75rem;
+      top: 56px;
+      right: 96px;
+      font-family: "Inter", system-ui, sans-serif;
       font-weight: 500;
+      font-size: 0.75rem;
       letter-spacing: 0.18em;
       text-transform: uppercase;
-      color: #8a7e72;
-      font-variant-numeric: tabular-nums;
+      color: #404040;
       opacity: 0;
     }
+    #scene-payoff .pf-headline-wrap {
+      position: absolute;
+      left: 96px;
+      right: 96px;
+      bottom: 196px;
+      max-width: 80%;
+    }
+    #scene-payoff .pf-headline {
+      font-family: "Playfair Display", serif;
+      font-weight: 400;
+      font-style: italic;
+      font-size: 4.5rem;
+      line-height: 1.05;
+      letter-spacing: -0.01em;
+      color: #1f1f1f;
+      margin: 0 0 0 -0.05em;
+      font-variant-numeric: oldstyle-nums;
+      opacity: 0;
+    }
+    #scene-payoff .pf-attribution {
+      position: absolute;
+      left: 96px;
+      bottom: 144px;
+      font-family: "Inter", system-ui, sans-serif;
+      font-weight: 300;
+      font-size: 1.125rem;
+      line-height: 1.7;
+      color: #404040;
+      opacity: 0;
+      letter-spacing: 0.01em;
+    }
   </style>
-
   <div class="scene-content">
-    <div class="bg-grain" aria-hidden="true"></div>
-    <div class="bg-vignette" aria-hidden="true"></div>
-    <div class="bg-halo" aria-hidden="true"></div>
-    <div class="bg-tick" aria-hidden="true"></div>
-
-    <div class="beat-marker">
-      <div class="beat-marker-dot"></div>
-      <div class="beat-marker-label">Payoff &middot; 3 / 3</div>
+    <div class="pf-speaker-plate"></div>
+    <div class="pf-grain"></div>
+    <div class="pf-radial-glow"></div>
+    <div class="pf-vignette-top"></div>
+    <div class="pf-hairline"></div>
+    <div class="pf-margin-tick"></div>
+    <div class="pf-overline">03 / PAYOFF</div>
+    <div class="pf-headline-wrap">
+      <h1 class="pf-headline">and that&rsquo;s the quiet part &mdash; the part you keep.</h1>
     </div>
-
-    <p class="pull-line">the signal was always quieter than the room.</p>
-
-    <div class="hairline-rule" aria-hidden="true"></div>
-
-    <div class="caption-plate">
-      <p class="caption-text">and that&rsquo;s what stays &mdash; not the noise, but the breath beneath it.</p>
-      <span class="caption-timestamp">0:22.6 &middot; soft signal</span>
-    </div>
+    <div class="pf-attribution">a closing reflection &middot; take 03</div>
   </div>
-
   <script>
     (function () {
       window.__sceneTimelines = window.__sceneTimelines || {};
-      const sceneId = "payoff";
-      const sceneDuration = 7.1;
+      const root = document.getElementById("scene-payoff");
+      const q = (sel) => root.querySelector(sel);
+      const glow = q(".pf-radial-glow");
+      const grain = q(".pf-grain");
+      const hairline = q(".pf-hairline");
+      const overline = q(".pf-overline");
+      const headline = q(".pf-headline");
+      const attribution = q(".pf-attribution");
+      const vignette = q(".pf-vignette-top");
+      const tick = q(".pf-margin-tick");
+
+      const sceneDuration = 10.7;
+      const glowCycle = 1.2;
+      const grainCycle = 7.4;
+      const hairlineCycle = 4.0;
+      const fadeStart = 10.3;
+      const fadeDur = 0.4;
 
       const tl = gsap.timeline({ paused: true });
 
-      // Scene container fade-in (non-first scene starts opacity 0; transitions node fades in)
-      tl.fromTo("#scene-payoff",
+      // Scene container reveal — held opacity:0 until the future transitions node fades it in.
+      tl.fromTo(root,
         { opacity: 0 },
-        { opacity: 1, duration: 0.6, ease: "sine.inOut" },
-        0.0);
+        { opacity: 1, duration: 0.4, ease: "sine.inOut" }, 0.0);
 
-      // BG decoratives — entrances via fromTo, first entrance offset 0.1s
-      tl.fromTo("#scene-payoff .bg-grain",
+      // First content entrance — overline label settles in (offset within 0.1-0.3s).
+      tl.fromTo(overline,
+        { y: 24, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.9, ease: "sine.inOut" }, 0.10);
+
+      tl.fromTo(vignette,
         { opacity: 0 },
-        { opacity: 0.10, duration: 0.9, ease: "sine.inOut" },
-        0.10);
+        { opacity: 1, duration: 0.6, ease: "sine.out" }, 0.10);
 
-      tl.fromTo("#scene-payoff .bg-vignette",
-        { opacity: 0 },
-        { opacity: 1, duration: 0.9, ease: "sine.inOut" },
-        0.10);
-
-      tl.fromTo("#scene-payoff .bg-halo",
-        { opacity: 0 },
-        { opacity: 1, duration: 1.1, ease: "sine.inOut" },
-        0.15);
-
-      tl.fromTo("#scene-payoff .bg-tick",
-        { opacity: 0, scaleX: 0.92 },
-        { opacity: 0.30, scaleX: 1, duration: 0.9, ease: "power1.out" },
-        0.20);
-
-      // Beat marker — fade-up only (anchored, not animated in position)
-      tl.fromTo("#scene-payoff .beat-marker",
-        { opacity: 0 },
-        { opacity: 1, duration: 0.6, ease: "expo.out" },
-        0.30);
-
-      // Caption plate — settle up
-      tl.fromTo("#scene-payoff .caption-plate",
-        { opacity: 0, y: 24 },
-        { opacity: 1, y: 0, duration: 0.9, ease: "sine.inOut" },
-        0.50);
-
-      // Caption text — bleed in
-      tl.fromTo("#scene-payoff .caption-text",
-        { opacity: 0, y: 12 },
-        { opacity: 1, y: 0, duration: 0.8, ease: "sine.inOut" },
-        0.65);
-
-      // Structural hairline — draw left to right
-      tl.fromTo("#scene-payoff .hairline-rule",
+      tl.fromTo(hairline,
         { scaleX: 0 },
-        { scaleX: 1, duration: 0.7, ease: "power1.out" },
-        1.10);
+        { scaleX: 1, duration: 0.6, ease: "sine.inOut" }, 0.18);
 
-      // Pull-line (sign-off) — eases up
-      tl.fromTo("#scene-payoff .pull-line",
-        { opacity: 0, y: 18 },
-        { opacity: 1, y: 0, duration: 0.9, ease: "sine.inOut" },
-        1.40);
+      tl.fromTo(tick,
+        { scaleX: 0 },
+        { scaleX: 1, duration: 0.5, ease: "sine.out" }, 0.25);
 
-      // Pull-line glow — bloom (the only permitted box-shadow in the composition)
-      tl.fromTo("#scene-payoff .pull-line",
-        { textShadow: "0 0 0px rgba(232, 161, 74, 0)" },
-        { textShadow: "0 0 24px rgba(232, 161, 74, 0.32)", duration: 1.0, ease: "sine.inOut" },
-        1.80);
+      // Headline (sign-off) surfaces 320ms after the overline starts (DESIGN.md mandate).
+      tl.fromTo(headline,
+        { y: 24, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.9, ease: "sine.inOut" }, 0.42);
 
-      // Timestamp — quiet fade-up
-      tl.fromTo("#scene-payoff .caption-timestamp",
-        { opacity: 0 },
-        { opacity: 1, duration: 0.7, ease: "sine.inOut" },
-        2.20);
+      tl.fromTo(attribution,
+        { y: 24, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.9, ease: "sine.inOut" }, 1.20);
 
-      // Ambient motion — finite repeats only (Math.floor; never the infinite sentinel)
-      const grainCycle = 3.0;
-      tl.to("#scene-payoff .bg-grain", {
-        opacity: 0.12,
+      // Ambient: radial glow breathing — finite repeat derived from scene length.
+      tl.to(glow, {
+        scale: 1.04,
+        opacity: 0.14,
+        yoyo: true,
+        duration: glowCycle,
+        ease: "sine.inOut",
+        repeat: Math.floor(sceneDuration / glowCycle)
+      }, 0);
+
+      // Ambient: warm-grain drift — slow yoyo across the full beat.
+      tl.to(grain, {
+        x: 4,
+        y: -3,
         yoyo: true,
         duration: grainCycle,
         ease: "sine.inOut",
         repeat: Math.floor(sceneDuration / grainCycle)
-      }, 1.0);
+      }, 0);
 
-      const vigCycle = 4.0;
-      tl.to("#scene-payoff .bg-vignette", {
-        scale: 1.04,
-        transformOrigin: "50% 55%",
+      // Ambient: hairline opacity pulse.
+      tl.to(hairline, {
+        opacity: 0.5,
         yoyo: true,
-        duration: vigCycle,
+        duration: hairlineCycle,
         ease: "sine.inOut",
-        repeat: Math.floor(sceneDuration / vigCycle)
-      }, 1.0);
+        repeat: Math.floor(sceneDuration / hairlineCycle)
+      }, 0.7);
 
-      const haloCycle = 4.5;
-      tl.to("#scene-payoff .bg-halo", {
-        opacity: 0.85,
-        x: 20,
-        yoyo: true,
-        duration: haloCycle,
-        ease: "sine.inOut",
-        repeat: Math.floor(sceneDuration / haloCycle)
-      }, 1.0);
+      // HR 4 final-fade (is_final=true): headline + attribution alone fade over the last 0.4s,
+      // leaving speaker + cream + ambient atmosphere intact.
+      tl.to(headline,    { opacity: 0, duration: fadeDur, ease: "power1.inOut" }, fadeStart);
+      tl.to(attribution, { opacity: 0, duration: fadeDur, ease: "power1.inOut" }, fadeStart);
+      tl.set(headline,    { visibility: "hidden" }, fadeStart + fadeDur);
+      tl.set(attribution, { visibility: "hidden" }, fadeStart + fadeDur);
 
-      const tickCycle = 2.5;
-      tl.to("#scene-payoff .bg-tick", {
-        scaleX: 0.92,
-        yoyo: true,
-        duration: tickCycle,
-        ease: "sine.inOut",
-        repeat: Math.floor(sceneDuration / tickCycle)
-      }, 1.2);
+      window.__sceneTimelines["payoff"] = tl;
+    })();
+  </script>
+</div>
+<!-- p4_assemble_index: captions -->
+<!--
+  Captions track for canonical-portrait-talking-head.
+  Source transcript: edit/transcripts/final.json (word-level timing).
+  Tone profile: storytelling/measured (Soft Signal reflective monologue).
+  Word-grouping band: 4-6 words per canon §"Word Grouping" (measured/calm).
+  Typography + palette inherited from DESIGN.md (Inter Light, foreground-highlight-1
+  on translucent background-highlight-1; no caps, no per-word color flips).
+-->
+<div id="captions-layer" class="captions-layer">
+  <style>
+    #captions-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: visible;
+      font-family: "Inter", system-ui, -apple-system, sans-serif;
+    }
+    #captions-layer .cg {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 96px;
+      margin: 0 auto;
+      max-width: 1500px;
+      padding: 16px 36px;
+      text-align: center;
+      font-family: "Inter", system-ui, sans-serif;
+      font-weight: 300;
+      font-size: 44px;
+      line-height: 1.4;
+      letter-spacing: 0.005em;
+      color: #404040;
+      background: rgba(255, 253, 248, 0.78);
+      border-radius: 8px;
+      opacity: 0;
+      visibility: hidden;
+      will-change: opacity, transform;
+      overflow: visible;
+    }
+    #captions-layer .cg .w-key {
+      font-weight: 500;
+      color: #2a2a2a;
+    }
+  </style>
 
-      // Final fade (HR 4 — permitted because is_final is True).
-      // Audio resolves ~6.2s; the 0.4s "breath after the last word" is absorbed
-      // into the front of the 0.9s fade so the whole composition lands at scene end.
-      const fadeStart = 6.20;
-      const fadeDur = 0.90;
-      const fadeTargets = [
-        "#scene-payoff .pull-line",
-        "#scene-payoff .hairline-rule",
-        "#scene-payoff .caption-plate",
-        "#scene-payoff .caption-text",
-        "#scene-payoff .caption-timestamp",
-        "#scene-payoff .beat-marker",
-        "#scene-payoff .bg-grain",
-        "#scene-payoff .bg-vignette",
-        "#scene-payoff .bg-halo",
-        "#scene-payoff .bg-tick"
+  <!-- One caption group visible at a time. Source: edit/transcripts/final.json -->
+  <div class="cg" id="cg-0"><span>Age of </span><span class="w-key">artificial intelligence.</span></div>
+  <div class="cg" id="cg-1"><span>when I'm </span><span class="w-key">increasingly</span><span> using</span></div>
+  <div class="cg" id="cg-2"><span>free </span><span class="w-key">open-source tools</span></div>
+  <div class="cg" id="cg-3"><span>because I can simply </span><span class="w-key">deploy</span><span> them</span></div>
+  <div class="cg" id="cg-4"><span>for myself easily</span></div>
+  <div class="cg" id="cg-5"><span>with the help of </span><span class="w-key">AI agents</span></div>
+  <div class="cg" id="cg-6"><span>or just write the </span><span class="w-key">software</span></div>
+  <div class="cg" id="cg-7"><span>I need for work myself,</span></div>
+  <div class="cg" id="cg-8"><span>I thought,</span></div>
+  <div class="cg" id="cg-9"><span>&ldquo;Why don't we </span><span class="w-key">return</span></div>
+  <div class="cg" id="cg-10"><span>to the </span><span class="w-key">roots,</span></div>
+  <div class="cg" id="cg-11"><span>to good old </span><span class="w-key">software</span></div>
+  <div class="cg" id="cg-12"><span>that you </span><span class="w-key">pay for once</span></div>
+  <div class="cg" id="cg-13"><span>and </span><span class="w-key">use for life?&rdquo;</span></div>
+  <div class="cg" id="cg-14"><span>Yes, maybe it's not</span></div>
+  <div class="cg" id="cg-15"><span>as </span><span class="w-key">interesting</span><span> from a business</span></div>
+  <div class="cg" id="cg-16"><span class="w-key">point-of-view,</span></div>
+
+  <script>
+    (function () {
+      // Caption groups baked at build time from edit/transcripts/final.json.
+      // Static literal — deterministic per canon §"Constraints" (no fetches).
+      var GROUPS = [
+        { id: "cg-0",  start: 0.05,   end: 1.27   },
+        { id: "cg-1",  start: 1.40,   end: 2.721  },
+        { id: "cg-2",  start: 2.84,   end: 3.98   },
+        { id: "cg-3",  start: 4.06,   end: 5.82   },
+        { id: "cg-4",  start: 5.94,   end: 7.021  },
+        { id: "cg-5",  start: 7.08,   end: 8.40   },
+        { id: "cg-6",  start: 8.78,   end: 9.981  },
+        { id: "cg-7",  start: 10.04,  end: 11.90  },
+        { id: "cg-8",  start: 12.049, end: 12.27  },
+        { id: "cg-9",  start: 12.529, end: 13.43  },
+        { id: "cg-10", start: 13.469, end: 14.189 },
+        { id: "cg-11", start: 14.349, end: 15.629 },
+        { id: "cg-12", start: 15.689, end: 17.209 },
+        { id: "cg-13", start: 17.269, end: 18.389 },
+        { id: "cg-14", start: 18.809, end: 19.91  },
+        { id: "cg-15", start: 19.99,  end: 21.549 },
+        { id: "cg-16", start: 21.609, end: 22.15  }
       ];
-      tl.to(fadeTargets,
-        { opacity: 0, duration: fadeDur, ease: "power1.inOut" },
-        fadeStart);
-      tl.to("#scene-payoff",
-        { opacity: 0, duration: fadeDur, ease: "power1.inOut" },
-        fadeStart);
 
-      // Hard-kill at fade-end so elements don't resurrect under non-linear seek.
-      tl.set(fadeTargets, { visibility: "hidden" }, fadeStart + fadeDur);
+      window.__captionTimelines = window.__captionTimelines || {};
+      var capTl = gsap.timeline({ paused: true });
 
-      window.__sceneTimelines[sceneId] = tl;
+      GROUPS.forEach(function (group) {
+        var el = document.getElementById(group.id);
+        if (!el) return;
+
+        // Reveal — flip visibility on at the group's start so the entrance tween
+        // is observable; CSS keeps the element hidden pre-entrance.
+        capTl.set(el, { visibility: "visible" }, group.start);
+
+        // Entrance — fromTo per motion-principles.md L115-123 (never tl.from).
+        // Soft Signal entry ease: sine.inOut over 0.5s.
+        capTl.fromTo(
+          el,
+          { opacity: 0, y: 16 },
+          { opacity: 1, y: 0, duration: 0.5, ease: "sine.inOut" },
+          group.start
+        );
+
+        // Exit — soft fade-out over 0.32s with power1.inOut (DESIGN.md exit ease,
+        // distinct from entrance ease). Floored so very short groups still fade.
+        var exitDur = 0.32;
+        var exitStart = Math.max(group.start + 0.5, group.end - exitDur);
+        capTl.to(
+          el,
+          { opacity: 0, y: -8, duration: exitDur, ease: "power1.inOut" },
+          exitStart
+        );
+        // Final-frame compression — power2.in (third distinct ease).
+        capTl.to(
+          el,
+          { scale: 0.985, duration: 0.12, ease: "power2.in" },
+          Math.max(exitStart, group.end - 0.12)
+        );
+
+        // Deterministic kill — canon §"Caption Exit Guarantee" (non-negotiable).
+        capTl.set(el, { opacity: 0, visibility: "hidden" }, group.end);
+      });
+
+      // Self-lint — surface caption-leak warnings to the console at composition init,
+      // before publishing to window.__timelines.
+      GROUPS.forEach(function (group, gi) {
+        var el = document.getElementById(group.id);
+        if (!el) return;
+        capTl.seek(group.end + 0.01);
+        var computed = window.getComputedStyle(el);
+        if (computed.opacity !== "0" && computed.visibility !== "hidden") {
+          console.warn(
+            "[caption-lint] group " + gi + " still visible at t=" +
+              (group.end + 0.01).toFixed(2) + "s"
+          );
+        }
+      });
+      capTl.seek(0);
+
+      window.__captionTimelines["captions"] = capTl;
+
+      // Nest under the root timeline so it advances with the composition seek.
+      // GSAP requires unpause before parent.add — see memory
+      // feedback_gsap_paused_child_under_parent_seek (HOM-164).
+      var rootTl = window.__timelines && window.__timelines["root"];
+      if (rootTl) {
+        capTl.paused(false);
+        rootTl.add(capTl, 0);
+      }
     })();
   </script>
 </div>
@@ -851,7 +969,7 @@
   var root = window.__timelines && window.__timelines["root"];
   if (!root) return;
   var ids = ["hook", "thesis", "payoff"];
-  var starts = [0.0, 4.0, 15.5];
+  var starts = [0.0, 1.2, 11.7];
   ids.forEach(function(id, i) {
     if (i > 0) {
       root.set('#scene-' + id, { opacity: 1 }, starts[i]);
