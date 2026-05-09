@@ -26,7 +26,15 @@ from tests._helpers.fingerprint_assertions import (
     assert_upstream_artifact_change_invalidates,
 )
 
-CREATIVE_NODES = ("p3_strategy", "p4_design_system", "p4_beat")
+CREATIVE_NODES = (
+    "p3_strategy",
+    "p4_design_system",
+    "p4_beat",
+    # HOM-156: cheap-tier gate-internal LLM helper. Same three invariants
+    # apply (version bump, cfg fingerprint, upstream artifact edit) — the
+    # registry entry points at the gate module instead of a node module.
+    "gate_animation_map_justify",
+)
 
 
 # ---------------------------------------------------------------------------

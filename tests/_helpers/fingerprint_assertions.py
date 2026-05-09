@@ -85,6 +85,39 @@ def _p4_design_system_base(tmp_dir: Path) -> dict:
     }
 
 
+def _gate_animation_map_justify_base(tmp_dir: Path) -> dict:
+    """Base state for gate:animation_map's LLM-justify helper (HOM-156).
+
+    The helper's cache key reads:
+      - `compose.hyperframes_dir` → derives the animation-map.json path,
+        which is content-hashed.
+      - `compose.design_md_path` → content-hashed.
+      - `compose.plan.beats` → fingerprinted via stable_fingerprint.
+    """
+    hf_dir = tmp_dir / "hyperframes"
+    hf_dir.mkdir(parents=True, exist_ok=True)
+    anim_dir = hf_dir / ".hyperframes" / "anim-map"
+    anim_dir.mkdir(parents=True, exist_ok=True)
+    anim_map = anim_dir / "animation-map.json"
+    anim_map.write_text('{"tweens":[],"deadZones":[]}', encoding="utf-8")
+    design_md = hf_dir / "DESIGN.md"
+    design_md.write_text("# DESIGN.md fixture\n", encoding="utf-8")
+    return {
+        "slug": "fp-fixture",
+        "episode_dir": str(tmp_dir),
+        "compose": {
+            "hyperframes_dir": str(hf_dir),
+            "design_md_path": str(design_md),
+            "plan": {
+                "beats": [
+                    {"beat": "HOOK", "concept": "c", "mood": "m",
+                     "energy": "high", "duration_s": 6.9},
+                ],
+            },
+        },
+    }
+
+
 def _p4_beat_base(tmp_dir: Path) -> dict:
     design_md = tmp_dir / "hyperframes" / "DESIGN.md"
     design_md.parent.mkdir(parents=True, exist_ok=True)
@@ -126,6 +159,15 @@ _NODE_REGISTRY: dict[str, tuple[str, Callable[[Path], dict], Callable[[dict], Pa
         "edit_episode_graph.nodes.p4_beat",
         _p4_beat_base,
         lambda s: Path(s["compose"]["design_md_path"]),
+    ),
+    # HOM-156: gate-internal LLM-justify helper. Module is the gate, not a
+    # node — but the fingerprint assertions only care that `_cache_key` and
+    # `_CACHE_VERSION` are importable, which they are on the gate module.
+    "gate_animation_map_justify": (
+        "edit_episode_graph.gates.animation_map",
+        _gate_animation_map_justify_base,
+        lambda s: Path(s["compose"]["hyperframes_dir"])
+        / ".hyperframes" / "anim-map" / "animation-map.json",
     ),
 }
 

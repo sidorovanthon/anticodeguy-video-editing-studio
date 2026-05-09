@@ -421,6 +421,29 @@ def test_p4_prompt_expansion_smoke():
     )
 
 
+# HOM-156 gate:animation_map LLM-justify helper: no replay smoke.
+#
+# The cheap-tier LLM-justify helper dispatches from inside the gate body
+# (`gates/animation_map.py::_dispatch_justify` calls `LLMNode.__call__`
+# directly), not as a graph node. LangGraph's `cache_policy=` mechanism
+# applies only to whole graph nodes added via `g.add_node(...,
+# cache_policy=...)`. The gate is a class-2 deterministic node — caching
+# the gate would skip the deterministic `animation-map.mjs` re-run too,
+# which we don't want; the LLM dispatch is just a sub-step.
+#
+# Result: there is no `gate_animation_map_justify` pregel-cache namespace
+# to dispatch against. The fingerprint-registry entry in
+# `tests/_helpers/fingerprint_assertions.py` still validates the cache
+# key shape (HOM-184 invariants — version bump, cfg fingerprint, upstream
+# artifact edit) at L0 cost $0. A future ticket may extract the LLM
+# helper into a standalone graph node to unlock replay; until then,
+# stub-based unit coverage in `graph/tests/test_animation_map_gate.py`
+# (`test_paced_fast_is_justified_passes`,
+# `test_paced_fast_is_marked_fix_redispatches`,
+# `test_justify_dispatch_failure_falls_back_to_strict_fail`) is the
+# behavioural surface.
+
+
 @requires_fixture_cache
 def test_p4_beat_smoke():
     """Migrated from ``graph/smoke_hom165.py``.
