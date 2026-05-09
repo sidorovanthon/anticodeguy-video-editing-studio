@@ -118,12 +118,15 @@ def test_phase4_chain_edges_wired():
         ("gate_inspect", "halt_llm_boundary"),
         ("gate_design_adherence", "gate_animation_map"),
         ("gate_design_adherence", "halt_llm_boundary"),
+        # HOM-204: gate:animation_map is advisory — no redispatch edge.
+        # Three outcomes: classify (pace flags pending), snapshot
+        # (advance), halt (infrastructure failure). The classifier
+        # likewise routes only to snapshot or halt — its decisions are
+        # advisory metadata.
         ("gate_animation_map", "gate_snapshot"),
         ("gate_animation_map", "halt_llm_boundary"),
-        # HOM-156 (review S1): classifier branch + classifier outbound edges.
         ("gate_animation_map", "gate_animation_map_classify"),
         ("gate_animation_map_classify", "gate_snapshot"),
-        ("gate_animation_map_classify", "p4_redispatch_beat"),
         ("gate_animation_map_classify", "halt_llm_boundary"),
         ("gate_snapshot", "gate_captions_track"),
         ("gate_snapshot", "halt_llm_boundary"),
@@ -154,11 +157,12 @@ def test_phase4_chain_edges_wired():
         # Each gate now has THREE outgoing edges: pass→next, retry→
         # p4_redispatch_beat (fail+iter<3), halt (fail+iter≥3). Pass and
         # halt edges are already asserted above; the new retry edges are:
+        # HOM-204: gate:animation_map dropped from this list — its
+        # findings no longer redispatch beats (advisory).
         ("gate_lint", "p4_redispatch_beat"),
         ("gate_validate", "p4_redispatch_beat"),
         ("gate_inspect", "p4_redispatch_beat"),
         ("gate_design_adherence", "p4_redispatch_beat"),
-        ("gate_animation_map", "p4_redispatch_beat"),
         ("gate_snapshot", "p4_redispatch_beat"),
         ("gate_captions_track", "p4_redispatch_beat"),
         # The redispatch node static-edges back to assemble — closing the loop.

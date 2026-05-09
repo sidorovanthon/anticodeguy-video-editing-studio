@@ -73,7 +73,8 @@ _PREDECESSORS: dict[str, str] = {
     "p4_beat": "p4_captions_layer",
     # HOM-156 (review S1): cheap-tier classifier in the post-assemble cluster.
     # Predecessor is the deterministic `gate_animation_map` whose record
-    # carries the `pending_justifiable` list the classifier consumes.
+    # carries `advisory_findings.pending_classify` (HOM-204 shape) — the
+    # list the classifier annotates with per-flag decisions.
     "gate_animation_map_classify": "gate_animation_map",
 }
 

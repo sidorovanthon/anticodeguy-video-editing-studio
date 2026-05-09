@@ -212,12 +212,11 @@ EXPECTED_CLUSTER_EDGES = {
     ("gate_inspect", "halt_llm_boundary"),
     ("gate_design_adherence", "gate_animation_map"),
     ("gate_design_adherence", "halt_llm_boundary"),
+    # HOM-204: gate:animation_map is advisory — no redispatch edge.
     ("gate_animation_map", "gate_snapshot"),
     ("gate_animation_map", "halt_llm_boundary"),
-    # HOM-156 (review S1): classify-node branch.
     ("gate_animation_map", "gate_animation_map_classify"),
     ("gate_animation_map_classify", "gate_snapshot"),
-    ("gate_animation_map_classify", "p4_redispatch_beat"),
     ("gate_animation_map_classify", "halt_llm_boundary"),
     ("gate_snapshot", "gate_captions_track"),
     ("gate_snapshot", "halt_llm_boundary"),
