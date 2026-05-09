@@ -127,6 +127,31 @@ def test_patch_index_html_canonicalizes_root_composition_id_to_root():
     assert '__timelines["root"]' in out
 
 
+def test_patch_index_html_defers_body_background_to_css_variable():
+    """HOM-191: body background must be a `var(--bg, …)` placeholder so
+    `p4_design_system` palette tokens land via `p4_assemble_index`'s
+    `:root { … }` block rather than a literal hex that
+    `gate:design_adherence` flags as out-of-palette.
+    """
+    out = patch_index_html(
+        DEFAULT_INDEX_HTML, width=1080, height=1920, duration=58.8, video_src="final.mp4"
+    )
+    # Literal `#000` (or any short/long hex) is gone from the body block.
+    # Sliced to the inline <style> block so we don't false-match elsewhere.
+    style_open = out.index("<style>")
+    style_close = out.index("</style>", style_open)
+    style_block = out[style_open:style_close]
+    assert "background: #000" not in style_block
+    # Custom property placeholder with a generic CSS fallback is in place.
+    assert "background: var(--bg, transparent);" in style_block
+    # Sanity: no literal hex survived in the scaffold's body declarations.
+    import re as _re
+
+    assert not _re.search(
+        r"background\s*:\s*#[0-9a-fA-F]{3,8}", style_block
+    ), f"literal hex background survived: {style_block!r}"
+
+
 def test_patch_meta_json_overwrites_id_and_name():
     src = {"id": "hyperframes", "name": "hyperframes", "createdAt": "2026-04-30T07:58:27.115Z"}
     out = patch_meta_json(src, slug="2026-04-30-hello-world")

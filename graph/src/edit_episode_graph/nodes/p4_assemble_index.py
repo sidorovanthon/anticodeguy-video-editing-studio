@@ -50,10 +50,14 @@ from pathlib import Path
 
 from langgraph.types import CachePolicy
 
-from .._caching import make_key
+from .._caching import make_key, stable_fingerprint
 from .._scene_id import scene_id_for
 
 # Bump on assemble_html / shim shape / marker change. Spec §8.
+# v3 (HOM-191): also injects a `:root { --bg: …; --fg: …; --font-body: …; }`
+# tokens block consuming `compose.design.palette` + `compose.design.typography`,
+# so `p4_scaffold`'s `var(--bg, transparent)` placeholder resolves to the
+# DESIGN.md palette without `gate:design_adherence` flagging a stray hex.
 # v2 (HOM-164): visibility shim now unpauses scene-local timelines before
 # nesting them into root via `tl.add(child)`. GSAP semantics: a parent's
 # `seek()` does NOT advance a child timeline whose `paused: true` flag is
@@ -65,7 +69,7 @@ from .._scene_id import scene_id_for
 # this, every scene-1+ frame stays at the fromTo from-state — the
 # Phase 4 black-screen symptom HOM-164 was filed for. Repro confirmed in a
 # clean `npx hyperframes init` scaffold; fix is purely orchestrator-side.
-_CACHE_VERSION = 2
+_CACHE_VERSION = 3
 
 
 def _scene_html_paths(state: dict) -> list[str | None]:
@@ -117,11 +121,20 @@ def _cache_key(state, *_args, **_kwargs):
     captions_path = (state.get("compose") or {}).get("captions_block_path")
     if captions_path:
         files.append(str(captions_path))
+    # HOM-191: design palette + typography are inlined as a `:root { … }` tokens
+    # block. They're in-memory state (not files), so fingerprint them as extras
+    # to invalidate when the design changes without an upstream file edit.
+    design = (state.get("compose") or {}).get("design") or {}
+    design_tokens = {
+        "palette": design.get("palette"),
+        "typography": design.get("typography"),
+    }
     return make_key(
         node="p4_assemble_index",
         version=_CACHE_VERSION,
         slug=slug,
         files=files,
+        extras=(stable_fingerprint(design_tokens),),
     )
 
 
@@ -133,6 +146,24 @@ _CAPTIONS_INJECTION_MARKER = "<!-- p4_assemble_index: captions -->"
 _END_INJECTION_MARKER = "<!-- p4_assemble_index: end -->"
 _SHIM_BEGIN_MARKER = "<!-- p4_assemble_index: shim begin -->"
 _SHIM_END_MARKER = "<!-- p4_assemble_index: shim end -->"
+_TOKENS_BEGIN_MARKER = "<!-- p4_assemble_index: tokens begin -->"
+_TOKENS_END_MARKER = "<!-- p4_assemble_index: tokens end -->"
+
+# Canonical CSS variable names for the late-bound design tokens. Scaffold
+# emits `var(--bg, transparent)` etc. as placeholders; this block resolves
+# them from `compose.design.palette` / `compose.design.typography` (HOM-191).
+# Roles map by string match against `palette[*].role` / `typography[*].role`.
+_PALETTE_ROLE_TO_VAR = {
+    "background": "--bg",
+    "foreground": "--fg",
+    "accent": "--accent",
+    "surface": "--surface",
+}
+_TYPOGRAPHY_ROLE_TO_VAR = {
+    "body": "--font-body",
+    "headline": "--font-display",
+    "display": "--font-display",
+}
 
 
 def _now() -> str:
@@ -168,10 +199,63 @@ def _strip_block(html: str, begin: str, end: str) -> str:
 
 
 def _strip_existing_injection(html: str) -> str:
-    """Remove previously-injected beats and shim blocks so re-runs are idempotent."""
+    """Remove previously-injected beats, shim, and tokens blocks so re-runs are idempotent."""
     html = _strip_block(html, _BEAT_INJECTION_MARKER, _END_INJECTION_MARKER)
     html = _strip_block(html, _SHIM_BEGIN_MARKER, _SHIM_END_MARKER)
+    html = _strip_block(html, _TOKENS_BEGIN_MARKER, _TOKENS_END_MARKER)
     return html
+
+
+def build_root_tokens_block(
+    palette: list[dict] | None,
+    typography: list[dict] | None,
+) -> str | None:
+    """Generate a `:root { --bg: …; --fg: …; --font-body: …; }` tokens block.
+
+    Resolves the CSS custom-property placeholders `p4_scaffold` writes
+    (`var(--bg, transparent)` etc.) against the DESIGN.md tokens produced by
+    `p4_design_system`. Roles that don't map to a known variable are skipped
+    silently — the fallback in the placeholder keeps the page renderable.
+
+    Returns `None` when neither palette nor typography contains a recognised
+    role, so the caller can omit the marker pair entirely.
+    """
+    declarations: list[str] = []
+    seen_vars: set[str] = set()
+    for entry in palette or []:
+        if not isinstance(entry, dict):
+            continue
+        role = (entry.get("role") or "").strip().lower()
+        hx = entry.get("hex")
+        var_name = _PALETTE_ROLE_TO_VAR.get(role)
+        if not var_name or not isinstance(hx, str) or var_name in seen_vars:
+            continue
+        declarations.append(f"  {var_name}: {hx};")
+        seen_vars.add(var_name)
+    for entry in typography or []:
+        if not isinstance(entry, dict):
+            continue
+        role = (entry.get("role") or "").strip().lower()
+        family = entry.get("family")
+        var_name = _TYPOGRAPHY_ROLE_TO_VAR.get(role)
+        if not var_name or not isinstance(family, str) or var_name in seen_vars:
+            continue
+        # Quote multi-word families per CSS spec; single-word stays bare for readability.
+        family_token = f'"{family}"' if " " in family.strip() else family.strip()
+        declarations.append(f"  {var_name}: {family_token}, sans-serif;")
+        seen_vars.add(var_name)
+    if not declarations:
+        return None
+    body = "\n".join(declarations)
+    return (
+        f"{_TOKENS_BEGIN_MARKER}\n"
+        "<style>\n"
+        ":root {\n"
+        f"{body}\n"
+        "}\n"
+        "</style>\n"
+        f"{_TOKENS_END_MARKER}"
+    )
 
 
 _SCENE_OPEN_TAG_RE = re.compile(
@@ -358,6 +442,7 @@ def assemble_html(
     beat_html_fragments: list[tuple[str, str]],
     captions_html: str | None,
     visibility_shim: str | None = None,
+    tokens_block: str | None = None,
 ) -> str:
     """Inject beat fragments + optional captions block + optional v4 shim
     before `</body>`.
@@ -374,7 +459,10 @@ def assemble_html(
             already attached by `build_visibility_shim`); injected last.
     """
     cleaned = _strip_existing_injection(root_html)
-    pieces = [_BEAT_INJECTION_MARKER]
+    pieces: list[str] = []
+    if tokens_block:
+        pieces.append(tokens_block)
+    pieces.append(_BEAT_INJECTION_MARKER)
     for name, fragment in beat_html_fragments:
         pieces.append(f"<!-- beat: {name} -->")
         pieces.append(
@@ -454,12 +542,17 @@ def p4_assemble_index_node(state):
         captions_html = cp.read_text(encoding="utf-8")
 
     shim = build_visibility_shim(scene_ids, scene_starts)
+    design = compose.get("design") or {}
+    tokens_block = build_root_tokens_block(
+        design.get("palette"), design.get("typography")
+    )
     root_html = index_path.read_text(encoding="utf-8")
     patched = assemble_html(
         root_html=root_html,
         beat_html_fragments=fragments,
         captions_html=captions_html,
         visibility_shim=shim,
+        tokens_block=tokens_block,
     )
     if patched != root_html:
         _atomic_write_text(index_path, patched)
