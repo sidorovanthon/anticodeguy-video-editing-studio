@@ -197,6 +197,6 @@ def test_classifier_preserves_upstream_advisory_findings(monkeypatch):
     assert "dead zone" in advisory["dead_zones"][0]
 
 
-def test_classifier_cache_version_is_2():
-    """HOM-204 bumped 1→2 because output / input shape changed."""
-    assert node_mod._CACHE_VERSION == 2
+def test_classifier_cache_version_is_3():
+    """HOM-204 bumped 1→2 (shape change); HOM-206 bumped 2→3 (brief rewrite — advisory framing)."""
+    assert node_mod._CACHE_VERSION == 3

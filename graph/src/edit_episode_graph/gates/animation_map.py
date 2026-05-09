@@ -83,6 +83,32 @@ re-emits an actionable `npm i -D` line as the violation, so the
 operator does not have to read the helper's diagnostic by hand. This
 remains a hard ``passed=False`` — bootstrap failure is infrastructure,
 not advisory authoring feedback.
+
+## Notice format (HOM-205)
+
+The advisory pattern (HOM-203/HOM-204) makes Studio's `notices` array
+the operator's primary signal — `passed=True` means routing-wise
+"don't redispatch", but the operator still wants a single-glance
+breakdown of what the helper found. The canonical strings emitted by
+this gate are:
+
+* Successful run with findings:
+  ``gate:animation_map: advisory — N finding(s) (always_fix: a, dead_zones: d, pending_classify: p). See {animation_map_json_path}.``
+* Successful run, no findings:
+  ``gate:animation_map: advisory — no findings (helper ran clean).``
+* Global-fallback helper used (appended to either of the above):
+  `` (via global fallback helper — consider pinning @hyperframes/producer + sharp in the HF project)``
+* Infrastructure failure (helper missing / exit != 0 / unparseable):
+  ``gate:animation_map: infrastructure failure (N issue(s)) — see gate_results``
+
+Keep the ``advisory`` / ``infrastructure failure`` prefix exactly as
+written — the prefix is the severity signal that downstream surfaces
+(halt_llm_boundary, future Studio panels) key off. Do not rephrase to
+"WARN" / "FAILED" / "issue" without bumping ``_CACHE_VERSION`` and
+revising the cross-referenced halt_llm_boundary branch. The
+``halt_llm_boundary`` node uses the same breakdown shape
+``(always_fix: a, dead_zones: d, pending_classify: p)`` when it folds
+advisory counts into a cluster-halt notice — keep both sites aligned.
 """
 
 from __future__ import annotations

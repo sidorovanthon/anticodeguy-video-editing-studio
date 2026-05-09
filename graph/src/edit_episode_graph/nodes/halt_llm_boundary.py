@@ -155,6 +155,11 @@ def halt_llm_boundary_node(state):
         # failure), surface the advisory counts too so the operator
         # sees what the helper would have reported alongside the
         # infrastructure issue.
+        # HOM-205: keep the breakdown shape aligned with the gate's own
+        # canonical notice (see gates/animation_map.py §"Notice format")
+        # — "N advisory finding(s) (always_fix: a, dead_zones: d,
+        # pending_classify: p)". Two sites, same shape; if one drifts,
+        # update both.
         advisory_part = ""
         if gate_name == "gate:animation_map":
             advisory = cluster_failure.get("advisory_findings") or {}
@@ -164,7 +169,7 @@ def halt_llm_boundary_node(state):
             n_findings = n_always + n_dead + n_pending
             if n_findings:
                 advisory_part = (
-                    f"; advisory findings: {n_findings} total "
+                    f"; {n_findings} advisory finding(s) "
                     f"(always_fix: {n_always}, dead_zones: {n_dead}, "
                     f"pending_classify: {n_pending})"
                 )
