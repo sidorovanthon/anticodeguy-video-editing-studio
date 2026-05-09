@@ -713,25 +713,25 @@ def build_graph_uncompiled() -> StateGraph:
             "halt_llm_boundary": "halt_llm_boundary",
         },
     )
+    # HOM-204: gate:animation_map is advisory — no redispatch edge. The
+    # router has three outcomes: classify (pace flags pending), snapshot
+    # (advance), or halt (helper infrastructure failure).
     g.add_conditional_edges(
         "gate_animation_map",
         route_after_animation_map,
         {
             "gate_snapshot": "gate_snapshot",
             "gate_animation_map_classify": "gate_animation_map_classify",
-            "p4_redispatch_beat": "p4_redispatch_beat",
             "halt_llm_boundary": "halt_llm_boundary",
         },
     )
-    # HOM-156 (review S1): classifier node merges its decisions into a fresh
-    # gate_animation_map record, then routes pass→snapshot, fail+iter<3→
-    # redispatch, fail+iter≥3→halt — same shape as the standard cluster gates.
+    # HOM-204: classifier output is advisory; routing always advances to
+    # snapshot (with a defensive halt fallback if no record was emitted).
     g.add_conditional_edges(
         "gate_animation_map_classify",
         route_after_animation_map_classify,
         {
             "gate_snapshot": "gate_snapshot",
-            "p4_redispatch_beat": "p4_redispatch_beat",
             "halt_llm_boundary": "halt_llm_boundary",
         },
     )
