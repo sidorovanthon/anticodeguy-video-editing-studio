@@ -1,11 +1,24 @@
-{
-  "channel_writes": "deque([['llm_runs', [{'node': 'p4_prompt_expansion', 'backend': 'claude', 'model': 'claude-opus-4-7', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 170.26599999999598, 'tokens_in': 7, 'tokens_out': 9477, 'timestamp': '2026-05-08T13:46:29.923739+00:00'}]], ['compose', {'expansion': {'expanded_prompt_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\.worktrees\\\\hom-189\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\.hyperframes\\\\expanded-prompt.md'}, 'expanded_prompt_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\.worktrees\\\\hom-189\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\.hyperframes\\\\expanded-prompt.md'}], ['branch:to:p4_plan', None]])",
-  "fingerprint": "ec5873530fa6fb08a3f8f051e1c533a4",
-  "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_prompt_expansion.p4_prompt_expansion_node,p4_prompt_expansion",
-  "node": "p4_prompt_expansion",
-  "recorded_at": null,
-  "recording_meta": {
-    "encoding": "msgpack",
-    "value_bytes": 651
+[
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_prompt_expansion', 'backend': 'claude', 'model': 'claude-opus-4-7', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 420.5630000000001, 'tokens_in': 17, 'tokens_out': 24319, 'timestamp': '2026-05-09T02:17:08.809071+00:00'}]], ['compose', {'expansion': {'expanded_prompt_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\.hyperframes\\\\expanded-prompt.md'}, 'expanded_prompt_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\.hyperframes\\\\expanded-prompt.md'}], ['branch:to:p4_plan', None]])",
+    "fingerprint": "b7dee3710b624116d20973a1265b70ba",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_prompt_expansion.p4_prompt_expansion_node,p4_prompt_expansion",
+    "node": "p4_prompt_expansion",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 613
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_prompt_expansion', 'backend': 'claude', 'model': 'claude-opus-4-7', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 170.26599999999598, 'tokens_in': 7, 'tokens_out': 9477, 'timestamp': '2026-05-08T13:46:29.923739+00:00'}]], ['compose', {'expansion': {'expanded_prompt_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\.worktrees\\\\hom-189\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\.hyperframes\\\\expanded-prompt.md'}, 'expanded_prompt_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\.worktrees\\\\hom-189\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\.hyperframes\\\\expanded-prompt.md'}], ['branch:to:p4_plan', None]])",
+    "fingerprint": "ec5873530fa6fb08a3f8f051e1c533a4",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_prompt_expansion.p4_prompt_expansion_node,p4_prompt_expansion",
+    "node": "p4_prompt_expansion",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 651
+    }
   }
-}
+]

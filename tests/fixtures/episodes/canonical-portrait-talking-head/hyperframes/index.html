@@ -16,7 +16,7 @@
         width: 1080px;
         height: 1920px;
         overflow: hidden;
-        background: #000;
+        background: var(--bg, transparent);
       }
     </style>
   </head>
@@ -47,10 +47,32 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+<!-- p4_assemble_index: tokens begin -->
+<style>
+:root {
+  --bg: #1a1614;
+  --fg: #f4ebdc;
+  --surface: #241f1b;
+  --accent: #e8a14a;
+  --font-display: "Playfair Display", sans-serif;
+}
+</style>
+<!-- p4_assemble_index: tokens end -->
 <!-- p4_assemble_index: beats -->
 <!-- beat: hook -->
 <div id="scene-hook" class="scene clip"
-     data-start="0.0" data-duration="1.34" data-track-index="1"
+     data-start="0.0" data-duration="4.0" data-track-index="1"
      data-width="1080" data-height="1920">
   <style>
     #scene-hook {
@@ -59,52 +81,64 @@
       opacity: 1;
       background-color: #1a1614;
       overflow: hidden;
+      font-family: "Inter", sans-serif;
+      color: #f4ebdc;
     }
-
     #scene-hook .scene-content {
-      position: relative;
-      z-index: 2;
-      width: 100%;
-      height: 100%;
+      position: absolute;
+      inset: 0;
     }
-
     #scene-hook .bg-grain {
       position: absolute;
       inset: 0;
-      opacity: 0.08;
+      background-image:
+        radial-gradient(rgba(244, 235, 220, 0.045) 1px, transparent 1px),
+        radial-gradient(rgba(232, 161, 74, 0.035) 1px, transparent 1px);
+      background-size: 3px 3px, 5px 5px;
+      background-position: 0 0, 1px 2px;
+      mix-blend-mode: overlay;
+      opacity: 0.10;
       pointer-events: none;
-      background-color: #1a1614;
-      background-image: radial-gradient(circle at 20% 50%, rgba(232, 161, 74, 0.04) 0%, transparent 55%);
     }
-
     #scene-hook .bg-vignette {
       position: absolute;
-      inset: 0;
-      opacity: 0.18;
+      inset: -4%;
+      background: radial-gradient(
+        ellipse at 48% 42%,
+        rgba(26, 22, 20, 0) 38%,
+        rgba(26, 22, 20, 0.45) 88%,
+        rgba(26, 22, 20, 0.7) 100%
+      );
       pointer-events: none;
-      background: radial-gradient(ellipse at center, transparent 30%, rgba(36, 31, 27, 0.6) 100%);
+      transform-origin: 48% 42%;
     }
-
-    #scene-hook .ambient-glow {
+    #scene-hook .bg-halo {
       position: absolute;
-      bottom: -120px;
-      left: -120px;
-      width: 540px;
-      height: 540px;
-      background: radial-gradient(circle at center, rgba(232, 161, 74, 0.08) 0%, transparent 65%);
+      top: -120px;
+      left: -160px;
+      width: 720px;
+      height: 720px;
+      background: radial-gradient(
+        circle at center,
+        rgba(232, 161, 74, 0.18) 0%,
+        rgba(232, 161, 74, 0.08) 38%,
+        rgba(192, 140, 135, 0.04) 65%,
+        rgba(232, 161, 74, 0) 80%
+      );
+      filter: blur(12px);
       pointer-events: none;
+      opacity: 0.10;
     }
-
-    #scene-hook .ambient-rose {
+    #scene-hook .bg-hairline-tick {
       position: absolute;
-      top: -100px;
-      right: -100px;
-      width: 460px;
-      height: 460px;
-      background: radial-gradient(circle at center, rgba(192, 140, 135, 0.10) 0%, transparent 65%);
-      pointer-events: none;
+      top: 80px;
+      right: 64px;
+      width: 96px;
+      height: 1px;
+      background: #e8a14a;
+      opacity: 0.30;
+      transform-origin: right center;
     }
-
     #scene-hook .beat-marker {
       position: absolute;
       top: 96px;
@@ -112,19 +146,17 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      z-index: 10;
+      opacity: 0;
     }
-
-    #scene-hook .beat-marker-dot {
+    #scene-hook .beat-dot {
       width: 6px;
       height: 6px;
-      background-color: #e8a14a;
       border-radius: 50%;
+      background: #e8a14a;
       flex-shrink: 0;
     }
-
-    #scene-hook .beat-marker-text {
-      font-family: Inter, sans-serif;
+    #scene-hook .beat-label {
+      font-family: "Inter", sans-serif;
       font-size: 0.75rem;
       font-weight: 500;
       letter-spacing: 0.18em;
@@ -132,7 +164,6 @@
       color: #8a7e72;
       white-space: nowrap;
     }
-
     #scene-hook .lower-stack {
       position: absolute;
       left: 64px;
@@ -142,123 +173,131 @@
       flex-direction: column;
       gap: 28px;
     }
-
     #scene-hook .pull-line {
-      font-family: Playfair Display, serif;
-      font-size: 3.25rem;
-      font-weight: 400;
+      font-family: "Playfair Display", serif;
       font-style: italic;
+      font-weight: 400;
+      font-size: 3.25rem;
       line-height: 1.2;
       color: #f4ebdc;
       max-width: 70%;
       margin: 0;
+      text-transform: lowercase;
+      opacity: 0;
     }
-
     #scene-hook .hairline-rule {
       width: 240px;
       height: 1px;
-      background-color: #e8a14a;
+      background: #e8a14a;
       opacity: 0.6;
-      margin: 0;
       transform-origin: left center;
+      margin: 0;
+      transform: scaleX(0);
     }
-
     #scene-hook .caption-plate {
-      padding: 28px;
-      background-color: rgba(36, 31, 27, 0.78);
+      padding: 28px 64px;
+      background: rgba(36, 31, 27, 0.78);
       border-radius: 14px;
       margin: 0;
+      box-sizing: border-box;
+      opacity: 0;
     }
-
     #scene-hook .caption-text {
-      font-family: Inter, sans-serif;
+      font-family: "Inter", sans-serif;
       font-size: 1.5rem;
       font-weight: 400;
       line-height: 1.45;
       color: #f4ebdc;
       max-width: 78%;
+      text-align: left;
       margin: 0;
+      opacity: 0;
     }
   </style>
 
   <div class="scene-content">
-    <div class="bg-grain"></div>
-    <div class="bg-vignette"></div>
-    <div class="ambient-glow"></div>
-    <div class="ambient-rose"></div>
+    <div class="bg-grain" aria-hidden="true"></div>
+    <div class="bg-vignette" aria-hidden="true"></div>
+    <div class="bg-halo" aria-hidden="true"></div>
+    <div class="bg-hairline-tick" aria-hidden="true"></div>
 
     <div class="beat-marker">
-      <div class="beat-marker-dot"></div>
-      <span class="beat-marker-text">HOOK &middot; 1 / 3</span>
+      <div class="beat-dot"></div>
+      <span class="beat-label">HOOK &middot; 1 / 3</span>
     </div>
 
     <div class="lower-stack">
-      <div class="pull-line">the age of artificial intelligence</div>
-      <div class="hairline-rule"></div>
+      <div class="pull-line">a thought already in motion, before the room knows it&rsquo;s listening.</div>
+      <div class="hairline-rule" aria-hidden="true"></div>
       <div class="caption-plate">
-        <p class="caption-text">age of artificial intelligence.</p>
+        <p class="caption-text">i&rsquo;ve been sitting with something quiet&mdash;</p>
       </div>
     </div>
   </div>
 
   <script>
-    (function() {
+    (function () {
       window.__sceneTimelines = window.__sceneTimelines || {};
+      const root = document.getElementById("scene-hook");
+      const q = (sel) => root.querySelector(sel);
+
+      const sceneDuration = 4.0;
+      const finiteCycles = (cycle) => Math.max(0, Math.floor(sceneDuration / cycle));
+
       const tl = gsap.timeline({ paused: true });
 
-      tl.fromTo("#scene-hook .bg-grain",
-        { x: 0, y: 0 },
-        { x: -3, y: -2, duration: 6, ease: "sine.inOut" },
-        0
-      );
+      const grainCycle = 2.0;
+      tl.fromTo(q(".bg-grain"),
+        { opacity: 0.08 },
+        { opacity: 0.13, duration: grainCycle, ease: "sine.inOut",
+          yoyo: true, repeat: finiteCycles(grainCycle) },
+        0);
 
-      tl.fromTo("#scene-hook .bg-vignette",
-        { scale: 1.0, transformOrigin: "center center" },
-        { scale: 1.05, duration: 7, ease: "sine.inOut" },
-        0
-      );
+      const vignetteCycle = 2.0;
+      tl.fromTo(q(".bg-vignette"),
+        { scale: 1.0 },
+        { scale: 1.04, duration: vignetteCycle, ease: "sine.inOut",
+          yoyo: true, repeat: finiteCycles(vignetteCycle) },
+        0);
 
-      tl.fromTo("#scene-hook .ambient-glow",
-        { scale: 1.0, transformOrigin: "center center" },
-        { scale: 1.08, duration: 8, ease: "sine.inOut" },
-        0
-      );
+      const haloCycle = 2.0;
+      tl.fromTo(q(".bg-halo"),
+        { opacity: 0.10, x: 0 },
+        { opacity: 0.14, x: 22, duration: haloCycle, ease: "sine.inOut",
+          yoyo: true, repeat: finiteCycles(haloCycle) },
+        0);
 
-      tl.fromTo("#scene-hook .ambient-rose",
-        { opacity: 0.0 },
-        { opacity: 1.0, duration: 1.2, ease: "power1.out" },
-        0
-      );
+      const tickCycle = 1.5;
+      tl.fromTo(q(".bg-hairline-tick"),
+        { scaleX: 0.92 },
+        { scaleX: 1.0, duration: tickCycle, ease: "sine.inOut",
+          yoyo: true, repeat: finiteCycles(tickCycle) },
+        0);
 
-      tl.fromTo("#scene-hook .beat-marker",
+      tl.fromTo(q(".beat-marker"),
         { opacity: 0 },
-        { opacity: 1, duration: 0.4, ease: "sine.inOut" },
-        0.10
-      );
+        { opacity: 1, duration: 0.6, ease: "expo.out" },
+        0.2);
 
-      tl.fromTo("#scene-hook .caption-plate",
+      tl.fromTo(q(".caption-plate"),
         { opacity: 0, y: 24 },
-        { opacity: 1, y: 0, duration: 0.9, ease: "power2.inOut" },
-        0.15
-      );
+        { opacity: 1, y: 0, duration: 0.9, ease: "sine.inOut" },
+        0.5);
 
-      tl.fromTo("#scene-hook .caption-text",
+      tl.fromTo(q(".caption-text"),
         { opacity: 0, y: 12 },
-        { opacity: 1, y: 0, duration: 0.7, ease: "power1.out" },
-        0.30
-      );
+        { opacity: 1, y: 0, duration: 0.8, ease: "power2.out" },
+        0.65);
 
-      tl.fromTo("#scene-hook .hairline-rule",
+      tl.fromTo(q(".hairline-rule"),
         { scaleX: 0 },
-        { scaleX: 1, duration: 0.7, ease: "sine.inOut" },
-        0.35
-      );
+        { scaleX: 1, duration: 0.7, ease: "power1.out" },
+        1.1);
 
-      tl.fromTo("#scene-hook .pull-line",
+      tl.fromTo(q(".pull-line"),
         { opacity: 0, y: 18 },
-        { opacity: 1, y: 0, duration: 0.9, ease: "power3.out" },
-        0.45
-      );
+        { opacity: 1, y: 0, duration: 0.95, ease: "power3.out" },
+        1.4);
 
       window.__sceneTimelines["hook"] = tl;
     })();
@@ -266,191 +305,209 @@
 </div>
 <!-- beat: thesis -->
 <div id="scene-thesis" class="scene clip"
-     data-start="1.34" data-duration="12.26" data-track-index="1"
+     data-start="4.0" data-duration="11.5" data-track-index="1"
      data-width="1080" data-height="1920">
   <style>
     #scene-thesis {
       position: absolute;
       inset: 0;
       opacity: 0;
-    }
-
-    #scene-thesis .scene-bg {
-      position: absolute;
-      inset: 0;
       background: #1a1614;
+      overflow: hidden;
+      font-family: "Inter", sans-serif;
+      color: #f4ebdc;
     }
 
-    #scene-thesis .warm-grain {
-      position: absolute;
-      inset: 0;
-      background:
-        radial-gradient(circle at 20% 30%, rgba(180, 160, 140, 0.08), transparent 50%),
-        radial-gradient(circle at 80% 70%, rgba(180, 160, 140, 0.08), transparent 50%);
-      mix-blend-mode: overlay;
+    #scene-thesis .bg-grain {
+      position: absolute; inset: 0; pointer-events: none;
+      background-image:
+        radial-gradient(rgba(36,31,27,0.55) 1px, transparent 1px),
+        radial-gradient(rgba(36,31,27,0.35) 1px, transparent 1px);
+      background-size: 3px 3px, 7px 7px;
+      background-position: 0 0, 1px 2px;
+      mix-blend-mode: multiply;
+      opacity: 0.10;
     }
 
-    #scene-thesis .soft-vignette {
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(ellipse at center, transparent 30%, rgba(26, 22, 20, 0.12) 100%);
+    #scene-thesis .bg-vignette {
+      position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(ellipse at 50% 48%,
+        rgba(26,22,20,0) 38%,
+        rgba(26,22,20,0.45) 88%,
+        rgba(26,22,20,0.78) 100%);
+      transform-origin: 50% 50%;
+    }
+
+    #scene-thesis .bg-halo {
+      position: absolute; left: -120px; top: 380px;
+      width: 720px; height: 720px; pointer-events: none;
+      background: radial-gradient(circle at 50% 50%,
+        rgba(232,161,74,0.18) 0%,
+        rgba(232,161,74,0.10) 32%,
+        rgba(192,140,135,0.06) 60%,
+        rgba(232,161,74,0) 78%);
+      filter: blur(8px);
+      opacity: 0.10;
+    }
+
+    #scene-thesis .bg-hairline-tick {
+      position: absolute; top: 80px; right: 64px;
+      width: 96px; height: 1px;
+      background: #e8a14a;
+      opacity: 0.30;
+      transform-origin: right center;
+    }
+
+    #scene-thesis .bg-ghost-type {
+      position: absolute; right: -140px; bottom: 120px;
+      font-family: "Playfair Display", serif;
+      font-style: italic; font-weight: 400;
+      font-size: 480px; line-height: 0.9;
+      color: #f4ebdc;
+      opacity: 0;
+      letter-spacing: -0.02em;
+      pointer-events: none;
+      white-space: nowrap;
     }
 
     #scene-thesis .beat-marker {
-      position: absolute;
-      top: 96px;
-      left: 64px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-family: Inter, sans-serif;
-      font-size: 0.75rem;
-      font-weight: 500;
+      position: absolute; top: 56px; left: 64px;
+      display: flex; align-items: center; gap: 12px;
+      opacity: 0;
+    }
+    #scene-thesis .beat-marker .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: #e8a14a;
+    }
+    #scene-thesis .beat-marker .label {
+      font-family: "Inter", sans-serif;
+      font-size: 0.75rem; font-weight: 500;
       letter-spacing: 0.18em;
       text-transform: uppercase;
-    }
-
-    #scene-thesis .beat-marker-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: #e8a14a;
-      flex-shrink: 0;
-    }
-
-    #scene-thesis .beat-marker-label {
       color: #8a7e72;
-    }
-
-    #scene-thesis .hairline-rule {
-      position: absolute;
-      bottom: 131px;
-      left: 64px;
-      width: 240px;
-      height: 1px;
-      background: #e8a14a;
-      opacity: 0.6;
     }
 
     #scene-thesis .caption-plate {
       position: absolute;
+      left: 64px; right: 64px;
       bottom: 96px;
-      left: 64px;
-      right: 64px;
-      padding: 28px;
-      background: rgba(36, 31, 27, 0.78);
+      padding: 28px 64px;
+      background: rgba(36,31,27,0.78);
       border-radius: 14px;
+      opacity: 0;
+      min-height: 140px;
     }
-
     #scene-thesis .caption-text {
-      font-family: Inter, sans-serif;
-      font-size: 1.5rem;
-      font-weight: 400;
+      position: absolute; left: 64px; right: 64px; top: 28px;
+      max-width: 78%;
+      font-family: "Inter", sans-serif;
+      font-size: 1.5rem; font-weight: 400;
       line-height: 1.45;
       color: #f4ebdc;
-      max-width: 78%;
+      opacity: 0;
       margin: 0;
-      display: none;
-    }
-
-    #scene-thesis #ai-agents {
-      color: inherit;
     }
   </style>
 
   <div class="scene-content">
-    <div class="scene-bg"></div>
-    <div class="warm-grain"></div>
-    <div class="soft-vignette"></div>
+    <div class="bg-grain"></div>
+    <div class="bg-vignette"></div>
+    <div class="bg-halo"></div>
+    <div class="bg-hairline-tick"></div>
+    <div class="bg-ghost-type">signal</div>
 
     <div class="beat-marker">
-      <div class="beat-marker-dot"></div>
-      <span class="beat-marker-label">THESIS &middot; 2 / 3</span>
+      <span class="dot"></span>
+      <span class="label">THESIS &middot; 2 / 3</span>
     </div>
 
-    <div class="hairline-rule"></div>
-
     <div class="caption-plate">
-      <p class="caption-text" id="caption-group-1">i'm increasingly using</p>
-      <p class="caption-text" id="caption-group-2">free open-source tools</p>
-      <p class="caption-text" id="caption-group-3">because i can deploy them for myself easily</p>
-      <p class="caption-text" id="caption-group-4">with the help of <span id="ai-agents">AI agents</span> &mdash; or just write the software I need</p>
+      <p class="caption-text phrase-1">the room has not changed &mdash; you have. you are listening at its pace now.</p>
+      <p class="caption-text phrase-2">the page where the reader's eye slows; the second movement of a chamber piece.</p>
+      <p class="caption-text phrase-3">the hold is the message. nothing competes with the voice in the room.</p>
     </div>
   </div>
 
   <script>
-    (function() {
+    (function () {
       window.__sceneTimelines = window.__sceneTimelines || {};
+      const root = document.getElementById("scene-thesis");
+      const q = (sel) => root.querySelector(sel);
+
+      const grain    = q(".bg-grain");
+      const vignette = q(".bg-vignette");
+      const halo     = q(".bg-halo");
+      const tick     = q(".bg-hairline-tick");
+      const ghost    = q(".bg-ghost-type");
+      const marker   = q(".beat-marker");
+      const plate    = q(".caption-plate");
+      const phrase1  = q(".caption-text.phrase-1");
+      const phrase2  = q(".caption-text.phrase-2");
+      const phrase3  = q(".caption-text.phrase-3");
+
+      const sceneDuration = 11.5;
       const tl = gsap.timeline({ paused: true });
 
-      const g1Start = 0.52;
-      const g1Duration = 1.24;
-      const g2Start = 1.76;
-      const g2Duration = 1.98;
-      const g3Start = 3.74;
-      const g3Duration = 2.12;
-      const g4Start = 5.86;
+      tl.fromTo(marker,
+        { opacity: 0 },
+        { opacity: 1, duration: 0.6, ease: "expo.out" }, 0.3);
 
-      // BG ambient motion (3 decoratives)
-      tl.to(".warm-grain", {
-        x: -2,
-        y: -1,
-        duration: 6,
-        ease: "sine.inOut"
-      }, 0);
+      tl.fromTo(ghost,
+        { opacity: 0 },
+        { opacity: 0.04, duration: 1.4, ease: "sine.inOut" }, 0.4);
 
-      tl.to(".soft-vignette", {
-        scale: 1.04,
-        transformOrigin: "center center",
-        duration: 7,
-        ease: "sine.inOut"
-      }, 0);
+      tl.fromTo(plate,
+        { opacity: 0, y: 24 },
+        { opacity: 1, y: 0, duration: 0.9, ease: "sine.inOut" }, 0.5);
 
-      tl.to(".hairline-rule", {
-        opacity: 0.85,
-        duration: 2.5,
-        ease: "sine.inOut",
-        yoyo: true,
-        repeat: 1
-      }, 0);
+      tl.fromTo(phrase1,
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: 0.8, ease: "sine.inOut" }, 0.65);
 
-      // Caption 1 — entrance only, hard-cut exit (no overlapping opacity tween)
-      tl.set("#caption-group-1", { display: "block" }, g1Start);
-      tl.fromTo("#caption-group-1",
+      const swap1 = 4.2;
+      const swap2 = 8.0;
+      const fadeDur = 0.4;
+
+      tl.to(phrase1,
+        { opacity: 0, duration: fadeDur, ease: "power1.inOut" }, swap1);
+      tl.set(phrase1, { visibility: "hidden" }, swap1 + fadeDur);
+
+      tl.fromTo(phrase2,
         { opacity: 0, y: 8 },
-        { opacity: 1, y: 0, duration: 0.35, ease: "power1.out", immediateRender: false },
-        g1Start);
-      tl.set("#caption-group-1", { display: "none" }, g1Start + g1Duration);
+        { opacity: 1, y: 0, duration: 0.7, ease: "sine.inOut" }, swap1 + 0.1);
 
-      // Caption 2
-      tl.set("#caption-group-2", { display: "block" }, g2Start);
-      tl.fromTo("#caption-group-2",
+      tl.to(phrase2,
+        { opacity: 0, duration: fadeDur, ease: "power1.inOut" }, swap2);
+      tl.set(phrase2, { visibility: "hidden" }, swap2 + fadeDur);
+
+      tl.fromTo(phrase3,
         { opacity: 0, y: 8 },
-        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out", immediateRender: false },
-        g2Start);
-      tl.set("#caption-group-2", { display: "none" }, g2Start + g2Duration);
+        { opacity: 1, y: 0, duration: 0.7, ease: "sine.inOut" }, swap2 + 0.1);
 
-      // Caption 3
-      tl.set("#caption-group-3", { display: "block" }, g3Start);
-      tl.fromTo("#caption-group-3",
-        { opacity: 0, y: 8 },
-        { opacity: 1, y: 0, duration: 0.35, ease: "power1.out", immediateRender: false },
-        g3Start);
-      tl.set("#caption-group-3", { display: "none" }, g3Start + g3Duration);
+      const grainCycle = 6;
+      tl.to(grain,
+        { opacity: 0.08, duration: grainCycle, ease: "sine.inOut",
+          yoyo: true, repeat: Math.floor(sceneDuration / grainCycle) }, 0);
 
-      // Caption 4 — final, no exit; held to scene end
-      tl.set("#caption-group-4", { display: "block" }, g4Start);
-      tl.fromTo("#caption-group-4",
-        { opacity: 0, y: 8 },
-        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out", immediateRender: false },
-        g4Start);
+      const vigCycle = 8;
+      tl.to(vignette,
+        { scale: 1.04, duration: vigCycle, ease: "sine.inOut",
+          yoyo: true, repeat: Math.floor(sceneDuration / vigCycle) }, 0);
 
-      // Highlight on AI agents
-      tl.to("#ai-agents", {
-        color: "#e8a14a",
-        duration: 0.4,
-        ease: "power3.out"
-      }, g4Start + 0.2);
+      const haloCycle = 4.5;
+      tl.to(halo,
+        { opacity: 0.14, x: 20, duration: haloCycle, ease: "sine.inOut",
+          yoyo: true, repeat: Math.floor(sceneDuration / haloCycle) }, 0);
+
+      const tickCycle = 5;
+      tl.to(tick,
+        { scaleX: 0.92, duration: tickCycle, ease: "sine.inOut",
+          yoyo: true, repeat: Math.floor(sceneDuration / tickCycle) }, 0);
+
+      const ghostCycle = 6;
+      tl.to(ghost,
+        { y: -12, duration: ghostCycle, ease: "sine.inOut",
+          yoyo: true, repeat: Math.floor(sceneDuration / ghostCycle) }, 1.8);
 
       window.__sceneTimelines["thesis"] = tl;
     })();
@@ -458,7 +515,7 @@
 </div>
 <!-- beat: payoff -->
 <div id="scene-payoff" class="scene clip"
-     data-start="13.6" data-duration="9.0" data-track-index="1"
+     data-start="15.5" data-duration="7.1" data-track-index="1"
      data-width="1080" data-height="1920">
   <style>
     #scene-payoff {
@@ -478,31 +535,52 @@
     #scene-payoff .bg-grain {
       position: absolute;
       inset: 0;
-      background: radial-gradient(circle at 30% 40%, rgba(232, 161, 74, 0.06), transparent 60%);
-      mix-blend-mode: screen;
-      opacity: 0.55;
+      background-image:
+        radial-gradient(rgba(36, 31, 27, 0.55) 1px, transparent 1px),
+        radial-gradient(rgba(36, 31, 27, 0.30) 1px, transparent 1px);
+      background-size: 3px 3px, 5px 5px;
+      background-position: 0 0, 1px 2px;
+      mix-blend-mode: overlay;
+      opacity: 0;
       pointer-events: none;
     }
 
     #scene-payoff .bg-vignette {
       position: absolute;
       inset: 0;
-      background: radial-gradient(ellipse at 50% 50%, transparent 35%, rgba(26, 22, 20, 0.55) 100%);
+      background: radial-gradient(ellipse at 50% 55%,
+        rgba(26, 22, 20, 0) 0%,
+        rgba(26, 22, 20, 0.18) 55%,
+        rgba(26, 22, 20, 0.45) 100%);
       pointer-events: none;
-      opacity: 0.7;
+      opacity: 0;
     }
 
-    #scene-payoff .bg-gradient-stop {
+    #scene-payoff .bg-halo {
       position: absolute;
-      bottom: -180px;
-      left: -120px;
+      top: 22%;
+      left: 12%;
       width: 720px;
       height: 720px;
-      background: radial-gradient(circle at 50% 50%, rgba(192, 140, 135, 0.20), transparent 70%);
-      border-radius: 50%;
-      filter: blur(80px);
-      opacity: 0.5;
+      background: radial-gradient(circle,
+        rgba(232, 161, 74, 0.12) 0%,
+        rgba(232, 161, 74, 0.06) 35%,
+        rgba(192, 140, 135, 0.04) 60%,
+        transparent 80%);
+      filter: blur(8px);
+      opacity: 0;
       pointer-events: none;
+    }
+
+    #scene-payoff .bg-tick {
+      position: absolute;
+      top: 80px;
+      right: 64px;
+      width: 96px;
+      height: 1px;
+      background-color: #e8a14a;
+      opacity: 0;
+      transform-origin: right center;
     }
 
     #scene-payoff .beat-marker {
@@ -512,11 +590,7 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      font-family: Inter, sans-serif;
-      font-size: 0.75rem;
-      font-weight: 500;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
+      opacity: 0;
     }
 
     #scene-payoff .beat-marker-dot {
@@ -528,61 +602,52 @@
     }
 
     #scene-payoff .beat-marker-label {
+      font-family: Inter, sans-serif;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
       color: #8a7e72;
     }
 
     #scene-payoff .pull-line {
       position: absolute;
-      bottom: 380px;
+      bottom: 472px;
       left: 64px;
       right: 64px;
-      font-family: Playfair Display, serif;
+      font-family: "Playfair Display", serif;
       font-size: 3.25rem;
       font-weight: 400;
       font-style: italic;
       color: #f4ebdc;
-      line-height: 1.2;
+      line-height: 1.18;
       max-width: 70%;
       margin: 0;
-    }
-
-    #scene-payoff .quote-glyph {
-      display: inline-block;
-      font-size: 0.6em;
-      color: #e8a14a;
-      margin-right: 0.3em;
-      vertical-align: 0.35em;
+      text-transform: lowercase;
+      opacity: 0;
     }
 
     #scene-payoff .hairline-rule {
       position: absolute;
-      bottom: 348px;
+      bottom: 432px;
       left: 64px;
       width: 240px;
       height: 1px;
       background-color: #e8a14a;
       opacity: 0.6;
       transform-origin: left center;
-    }
-
-    #scene-payoff .sign-off-glow {
-      position: absolute;
-      bottom: 360px;
-      left: 32px;
-      width: 600px;
-      height: 80px;
-      background: radial-gradient(ellipse at center, rgba(232, 161, 74, 0.16), transparent 75%);
-      pointer-events: none;
+      transform: scaleX(0);
     }
 
     #scene-payoff .caption-plate {
       position: absolute;
-      bottom: 96px;
+      bottom: 152px;
       left: 64px;
       right: 64px;
-      padding: 28px;
+      padding: 28px 64px;
       background-color: rgba(36, 31, 27, 0.78);
       border-radius: 14px;
+      opacity: 0;
     }
 
     #scene-payoff .caption-text {
@@ -593,13 +658,13 @@
       color: #f4ebdc;
       max-width: 78%;
       margin: 0;
-      display: none;
+      opacity: 0;
     }
 
-    #scene-payoff .timestamp {
+    #scene-payoff .caption-timestamp {
       position: absolute;
-      bottom: 124px;
-      right: 96px;
+      bottom: 16px;
+      right: 28px;
       font-family: Inter, sans-serif;
       font-size: 0.75rem;
       font-weight: 500;
@@ -607,233 +672,175 @@
       text-transform: uppercase;
       color: #8a7e72;
       font-variant-numeric: tabular-nums;
+      opacity: 0;
     }
   </style>
 
   <div class="scene-content">
-    <div class="bg-grain"></div>
-    <div class="bg-vignette"></div>
-    <div class="bg-gradient-stop"></div>
+    <div class="bg-grain" aria-hidden="true"></div>
+    <div class="bg-vignette" aria-hidden="true"></div>
+    <div class="bg-halo" aria-hidden="true"></div>
+    <div class="bg-tick" aria-hidden="true"></div>
 
     <div class="beat-marker">
       <div class="beat-marker-dot"></div>
-      <div class="beat-marker-label">PAYOFF &middot; 3 / 3</div>
+      <div class="beat-marker-label">Payoff &middot; 3 / 3</div>
     </div>
 
-    <div class="sign-off-glow"></div>
+    <p class="pull-line">the signal was always quieter than the room.</p>
 
-    <div class="pull-line">
-      <span class="quote-glyph">&ldquo;</span>return to the roots.
-    </div>
-
-    <div class="hairline-rule"></div>
+    <div class="hairline-rule" aria-hidden="true"></div>
 
     <div class="caption-plate">
-      <p class="caption-text" id="payoff-cg-1">i thought, why don't we return to the roots &mdash; good old software you pay for once and use for life?</p>
-      <p class="caption-text" id="payoff-cg-2">yes, maybe it's not as interesting from a business point-of-view.</p>
+      <p class="caption-text">and that&rsquo;s what stays &mdash; not the noise, but the breath beneath it.</p>
+      <span class="caption-timestamp">0:22.6 &middot; soft signal</span>
     </div>
-
-    <div class="timestamp">0:13.6</div>
   </div>
 
   <script>
-    (function() {
+    (function () {
       window.__sceneTimelines = window.__sceneTimelines || {};
+      const sceneId = "payoff";
+      const sceneDuration = 7.1;
+
       const tl = gsap.timeline({ paused: true });
 
+      // Scene container fade-in (non-first scene starts opacity 0; transitions node fades in)
+      tl.fromTo("#scene-payoff",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.6, ease: "sine.inOut" },
+        0.0);
+
+      // BG decoratives — entrances via fromTo, first entrance offset 0.1s
       tl.fromTo("#scene-payoff .bg-grain",
-        { x: 0, y: 0 },
-        { x: -2, y: -1, duration: 6, ease: "sine.inOut" },
-        0
-      );
+        { opacity: 0 },
+        { opacity: 0.10, duration: 0.9, ease: "sine.inOut" },
+        0.10);
 
       tl.fromTo("#scene-payoff .bg-vignette",
-        { scale: 1.0 },
-        { scale: 1.04, transformOrigin: "center center", duration: 7, ease: "sine.inOut" },
-        0
-      );
+        { opacity: 0 },
+        { opacity: 1, duration: 0.9, ease: "sine.inOut" },
+        0.10);
 
-      tl.fromTo("#scene-payoff .bg-gradient-stop",
-        { scale: 1.0, opacity: 0.45 },
-        { scale: 1.06, opacity: 0.55, duration: 8, ease: "sine.inOut" },
-        0
-      );
+      tl.fromTo("#scene-payoff .bg-halo",
+        { opacity: 0 },
+        { opacity: 1, duration: 1.1, ease: "sine.inOut" },
+        0.15);
 
+      tl.fromTo("#scene-payoff .bg-tick",
+        { opacity: 0, scaleX: 0.92 },
+        { opacity: 0.30, scaleX: 1, duration: 0.9, ease: "power1.out" },
+        0.20);
+
+      // Beat marker — fade-up only (anchored, not animated in position)
       tl.fromTo("#scene-payoff .beat-marker",
         { opacity: 0 },
-        { opacity: 1, duration: 0.4, ease: "sine.inOut" },
-        0.10
-      );
+        { opacity: 1, duration: 0.6, ease: "expo.out" },
+        0.30);
 
-      tl.fromTo("#scene-payoff .sign-off-glow",
-        { opacity: 0 },
-        { opacity: 1, duration: 0.8, ease: "sine.inOut" },
-        0.20
-      );
-
-      tl.fromTo("#scene-payoff .hairline-rule",
-        { scaleX: 0 },
-        { scaleX: 1, duration: 0.7, ease: "sine.inOut" },
-        0.25
-      );
-
-      tl.fromTo("#scene-payoff .quote-glyph",
-        { opacity: 0, scale: 0.92 },
-        { opacity: 1, scale: 1, duration: 0.6, ease: "power1.out" },
-        0.30
-      );
-
-      tl.fromTo("#scene-payoff .pull-line",
-        { opacity: 0, y: 18 },
-        { opacity: 1, y: 0, duration: 0.9, ease: "power2.inOut" },
-        0.30
-      );
-
+      // Caption plate — settle up
       tl.fromTo("#scene-payoff .caption-plate",
         { opacity: 0, y: 24 },
-        { opacity: 1, y: 0, duration: 0.9, ease: "power2.inOut" },
-        0.20
-      );
+        { opacity: 1, y: 0, duration: 0.9, ease: "sine.inOut" },
+        0.50);
 
-      const cg1Start = 0.40;
-      const cg1End = 5.20;
-      tl.set("#payoff-cg-1", { display: "block" }, cg1Start);
-      tl.fromTo("#payoff-cg-1",
-        { opacity: 0, y: 8 },
-        { opacity: 1, y: 0, duration: 0.40, ease: "power1.out", immediateRender: false },
-        cg1Start
-      );
-      tl.set("#payoff-cg-1", { display: "none" }, cg1End);
+      // Caption text — bleed in
+      tl.fromTo("#scene-payoff .caption-text",
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: 0.8, ease: "sine.inOut" },
+        0.65);
 
-      const cg2Start = 5.25;
-      tl.set("#payoff-cg-2", { display: "block" }, cg2Start);
-      tl.fromTo("#payoff-cg-2",
-        { opacity: 0, y: 8 },
-        { opacity: 1, y: 0, duration: 0.40, ease: "power2.out", immediateRender: false },
-        cg2Start
-      );
+      // Structural hairline — draw left to right
+      tl.fromTo("#scene-payoff .hairline-rule",
+        { scaleX: 0 },
+        { scaleX: 1, duration: 0.7, ease: "power1.out" },
+        1.10);
 
-      tl.fromTo("#scene-payoff .timestamp",
-        { opacity: 0, y: 6 },
-        { opacity: 1, y: 0, duration: 0.6, ease: "power1.out" },
-        0.60
-      );
+      // Pull-line (sign-off) — eases up
+      tl.fromTo("#scene-payoff .pull-line",
+        { opacity: 0, y: 18 },
+        { opacity: 1, y: 0, duration: 0.9, ease: "sine.inOut" },
+        1.40);
 
-      tl.to("#scene-payoff",
-        { opacity: 0, duration: 0.7, ease: "power1.inOut" },
-        8.30
-      );
+      // Pull-line glow — bloom (the only permitted box-shadow in the composition)
+      tl.fromTo("#scene-payoff .pull-line",
+        { textShadow: "0 0 0px rgba(232, 161, 74, 0)" },
+        { textShadow: "0 0 24px rgba(232, 161, 74, 0.32)", duration: 1.0, ease: "sine.inOut" },
+        1.80);
 
-      window.__sceneTimelines["payoff"] = tl;
-    })();
-  </script>
-</div>
-<!-- p4_assemble_index: captions -->
-<div id="captions-layer" class="captions-layer">
-  <style>
-    #captions-layer {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      overflow: visible;
-    }
+      // Timestamp — quiet fade-up
+      tl.fromTo("#scene-payoff .caption-timestamp",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.7, ease: "sine.inOut" },
+        2.20);
 
-    #captions-layer .cg {
-      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 1.5rem;
-      font-weight: 400;
-      line-height: 1.45;
-      color: #f4ebdc;
-      background-color: rgba(36, 31, 27, 0.78);
-      padding: 28px;
-      border-radius: 14px;
-      opacity: 0;
-      position: absolute;
-      bottom: 620px;
-      left: 64px;
-      width: fit-content;
-      max-width: 78%;
-      text-align: left;
-      white-space: normal;
-    }
-  </style>
+      // Ambient motion — finite repeats only (Math.floor; never the infinite sentinel)
+      const grainCycle = 3.0;
+      tl.to("#scene-payoff .bg-grain", {
+        opacity: 0.12,
+        yoyo: true,
+        duration: grainCycle,
+        ease: "sine.inOut",
+        repeat: Math.floor(sceneDuration / grainCycle)
+      }, 1.0);
 
-  <!-- Transcript groups synced to final.json word-level captions -->
-  <div class="cg" id="cg-0">Age of artificial intelligence</div>
-  <div class="cg" id="cg-1">when I'm increasingly using</div>
-  <div class="cg" id="cg-2">free open-source tools</div>
-  <div class="cg" id="cg-3">because I can simply deploy</div>
-  <div class="cg" id="cg-4">them for myself easily</div>
-  <div class="cg" id="cg-5">with the help of AI agents</div>
-  <div class="cg" id="cg-6">or just write the software</div>
-  <div class="cg" id="cg-7">I need for work myself</div>
-  <div class="cg" id="cg-8">I thought why don't we</div>
-  <div class="cg" id="cg-9">return to the roots</div>
-  <div class="cg" id="cg-10">to good old software</div>
-  <div class="cg" id="cg-11">that you pay for once</div>
-  <div class="cg" id="cg-12">and use for life</div>
-  <div class="cg" id="cg-13">Yes maybe it's not as</div>
-  <div class="cg" id="cg-14">interesting from a business point-of-view</div>
+      const vigCycle = 4.0;
+      tl.to("#scene-payoff .bg-vignette", {
+        scale: 1.04,
+        transformOrigin: "50% 55%",
+        yoyo: true,
+        duration: vigCycle,
+        ease: "sine.inOut",
+        repeat: Math.floor(sceneDuration / vigCycle)
+      }, 1.0);
 
-  <script>
-    (function() {
-      // Reference transcript: final.json
-      var GROUPS = [
-        { id: "cg-0", start: 0.05, end: 1.27 },
-        { id: "cg-1", start: 1.4, end: 2.721 },
-        { id: "cg-2", start: 2.84, end: 3.98 },
-        { id: "cg-3", start: 4.06, end: 5.58 },
-        { id: "cg-4", start: 5.64, end: 7.021 },
-        { id: "cg-5", start: 7.08, end: 8.4 },
-        { id: "cg-6", start: 8.78, end: 9.981 },
-        { id: "cg-7", start: 10.04, end: 11.221 },
-        { id: "cg-8", start: 12.049, end: 13.049 },
-        { id: "cg-9", start: 13.109, end: 14.189 },
-        { id: "cg-10", start: 14.349, end: 15.629 },
-        { id: "cg-11", start: 15.689, end: 17.209 },
-        { id: "cg-12", start: 17.269, end: 18.389 },
-        { id: "cg-13", start: 18.809, end: 20.209 },
-        { id: "cg-14", start: 20.289, end: 22.15 }
+      const haloCycle = 4.5;
+      tl.to("#scene-payoff .bg-halo", {
+        opacity: 0.85,
+        x: 20,
+        yoyo: true,
+        duration: haloCycle,
+        ease: "sine.inOut",
+        repeat: Math.floor(sceneDuration / haloCycle)
+      }, 1.0);
+
+      const tickCycle = 2.5;
+      tl.to("#scene-payoff .bg-tick", {
+        scaleX: 0.92,
+        yoyo: true,
+        duration: tickCycle,
+        ease: "sine.inOut",
+        repeat: Math.floor(sceneDuration / tickCycle)
+      }, 1.2);
+
+      // Final fade (HR 4 — permitted because is_final is True).
+      // Audio resolves ~6.2s; the 0.4s "breath after the last word" is absorbed
+      // into the front of the 0.9s fade so the whole composition lands at scene end.
+      const fadeStart = 6.20;
+      const fadeDur = 0.90;
+      const fadeTargets = [
+        "#scene-payoff .pull-line",
+        "#scene-payoff .hairline-rule",
+        "#scene-payoff .caption-plate",
+        "#scene-payoff .caption-text",
+        "#scene-payoff .caption-timestamp",
+        "#scene-payoff .beat-marker",
+        "#scene-payoff .bg-grain",
+        "#scene-payoff .bg-vignette",
+        "#scene-payoff .bg-halo",
+        "#scene-payoff .bg-tick"
       ];
+      tl.to(fadeTargets,
+        { opacity: 0, duration: fadeDur, ease: "power1.inOut" },
+        fadeStart);
+      tl.to("#scene-payoff",
+        { opacity: 0, duration: fadeDur, ease: "power1.inOut" },
+        fadeStart);
 
-      window.__captionTimelines = window.__captionTimelines || {};
-      var tl = gsap.timeline({ paused: true });
+      // Hard-kill at fade-end so elements don't resurrect under non-linear seek.
+      tl.set(fadeTargets, { visibility: "hidden" }, fadeStart + fadeDur);
 
-      GROUPS.forEach(function (group) {
-        var el = document.getElementById(group.id);
-        if (!el) return;
-
-        // Entrance: fade in + subtle rise (sine.inOut from DESIGN.md motion)
-        tl.fromTo(
-          el,
-          { opacity: 0, y: 24 },
-          { opacity: 1, y: 0, duration: 0.9, ease: "sine.inOut" },
-          group.start
-        );
-
-        // Hard kill at group.end (canon §"Caption Exit Guarantee")
-        tl.set(el, { opacity: 0, visibility: "hidden" }, group.end);
-      });
-
-      // Self-lint per canon §"Caption Exit Guarantee"
-      GROUPS.forEach(function (group, gi) {
-        var el = document.getElementById(group.id);
-        if (!el) return;
-        tl.seek(group.end + 0.01);
-        var computed = window.getComputedStyle(el);
-        if (computed.opacity !== "0" && computed.visibility !== "hidden") {
-          console.warn(
-            "[caption-lint] group " + gi + " still visible at t=" + (group.end + 0.01).toFixed(2) + "s"
-          );
-        }
-      });
-      tl.seek(0);
-
-      window.__captionTimelines["captions"] = tl;
-
-      // Nest under the root timeline so it advances with composition seek
-      var root = window.__timelines && window.__timelines["root"];
-      if (root) root.add(tl, 0);
+      window.__sceneTimelines[sceneId] = tl;
     })();
   </script>
 </div>
@@ -844,7 +851,7 @@
   var root = window.__timelines && window.__timelines["root"];
   if (!root) return;
   var ids = ["hook", "thesis", "payoff"];
-  var starts = [0.0, 1.34, 13.6];
+  var starts = [0.0, 4.0, 15.5];
   ids.forEach(function(id, i) {
     if (i > 0) {
       root.set('#scene-' + id, { opacity: 1 }, starts[i]);
