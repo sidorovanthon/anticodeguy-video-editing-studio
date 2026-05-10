@@ -1,0 +1,238 @@
+<div id="scene-hook" class="scene clip"
+     data-start="0.0" data-duration="2.0" data-track-index="1"
+     data-width="1080" data-height="1920">
+  <style>
+    #scene-hook {
+      position: absolute;
+      inset: 0;
+      opacity: 1;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse at 50% 45%, var(--background-highlight-1, #1a1611) 0%, var(--background, #0d0b08) 55%, var(--background-stop-2, #060504) 100%);
+      font-family: "Inter", sans-serif;
+      color: #f4ede0;
+    }
+    #scene-hook .scene-content {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      padding: 96px 64px;
+      box-sizing: border-box;
+    }
+    #scene-hook .bg-vignette {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(13, 11, 8, 0) 40%, #0a0907 80%, #060504 100%);
+      pointer-events: none;
+      z-index: 1;
+    }
+    #scene-hook .ambient-glow {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 60%, rgba(200, 160, 75, 0.55) 0%, rgba(200, 160, 75, 0) 65%);
+      opacity: 0.05;
+      pointer-events: none;
+      z-index: 2;
+      mix-blend-mode: screen;
+    }
+    #scene-hook .grain {
+      position: absolute;
+      inset: 0;
+      background-image:
+        repeating-radial-gradient(circle at 17% 23%, rgba(244, 237, 224, 0.06) 0 1px, transparent 1px 3px),
+        repeating-radial-gradient(circle at 71% 64%, rgba(244, 237, 224, 0.05) 0 1px, transparent 1px 4px),
+        repeating-radial-gradient(circle at 39% 81%, rgba(244, 237, 224, 0.04) 0 1px, transparent 1px 2px);
+      mix-blend-mode: overlay;
+      opacity: 0.85;
+      pointer-events: none;
+      z-index: 3;
+    }
+    #scene-hook .ghost-word {
+      position: absolute;
+      top: 12%;
+      left: -2%;
+      font-family: "Inter", sans-serif;
+      font-weight: 300;
+      font-size: 14rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #f4ede0;
+      opacity: 0.04;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 4;
+    }
+    #scene-hook .hairline-rail {
+      position: absolute;
+      top: 0;
+      left: 64px;
+      width: 1px;
+      height: 100%;
+      background: #b48f43;
+      opacity: 0.6;
+      transform-origin: top;
+      transform: scaleY(0);
+      z-index: 5;
+    }
+    #scene-hook .headline {
+      position: absolute;
+      top: 18%;
+      left: 128px;
+      right: 64px;
+      font-family: "Inter", sans-serif;
+      font-weight: 300;
+      font-size: 4rem;
+      line-height: 1.1;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #f4ede0;
+      z-index: 6;
+    }
+    #scene-hook .headline .line {
+      display: block;
+      opacity: 0;
+    }
+    #scene-hook .headline .line-2 {
+      margin-top: 0.32em;
+    }
+    #scene-hook .headline .line-3 {
+      margin-top: 0.32em;
+      color: #f4ede0;
+    }
+    #scene-hook .timecode {
+      position: absolute;
+      top: 96px;
+      right: 64px;
+      font-family: "Inter", sans-serif;
+      font-weight: 400;
+      font-size: 0.875rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #6b5e48;
+      font-variant-numeric: tabular-nums;
+      opacity: 0;
+      z-index: 7;
+    }
+    #scene-hook .corner-mark {
+      position: absolute;
+      bottom: 96px;
+      right: 64px;
+      font-family: "Inter", sans-serif;
+      font-weight: 400;
+      font-size: 0.75rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #5f5440;
+      opacity: 0;
+      z-index: 7;
+    }
+    #scene-hook .ground-mark {
+      position: absolute;
+      bottom: 18%;
+      left: 64px;
+      width: 240px;
+      height: 1px;
+      background: #a07e3b;
+      opacity: 0.4;
+      transform-origin: left;
+      transform: scaleX(0);
+      z-index: 5;
+    }
+  </style>
+  <div class="scene-content">
+    <div class="bg-vignette"></div>
+    <div class="ambient-glow"></div>
+    <div class="grain"></div>
+    <div class="ghost-word">INTELLIGENCE</div>
+    <div class="hairline-rail"></div>
+    <div class="ground-mark"></div>
+    <h1 class="headline">
+      <span class="line line-1">Age of</span>
+      <span class="line line-2">Artificial</span>
+      <span class="line line-3">Intelligence</span>
+    </h1>
+    <div class="timecode">EP&middot;01&nbsp;&nbsp;/&nbsp;&nbsp;00:00</div>
+    <div class="corner-mark">Velvet Standard &middot; HOOK</div>
+  </div>
+  <script>
+    (function () {
+      window.__sceneTimelines = window.__sceneTimelines || {};
+      const root = document.getElementById("scene-hook");
+      const q = (sel) => root.querySelector(sel);
+      const sceneDuration = 2.0;
+
+      const tl = gsap.timeline({ paused: true });
+
+      const line1 = q(".line-1");
+      const line2 = q(".line-2");
+      const line3 = q(".line-3");
+      const rail = q(".hairline-rail");
+      const ground = q(".ground-mark");
+      const tc = q(".timecode");
+      const corner = q(".corner-mark");
+      const ghost = q(".ghost-word");
+      const glow = q(".ambient-glow");
+
+      tl.fromTo(rail,
+        { scaleY: 0, opacity: 0.6 },
+        { scaleY: 1, opacity: 0.6, duration: 0.9, ease: "sine.inOut" }, 0);
+
+      tl.fromTo(line1,
+        { opacity: 0, y: 24 },
+        { opacity: 1, y: 0, duration: 1.0, ease: "sine.inOut" }, 0.10);
+      tl.fromTo(line2,
+        { opacity: 0, y: 24 },
+        { opacity: 1, y: 0, duration: 1.0, ease: "sine.inOut" }, 0.28);
+      tl.fromTo(line3,
+        { opacity: 0, y: 24 },
+        { opacity: 1, y: 0, duration: 1.0, ease: "sine.inOut" }, 0.46);
+
+      tl.fromTo(tc,
+        { opacity: 0, y: -8 },
+        { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 0.40);
+
+      tl.fromTo(corner,
+        { opacity: 0, x: 12 },
+        { opacity: 0.85, x: 0, duration: 0.6, ease: "power2.out" }, 0.55);
+
+      tl.fromTo(ground,
+        { scaleX: 0 },
+        { scaleX: 1, duration: 0.8, ease: "expo.out" }, 0.65);
+
+      const ambientCycle = 1.6;
+      const ambientRepeat = Math.floor(sceneDuration / ambientCycle);
+      tl.to(glow,
+        { opacity: 0.10, duration: ambientCycle, ease: "sine.inOut", yoyo: true, repeat: ambientRepeat }, 0);
+
+      const railBreathCycle = 1.4;
+      const railBreathRepeat = Math.floor(sceneDuration / railBreathCycle);
+      tl.to(rail,
+        { opacity: 0.9, duration: railBreathCycle, ease: "sine.inOut", yoyo: true, repeat: railBreathRepeat }, 0.2);
+
+      const ghostCycle = 1.8;
+      const ghostRepeat = Math.floor(sceneDuration / ghostCycle);
+      tl.fromTo(ghost,
+        { y: -8, opacity: 0.04 },
+        { y: 0, opacity: 0.05, duration: ghostCycle, ease: "sine.inOut", yoyo: true, repeat: ghostRepeat }, 0);
+
+      const fadeStart = sceneDuration - 0.4;
+      const fadeDur = 0.3;
+      const hideAt = fadeStart + fadeDur;
+
+      tl.to(line1, { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.to(line2, { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.to(line3, { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.to(tc,    { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.to(corner,{ opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+
+      tl.set(line1,  { visibility: "hidden" }, hideAt);
+      tl.set(line2,  { visibility: "hidden" }, hideAt);
+      tl.set(line3,  { visibility: "hidden" }, hideAt);
+      tl.set(tc,     { visibility: "hidden" }, hideAt);
+      tl.set(corner, { visibility: "hidden" }, hideAt);
+
+      window.__sceneTimelines["hook"] = tl;
+    })();
+  </script>
+</div>

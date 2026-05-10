@@ -1,0 +1,392 @@
+<div id="scene-payoff" class="scene clip"
+     data-start="16.0" data-duration="10.5" data-track-index="1"
+     data-width="1080" data-height="1920">
+  <style>
+    #scene-payoff {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 60%, rgba(200, 160, 75, 0.04) 0%, transparent 65%),
+        linear-gradient(180deg, #0d0b08 0%, #0a0907 55%, #060504 100%);
+      color: #f4ede0;
+      font-family: "Inter", sans-serif;
+    }
+
+    #scene-payoff .sp-content {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      padding: 96px 64px;
+      box-sizing: border-box;
+    }
+
+    /* BG layer 1 — ambient brass glow (breathing) */
+    #scene-payoff .sp-glow {
+      position: absolute;
+      left: 50%;
+      top: 60%;
+      transform: translate(-50%, -50%);
+      width: 1400px;
+      height: 1400px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(200, 160, 75, 0.10) 0%, rgba(200, 160, 75, 0.04) 35%, transparent 65%);
+      pointer-events: none;
+      will-change: opacity;
+    }
+
+    /* BG layer 2 — subtle procedural grain (static, paper-stain) */
+    #scene-payoff .sp-grain {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.05;
+      background-image:
+        radial-gradient(rgba(244, 237, 224, 0.55) 1px, transparent 1px),
+        radial-gradient(rgba(244, 237, 224, 0.35) 1px, transparent 1px);
+      background-size: 3px 3px, 5px 5px;
+      background-position: 0 0, 1px 2px;
+      mix-blend-mode: screen;
+    }
+
+    /* BG layer 3 — ghost faint column ruling (drifts) */
+    #scene-payoff .sp-column-rule {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 33%;
+      width: 1px;
+      background: #5f5440;
+      opacity: 0.18;
+      will-change: transform;
+    }
+
+    /* FG structural — vertical brass hairline rail */
+    #scene-payoff .sp-rail {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 64px;
+      width: 1px;
+      background: #b48f43;
+      transform-origin: top center;
+      opacity: 0.6;
+      will-change: opacity, transform;
+    }
+
+    /* FG accent — horizontal "ground line" at 80% frame height */
+    #scene-payoff .sp-ground {
+      position: absolute;
+      left: 64px;
+      right: 64px;
+      top: 80%;
+      height: 1px;
+      background: #a07e3b;
+      opacity: 0.22;
+      transform: scaleX(0);
+      transform-origin: left center;
+      will-change: transform;
+    }
+
+    /* MG — role chip (upper third) */
+    #scene-payoff .sp-role-chip {
+      position: absolute;
+      top: 11%;
+      left: 96px;
+      max-width: 60%;
+      color: #6b5e48;
+      font-family: "Inter", sans-serif;
+      font-weight: 400;
+      font-size: 0.95rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      line-height: 1.7;
+      will-change: opacity, transform;
+    }
+    #scene-payoff .sp-role-chip .sp-role-line {
+      display: block;
+      overflow: hidden;
+      white-space: nowrap;
+      border-right: 1px solid rgba(200, 160, 75, 0.0);
+    }
+    #scene-payoff .sp-role-chip .sp-role-text {
+      display: inline-block;
+      width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      vertical-align: bottom;
+    }
+
+    /* FG — timecode chip (top-right) */
+    #scene-payoff .sp-timecode {
+      position: absolute;
+      top: 96px;
+      right: 64px;
+      color: #6b5e48;
+      font-family: "Inter", sans-serif;
+      font-weight: 400;
+      font-size: 0.875rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-variant-numeric: tabular-nums;
+      will-change: opacity;
+    }
+
+    /* MG — caption strip (lower rail) */
+    #scene-payoff .sp-caption {
+      position: absolute;
+      left: 96px;
+      right: 96px;
+      bottom: 12%;
+      color: #dcd5c9;
+      font-family: "Inter", sans-serif;
+      font-weight: 300;
+      font-size: 1.7rem;
+      line-height: 1.6;
+      letter-spacing: 0.01em;
+      will-change: opacity, transform;
+    }
+    #scene-payoff .sp-caption .sp-emph {
+      color: #ffffff;
+      position: relative;
+      display: inline-block;
+    }
+    #scene-payoff .sp-caption .sp-emph::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -6px;
+      height: 2px;
+      background: #d6b466;
+      transform: scaleX(0);
+      transform-origin: left center;
+      will-change: transform;
+    }
+
+    /* MG — body fragment (the closing aspirational thought, upper-mid) */
+    #scene-payoff .sp-body {
+      position: absolute;
+      left: 96px;
+      right: 30%;
+      top: 22%;
+      color: #f4ede0;
+      font-family: "Inter", sans-serif;
+      font-weight: 300;
+      font-size: 1.45rem;
+      line-height: 1.6;
+      letter-spacing: 0.005em;
+      will-change: opacity, transform;
+    }
+
+    /* FG — small attribution mark (bottom-right, midtone) */
+    #scene-payoff .sp-mark {
+      position: absolute;
+      right: 64px;
+      bottom: 96px;
+      color: #6b5e48;
+      font-family: "Inter", sans-serif;
+      font-weight: 400;
+      font-size: 0.78rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      font-variant-numeric: tabular-nums;
+      will-change: opacity;
+    }
+  </style>
+
+  <div class="sp-content">
+    <div class="sp-glow"></div>
+    <div class="sp-grain"></div>
+    <div class="sp-column-rule"></div>
+
+    <div class="sp-rail"></div>
+    <div class="sp-ground"></div>
+
+    <div class="sp-role-chip">
+      <span class="sp-role-line"><span class="sp-role-text" data-text="PAY ONCE">PAY ONCE</span></span>
+      <span class="sp-role-line"><span class="sp-role-text" data-text="USE FOR LIFE">USE FOR LIFE</span></span>
+    </div>
+
+    <div class="sp-timecode">EP&middot;01 / <span class="sp-tc-num">00:16</span></div>
+
+    <div class="sp-body">return to the roots &mdash; software you pay for once, the kind you keep on a shelf, the kind that ages with you.</div>
+
+    <div class="sp-caption">
+      software you keep <span class="sp-emph">for life</span>.
+    </div>
+
+    <div class="sp-mark">END / EP&middot;01</div>
+  </div>
+
+  <script>
+    (function () {
+      window.__sceneTimelines = window.__sceneTimelines || {};
+      const sceneDuration = 10.5;
+      const root = document.getElementById("scene-payoff");
+      const glow = root.querySelector(".sp-glow");
+      const grain = root.querySelector(".sp-grain");
+      const column = root.querySelector(".sp-column-rule");
+      const rail = root.querySelector(".sp-rail");
+      const ground = root.querySelector(".sp-ground");
+      const roleChip = root.querySelector(".sp-role-chip");
+      const roleTexts = root.querySelectorAll(".sp-role-chip .sp-role-text");
+      const timecode = root.querySelector(".sp-timecode");
+      const tcNum = root.querySelector(".sp-tc-num");
+      const body = root.querySelector(".sp-body");
+      const caption = root.querySelector(".sp-caption");
+      const emphMark = root.querySelector(".sp-caption .sp-emph");
+      const mark = root.querySelector(".sp-mark");
+
+      const tl = gsap.timeline({ paused: true });
+
+      tl.fromTo(rail,
+        { scaleY: 0, transformOrigin: "top center", opacity: 0 },
+        { scaleY: 1, opacity: 0.6, duration: 0.9, ease: "sine.inOut" }, 0.0);
+
+      tl.fromTo(grain,
+        { opacity: 0 },
+        { opacity: 0.05, duration: 0.8, ease: "sine.inOut" }, 0.0);
+
+      tl.fromTo(column,
+        { opacity: 0 },
+        { opacity: 0.18, duration: 1.0, ease: "sine.inOut" }, 0.05);
+
+      tl.fromTo(glow,
+        { opacity: 0.05 },
+        { opacity: 0.10, duration: 1.2, ease: "sine.inOut" }, 0.1);
+
+      tl.fromTo(ground,
+        { scaleX: 0 },
+        { scaleX: 1, duration: 1.2, ease: "power3.out" }, 0.2);
+
+      tl.fromTo(timecode,
+        { opacity: 0, y: -8 },
+        { opacity: 1, y: 0, duration: 0.7, ease: "power2.out" }, 0.25);
+
+      tl.fromTo(roleChip,
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 0.3);
+      roleTexts.forEach((el, i) => {
+        const txt = el.getAttribute("data-text") || el.textContent;
+        const w = txt.length + "ch";
+        tl.fromTo(el,
+          { width: "0ch" },
+          { width: w, duration: Math.max(0.35, txt.length * 0.022), ease: "power3.out" },
+          0.35 + i * 0.45);
+      });
+
+      tl.fromTo(body,
+        { opacity: 0, y: 24 },
+        { opacity: 1, y: 0, duration: 1.0, ease: "expo.out" }, 1.4);
+
+      tl.fromTo(caption,
+        { opacity: 0, y: 16 },
+        { opacity: 1, y: 0, duration: 0.9, ease: "power3.out" }, 2.6);
+
+      tl.fromTo(emphMark,
+        { color: "#dcd5c9" },
+        { color: "#ffffff", duration: 0.5, ease: "sine.inOut" }, 3.4);
+
+      tl.fromTo("#scene-payoff .sp-caption .sp-emph::after",
+        { },
+        { duration: 0.0001 }, 0);
+      tl.to(emphMark, {
+        "--swept": 1,
+        duration: 0.4,
+        ease: "power2.out",
+        onUpdate: function () {
+          const after = emphMark;
+          if (after) {
+            const p = this.progress();
+            after.style.setProperty("--swept", p);
+          }
+        }
+      }, 3.6);
+
+      const swept = root.querySelector(".sp-caption .sp-emph");
+      tl.to({}, { duration: 0.0001 }, 0);
+
+      tl.fromTo(mark,
+        { opacity: 0 },
+        { opacity: 1, duration: 0.8, ease: "sine.inOut" }, 4.2);
+
+      const tcStart = 16, tcEnd = 26;
+      const tcCounter = { v: tcStart };
+      tl.to(tcCounter, {
+        v: tcEnd,
+        duration: 9.5,
+        ease: "none",
+        onUpdate: function () {
+          const s = Math.floor(tcCounter.v);
+          const mm = String(Math.floor(s / 60)).padStart(2, "0");
+          const ss = String(s % 60).padStart(2, "0");
+          if (tcNum) tcNum.textContent = mm + ":" + ss;
+        }
+      }, 0.4);
+
+      const railCycle = 6.0;
+      tl.to(rail, {
+        opacity: 0.9,
+        duration: railCycle / 2,
+        ease: "sine.inOut",
+        yoyo: true,
+        repeat: Math.floor(sceneDuration / railCycle)
+      }, 0.9);
+
+      const glowCycle = 6.0;
+      tl.to(glow, {
+        opacity: 0.07,
+        duration: glowCycle / 2,
+        ease: "sine.inOut",
+        yoyo: true,
+        repeat: Math.floor(sceneDuration / glowCycle)
+      }, 1.3);
+
+      const colCycle = 5.0;
+      tl.to(column, {
+        x: 4,
+        duration: colCycle / 2,
+        ease: "sine.inOut",
+        yoyo: true,
+        repeat: Math.floor(sceneDuration / colCycle)
+      }, 0.5);
+
+      const groundCycle = 4.0;
+      tl.to(ground, {
+        opacity: 0.32,
+        duration: groundCycle / 2,
+        ease: "sine.inOut",
+        yoyo: true,
+        repeat: Math.floor(sceneDuration / groundCycle)
+      }, 1.6);
+
+      const finalFadeStart = sceneDuration - 0.6;
+      tl.to(rail, { opacity: 1.0, duration: 0.6, ease: "power2.out" }, finalFadeStart);
+
+      const exitDur = 0.5;
+      const exitStart = sceneDuration - exitDur;
+
+      tl.to(body, { opacity: 0, duration: exitDur, ease: "power1.in" }, exitStart);
+      tl.set(body, { visibility: "hidden" }, exitStart + exitDur);
+
+      tl.to(roleChip, { opacity: 0, duration: exitDur, ease: "power1.in" }, exitStart);
+      tl.set(roleChip, { visibility: "hidden" }, exitStart + exitDur);
+
+      tl.to(caption, { opacity: 0, duration: exitDur, ease: "power1.in" }, exitStart);
+      tl.set(caption, { visibility: "hidden" }, exitStart + exitDur);
+
+      tl.to(timecode, { opacity: 0, duration: exitDur, ease: "power1.in" }, exitStart);
+      tl.set(timecode, { visibility: "hidden" }, exitStart + exitDur);
+
+      tl.to(mark, { opacity: 0, duration: exitDur, ease: "power1.in" }, exitStart);
+      tl.set(mark, { visibility: "hidden" }, exitStart + exitDur);
+
+      tl.to(root, { opacity: 0, duration: exitDur, ease: "power1.in" }, exitStart);
+
+      window.__sceneTimelines["payoff"] = tl;
+    })();
+  </script>
+</div>
