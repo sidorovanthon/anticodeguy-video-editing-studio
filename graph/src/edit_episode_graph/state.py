@@ -13,6 +13,30 @@ Reducer choice rationale (spec §5.1):
   sentinel-based clear/replace semantics for `update_state`-driven rewind
   (HOM-163).
 - Last-write-wins (default) for identity fields (`slug`, `episode_dir`).
+
+HOM-223 — P3 absolute-path keys removed from state writes. P3 nodes now
+derive paths via `EpisodePaths(slug)` at use-site. Old recordings carrying
+the deprecated keys still parse cleanly because `TypedDict` is a runtime
+`dict`: extra keys are ignored on read but never emitted by post-HOM-223
+writers. Removed keys (writer in parens):
+* `TranscriptsState.raw_json_path` (`glue_remap_transcript`)
+* `TranscriptsState.final_json_path` (`glue_remap_transcript`)
+* `TranscriptsState.takes_packed_path` (`p3_inventory`)
+* `TranscriptsState.raw_json_paths` (`p3_inventory`)
+* `InventoryState.source_dir` / `transcript_json_paths` /
+  `takes_packed_path` (`p3_inventory`)
+* `PreScanState.source_path` (`p3_pre_scan`)
+* `StrategyState.source_path` (`p3_strategy` / `rehydrate_skip_phase3`)
+* `EdlState.source_path` / `edl_path` (`p3_edl_select`)
+* `RenderState.final_mp4` / `clips_dir` (`p3_render_segments`)
+* `EvalState.final_mp4_path` (`p3_self_eval`)
+* `PersistState.persisted_at` (`p3_persist_session`) — repurposed to a
+  boolean-ish ISO timestamp upstream by p4_persist_session; kept on the
+  schema so existing callers continue to type-check, but p3 no longer
+  writes a path-shaped value. p4 ownership is Sub-3 territory.
+
+The keys remain typed on the schema below for forward-compat parsing of
+already-recorded fixtures (cache.db rows). New code MUST NOT write them.
 """
 
 from operator import add

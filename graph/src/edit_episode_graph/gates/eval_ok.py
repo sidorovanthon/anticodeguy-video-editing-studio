@@ -20,6 +20,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from .._paths import EpisodePaths
 from .._render_constants import duration_tolerance_ms
 from ._base import Gate
 
@@ -79,14 +80,29 @@ class EvalOkGate(Gate):
                 + ("…" if len(blockers) > 3 else "")
             )
 
-        final_mp4 = render.get("final_mp4")
+        # HOM-223: `final.mp4` resolved via EpisodePaths(slug); no state echo.
+        # Prefer slug-derived path so Studio time-travel from a different
+        # machine resolves correctly — legacy `render.final_mp4` carries the
+        # recording-machine absolute path, which is exactly the failure mode
+        # HOM-195 fixes. Fall back to legacy only when slug is absent (e.g.
+        # synthetic-state unit tests).
+        # TODO(HOM-195 Sub-4): once old recordings are re-recorded post-HOM-223,
+        # the legacy fallback can be deleted entirely.
+        slug = state.get("slug")
+        legacy_final = render.get("final_mp4")
+        if slug:
+            final_mp4: str | None = str(EpisodePaths(slug).final_mp4_path)
+        elif legacy_final:
+            final_mp4 = str(legacy_final)
+        else:
+            final_mp4 = None
         expected = edl.get("total_duration_s")
         try:
             expected_f = float(expected) if expected is not None else None
         except (TypeError, ValueError):
             expected_f = None
         if not final_mp4:
-            violations.append("render.final_mp4 missing in state")
+            violations.append("final_mp4 missing in state (no slug, no legacy echo)")
         elif expected_f is None:
             violations.append("edl.total_duration_s missing — cannot verify duration")
         else:

@@ -47,13 +47,19 @@ def _cache_key(state, *_args, **_kwargs):
     # this; the HOM-149 pilot row was incomplete on first pass (per
     # CLAUDE.md "Re-validate each row against the actual brief inputs").
     style_request = compose.get("style_request") or ""
+    # HOM-223: `transcripts.final_json_path` no longer echoed by p3 glue —
+    # surgical fallback to `EpisodePaths(slug)`.
+    final_json_path = transcripts.get("final_json_path")
+    if not final_json_path and slug and slug != "__unbound__":
+        from .._paths import EpisodePaths as _EP
+        final_json_path = str(_EP(slug).transcripts_final_json_path)
     return make_llm_key(
         node="p4_prompt_expansion",
         version=_CACHE_VERSION,
         slug=slug,
         files=[
             compose.get("design_md_path"),
-            transcripts.get("final_json_path"),
+            final_json_path,
         ],
         extras=(stable_fingerprint(style_request),),
     )
@@ -92,8 +98,26 @@ def _design_md_path(state: dict) -> str:
 
 
 def _transcript_path(state: dict) -> str:
+    """Resolve transcript JSON path for brief render (HOM-223 — slug fallback).
+
+    Pre-HOM-223, p3 glue echoed `transcripts.final_json_path`; that echo
+    is gone. Falls back to `EpisodePaths(slug).transcripts_final_json_path`,
+    then `transcripts_raw_json_path` if `final.json` doesn't exist yet.
+    """
     transcripts = state.get("transcripts") or {}
-    return str(transcripts.get("final_json_path") or transcripts.get("raw_json_path") or "")
+    explicit = transcripts.get("final_json_path") or transcripts.get("raw_json_path")
+    if explicit:
+        return str(explicit)
+    slug = state.get("slug")
+    if not slug:
+        return ""
+    from .._paths import EpisodePaths as _EP
+    paths = _EP(slug)
+    if paths.transcripts_final_json_path.exists():
+        return str(paths.transcripts_final_json_path)
+    if paths.transcripts_raw_json_path.exists():
+        return str(paths.transcripts_raw_json_path)
+    return str(paths.transcripts_final_json_path)
 
 
 def _render_ctx(state: dict) -> dict:

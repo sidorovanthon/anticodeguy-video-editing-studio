@@ -29,13 +29,18 @@ from typing import Any
 from langgraph.types import CachePolicy
 
 from .._caching import make_key
-from .._paths import project_root
+from .._paths import EpisodePaths, project_root
 
 PROJECT_ROOT = project_root()
 HELPERS_DIR = Path.home() / ".claude" / "skills" / "video-use" / "helpers"
 
 # Bump on transcribe/pack helper-version / parser / output-shape change. Spec §8.
-_CACHE_VERSION = 1
+# v2 (HOM-223): identity-only state writes — `inventory.source_dir`,
+# `inventory.transcript_json_paths`, `inventory.takes_packed_path`,
+# `inventory.timeline_view_samples`, `transcripts.takes_packed_path`,
+# `transcripts.raw_json_paths` no longer emitted. Consumers derive via
+# `EpisodePaths(slug)`.
+_CACHE_VERSION = 2
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -46,11 +51,10 @@ def _cache_key(state, *_args, **_kwargs):
     invalidates, everything else (ffprobe, transcribe_batch.py,
     pack_transcripts.py) is pure given that input.
 
-    Spec §6 originally listed `[audio.cleaned_path]`. No such field exists
-    on `AudioState`; the canonical upstream artifact tracked in state is
-    `pickup.raw_path`. HOM-132.4 amends to `pickup.raw_path` (with
-    `audio.wav_path` as a secondary signal so a re-isolated WAV under the
-    same raw still invalidates).
+    Pickup's `raw_path` and audio's `wav_path` remain in state (Sub-1's
+    territory — pickup still owns those echoes; HOM-223 only migrates p3
+    namespace writes). They're file fingerprints, content-stable across
+    machines once the file exists.
     """
     if not isinstance(state, dict):
         raise TypeError(
@@ -208,17 +212,18 @@ def _ensure_tools() -> str | None:
 
 
 def p3_inventory_node(state, *, runner=_run):
-    episode_dir_raw = state.get("episode_dir")
-    if not episode_dir_raw:
-        return _error("episode_dir missing from state (pickup must run first)")
+    slug = state.get("slug")
+    if not slug:
+        return _error("slug missing from state (pickup must run first)")
 
     tool_error = _ensure_tools()
     if tool_error:
         return _error(tool_error)
 
-    episode_dir = Path(episode_dir_raw)
-    edit_dir = episode_dir / "edit"
-    transcripts_dir = edit_dir / "transcripts"
+    paths = EpisodePaths(slug)
+    episode_dir = paths.episode_dir
+    edit_dir = paths.edit_dir
+    transcripts_dir = paths.transcripts_dir
     source_dir = _source_dir(episode_dir)
     if not source_dir.is_dir():
         return _error(f"source directory not found: {source_dir}")
@@ -282,23 +287,23 @@ def p3_inventory_node(state, *, runner=_run):
         runner=runner,
     )
 
+    # HOM-223: identity-only state — no path echoes. `sources` retained
+    # because it's a content artifact (ffprobe metadata: codec, fps, dims,
+    # duration), not a path locator. Consumers needing per-source transcript
+    # JSON paths or `takes_packed.md` derive via
+    # `EpisodePaths(slug).transcripts_dir` / `EpisodePaths(slug).edit_dir`.
     update: dict = {
         "edit": {
             "inventory": {
-                "source_dir": str(source_dir),
                 "sources": inventory_sources,
-                "transcript_json_paths": transcript_paths,
-                "takes_packed_path": str(takes_packed),
-                "timeline_view_samples": sample_paths,
             },
         },
-        "transcripts": {
-            "raw_json_paths": transcript_paths,
-            "takes_packed_path": str(takes_packed),
-        },
     }
-    if sample_warnings:
-        update["notices"] = sample_warnings
+    notices: list[str] = list(sample_warnings)
+    if not notices:
+        notices = []
+    if notices:
+        update["notices"] = notices
     return update
 
 

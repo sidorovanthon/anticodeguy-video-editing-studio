@@ -11,40 +11,36 @@ halt where the inventory step has not yet run. v3 will remove the skip.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from langgraph.types import CachePolicy
 
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
 from .._caching import make_llm_key
+from .._paths import EpisodePaths
 from ..schemas.p3_pre_scan import PreScanReport
 from ._llm import LLMNode, _load_brief
 
 # Bump on brief / schema / tool-list change. Spec §8 review checkpoint.
-_CACHE_VERSION = 1
+# v2 (HOM-223): identity-only state writes — `pre_scan.source_path` no longer
+# emitted; takes-packed path resolved via `EpisodePaths(slug)` at use-site.
+_CACHE_VERSION = 2
 
 
 def _takes_packed_path(state: dict) -> str | None:
-    """Resolve the path whose content drives this node's output.
+    """Resolve `takes_packed.md` for cache-key fingerprinting (HOM-223).
 
-    Cache-key path lookup (NOT the production body — `p3_pre_scan_node`
-    always reads `<episode_dir>/edit/takes_packed.md` regardless of state).
-    For the cache key we additionally honor `transcripts.takes_packed_path`
-    when set, mirroring `p3_strategy` / `p3_edl_select`: this way a
-    smoke/test that pins the takes path explicitly invalidates the entry
-    on content edits, and the override (if ever wired to the body) stays
-    consistent across all three Phase 3 LLM nodes.
+    Always derives via `EpisodePaths(slug).edit_dir / "takes_packed.md"` —
+    no more `transcripts.takes_packed_path` echo. State carries `slug`
+    (logical identity); the path is computed at access time so a cross-
+    machine replay reads from the local project root (`HOMESTUDIO_PROJECT_ROOT`
+    or main worktree).
     """
     if not isinstance(state, dict):
         return None
-    explicit = (state.get("transcripts") or {}).get("takes_packed_path")
-    if explicit:
-        return str(explicit)
-    episode_dir = state.get("episode_dir")
-    if not episode_dir:
+    slug = state.get("slug")
+    if not slug:
         return None
-    return str(Path(episode_dir) / "edit" / "takes_packed.md")
+    return str(EpisodePaths(slug).edit_dir / "takes_packed.md")
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -82,26 +78,28 @@ def _build_node() -> LLMNode:
         timeout_s=90,
         allowed_tools=["Read"],
         extra_render_ctx=lambda state: {
-            "takes_packed_path": str(Path(state["episode_dir"]) / "edit" / "takes_packed.md"),
+            "takes_packed_path": str(
+                EpisodePaths(state["slug"]).edit_dir / "takes_packed.md"
+            ),
         },
     )
 
 
 def p3_pre_scan_node(state, *, router: BackendRouter | None = None):
-    episode_dir = state.get("episode_dir")
-    if not episode_dir:
-        return {"edit": {"pre_scan": {"skipped": True, "skip_reason": "no episode_dir in state"}}}
-    takes = Path(episode_dir) / "edit" / "takes_packed.md"
+    slug = state.get("slug")
+    if not slug:
+        return {"edit": {"pre_scan": {"skipped": True, "skip_reason": "no slug in state"}}}
+    takes = EpisodePaths(slug).edit_dir / "takes_packed.md"
     if not takes.exists():
         return {"edit": {"pre_scan": {"skipped": True, "skip_reason": f"takes_packed.md missing at {takes}"}}}
 
     node = _build_node()
     update = node(state, router=router)
-    # Ensure the "slips" key is present even when the brief returned an empty list,
-    # and tag the source path for traceability.
+    # Ensure the "slips" key is present even when the brief returned an empty list.
+    # HOM-223: identity-only state — `pre_scan.source_path` no longer emitted;
+    # consumers derive via `EpisodePaths(slug).edit_dir / "takes_packed.md"`.
     pre_scan = (update.get("edit") or {}).get("pre_scan") or {}
     if "slips" not in pre_scan and "skipped" not in pre_scan:
         pre_scan["slips"] = []
-    pre_scan["source_path"] = str(takes)
     update.setdefault("edit", {})["pre_scan"] = pre_scan
     return update

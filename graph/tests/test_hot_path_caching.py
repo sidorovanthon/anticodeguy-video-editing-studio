@@ -54,12 +54,19 @@ def test_p3_pre_scan_does_not_reread_brief_per_call(tmp_path, monkeypatch):
     from edit_episode_graph.nodes._llm import _load_brief
     _load_brief.cache_clear()
 
-    state = {"slug": "demo", "episode_dir": str(tmp_path)}  # no takes_packed.md → skip path
+    # HOM-223: pin project root + slug so `EpisodePaths(slug)` resolves
+    # under tmp_path, mirroring the migrated p3_pre_scan node body.
+    slug = "demo"
+    episode_dir = tmp_path / "episodes" / slug
+    episode_dir.mkdir(parents=True)
+    monkeypatch.setenv("HOMESTUDIO_PROJECT_ROOT", str(tmp_path))
+
+    state = {"slug": slug, "episode_dir": str(episode_dir)}  # no takes_packed.md → skip path
     for _ in range(5):
         node_module.p3_pre_scan_node(state)
     # Skip path doesn't touch the brief; ensure the cache helper is still functional.
     # Now exercise the build path that DOES need the brief:
-    edit_dir = tmp_path / "edit"
+    edit_dir = episode_dir / "edit"
     edit_dir.mkdir()
     (edit_dir / "takes_packed.md").write_text("hi", encoding="utf-8")
 

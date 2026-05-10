@@ -30,38 +30,32 @@ from pathlib import Path
 from langgraph.types import CachePolicy
 
 from .._caching import make_key
-from .._paths import scripts_root
+from .._paths import EpisodePaths, scripts_root
 
 SCRIPTS_ROOT = scripts_root()
 
 # Bump on remap_transcript.py shape / output-schema change. Spec §8.
-_CACHE_VERSION = 1
+# v2 (HOM-223): identity-only state writes — `transcripts.raw_json_path`
+# / `transcripts.final_json_path` no longer emitted by this node;
+# consumers derive via `EpisodePaths(slug).transcripts_raw_json_path` /
+# `transcripts_final_json_path`.
+_CACHE_VERSION = 2
 
 
 def _edl_path_for_key(state: dict) -> str | None:
-    """Resolve `edit/edl.json` for cache-key fingerprinting.
-
-    Falls back to `<episode_dir>/edit/edl.json` when state hasn't yet been
-    populated (e.g. resume-in-graph after offline `/edit-episode` Phase 3 —
-    see HOM-144 docstring above).
-    """
-    edl = (state.get("edit") or {}).get("edl") or {}
-    explicit = edl.get("edl_path")
-    if explicit:
-        return str(explicit)
-    if not state.get("episode_dir"):
+    """Resolve `edit/edl.json` for cache-key fingerprinting (HOM-223 — slug only)."""
+    slug = state.get("slug")
+    if not slug:
         return None
-    return str(Path(state["episode_dir"]) / "edit" / "edl.json")
+    return str(EpisodePaths(slug).edit_dir / "edl.json")
 
 
 def _raw_json_path_for_key(state: dict) -> str | None:
     """Resolve `edit/transcripts/raw.json` for cache-key fingerprinting."""
-    explicit = (state.get("transcripts") or {}).get("raw_json_path")
-    if explicit:
-        return str(explicit)
-    if not state.get("episode_dir"):
+    slug = state.get("slug")
+    if not slug:
         return None
-    return str(Path(state["episode_dir"]) / "edit" / "transcripts" / "raw.json")
+    return str(EpisodePaths(slug).transcripts_raw_json_path)
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -98,13 +92,13 @@ def _error(message: str) -> dict:
 
 
 def glue_remap_transcript_node(state):
-    episode_dir = state.get("episode_dir")
-    if not episode_dir:
-        return _error("episode_dir missing from state (pickup must run first)")
-    ep = Path(episode_dir)
-    raw_json = ep / "edit" / "transcripts" / "raw.json"
-    edl_json = ep / "edit" / "edl.json"
-    final_json = ep / "edit" / "transcripts" / "final.json"
+    slug = state.get("slug")
+    if not slug:
+        return _error("slug missing from state (pickup must run first)")
+    paths = EpisodePaths(slug)
+    raw_json = paths.transcripts_raw_json_path
+    edl_json = paths.edit_dir / "edl.json"
+    final_json = paths.transcripts_final_json_path
 
     # Both raw.json and edl.json are produced by Phase 3 (video-use). When
     # Phase 3 is skipped via the `skip_phase3?` edge they must already exist
@@ -152,10 +146,12 @@ def glue_remap_transcript_node(state):
     except (OSError, json.JSONDecodeError) as exc:
         return _error(f"final.json unreadable after remap: {exc!r}")
 
+    # HOM-223: identity-only state — `raw_json_path` / `final_json_path`
+    # no longer echoed; consumers derive via
+    # `EpisodePaths(slug).transcripts_raw_json_path` /
+    # `transcripts_final_json_path`. `edl_hash` remains (content fingerprint).
     return {
         "transcripts": {
-            "raw_json_path": str(raw_json),
-            "final_json_path": str(final_json),
             "edl_hash": edl_hash,
         },
         "edit": {"edl": edl_payload},

@@ -52,6 +52,12 @@ def _cache_key(state, *_args, **_kwargs):
     # Hashed as `extras` per spec §6 row update in this PR.
     strategy = edit.get("strategy") or {}
     edl_beats = _edl_beats(state)
+    # HOM-223: `transcripts.final_json_path` no longer echoed by p3 glue —
+    # surgical fallback to `EpisodePaths(slug)` at this read site.
+    final_json_path = transcripts.get("final_json_path")
+    if not final_json_path and slug and slug != "__unbound__":
+        from .._paths import EpisodePaths as _EP
+        final_json_path = str(_EP(slug).transcripts_final_json_path)
     return make_llm_key(
         node="p4_plan",
         version=_CACHE_VERSION,
@@ -59,7 +65,7 @@ def _cache_key(state, *_args, **_kwargs):
         files=[
             compose.get("design_md_path"),
             compose.get("expanded_prompt_path"),
-            transcripts.get("final_json_path"),
+            final_json_path,
         ],
         extras=(
             strategy_fingerprint(strategy),

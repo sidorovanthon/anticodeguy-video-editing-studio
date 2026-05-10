@@ -1,9 +1,10 @@
 """Schema for p3_persist_session output.
 
 The dispatched sub-agent appends a Session block to `<edit>/project.md`
-following the canon §"Memory" format. The node returns the path it wrote
-to and the session number it chose; the file mutation itself happens
-agent-side via the Edit/Write tool.
+following the canon §"Memory" format. The node returns an ISO 8601
+timestamp (overwritten by the runtime post-HOM-223) and the session
+number it chose; the file mutation itself happens agent-side via the
+Edit/Write tool.
 """
 
 from __future__ import annotations
@@ -16,7 +17,12 @@ class PersistSessionResult(BaseModel):
 
     persisted_at: str = Field(
         min_length=1,
-        description="Absolute path to the project.md file that was appended to.",
+        description=(
+            "ISO 8601 timestamp at which persistence finished. The runtime "
+            "overwrites this field with its own UTC timestamp post-HOM-223 "
+            "(identity-only state — paths derive from slug, not echoed); the "
+            "value the LLM emits is a schema-validation placeholder."
+        ),
     )
     session_n: int = Field(
         ge=1,

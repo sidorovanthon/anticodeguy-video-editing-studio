@@ -21,33 +21,30 @@ from langgraph.types import CachePolicy
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
 from .._caching import make_llm_key
+from .._paths import EpisodePaths
 from ..schemas.p3_self_eval import EvalReport
 from ._llm import LLMNode, _load_brief
 
 # Bump on brief / schema / tool-list change. Spec §8 review checkpoint.
-_CACHE_VERSION = 1
+# v2 (HOM-223): identity-only state writes — `eval.final_mp4_path` no longer
+# emitted; brief no longer renders `episode_dir`. Paths via `EpisodePaths(slug)`.
+_CACHE_VERSION = 2
 
 TIMELINE_VIEW_PATH = Path.home() / ".claude" / "skills" / "video-use" / "helpers" / "timeline_view.py"
 
 
 def _final_mp4_path(state: dict) -> str | None:
-    render = (state.get("edit") or {}).get("render") or {}
-    explicit = render.get("final_mp4")
-    if explicit:
-        return str(explicit)
-    if not state.get("episode_dir"):
+    slug = state.get("slug")
+    if not slug:
         return None
-    return str(Path(state["episode_dir"]) / "edit" / "final.mp4")
+    return str(EpisodePaths(slug).final_mp4_path)
 
 
 def _edl_path(state: dict) -> str | None:
-    edl = (state.get("edit") or {}).get("edl") or {}
-    explicit = edl.get("edl_path")
-    if explicit:
-        return str(explicit)
-    if not state.get("episode_dir"):
+    slug = state.get("slug")
+    if not slug:
         return None
-    return str(Path(state["episode_dir"]) / "edit" / "edl.json")
+    return str(EpisodePaths(slug).edit_dir / "edl.json")
 
 
 def _eval_iteration(state: dict) -> int:
@@ -121,12 +118,10 @@ def _cut_boundaries(state: dict) -> tuple[list[float], list[dict]]:
 
 
 def _render_ctx(state: dict) -> dict:
-    edit = state.get("edit") or {}
-    render = edit.get("render") or {}
-    final_mp4 = render.get("final_mp4") or str(
-        Path(state.get("episode_dir") or ".") / "edit" / "final.mp4"
-    )
-    edl_path = str(Path(state.get("episode_dir") or ".") / "edit" / "edl.json")
+    slug = state.get("slug") or ""
+    paths = EpisodePaths(slug) if slug else None
+    final_mp4 = str(paths.final_mp4_path) if paths else ""
+    edl_path = str(paths.edit_dir / "edl.json") if paths else ""
     boundaries, sources = _cut_boundaries(state)
     return {
         "final_mp4_path": final_mp4,
@@ -152,9 +147,9 @@ def _build_node() -> LLMNode:
 
 
 def p3_self_eval_node(state, *, router: BackendRouter | None = None):
-    episode_dir = state.get("episode_dir")
-    if not episode_dir:
-        return {"edit": {"eval": {"skipped": True, "skip_reason": "no episode_dir in state"}}}
+    slug = state.get("slug")
+    if not slug:
+        return {"edit": {"eval": {"skipped": True, "skip_reason": "no slug in state"}}}
     render = (state.get("edit") or {}).get("render") or {}
     if render.get("skipped"):
         return {
@@ -165,8 +160,10 @@ def p3_self_eval_node(state, *, router: BackendRouter | None = None):
                 },
             },
         }
-    final_mp4 = render.get("final_mp4")
-    if not final_mp4 or not Path(final_mp4).exists():
+    # HOM-223: `final_mp4` no longer in state; existence check derives via
+    # `EpisodePaths(slug).final_mp4_path`.
+    final_mp4 = EpisodePaths(slug).final_mp4_path
+    if not final_mp4.exists():
         return {"edit": {"eval": {"skipped": True, "skip_reason": f"final.mp4 missing at {final_mp4}"}}}
 
     node = _build_node()
@@ -174,6 +171,7 @@ def p3_self_eval_node(state, *, router: BackendRouter | None = None):
     eval_report = (update.get("edit") or {}).get("eval") or {}
     if "skipped" not in eval_report and "raw_text" not in eval_report:
         eval_report.setdefault("issues", [])
-        eval_report["final_mp4_path"] = final_mp4
+        # `final_mp4_path` no longer echoed (HOM-223). Identity is `slug`;
+        # consumers derive via `EpisodePaths(slug).final_mp4_path`.
     update.setdefault("edit", {})["eval"] = eval_report
     return update

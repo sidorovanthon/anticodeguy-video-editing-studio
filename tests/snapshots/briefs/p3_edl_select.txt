@@ -9,7 +9,6 @@ taste guidance and shape are load-bearing and we do not paraphrase them
 here.
 
 Inputs (resolve via the `Read` tool — paths, not contents, are provided here):
-- Episode dir: `/tmp/snapshot-fixture/episode`
 - Packed transcript: `/tmp/snapshot-fixture/episode/edit/takes_packed.md`
 - Per-source transcripts (Scribe word-level JSON): ["/tmp/snapshot-fixture/episode/edit/transcripts/raw.json"]
 - Pre-scan slips/avoid list JSON: `[{"reason": "filler", "range_s": [1.2, 1.45]}]`

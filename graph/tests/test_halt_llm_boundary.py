@@ -36,12 +36,18 @@ def test_v2_halt_with_zero_slips_still_v2():
     assert update["notices"][0].startswith("v2 halt: pre_scan ran")
 
 
-def test_v3_halt_when_render_completed():
+def test_v3_halt_when_render_completed(tmp_path, monkeypatch):
+    # HOM-223: `final.mp4` no longer in state; halt notice derives from disk
+    # via `EpisodePaths(slug).final_mp4_path`. Pin project root + create file.
+    monkeypatch.setenv("HOMESTUDIO_PROJECT_ROOT", str(tmp_path))
+    final_mp4 = tmp_path / "episodes" / "x" / "edit" / "final.mp4"
+    final_mp4.parent.mkdir(parents=True)
+    final_mp4.write_bytes(b"fake")
     state = {
+        "slug": "x",
         "edit": {
             "edl": {"ranges": [{}, {}, {}]},
             "render": {
-                "final_mp4": "/x/edit/final.mp4",
                 "n_segments": 3,
                 "delta_ms": 12,
                 "cached": False,
@@ -54,11 +60,16 @@ def test_v3_halt_when_render_completed():
     assert "12ms" in msg
 
 
-def test_v3_halt_marks_cached_render():
+def test_v3_halt_marks_cached_render(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOMESTUDIO_PROJECT_ROOT", str(tmp_path))
+    final_mp4 = tmp_path / "episodes" / "x" / "edit" / "final.mp4"
+    final_mp4.parent.mkdir(parents=True)
+    final_mp4.write_bytes(b"fake")
     state = {
+        "slug": "x",
         "edit": {
             "edl": {"ranges": [{}]},
-            "render": {"final_mp4": "/x/edit/final.mp4", "n_segments": 1, "cached": True},
+            "render": {"n_segments": 1, "cached": True},
         },
     }
     msg = halt_llm_boundary_node(state)["notices"][0]

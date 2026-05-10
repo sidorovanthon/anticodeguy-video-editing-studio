@@ -24,22 +24,36 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from .._paths import EpisodePaths
 
-def _strategy_json_path(episode_dir: str) -> Path:
-    return Path(episode_dir) / "edit" / "strategy.json"
+
+def _strategy_json_path(slug: str) -> Path:
+    return EpisodePaths(slug).edit_dir / "strategy.json"
+
+
+# HOM-223 review: legacy strategy.json files (recorded pre-HOM-223) carry
+# `source_path` (recording-machine absolute path) and may carry `skipped` /
+# `skip_reason`. Filter these out before re-injecting into state so the
+# rehydrated dict matches the post-HOM-223 contract that
+# `p3_edl_select._strategy()` enforces for fingerprinting.
+_DEPRECATED_STRATEGY_KEYS = frozenset({"source_path", "skipped", "skip_reason"})
+
+
+def _clean_strategy(persisted: dict) -> dict:
+    return {k: v for k, v in persisted.items() if k not in _DEPRECATED_STRATEGY_KEYS}
 
 
 def rehydrate_skip_phase3_node(state: dict) -> dict:
-    episode_dir = state.get("episode_dir")
-    if not episode_dir:
-        # No episode_dir means upstream pickup failed — let routing
-        # short-circuit naturally; nothing to rehydrate.
+    slug = state.get("slug")
+    if not slug:
+        # No slug means upstream pickup failed — let routing short-circuit
+        # naturally; nothing to rehydrate.
         return {}
 
     update: dict = {}
     notices: list[str] = []
 
-    strategy_path = _strategy_json_path(episode_dir)
+    strategy_path = _strategy_json_path(slug)
     if strategy_path.exists():
         try:
             persisted = json.loads(strategy_path.read_text(encoding="utf-8"))
@@ -50,8 +64,12 @@ def rehydrate_skip_phase3_node(state: dict) -> dict:
             )
             persisted = None
         if isinstance(persisted, dict):
-            persisted["source_path"] = str(strategy_path)
-            update["edit"] = {"strategy": persisted}
+            # HOM-223: `source_path` no longer echoed into state — the
+            # canonical path lives at `EpisodePaths(slug).edit_dir / "strategy.json"`.
+            # Filter deprecated keys (`source_path`, `skipped`, `skip_reason`)
+            # so old recordings don't leak the recording-machine path back
+            # into state. Mirrors `p3_edl_select._strategy()`.
+            update["edit"] = {"strategy": _clean_strategy(persisted)}
             notices.append(
                 f"rehydrate_skip_phase3: restored strategy from {strategy_path.name}"
             )
