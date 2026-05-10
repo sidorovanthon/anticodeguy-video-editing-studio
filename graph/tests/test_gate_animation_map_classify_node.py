@@ -197,6 +197,9 @@ def test_classifier_preserves_upstream_advisory_findings(monkeypatch):
     assert "dead zone" in advisory["dead_zones"][0]
 
 
-def test_classifier_cache_version_is_3():
-    """HOM-204 bumped 1→2 (shape change); HOM-206 bumped 2→3 (brief rewrite — advisory framing)."""
-    assert node_mod._CACHE_VERSION == 3
+def test_classifier_cache_version_is_4():
+    """HOM-204 bumped 1→2 (shape change); HOM-206 bumped 2→3 (brief
+    rewrite — advisory framing); HOM-225 bumped 3→4 (cache key + render
+    ctx derive paths via `EpisodePaths(slug)` rather than legacy
+    `compose.hyperframes_dir` / `compose.design_md_path` echoes)."""
+    assert node_mod._CACHE_VERSION == 4
