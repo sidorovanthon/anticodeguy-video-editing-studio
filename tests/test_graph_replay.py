@@ -154,6 +154,7 @@ PHASE3_EXPECTED_NODES = {
     "p4_dispatch_beats",
     "p4_beat",
     "p4_assemble_index",
+    "p4_transitions",
     "p4_redispatch_beat",
     "gate_lint",
     "gate_validate",
@@ -203,7 +204,9 @@ GATE_CLUSTER = (
 )
 
 EXPECTED_CLUSTER_EDGES = {
-    ("p4_assemble_index", "gate_lint"),
+    # HOM-137: p4_transitions sits between assemble and gate_lint.
+    ("p4_assemble_index", "p4_transitions"),
+    ("p4_transitions", "gate_lint"),
     ("gate_lint", "gate_validate"),
     ("gate_lint", "halt_llm_boundary"),
     ("gate_validate", "gate_inspect"),
