@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+import pytest
+
 from edit_episode_graph.backends._types import InvokeResult
 from edit_episode_graph.nodes import p3_persist_session as node_module
 from edit_episode_graph.nodes.p3_persist_session import (
@@ -13,35 +15,49 @@ from edit_episode_graph.nodes.p3_persist_session import (
 from edit_episode_graph.schemas.p3_persist_session import PersistSessionResult
 
 
-def test_skips_when_no_episode_dir():
+@pytest.fixture
+def project_root_episode(tmp_path, monkeypatch):
+    """HOM-223: pin `HOMESTUDIO_PROJECT_ROOT` so `EpisodePaths(slug)` resolves
+    under tmp_path."""
+    slug = "demo"
+    episode_dir = tmp_path / "episodes" / slug
+    episode_dir.mkdir(parents=True)
+    monkeypatch.setenv("HOMESTUDIO_PROJECT_ROOT", str(tmp_path))
+    return slug, episode_dir
+
+
+def test_skips_when_no_slug():
     update = p3_persist_session_node({}, router=MagicMock())
     assert update["edit"]["persist"]["skipped"] is True
-    assert "episode_dir" in update["edit"]["persist"]["skip_reason"]
+    assert "slug" in update["edit"]["persist"]["skip_reason"]
 
 
-def test_skips_when_edl_missing(tmp_path):
-    state = {"slug": "demo", "episode_dir": str(tmp_path), "edit": {}}
+def test_skips_when_edl_missing(project_root_episode):
+    slug, episode_dir = project_root_episode
+    state = {"slug": slug, "episode_dir": str(episode_dir), "edit": {}}
     update = p3_persist_session_node(state, router=MagicMock())
     assert update["edit"]["persist"]["skipped"] is True
     assert "EDL" in update["edit"]["persist"]["skip_reason"]
 
 
-def test_skips_when_edl_explicitly_skipped(tmp_path):
+def test_skips_when_edl_explicitly_skipped(project_root_episode):
+    slug, episode_dir = project_root_episode
     state = {
-        "slug": "demo",
-        "episode_dir": str(tmp_path),
+        "slug": slug,
+        "episode_dir": str(episode_dir),
         "edit": {"edl": {"skipped": True, "skip_reason": "no takes"}},
     }
     update = p3_persist_session_node(state, router=MagicMock())
     assert update["edit"]["persist"]["skipped"] is True
 
 
-def test_skips_when_eval_did_not_pass(tmp_path):
+def test_skips_when_eval_did_not_pass(project_root_episode):
     """Defense-in-depth: refuse to persist a Session block claiming success
     the run did not earn, even if upstream routing landed us here by mistake."""
+    slug, episode_dir = project_root_episode
     state = {
-        "slug": "demo",
-        "episode_dir": str(tmp_path),
+        "slug": slug,
+        "episode_dir": str(episode_dir),
         "edit": {
             "edl": {"ranges": [{"source": "C0", "start": 0, "end": 1}]},
             "eval": {"passed": False, "issues": [{"kind": "audio_pop", "severity": "blocker"}]},
@@ -52,10 +68,11 @@ def test_skips_when_eval_did_not_pass(tmp_path):
     assert "did not pass" in update["edit"]["persist"]["skip_reason"]
 
 
-def test_skips_when_eval_skipped(tmp_path):
+def test_skips_when_eval_skipped(project_root_episode):
+    slug, episode_dir = project_root_episode
     state = {
-        "slug": "demo",
-        "episode_dir": str(tmp_path),
+        "slug": slug,
+        "episode_dir": str(episode_dir),
         "edit": {
             "edl": {"ranges": [{"source": "C0", "start": 0, "end": 1}]},
             "eval": {"skipped": True, "skip_reason": "render skipped"},
@@ -81,8 +98,9 @@ def test_iteration_count_floor_is_one():
     assert _iteration_count({}) == 1
 
 
-def test_runs_with_tools_and_embeds_inputs(tmp_path):
-    edit_dir = tmp_path / "edit"
+def test_runs_with_tools_and_embeds_inputs(project_root_episode):
+    slug, episode_dir = project_root_episode
+    edit_dir = episode_dir / "edit"
     edit_dir.mkdir()
 
     router = MagicMock()
@@ -102,8 +120,8 @@ def test_runs_with_tools_and_embeds_inputs(tmp_path):
     )
 
     state = {
-        "slug": "demo",
-        "episode_dir": str(tmp_path),
+        "slug": slug,
+        "episode_dir": str(episode_dir),
         "edit": {
             "strategy": {"shape": "hook", "pacing": "tight", "length_estimate_s": 30.0},
             "edl": {
@@ -117,7 +135,13 @@ def test_runs_with_tools_and_embeds_inputs(tmp_path):
     update = p3_persist_session_node(state, router=router)
 
     assert update["edit"]["persist"]["session_n"] == 1
-    assert update["edit"]["persist"]["persisted_at"].endswith("project.md")
+    # HOM-223: `persisted_at` is now an ISO timestamp string (was an absolute
+    # path to project.md). Schema slot stays `str | None`; semantics shift
+    # from "where" to "when". Body sets the timestamp itself; the brief's
+    # `persisted_at` field (a path) is dropped from the merged record.
+    persisted_at = update["edit"]["persist"]["persisted_at"]
+    assert isinstance(persisted_at, str)
+    assert "T" in persisted_at  # ISO 8601 marker
     assert update["llm_runs"][0]["node"] == "p3_persist_session"
 
     req, task = router.invoke.call_args.args[:2]

@@ -57,13 +57,19 @@ def _cache_key(state, *_args, **_kwargs):
     slug = state.get("slug") or "__unbound__"
     compose = state.get("compose") or {}
     transcripts = state.get("transcripts") or {}
+    # HOM-223: `transcripts.final_json_path` no longer echoed by p3 glue —
+    # surgical fallback to `EpisodePaths(slug)`.
+    final_json_path = transcripts.get("final_json_path")
+    if not final_json_path and slug and slug != "__unbound__":
+        from .._paths import EpisodePaths as _EP
+        final_json_path = str(_EP(slug).transcripts_final_json_path)
     return make_llm_key(
         node="p4_captions_layer",
         version=_CACHE_VERSION,
         slug=slug,
         files=[
             compose.get("design_md_path"),
-            transcripts.get("final_json_path"),
+            final_json_path,
         ],
     )
 
@@ -92,8 +98,21 @@ def _design_md_path(state: dict) -> str:
 
 
 def _transcript_path(state: dict) -> str:
+    """HOM-223: state echo gone; fall back to `EpisodePaths(slug)` on disk."""
     transcripts = state.get("transcripts") or {}
-    return str(transcripts.get("final_json_path") or transcripts.get("raw_json_path") or "")
+    explicit = transcripts.get("final_json_path") or transcripts.get("raw_json_path")
+    if explicit:
+        return str(explicit)
+    slug = state.get("slug")
+    if not slug:
+        return ""
+    from .._paths import EpisodePaths as _EP
+    paths = _EP(slug)
+    if paths.transcripts_final_json_path.exists():
+        return str(paths.transcripts_final_json_path)
+    if paths.transcripts_raw_json_path.exists():
+        return str(paths.transcripts_raw_json_path)
+    return ""
 
 
 def _composition_dims(state: dict) -> tuple[int, int]:

@@ -30,23 +30,24 @@ from pathlib import Path
 from langgraph.types import CachePolicy
 
 from .._caching import make_key
+from .._paths import EpisodePaths
 from .._render_constants import duration_tolerance_ms
 
 HELPERS_DIR = Path.home() / ".claude" / "skills" / "video-use" / "helpers"
 RENDER_PY = HELPERS_DIR / "render.py"
 
 # Bump on canon `render.py` shape / parser / output-schema change. Spec §8.
-_CACHE_VERSION = 1
+# v2 (HOM-223): identity-only state writes — `render.final_mp4` and
+# `render.clips_dir` no longer emitted; consumers derive via
+# `EpisodePaths(slug).final_mp4_path` / `<edit_dir>/clips_graded`.
+_CACHE_VERSION = 2
 
 
 def _edl_path_for_key(state: dict) -> str | None:
-    edl = (state.get("edit") or {}).get("edl") or {}
-    explicit = edl.get("edl_path")
-    if explicit:
-        return str(explicit)
-    if not state.get("episode_dir"):
+    slug = state.get("slug")
+    if not slug:
         return None
-    return str(Path(state["episode_dir"]) / "edit" / "edl.json")
+    return str(EpisodePaths(slug).edit_dir / "edl.json")
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -155,9 +156,9 @@ def _probe_duration_s(path: Path, *, runner) -> float | None:
 
 
 def p3_render_segments_node(state, *, runner=_run):
-    episode_dir_raw = state.get("episode_dir")
-    if not episode_dir_raw:
-        return _error("episode_dir missing from state (pickup must run first)")
+    slug = state.get("slug")
+    if not slug:
+        return _error("slug missing from state (pickup must run first)")
 
     edl_state = (state.get("edit") or {}).get("edl") or {}
     if edl_state.get("skipped"):
@@ -176,11 +177,11 @@ def p3_render_segments_node(state, *, runner=_run):
     if tool_error:
         return _error(tool_error)
 
-    episode_dir = Path(episode_dir_raw)
-    edit_dir = episode_dir / "edit"
+    paths = EpisodePaths(slug)
+    edit_dir = paths.edit_dir
     edl_path = edit_dir / "edl.json"
-    final_path = edit_dir / "final.mp4"
-    clips_dir = edit_dir / "clips_graded"
+    final_path = paths.final_mp4_path
+    clips_dir = edit_dir / "clips_graded"  # transient; not in state. Sub-3 deletes from RenderState.
 
     if not edl_path.exists():
         return _error(f"edl.json not found at {edl_path}")
@@ -227,11 +228,13 @@ def p3_render_segments_node(state, *, runner=_run):
                 f"(tolerance {tolerance_ms}ms for {n_segments} segments)"
             )
 
+    # HOM-223: identity-only state — `final_mp4` / `clips_dir` no longer
+    # echoed; consumers derive via `EpisodePaths(slug).final_mp4_path` and
+    # `<edit_dir>/clips_graded`. Content metrics (duration, segments, delta)
+    # remain — these are what downstream gates and notices need.
     return {
         "edit": {
             "render": {
-                "final_mp4": str(final_path),
-                "clips_dir": str(clips_dir),
                 "duration_s": duration,
                 "expected_duration_s": expected_f,
                 "delta_ms": delta_ms,

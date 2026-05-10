@@ -13,6 +13,16 @@ notice in `p4_scaffold.py` — a small marker, not an error.
 
 import re
 
+from .._paths import EpisodePaths
+
+
+def _final_mp4_exists(state: dict) -> bool:
+    """HOM-223: `render.final_mp4` removed from state writes; derive from disk."""
+    slug = state.get("slug")
+    if not slug:
+        return False
+    return EpisodePaths(slug).final_mp4_path.exists()
+
 
 def halt_llm_boundary_node(state):
     edit = state.get("edit") or {}
@@ -310,7 +320,8 @@ def halt_llm_boundary_node(state):
         reason = design_state.get("skip_reason") or "no reason given"
         msg = f"v4 halt: p4_design_system skipped: {reason}"
         return {"notices": [msg]}
-    if eval_state.get("passed") and render_state.get("final_mp4"):
+    final_mp4_present = _final_mp4_exists(state)
+    if eval_state.get("passed") and final_mp4_present:
         n = render_state.get("n_segments") or 0
         n_issues = len(eval_state.get("issues") or [])
         msg = (
@@ -319,7 +330,7 @@ def halt_llm_boundary_node(state):
             "Phase 4 chain (design → expansion → plan → catalog → assemble)"
         )
         return {"notices": [msg]}
-    if render_state.get("final_mp4"):
+    if final_mp4_present:
         n = render_state.get("n_segments") or 0
         delta = render_state.get("delta_ms")
         cached = render_state.get("cached")

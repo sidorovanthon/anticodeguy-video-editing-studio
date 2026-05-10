@@ -25,31 +25,28 @@ from langgraph.types import CachePolicy
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
 from .._caching import make_llm_key, stable_fingerprint, strategy_fingerprint
+from .._paths import EpisodePaths
 from ..schemas.p3_persist_session import PersistSessionResult
 from ._llm import LLMNode, _load_brief
 
 # Bump on brief / schema / tool-list change. Spec §8 review checkpoint.
-_CACHE_VERSION = 1
+# v2 (HOM-223): identity-only state writes — `persist.persisted_at` no
+# longer holds an absolute path; paths derived via `EpisodePaths(slug)`.
+_CACHE_VERSION = 2
 
 
 def _final_mp4_path_for_key(state: dict) -> str | None:
-    render = (state.get("edit") or {}).get("render") or {}
-    explicit = render.get("final_mp4")
-    if explicit:
-        return str(explicit)
-    if not state.get("episode_dir"):
+    slug = state.get("slug")
+    if not slug:
         return None
-    return str(Path(state["episode_dir"]) / "edit" / "final.mp4")
+    return str(EpisodePaths(slug).final_mp4_path)
 
 
 def _edl_path_for_key(state: dict) -> str | None:
-    edl = (state.get("edit") or {}).get("edl") or {}
-    explicit = edl.get("edl_path")
-    if explicit:
-        return str(explicit)
-    if not state.get("episode_dir"):
+    slug = state.get("slug")
+    if not slug:
         return None
-    return str(Path(state["episode_dir"]) / "edit" / "edl.json")
+    return str(EpisodePaths(slug).edit_dir / "edl.json")
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -99,7 +96,7 @@ CACHE_POLICY = CachePolicy(key_func=_cache_key)
 
 
 def _project_md_path(state: dict) -> Path:
-    return Path(state["episode_dir"]) / "edit" / "project.md"
+    return EpisodePaths(state["slug"]).edit_dir / "project.md"
 
 
 def _iteration_count(state: dict) -> int:
@@ -141,9 +138,9 @@ def _build_node() -> LLMNode:
 
 
 def p3_persist_session_node(state, *, router: BackendRouter | None = None):
-    episode_dir = state.get("episode_dir")
-    if not episode_dir:
-        return {"edit": {"persist": {"skipped": True, "skip_reason": "no episode_dir in state"}}}
+    slug = state.get("slug")
+    if not slug:
+        return {"edit": {"persist": {"skipped": True, "skip_reason": "no slug in state"}}}
     edit = state.get("edit") or {}
     edl = edit.get("edl") or {}
     if edl.get("skipped") or not edl.get("ranges"):
@@ -183,6 +180,14 @@ def p3_persist_session_node(state, *, router: BackendRouter | None = None):
     update = node(state, router=router)
     persist = (update.get("edit") or {}).get("persist") or {}
     if "skipped" not in persist and "raw_text" not in persist:
-        persist.setdefault("persisted_at", str(_project_md_path(state)))
+        # HOM-223: `persisted_at` was previously a stringified absolute path
+        # to project.md, abusing the `str | None` slot. Identity-only state:
+        # store an ISO timestamp instead — same `str | None` shape, but
+        # observation (when, not where), per the field's literal name. The
+        # canonical path lives at `EpisodePaths(slug).edit_dir / "project.md"`.
+        # This OVERWRITES whatever the brief returned (the brief still
+        # echoes a path per the canonical PersistSessionResult schema; the
+        # node body re-shapes the value to identity-only state).
+        persist["persisted_at"] = datetime.now(timezone.utc).isoformat()
     update.setdefault("edit", {})["persist"] = persist
     return update

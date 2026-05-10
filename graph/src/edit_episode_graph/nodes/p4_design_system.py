@@ -68,11 +68,24 @@ def _cache_key(state, *_args, **_kwargs):
     edit = state.get("edit") or {}
     edl = edit.get("edl") or {}
     strategy = edit.get("strategy") or {}
+    # HOM-223: p3 nodes no longer echo `transcripts.final_json_path` /
+    # `edl.edl_path` into state. Surgical fallback: derive via
+    # `EpisodePaths(slug)` when state lacks the echo. p4 internals stay
+    # untouched (Sub-3 owns); this is just the read-site of removed p3
+    # writes. Fingerprint stays identical because the paths point at the
+    # same files.
+    final_json_path = transcripts.get("final_json_path")
+    edl_path = edl.get("edl_path")
+    if (not final_json_path or not edl_path) and slug and slug != "__unbound__":
+        from .._paths import EpisodePaths as _EP
+        paths = _EP(slug)
+        final_json_path = final_json_path or str(paths.transcripts_final_json_path)
+        edl_path = edl_path or str(paths.edit_dir / "edl.json")
     return make_llm_key(
         node="p4_design_system",
         version=_CACHE_VERSION,
         slug=slug,
-        files=[transcripts.get("final_json_path"), edl.get("edl_path")],
+        files=[final_json_path, edl_path],
         extras=(strategy_fingerprint(strategy),),
     )
 

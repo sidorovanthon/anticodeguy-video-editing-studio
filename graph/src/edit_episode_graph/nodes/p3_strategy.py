@@ -10,39 +10,35 @@ from langgraph.types import CachePolicy
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
 from .._caching import make_llm_key, stable_fingerprint
+from .._paths import EpisodePaths
 from ..schemas.p3_strategy import Strategy
 from ._llm import LLMNode, _load_brief
 
 # Bump on brief / schema / tool-list change. Spec §8 review checkpoint.
 # v2 (HOM-160): node body now persists <edit>/strategy.json as a side effect.
-# Bumping invalidates warm-cache rows for slugs run before this change so
-# the next re-run actually executes the body and produces strategy.json,
-# eliminating the one-run "legacy episode" notice path on the rehydrate node.
-_CACHE_VERSION = 2
+# v3 (HOM-223): identity-only state writes — `strategy.source_path` and
+# the brief's `episode_dir` extra removed; takes-packed resolved via
+# `EpisodePaths(slug)` at use-site.
+_CACHE_VERSION = 3
 
 
 def _takes_packed_path(state: dict) -> Path:
-    explicit = (state.get("transcripts") or {}).get("takes_packed_path")
-    if explicit:
-        return Path(explicit)
-    return Path(state["episode_dir"]) / "edit" / "takes_packed.md"
+    return EpisodePaths(state["slug"]).edit_dir / "takes_packed.md"
 
 
 def _takes_packed_path_for_key(state: dict) -> str | None:
-    """Same resolution as :func:`_takes_packed_path` but tolerant of unbound state.
+    """Slug-keyed cache lookup, tolerant of unbound state.
 
     LangGraph's `compiled.get_graph()` evaluates `key_func` against the
-    state-channel default during introspection — `episode_dir` is `""`. The
+    state-channel default during introspection — `slug` is `""`. The
     production helper raises `KeyError` in that case; for cache keys we want
     a stable "absent" fingerprint, so we emit ``None`` and rely on
     :func:`_caching.file_fingerprint` to map it to ``"absent"``.
     """
-    explicit = (state.get("transcripts") or {}).get("takes_packed_path")
-    if explicit:
-        return str(explicit)
-    if not state.get("episode_dir"):
+    slug = state.get("slug")
+    if not slug:
         return None
-    return str(Path(state["episode_dir"]) / "edit" / "takes_packed.md")
+    return str(EpisodePaths(slug).edit_dir / "takes_packed.md")
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -71,18 +67,18 @@ def _cache_key(state, *_args, **_kwargs):
     pre_scan = (state.get("edit") or {}).get("pre_scan") or {}
     slips = pre_scan.get("slips") or []
     revisions = state.get("strategy_revisions") or []
-    # `episode_dir` is rendered into the brief verbatim ("Episode dir:
-    # `{{ episode_dir }}`"). Slug + takes_packed.md content already
-    # namespace per-episode in practice, but include episode_dir in
-    # extras for the "all brief-rendered inputs covered" invariant
-    # (HOM-132.3 review).
+    # HOM-223: `episode_dir` no longer in extras — was previously included so
+    # the "all brief-rendered inputs covered" invariant held when the brief
+    # rendered `Episode dir: {{ episode_dir }}` verbatim. The brief now uses
+    # `slug` (logical identity); `slug` is already in the cache key. Removing
+    # `episode_dir` from extras is what makes the cache key portable across
+    # `HOMESTUDIO_PROJECT_ROOT` overrides.
     return make_llm_key(
         node="p3_strategy",
         version=_CACHE_VERSION,
         slug=slug,
         files=[_takes_packed_path_for_key(state)],
         extras=(
-            state.get("episode_dir") or "",
             stable_fingerprint(slips),
             stable_fingerprint(revisions),
         ),
@@ -124,14 +120,14 @@ def _build_node() -> LLMNode:
     )
 
 
-def _strategy_json_path(episode_dir: str) -> Path:
-    return Path(episode_dir) / "edit" / "strategy.json"
+def _strategy_json_path(slug: str) -> Path:
+    return EpisodePaths(slug).edit_dir / "strategy.json"
 
 
 def p3_strategy_node(state, *, router: BackendRouter | None = None):
-    episode_dir = state.get("episode_dir")
-    if not episode_dir:
-        return {"edit": {"strategy": {"skipped": True, "skip_reason": "no episode_dir in state"}}}
+    slug = state.get("slug")
+    if not slug:
+        return {"edit": {"strategy": {"skipped": True, "skip_reason": "no slug in state"}}}
     takes = _takes_packed_path(state)
     if not takes.exists():
         return {"edit": {"strategy": {"skipped": True, "skip_reason": f"takes_packed.md missing at {takes}"}}}
@@ -139,16 +135,14 @@ def p3_strategy_node(state, *, router: BackendRouter | None = None):
     update = node(state, router=router)
     strategy = (update.get("edit") or {}).get("strategy") or {}
     if "skipped" not in strategy:
-        strategy["source_path"] = str(takes)
         # HOM-160: persist a machine-readable snapshot so the phase-skip
         # path (route_after_preflight → rehydrate_skip_phase3 when final.mp4
         # exists) can reload strategy on a fresh thread without re-running
-        # Phase 3. Without this, Phase 4 cache keys that fingerprint
-        # `state.edit.strategy` diverge across threads (state empty vs
-        # populated) → cache miss → re-execution. Strip transient keys the
-        # cache fingerprint already excludes so the on-disk artifact equals
-        # the in-memory fingerprint round-trip.
-        out = _strategy_json_path(episode_dir)
+        # Phase 3. Strip transient keys the cache fingerprint already
+        # excludes so the on-disk artifact equals the in-memory fingerprint
+        # round-trip. HOM-223: `source_path` no longer written into state —
+        # the brief's traceability comes from the slug + the canonical path.
+        out = _strategy_json_path(slug)
         out.parent.mkdir(parents=True, exist_ok=True)
         persisted = {k: v for k, v in strategy.items()
                      if k not in {"skipped", "skip_reason", "approved", "approval_payload"}}

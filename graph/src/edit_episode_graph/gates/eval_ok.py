@@ -20,6 +20,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from .._paths import EpisodePaths
 from .._render_constants import duration_tolerance_ms
 from ._base import Gate
 
@@ -79,14 +80,25 @@ class EvalOkGate(Gate):
                 + ("…" if len(blockers) > 3 else "")
             )
 
-        final_mp4 = render.get("final_mp4")
+        # HOM-223: `final.mp4` resolved via EpisodePaths(slug); no state echo.
+        # Backward-compat: if `render.final_mp4` is present (legacy recording
+        # before HOM-223), still respect it. This makes the gate observable
+        # for unit tests that pass a synthetic state without `slug`.
+        slug = state.get("slug")
+        legacy_final = render.get("final_mp4")
+        if legacy_final:
+            final_mp4: str | None = str(legacy_final)
+        elif slug:
+            final_mp4 = str(EpisodePaths(slug).final_mp4_path)
+        else:
+            final_mp4 = None
         expected = edl.get("total_duration_s")
         try:
             expected_f = float(expected) if expected is not None else None
         except (TypeError, ValueError):
             expected_f = None
         if not final_mp4:
-            violations.append("render.final_mp4 missing in state")
+            violations.append("final_mp4 missing in state (no slug, no legacy echo)")
         elif expected_f is None:
             violations.append("edl.total_duration_s missing — cannot verify duration")
         else:

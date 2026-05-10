@@ -26,15 +26,26 @@ def test_strategy_schema_rejects_animation_and_subtitle_fields():
         Strategy.model_validate({**base, "subtitles": {"enabled": True}})
 
 
-def test_skips_when_takes_packed_missing(tmp_path):
-    state = {"slug": "demo", "episode_dir": str(tmp_path)}
+@pytest.fixture
+def project_root_episode(tmp_path, monkeypatch):
+    slug = "demo"
+    episode_dir = tmp_path / "episodes" / slug
+    episode_dir.mkdir(parents=True)
+    monkeypatch.setenv("HOMESTUDIO_PROJECT_ROOT", str(tmp_path))
+    return slug, episode_dir
+
+
+def test_skips_when_takes_packed_missing(project_root_episode):
+    slug, episode_dir = project_root_episode
+    state = {"slug": slug, "episode_dir": str(episode_dir)}
     update = p3_strategy_node(state, router=MagicMock())
     assert update["edit"]["strategy"]["skipped"] is True
     assert "takes_packed.md" in (update["edit"]["strategy"].get("skip_reason") or "")
 
 
-def test_runs_with_no_tools_and_embeds_inputs(tmp_path):
-    edit_dir = tmp_path / "edit"
+def test_runs_with_no_tools_and_embeds_inputs(project_root_episode):
+    slug, episode_dir = project_root_episode
+    edit_dir = episode_dir / "edit"
     edit_dir.mkdir()
     takes = edit_dir / "takes_packed.md"
     takes.write_text("# Packed transcripts\n[000.10-000.80] hello world\n", encoding="utf-8")
@@ -62,19 +73,19 @@ def test_runs_with_no_tools_and_embeds_inputs(tmp_path):
     )
 
     state = {
-        "slug": "demo",
-        "episode_dir": str(tmp_path),
+        "slug": slug,
+        "episode_dir": str(episode_dir),
         "edit": {"pre_scan": {"slips": [{"quote": "bad", "take_index": 1, "reason": "slip"}]}},
     }
     update = p3_strategy_node(state, router=router)
 
+    # HOM-223: identity-only state — `source_path` no longer written.
     assert update["edit"]["strategy"] == {
         "shape": "hook",
         "takes": ["take 1"],
         "grade": "neutral",
         "pacing": "tight",
         "length_estimate_s": 12.0,
-        "source_path": str(takes),
     }
     assert update["llm_runs"][0]["node"] == "p3_strategy"
     req, task = router.invoke.call_args.args[:2]

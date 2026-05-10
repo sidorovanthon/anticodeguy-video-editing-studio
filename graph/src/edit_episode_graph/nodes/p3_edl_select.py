@@ -21,6 +21,7 @@ from langgraph.types import CachePolicy
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
 from .._caching import make_llm_key, stable_fingerprint, strategy_fingerprint
+from .._paths import EpisodePaths
 from ..gates._base import gate_retry_context
 from ..schemas.p3_edl_select import EDL
 from ._llm import LLMNode, _load_brief
@@ -28,23 +29,21 @@ from ._llm import LLMNode, _load_brief
 # Bump on brief / schema / tool-list change. Spec §8 review checkpoint.
 # v2 (HOM-154): brief gained explicit HR 7 both-sides clarification.
 # v3 (HOM-154): brief gained ffmpeg curves [0,1] keypoint clarification.
-_CACHE_VERSION = 3
+# v4 (HOM-223): identity-only state writes — `edl.source_path` and
+# `edl.edl_path` no longer emitted; brief no longer renders `episode_dir`.
+# Paths derived via `EpisodePaths(slug)` at use-site.
+_CACHE_VERSION = 4
 
 
 def _takes_packed_path(state: dict) -> Path:
-    explicit = (state.get("transcripts") or {}).get("takes_packed_path")
-    if explicit:
-        return Path(explicit)
-    return Path(state["episode_dir"]) / "edit" / "takes_packed.md"
+    return EpisodePaths(state["slug"]).edit_dir / "takes_packed.md"
 
 
 def _takes_packed_path_for_key(state: dict) -> str | None:
-    explicit = (state.get("transcripts") or {}).get("takes_packed_path")
-    if explicit:
-        return str(explicit)
-    if not state.get("episode_dir"):
+    slug = state.get("slug")
+    if not slug:
         return None
-    return str(Path(state["episode_dir"]) / "edit" / "takes_packed.md")
+    return str(EpisodePaths(slug).edit_dir / "takes_packed.md")
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -75,16 +74,10 @@ def _cache_key(state, *_args, **_kwargs):
     slips = pre_scan.get("slips") or []
     strategy = (state.get("edit") or {}).get("strategy") or {}
     files: list[str | None] = [_takes_packed_path_for_key(state)]
-    # `_transcript_paths` falls back to globbing `<episode_dir>/edit/transcripts/`
-    # — under introspection (no `episode_dir`), only state-provided paths are
-    # safe; suppress the glob path. Using inline lookups keeps the cache key
-    # function tolerant of unbound state without forking the production helper.
-    inv = (state.get("edit") or {}).get("inventory") or {}
-    transcripts = state.get("transcripts") or {}
-    if inv.get("transcript_json_paths"):
-        files.extend(list(inv["transcript_json_paths"]))
-    elif transcripts.get("raw_json_paths"):
-        files.extend(list(transcripts["raw_json_paths"]))
+    # HOM-223: transcript paths derived from `EpisodePaths(slug)` glob — no
+    # state echo. Under introspection (`slug == ""`) the glob silently
+    # returns []; fingerprint stays stable.
+    files.extend(_transcript_paths(state))
     retry = gate_retry_context(state, "gate:edl_ok")
     return make_llm_key(
         node="p3_edl_select",
@@ -104,15 +97,27 @@ CACHE_POLICY = CachePolicy(key_func=_cache_key)
 
 
 def _transcript_paths(state: dict) -> list[str]:
-    inv = (state.get("edit") or {}).get("inventory") or {}
-    paths = inv.get("transcript_json_paths")
-    if paths:
-        return list(paths)
-    transcripts = state.get("transcripts") or {}
-    if transcripts.get("raw_json_paths"):
-        return list(transcripts["raw_json_paths"])
-    edit_dir = Path(state["episode_dir"]) / "edit" / "transcripts"
-    return sorted(str(p) for p in edit_dir.glob("*.json")) if edit_dir.is_dir() else []
+    """Resolve per-source transcript JSON paths (HOM-223 — slug-only).
+
+    Identity is `slug`; the canonical location is
+    `EpisodePaths(slug).transcripts_dir / *.json`. The legacy state echoes
+    (`edit.inventory.transcript_json_paths`, `transcripts.raw_json_paths`)
+    are no longer written by post-HOM-223 nodes; on a fresh thread the
+    transcripts directory is the source of truth.
+    """
+    slug = state.get("slug")
+    if not slug:
+        return []
+    transcripts_dir = EpisodePaths(slug).transcripts_dir
+    if not transcripts_dir.is_dir():
+        return []
+    # Skip `final.json` (produced by glue_remap_transcript) — only per-source
+    # raw transcripts are inputs to EDL selection. Stems map 1:1 to source
+    # video stems; `final.json` is the remapped output and should not be
+    # treated as another source.
+    return sorted(
+        str(p) for p in transcripts_dir.glob("*.json") if p.name != "final.json"
+    )
 
 
 def _pre_scan_slips(state: dict) -> list[dict]:
@@ -122,6 +127,9 @@ def _pre_scan_slips(state: dict) -> list[dict]:
 
 
 def _strategy(state: dict) -> dict:
+    # `source_path` filtered for HOM-223 forward-compat: post-HOM-223
+    # writers never emit it, but old recordings (cache.db rows replayed
+    # without re-record) may still carry the key.
     strat = (state.get("edit") or {}).get("strategy") or {}
     return {k: v for k, v in strat.items() if k not in {"skipped", "skip_reason", "source_path"}}
 
@@ -155,9 +163,9 @@ def _build_node() -> LLMNode:
 
 
 def p3_edl_select_node(state, *, router: BackendRouter | None = None):
-    episode_dir = state.get("episode_dir")
-    if not episode_dir:
-        return {"edit": {"edl": {"skipped": True, "skip_reason": "no episode_dir in state"}}}
+    slug = state.get("slug")
+    if not slug:
+        return {"edit": {"edl": {"skipped": True, "skip_reason": "no slug in state"}}}
     takes = _takes_packed_path(state)
     if not takes.exists():
         return {"edit": {"edl": {"skipped": True, "skip_reason": f"takes_packed.md missing at {takes}"}}}
@@ -165,18 +173,15 @@ def p3_edl_select_node(state, *, router: BackendRouter | None = None):
     update = node(state, router=router)
     edl = (update.get("edit") or {}).get("edl") or {}
     if "skipped" not in edl and "raw_text" not in edl:
-        edl["source_path"] = str(takes)
         # Persist EDL to disk so the deterministic render step (canon `render.py`)
         # can consume it. Without this, p3_render_segments fails with
         # "edl.json not found" — the LLM produces an in-state EDL but render.py
         # only reads from a path. Writing it here keeps p3_edl_select the sole
         # owner of EDL persistence (one writer per artifact).
-        edl_path = Path(episode_dir) / "edit" / "edl.json"
+        # HOM-223: identity-only state — no `source_path` / `edl_path` echo;
+        # consumers derive via `EpisodePaths(slug).edit_dir / "edl.json"`.
+        edl_path = EpisodePaths(slug).edit_dir / "edl.json"
         edl_path.parent.mkdir(parents=True, exist_ok=True)
-        # Strip orchestrator-only fields before serializing — they confuse
-        # canon helpers that don't expect them.
-        on_disk = {k: v for k, v in edl.items() if k != "source_path"}
-        edl_path.write_text(json.dumps(on_disk, indent=2, ensure_ascii=False), encoding="utf-8")
-        edl["edl_path"] = str(edl_path)
+        edl_path.write_text(json.dumps(edl, indent=2, ensure_ascii=False), encoding="utf-8")
     update.setdefault("edit", {})["edl"] = edl
     return update
