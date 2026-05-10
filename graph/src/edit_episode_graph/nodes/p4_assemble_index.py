@@ -54,6 +54,23 @@ from .._caching import make_key, stable_fingerprint
 from .._scene_id import scene_id_for
 
 # Bump on assemble_html / shim shape / marker change. Spec §8.
+# v4 (HOM-214): the visibility shim now emits
+# `root.set('#scene-<id>', { opacity: 1 }, t)` for EVERY scene, including
+# i=0 at t=0 — not just non-first scenes. This is a **structural-observability**
+# change, NOT a visual fix. Scene-0's fragment CSS already provides initial
+# visibility (see `~/.agents/skills/hyperframes/references/transitions/catalog.md`
+# Hard Rules (CSS) L9 for the canonical scene-visibility contract), so the
+# explicit set at t=0 is a no-op visually. What it buys us is:
+#   (a) "first scene at t=0" is now a property observable from the assembled
+#       root-timeline JS alone (parse `root.add(...)`/`root.set(...)` positions),
+#       satisfying HOM-214 DoD scope item 4 (structural position-chain test).
+#   (b) The future canonical transitions node (HOM-77) gets a clean handoff:
+#       it can replace these `set(... opacity: 1)` calls with fade-in tweens
+#       at identical positions without re-deriving cumulative starts.
+# The visual root-cause for the t=0..2 hook-absent symptom seen in HOM-211 is
+# **deferred to HOM-216** (Playwright snapshot verification, blocked on HOM-195).
+# Candidate causes for that bisect: load-order race, `__sceneTimelines["hook"]`
+# not registered when shim runs, scene-0 fragment regression, or other.
 # v3 (HOM-191): also injects a `:root { --bg: …; --fg: …; --font-body: …; }`
 # tokens block consuming `compose.design.palette` + `compose.design.typography`,
 # so `p4_scaffold`'s `var(--bg, transparent)` placeholder resolves to the
@@ -69,7 +86,7 @@ from .._scene_id import scene_id_for
 # this, every scene-1+ frame stays at the fromTo from-state — the
 # Phase 4 black-screen symptom HOM-164 was filed for. Repro confirmed in a
 # clean `npx hyperframes init` scaffold; fix is purely orchestrator-side.
-_CACHE_VERSION = 3
+_CACHE_VERSION = 4
 
 
 def _scene_html_paths(state: dict) -> list[str | None]:
@@ -391,10 +408,16 @@ def build_visibility_shim(
 
     Produces hard-cut scene visibility pending the canonical transitions node
     (HOM-77/v5). For each scene at index `i` with start time `t`:
-      - if `i > 0`: `root.set('#scene-<id>', { opacity: 1 }, t)` — the first
-        scene starts visible (opacity: 1 in its fragment style); subsequent
-        scenes carry `opacity: 0` initially per `transitions/catalog.md` L9.
-      - always: unpause `window.__sceneTimelines[id]` and nest it via
+      - `root.set('#scene-<id>', { opacity: 1 }, t)` — for EVERY scene,
+        including i=0 at t=0. The fragment style still carries `opacity: 1`
+        for scene-0 (so the page paints before the timeline first ticks),
+        but the explicit `set` at t=0 makes "first scene anchors at t=0"
+        a property observable from the assembled root-timeline JS rather
+        than relying on inter-fragment coupling. See `_CACHE_VERSION` v4
+        note (HOM-214). Subsequent scenes carry `opacity: 0` initially per
+        canon `~/.agents/skills/hyperframes/references/transitions/catalog.md`
+        Hard Rules — the `set` reveals them at their cumulative start.
+      - unpause `window.__sceneTimelines[id]` and nest it via
         `root.add(sceneTl, t)` — see `_CACHE_VERSION` v2 note for the GSAP
         rationale (a paused child timeline does not advance under parent
         `seek()`, so HOM-164's black-screen symptom is fixed by clearing the
@@ -418,9 +441,11 @@ def build_visibility_shim(
         f"  var ids = {ids_json};\n"
         f"  var starts = {starts_json};\n"
         "  ids.forEach(function(id, i) {\n"
-        "    if (i > 0) {\n"
-        "      root.set('#scene-' + id, { opacity: 1 }, starts[i]);\n"
-        "    }\n"
+        "    // HOM-214: anchor every scene's reveal on the root timeline,\n"
+        "    // including i=0 at t=0, so the position chain is observable\n"
+        "    // from the shim alone. Scene-0's fragment also has opacity: 1\n"
+        "    // in CSS for first-paint, so this is a no-op visually.\n"
+        "    root.set('#scene-' + id, { opacity: 1 }, starts[i]);\n"
         "    var sceneTl = window.__sceneTimelines && window.__sceneTimelines[id];\n"
         "    if (sceneTl) {\n"
         "      // HOM-164: unpause child timeline before nesting — GSAP does\n"
@@ -547,6 +572,10 @@ def p4_assemble_index_node(state):
         design.get("palette"), design.get("typography")
     )
     root_html = index_path.read_text(encoding="utf-8")
+    # NOTE: cumulative_s computed for `scene_starts` passed to
+    # `build_visibility_shim`. Root `data-duration` reconciliation deliberately
+    # NOT done here — see HOM-220 (follow-up) for refitting `p4_plan` beat
+    # durations to authoritative audio length instead.
     patched = assemble_html(
         root_html=root_html,
         beat_html_fragments=fragments,
