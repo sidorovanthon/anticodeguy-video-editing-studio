@@ -165,6 +165,25 @@ def _gate_animation_map_classify_base(tmp_dir: Path) -> dict:
     }
 
 
+def _p4_persist_session_base(tmp_dir: Path) -> dict:
+    """HOM-229: cache key fingerprints `EpisodePaths(slug).index_html_path`
+    + extras=(assembled_at,). Seed the index.html on disk so the file
+    fingerprint flips on edit; provide a stable assembled_at so the key
+    is reproducible across calls.
+    """
+    episode_dir = _pin_project_root_to(tmp_dir)
+    hf_dir = episode_dir / "hyperframes"
+    hf_dir.mkdir(parents=True, exist_ok=True)
+    (hf_dir / "index.html").write_text("<html></html>", encoding="utf-8")
+    return {
+        "slug": _FP_SLUG,
+        "episode_dir": str(episode_dir),
+        "compose": {
+            "assemble": {"assembled_at": "2026-05-10T12:00:00+00:00"},
+        },
+    }
+
+
 def _p4_beat_base(tmp_dir: Path) -> dict:
     episode_dir = _pin_project_root_to(tmp_dir)
     # HOM-224: paths derive via EpisodePaths(slug); seed at slug-derived layout.
@@ -228,6 +247,14 @@ _NODE_REGISTRY: dict[str, tuple[str, Callable[[Path], dict], Callable[[dict], Pa
         "edit_episode_graph.nodes.p4_beat",
         _p4_beat_base,
         _slug_path("design_md_path"),
+    ),
+    # HOM-229: cache key now deterministic — extras=(assembled_at,) and
+    # `today` derived from it. The three parametrised invariants apply:
+    # _CACHE_VERSION bump, cfg fingerprint, upstream artifact (index.html) edit.
+    "p4_persist_session": (
+        "edit_episode_graph.nodes.p4_persist_session",
+        _p4_persist_session_base,
+        _slug_path("index_html_path"),
     ),
     # HOM-156 (review S1): cheap-tier LLM classifier extracted into its own
     # graph node so cache_policy= actually fires. Registry entry now points

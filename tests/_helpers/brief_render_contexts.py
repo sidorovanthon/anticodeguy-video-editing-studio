@@ -32,6 +32,8 @@ TAKES_PACKED_PATH = f"{EPISODE_DIR}/edit/takes_packed.md"
 TRANSCRIPT_JSON_PATH = f"{EPISODE_DIR}/edit/transcripts/raw.json"
 CAPTIONS_BLOCK_PATH = f"{EPISODE_DIR}/hyperframes/captions.html"
 SCENE_HTML_PATH = f"{EPISODE_DIR}/hyperframes/compositions/scene-hook.html"
+PROJECT_MD_PATH = f"{EPISODE_DIR}/edit/project.md"
+INDEX_HTML_PATH = f"{EPISODE_DIR}/hyperframes/index.html"
 
 _FIXED_TAKES_PACKED_TEXT = (
     "[take-1] 00:00:00.500 --> 00:00:04.200\n"
@@ -192,6 +194,49 @@ def gate_animation_map_classify_ctx() -> dict:
     }
 
 
+def p4_persist_session_ctx() -> dict:
+    plan = {
+        "shape": "hook-problem-payoff",
+        "beats": [
+            {"id": "hook", "title": "Hook", "duration_s": 6.9},
+            {"id": "payoff", "title": "Payoff", "duration_s": 5.0},
+        ],
+    }
+    beats_summary = [
+        {
+            "beat_id": "hook",
+            "title": "Hook",
+            "duration_s": 6.9,
+            "scene_path": SCENE_HTML_PATH,
+            "status": "assembled",
+        },
+        {
+            "beat_id": "payoff",
+            "title": "Payoff",
+            "duration_s": 5.0,
+            "scene_path": f"{EPISODE_DIR}/hyperframes/compositions/scene-payoff.html",
+            "status": "assembled",
+        },
+    ]
+    gate_results = [
+        {"gate": "gate:design_ok", "ok": True, "iteration": 1},
+        {"gate": "gate:plan_ok", "ok": True, "iteration": 1},
+        {"gate": "gate:static_guard", "ok": True, "iteration": 1},
+    ]
+    return {
+        **_base(),
+        "project_md_path": PROJECT_MD_PATH,
+        "design_md_path": DESIGN_MD_PATH,
+        "expanded_prompt_path": EXPANDED_PROMPT_PATH,
+        "plan_json": json.dumps(plan, ensure_ascii=False),
+        "beats_json": json.dumps(beats_summary, ensure_ascii=False),
+        "captions_block_path": CAPTIONS_BLOCK_PATH,
+        "index_html_path": INDEX_HTML_PATH,
+        "gate_results_json": json.dumps(gate_results, ensure_ascii=False),
+        "today": "2026-05-10",
+    }
+
+
 def p4_captions_layer_ctx() -> dict:
     return {
         **_base(),
@@ -214,5 +259,6 @@ NODE_CONTEXTS = {
     "p4_plan": p4_plan_ctx,
     "p4_beat": p4_beat_ctx,
     "p4_captions_layer": p4_captions_layer_ctx,
+    "p4_persist_session": p4_persist_session_ctx,
     "gate_animation_map_classify": gate_animation_map_classify_ctx,
 }
