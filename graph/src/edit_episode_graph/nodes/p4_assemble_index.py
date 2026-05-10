@@ -54,30 +54,23 @@ from .._caching import make_key, stable_fingerprint
 from .._scene_id import scene_id_for
 
 # Bump on assemble_html / shim shape / marker change. Spec §8.
-# v4 (HOM-214): two changes to make the Pattern A root-timeline composition
-# self-consistent and observable from the assembled `index.html` alone, per
-# canon `~/.agents/skills/hyperframes/patterns.md` "Top-Level Composition" +
-# `~/.agents/skills/hyperframes/references/transitions/catalog.md` Hard Rules:
-#   1. The visibility shim now emits `root.set('#scene-<id>', { opacity: 1 }, t)`
-#      for EVERY scene (including i=0 at t=0), not just non-first scenes.
-#      The fragment style still carries `opacity: 1` for scene-0 so the page
-#      renders the Hook before the timeline first ticks; the explicit
-#      anchor at t=0 makes "first scene at t=0" a structurally observable
-#      property of the root timeline (HOM-211 diagnostic surfaced an empty
-#      t=0..2 window — Hook absent on the root timeline). It also gives the
-#      future canonical transitions node (HOM-77) a clean handoff: it can
-#      replace these `set(... opacity: 1)` calls with fade-in tweens at
-#      identical positions without re-deriving cumulative starts.
-#   2. The root composition's `data-duration` is reconciled to
-#      `max(current, cumulative_end)` at assemble time. `p4_scaffold` writes
-#      `data-duration` from ffprobe of `final.mp4` (audio-driven), but
-#      `compose.plan.beats[]` durations are LLM-rounded and routinely sum
-#      higher (HOM-211: 22.367 vs 26.5). When the sum exceeds ffprobe length
-#      the last scene's `data-start + data-duration` runs past the root's
-#      end, producing a dead-zone black tail in preview. Reconciliation
-#      makes the timeline long enough to contain every scene; the renderer
-#      still cuts the audio at final.mp4's actual length via the el-audio
-#      `<audio>` element's own `data-duration`.
+# v4 (HOM-214): the visibility shim now emits
+# `root.set('#scene-<id>', { opacity: 1 }, t)` for EVERY scene, including
+# i=0 at t=0 — not just non-first scenes. This is a **structural-observability**
+# change, NOT a visual fix. Scene-0's fragment CSS already provides initial
+# visibility (see `~/.agents/skills/hyperframes/references/transitions/catalog.md`
+# Hard Rules (CSS) L9 for the canonical scene-visibility contract), so the
+# explicit set at t=0 is a no-op visually. What it buys us is:
+#   (a) "first scene at t=0" is now a property observable from the assembled
+#       root-timeline JS alone (parse `root.add(...)`/`root.set(...)` positions),
+#       satisfying HOM-214 DoD scope item 4 (structural position-chain test).
+#   (b) The future canonical transitions node (HOM-77) gets a clean handoff:
+#       it can replace these `set(... opacity: 1)` calls with fade-in tweens
+#       at identical positions without re-deriving cumulative starts.
+# The visual root-cause for the t=0..2 hook-absent symptom seen in HOM-211 is
+# **deferred to HOM-216** (Playwright snapshot verification, blocked on HOM-195).
+# Candidate causes for that bisect: load-order race, `__sceneTimelines["hook"]`
+# not registered when shim runs, scene-0 fragment regression, or other.
 # v3 (HOM-191): also injects a `:root { --bg: …; --fg: …; --font-body: …; }`
 # tokens block consuming `compose.design.palette` + `compose.design.typography`,
 # so `p4_scaffold`'s `var(--bg, transparent)` placeholder resolves to the
@@ -468,60 +461,6 @@ def build_visibility_shim(
     )
 
 
-# Targets ONLY the root composition's `data-duration`, not nested element
-# `data-duration` attributes (scene divs, video/audio clips). The match is
-# anchored to the same `<div ... data-composition-id="..." ...>` opening tag
-# `p4_scaffold` writes; sibling timed elements live OUTSIDE that opening tag.
-_ROOT_DATA_DURATION_RE = re.compile(
-    r"""(<div\b[^>]*?\bdata-composition-id\s*=\s*["'][^"']+["'][^>]*?\bdata-duration\s*=\s*["'])"""
-    r"""(?P<value>[\d.]+)"""
-    r"""(["'])""",
-    flags=re.IGNORECASE | re.DOTALL,
-)
-
-
-def _reconcile_root_data_duration(html: str, cumulative_end_s: float) -> str:
-    """Patch the root composition's `data-duration` to `max(current, cumulative_end_s)`.
-
-    HOM-214/HOM-211: `p4_scaffold` writes `data-duration` from ffprobe of
-    `final.mp4` (audio length). LLM-rounded `compose.plan.beats[]` durations
-    routinely sum higher (canonical fixture: 22.367 ffprobe vs 26.5 cumulative).
-    When the sum exceeds ffprobe length, the last scene's data-start +
-    data-duration runs past the root timeline end → preview dead-zone /
-    black tail. Reconciliation extends the root timeline to contain every
-    scene; the audio element keeps its own data-duration so playback still
-    cuts at final.mp4's actual length.
-
-    Idempotent: if the current value already meets/exceeds cumulative_end_s,
-    the HTML is returned unchanged. Returns the input unchanged if no root
-    data-duration is found (defensive — keeps the function total).
-    """
-    if cumulative_end_s <= 0.0:
-        return html
-
-    match = _ROOT_DATA_DURATION_RE.search(html)
-    if not match:
-        return html
-
-    try:
-        current = float(match.group("value"))
-    except ValueError:
-        return html
-
-    if current >= cumulative_end_s:
-        return html
-
-    # Format with one decimal when fractional, integer otherwise — keeps
-    # diffs minimal vs the scaffold's typical integer durations.
-    new_value = (
-        f"{cumulative_end_s:.3f}".rstrip("0").rstrip(".")
-        if cumulative_end_s != int(cumulative_end_s)
-        else str(int(cumulative_end_s))
-    )
-    start, end = match.span("value")
-    return html[:start] + new_value + html[end:]
-
-
 def assemble_html(
     *,
     root_html: str,
@@ -529,7 +468,6 @@ def assemble_html(
     captions_html: str | None,
     visibility_shim: str | None = None,
     tokens_block: str | None = None,
-    cumulative_end_s: float | None = None,
 ) -> str:
     """Inject beat fragments + optional captions block + optional v4 shim
     before `</body>`.
@@ -546,8 +484,6 @@ def assemble_html(
             already attached by `build_visibility_shim`); injected last.
     """
     cleaned = _strip_existing_injection(root_html)
-    if cumulative_end_s is not None:
-        cleaned = _reconcile_root_data_duration(cleaned, cumulative_end_s)
     pieces: list[str] = []
     if tokens_block:
         pieces.append(tokens_block)
@@ -636,13 +572,16 @@ def p4_assemble_index_node(state):
         design.get("palette"), design.get("typography")
     )
     root_html = index_path.read_text(encoding="utf-8")
+    # NOTE: cumulative_s computed for `scene_starts` passed to
+    # `build_visibility_shim`. Root `data-duration` reconciliation deliberately
+    # NOT done here — see HOM-217 (follow-up) for refitting `p4_plan` beat
+    # durations to authoritative audio length instead.
     patched = assemble_html(
         root_html=root_html,
         beat_html_fragments=fragments,
         captions_html=captions_html,
         visibility_shim=shim,
         tokens_block=tokens_block,
-        cumulative_end_s=cumulative_s,
     )
     if patched != root_html:
         _atomic_write_text(index_path, patched)
