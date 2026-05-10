@@ -324,7 +324,9 @@ Reason: HOM-134 (`p4_captions_layer.py:172-180`, `p4_beat.py:174 output_schema=N
 
 ### Step A — State schema additions + `compose.scenes` reducer (1 PR, ~1 day)
 
-Add `compose.scenes`, `compose.design.design_md`, `compose.expansion.expanded_prompt`, `compose.captions.html`, `compose.assemble.index_html`, `compose.persist.session_block`, `compose.materialize` to `graph/src/edit_episode_graph/state.py`. All new fields `total=False`. No node touches them yet. Schema-migration test asserts old shape still parses.
+Add `compose.scenes`, `compose.design.design_md`, `compose.expansion.expanded_prompt`, `compose.captions.html`, `compose.index_html`, `compose.persist.session_block`, `compose.materialize` to `graph/src/edit_episode_graph/state.py`. All new fields `total=False`. No node touches them yet. Schema-migration test asserts old shape still parses.
+
+**HOM-231 implementation note (2026-05-10):** `compose.index_html` was placed flat under `ComposeState`, not nested under `compose.assemble.*` as originally written. Rationale: only `p4_assemble_index` produces it, no sibling assemble-body fields exist, and the existing `compose.assemble.*` namespace holds metadata (`assembled_at`, `beat_names`) not bodies. Future migration to nested form is mechanical if a sibling appears. The §11 sizing table still references `compose.assemble.index_html` for prose continuity, but the schema key is `compose.index_html`.
 
 **Cross-cutting infrastructure landed in this same PR (moved here from step B's `p4_beat` sub-PR):**
 
