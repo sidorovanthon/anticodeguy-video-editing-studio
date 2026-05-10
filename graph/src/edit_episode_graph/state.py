@@ -60,6 +60,21 @@ keys (writer in parens):
   as p3, semantics shift from absolute path → ISO timestamp
 
 The keys remain typed on the schema below for forward-compat parsing.
+
+HOM-231 (Step A of HOM-230 state-first artifacts epic) — body-string fields
+added to the compose namespace alongside the existing `*_path` keys. New
+fields under ``compose``: ``scenes`` (dict[scene_id -> {html}], wired through
+the deterministic ``_scenes_merge`` reducer), ``index_html`` (top-level —
+intentionally NOT nested under ``compose.assemble`` per the HOM-231 ticket;
+the spec's §10 Step A wrote ``compose.assemble.index_html`` but the Linear
+ticket simplified to a flat key to avoid premature nesting; flatness is fine
+because the only producer is ``p4_assemble_index`` and there are no sibling
+assemble-body fields). Body fields on existing sub-namespaces:
+``design.design_md``, ``expansion.expanded_prompt``, ``captions.html``,
+``persist.session_block``. Plus ``materialize`` placeholder for HOM-230
+Step C. All new fields are ``total=False`` and additive — no existing
+``*_path`` field is removed; coexistence is intentional and Step E removes
+the path keys.
 """
 
 from operator import add
@@ -71,6 +86,27 @@ def dict_merge(left: dict | None, right: dict | None) -> dict:
     out = dict(left or {})
     out.update(right or {})
     return out
+
+
+def _scenes_merge(left: dict | None, right: dict | None) -> dict:
+    """Union-merge two scenes dicts. On conflict (same scene_id from two
+    parallel Sends) the right-hand value wins — last-Send-write semantics
+    matching LangGraph's standard channel-write order. Output dict is
+    sorted by scene_id so downstream content-hash fingerprints are
+    iteration-order independent.
+
+    Used as the reducer for ``ComposeState.scenes`` (HOM-231). The
+    sorted-by-key output is load-bearing for the future materializer's
+    cache key (spec §6.3) — Python dict iteration is insertion-ordered,
+    and parallel ``Send`` completion order is non-deterministic, so an
+    unsorted union would produce different cache keys for the same scene
+    set. Spec source-of-truth:
+    ``docs/superpowers/specs/2026-05-10-state-first-artifacts.md`` §10
+    Step A.
+    """
+    merged = dict(left or {})
+    merged.update(right or {})
+    return {k: merged[k] for k in sorted(merged)}
 
 
 def gate_results_reducer(
@@ -163,6 +199,9 @@ class DesignState(TypedDict, total=False):
     anti_patterns: list[str]
     beat_visual_mapping: list[dict]
     design_md_path: str | None
+    # HOM-231 (Step A): body string returned by p4_design_system. Coexists
+    # with `design_md_path` during the migration; Step E drops the path.
+    design_md: str | None
     raw_text: str | None
     skipped: bool
     skip_reason: str | None
@@ -170,6 +209,8 @@ class DesignState(TypedDict, total=False):
 
 class ExpansionState(TypedDict, total=False):
     expanded_prompt_path: str | None
+    # HOM-231 (Step A): body string returned by p4_prompt_expansion.
+    expanded_prompt: str | None
     raw_text: str | None
     skipped: bool
     skip_reason: str | None
@@ -189,10 +230,34 @@ class BeatArtifact(TypedDict, total=False):
 
 class CaptionsState(TypedDict, total=False):
     captions_block_path: str | None
+    # HOM-231 (Step A): body string returned by p4_captions_layer.
+    html: str | None
     cached: bool
     raw_text: str | None
     skipped: bool
     skip_reason: str | None
+
+
+class SceneState(TypedDict, total=False):
+    """Per-scene fragment body returned by p4_beat (HOM-231).
+
+    Populated under ``compose.scenes[<scene_id>]`` via the ``_scenes_merge``
+    reducer. Step B wires `p4_beat`'s structured-output writes into this
+    channel; Step A only ships the schema.
+    """
+    html: str
+
+
+class MaterializeState(TypedDict, total=False):
+    """Placeholder for HOM-230 Step C ``p4_materialize_disk_node`` outputs.
+
+    No fields required at Step A — the materializer's output shape is
+    finalized in its own PR. Schema slot reserved here so the topology
+    test for the future node has somewhere to land state without a
+    second schema-migration round.
+    """
+    materialized_at: str | None
+    files_written: list[str]
 
 
 class AssembleState(TypedDict, total=False):
@@ -208,6 +273,11 @@ class AssembleState(TypedDict, total=False):
 class PersistState(TypedDict, total=False):
     persisted_at: str | None
     session_n: int | None
+    # HOM-231 (Step A): Session-block markdown body returned by
+    # p4_persist_session (and, on the Phase-3 side, p3_persist_session if
+    # it is later migrated). The disk append into <edit>/project.md
+    # remains the authoritative artifact during the migration window.
+    session_block: str | None
     raw_text: str | None
     skipped: bool
     skip_reason: str | None
@@ -216,12 +286,24 @@ class PersistState(TypedDict, total=False):
 class ComposeState(TypedDict, total=False):
     hyperframes_dir: str | None
     index_html_path: str | None
+    # HOM-231 (Step A): assembled top-level index.html body returned by
+    # p4_assemble_index. Top-level under compose (NOT nested under
+    # `compose.assemble`) per the Linear ticket — flatness is fine because
+    # the only producer is p4_assemble_index and there are no sibling
+    # assemble-body fields. Spec §10 Step A originally wrote
+    # `compose.assemble.index_html`; ticket simplified to flat.
+    index_html: str | None
     design: DesignState
     design_md_path: str | None
     style_request: str | None
     expansion: ExpansionState
     expanded_prompt_path: str | None
     catalog: CatalogReport
+    # HOM-231 (Step A): per-scene fragment bodies, keyed by scene_id.
+    # Wired through `_scenes_merge` so parallel `Send` writes from the
+    # p4_beat fan-out (Step B) merge deterministically into a sorted
+    # dict — load-bearing for materializer cache keys (spec §6.3).
+    scenes: Annotated[dict[str, SceneState], _scenes_merge]
     # DEPRECATED — `compose.beats` is no longer populated by any node. The
     # per-beat fan-out (HOM-133/134) writes scene fragments to
     # `<hyperframes_dir>/compositions/<scene_id>.html` directly, and
@@ -245,6 +327,9 @@ class ComposeState(TypedDict, total=False):
     preview_port: int | None
     studio_launched_at: str | None
     studio_reused: bool
+    # HOM-231 (Step A): placeholder slot for p4_materialize_disk_node
+    # outputs (HOM-230 Step C). Empty in Step A.
+    materialize: MaterializeState
 
 
 class PreScanState(TypedDict, total=False):
