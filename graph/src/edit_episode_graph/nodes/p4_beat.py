@@ -49,7 +49,15 @@ from ._llm import LLMNode, _load_brief
 # system-UI whitelist. Failing example pinned to the HOM-154
 # `font-family: "Playfair Display", "Georgia", serif` regression that
 # halted gate:design_adherence at iter 3.
-_CACHE_VERSION = 4
+# v5 (HOM-213): anti-pattern 2 (HOM-165 exit-pair) rewritten to make the
+# generalisation explicit — applies to every scene element with a non-
+# trivial entrance, not just captions. Adds the symptom citation (thesis
+# main text stuck 8s past scene-end on canonical fixture), the
+# "exit-pair lives in scene IIFE not root" clarification (root transitions
+# fade the scene container, not per-element nodes), and the canonical
+# fixture's payoff scene as positive control. Triggered by HOM-211 finding:
+# hook + thesis missing the pair while payoff has it.
+_CACHE_VERSION = 5
 
 
 def _cache_key(state, *_args, **_kwargs):
