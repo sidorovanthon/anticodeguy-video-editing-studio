@@ -277,9 +277,16 @@ def test_brief_contains_hom165_anti_pattern_section():
         "the canonical replacement example still uses the ceil-1 anti-pattern"
     )
 
-    # Anti-pattern 2: caption exit kill-tween.
-    assert 'tl.set(captionEl, { visibility: "hidden" }' in brief, (
-        "missing the caption-exit kill-tween example"
+    # Anti-pattern 2: exit kill-tween example. HOM-213 rewrote this from a
+    # captions-specific example to a scene-content example (headline) so the
+    # LLM applies the rule to scene main text — not just captions. The exit
+    # pair is `tl.to(opacity:0)` followed by `tl.set(visibility: "hidden")`
+    # at fade-end timestamp.
+    assert 'tl.to(headline,    { opacity: 0' in brief, (
+        "missing the headline-exit fade tween example (HOM-213 generalisation)"
+    )
+    assert 'tl.set(headline,   { visibility: "hidden" }' in brief, (
+        "missing the headline-exit kill-tween example (HOM-213 generalisation)"
     )
     assert "Caption Exit Guarantee" in brief, (
         "missing the captions.md canon section reference"
@@ -287,6 +294,70 @@ def test_brief_contains_hom165_anti_pattern_section():
     # Generalisation phrase — exits beyond captions also need kills.
     assert "Hard-kill every scene boundary" in brief, (
         "missing the motion-principles.md canon bullet reference"
+    )
+
+
+# ---------------------------------------------------------------------------
+# HOM-213: positive-presence assertions for the Pattern A exit-pair.
+# Existing HOM-165 tests above check the anti-pattern section header + the
+# headline kill-tween example exist. These additional assertions verify the
+# brief's strengthened framing — symptom citation, scene-IIFE ownership
+# clarification, and the canonical fixture as positive control — survive
+# any future edit. Triggered by HOM-211 finding (hook + thesis lacked the
+# pair while payoff had it; brief had captions-only example so the LLM
+# never applied it to scene main text).
+# ---------------------------------------------------------------------------
+
+
+def test_brief_exit_pair_applies_to_scene_main_content():
+    """The exit-pair rule must explicitly cover scene main text/headlines,
+    not just captions. Without this framing the LLM applies it captions-only
+    and scene main text gets stuck on screen past its scene-slot (HOM-213
+    canonical fixture symptom)."""
+    brief = node_module._load_brief("p4_beat")
+
+    # The rule's explicit generalisation: applies to headlines, attributions,
+    # kickers, body copy — not just captions.
+    assert "headlines" in brief.lower() or "headline" in brief, (
+        "missing scene-main-content generalisation (HOM-213)"
+    )
+    # The symptom citation — keeps the why-do-this-rule-exist-at-all signal
+    # in the brief so future edits don't quietly weaken it back to captions-only.
+    assert "HOM-213" in brief or "stuck on screen" in brief.lower(), (
+        "missing the HOM-213 symptom citation"
+    )
+
+
+def test_brief_exit_pair_lives_in_scene_iife_not_root():
+    """The exit-pair MUST live in the scene's own IIFE timeline (the one
+    registered on `window.__sceneTimelines["..."]`), not deferred to root-
+    level transitions. Root transitions fade the scene CONTAINER; per-element
+    visibility is scene-IIFE territory. Without this clarification the LLM
+    sometimes punts on per-element exits, expecting root transitions to
+    handle them — but root can't see scene-internal selectors."""
+    brief = node_module._load_brief("p4_beat")
+
+    # The clarification phrase must survive — it disambiguates which timeline
+    # owns the exit-pair (scene IIFE, not root).
+    assert "__sceneTimelines" in brief, (
+        "missing scene-IIFE timeline reference"
+    )
+    # Explicit "not root" or "scene container" framing — proves the brief
+    # distinguishes between scene-internal element fades and root-scope
+    # scene-container fades.
+    assert "scene container" in brief.lower() or "root-level transitions" in brief.lower(), (
+        "missing scene-container vs scene-IIFE disambiguation"
+    )
+
+
+def test_brief_exit_pair_cites_canonical_fixture_payoff():
+    """The brief should point at the canonical fixture's payoff scene as
+    positive control. Concrete examples beat abstract rules — the LLM has
+    a working sample to mirror. If a future edit removes the citation, the
+    LLM loses the grounding example."""
+    brief = node_module._load_brief("p4_beat")
+    assert "payoff" in brief.lower(), (
+        "missing canonical fixture's payoff scene as positive control"
     )
 
 
