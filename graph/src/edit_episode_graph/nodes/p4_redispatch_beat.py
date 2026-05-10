@@ -30,6 +30,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .._paths import EpisodePaths
 from .._scene_id import scene_id_for
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
@@ -101,10 +102,17 @@ def _scene_metadata(state: dict) -> tuple[list[str], list[float], list[float]]:
 def _render_ctx(state: dict) -> dict:
     failure = _latest_cluster_failure(state) or {}
     compose = state.get("compose") or {}
-    index_html_path = compose.get("index_html_path") or ""
-    compositions_dir = ""
-    if index_html_path:
-        compositions_dir = str(Path(index_html_path).parent / "compositions")
+    # HOM-224: derive index.html via slug; legacy state echo gone.
+    slug = state.get("slug")
+    if slug:
+        ep = EpisodePaths(slug)
+        index_html_path = str(ep.index_html_path)
+        compositions_dir = str(ep.compositions_dir)
+    else:
+        index_html_path = compose.get("index_html_path") or ""
+        compositions_dir = (
+            str(Path(index_html_path).parent / "compositions") if index_html_path else ""
+        )
 
     scene_ids, scene_starts, scene_durations = _scene_metadata(state)
     # Viewport dimensions: `p4_assemble_index` always runs upstream of any
@@ -124,8 +132,9 @@ def _render_ctx(state: dict) -> dict:
         "prior_iteration": int(failure.get("iteration") or 0),
         "index_html_path": index_html_path,
         "compositions_dir": compositions_dir,
-        "design_md_path": compose.get("design_md_path") or "",
-        "expanded_prompt_path": compose.get("expanded_prompt_path") or "",
+        # HOM-224: derive via slug; compose echo dropped.
+        "design_md_path": str(EpisodePaths(slug).design_md_path) if slug else (compose.get("design_md_path") or ""),
+        "expanded_prompt_path": str(EpisodePaths(slug).expanded_prompt_path) if slug else (compose.get("expanded_prompt_path") or ""),
         "catalog_summary": _catalog_summary(state),
         "scene_ids_json": json.dumps(scene_ids, ensure_ascii=False),
         "scene_starts_json": json.dumps(scene_starts),
@@ -161,12 +170,18 @@ def p4_redispatch_beat_node(state, *, router: BackendRouter | None = None):
         }
 
     compose = state.get("compose") or {}
-    index_html_path = compose.get("index_html_path")
-    if not index_html_path or not Path(index_html_path).is_file():
+    # HOM-224: derive index.html via slug.
+    slug = state.get("slug")
+    if slug:
+        index_path = EpisodePaths(slug).index_html_path
+    else:
+        legacy = compose.get("index_html_path")
+        index_path = Path(legacy) if legacy else None
+    if index_path is None or not index_path.is_file():
         return {
             "errors": [{
                 "node": "p4_redispatch_beat",
-                "message": f"index.html missing at {index_html_path!r}; cannot identify beat owner",
+                "message": f"index.html missing at {index_path!r}; cannot identify beat owner",
                 "timestamp": _now(),
             }],
             "notices": ["p4_redispatch_beat: index.html missing — see errors[]"],

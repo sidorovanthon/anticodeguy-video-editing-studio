@@ -19,7 +19,6 @@ Read those sections via the `Read` tool. The shape, naming, and avoidance rules
 are load-bearing and we do not paraphrase them here.
 
 Inputs:
-- Episode dir: `/tmp/snapshot-fixture/episode`
 - Strategy from Phase 3 (shape / takes / grade / pacing / length): `{"shape": "hook-problem-payoff", "takes": ["take-1"], "grade": "neutral, mild contrast lift", "pacing": "fast-SLOW-fast", "length_estimate_s": 30.0}`
 - EDL beats already chosen for the cut (use these as `beat_visual_mapping` keys): `["HOOK", "PROBLEM", "PAYOFF"]`
 

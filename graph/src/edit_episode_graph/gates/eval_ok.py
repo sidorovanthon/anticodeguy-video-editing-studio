@@ -59,7 +59,6 @@ class EvalOkGate(Gate):
         violations: list[str] = []
         edit = state.get("edit") or {}
         eval_report = edit.get("eval") or {}
-        render = edit.get("render") or {}
         edl = edit.get("edl") or {}
 
         if eval_report.get("skipped"):
@@ -80,29 +79,20 @@ class EvalOkGate(Gate):
                 + ("…" if len(blockers) > 3 else "")
             )
 
-        # HOM-223: `final.mp4` resolved via EpisodePaths(slug); no state echo.
-        # Prefer slug-derived path so Studio time-travel from a different
-        # machine resolves correctly — legacy `render.final_mp4` carries the
-        # recording-machine absolute path, which is exactly the failure mode
-        # HOM-195 fixes. Fall back to legacy only when slug is absent (e.g.
-        # synthetic-state unit tests).
-        # TODO(HOM-195 Sub-4): once old recordings are re-recorded post-HOM-223,
-        # the legacy fallback can be deleted entirely.
+        # HOM-224: identity-only state — `final.mp4` resolved exclusively
+        # via `EpisodePaths(slug)`. Legacy `render.final_mp4` echo (from
+        # pre-HOM-223 recordings) ignored. Synthetic-state unit tests now
+        # set `state["slug"]` and `HOMESTUDIO_PROJECT_ROOT` to point at the
+        # tmp dir — no need for a state-echo fallback.
         slug = state.get("slug")
-        legacy_final = render.get("final_mp4")
-        if slug:
-            final_mp4: str | None = str(EpisodePaths(slug).final_mp4_path)
-        elif legacy_final:
-            final_mp4 = str(legacy_final)
-        else:
-            final_mp4 = None
+        final_mp4: str | None = str(EpisodePaths(slug).final_mp4_path) if slug else None
         expected = edl.get("total_duration_s")
         try:
             expected_f = float(expected) if expected is not None else None
         except (TypeError, ValueError):
             expected_f = None
         if not final_mp4:
-            violations.append("final_mp4 missing in state (no slug, no legacy echo)")
+            violations.append("final_mp4 missing — slug not in state (cannot resolve via EpisodePaths)")
         elif expected_f is None:
             violations.append("edl.total_duration_s missing — cannot verify duration")
         else:

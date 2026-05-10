@@ -51,9 +51,41 @@ from pathlib import Path
 from langgraph.types import CachePolicy
 
 from .._caching import make_key, stable_fingerprint
+from .._paths import EpisodePaths
 from .._scene_id import scene_id_for
 
+
+def _index_html_path(state: dict) -> Path | None:
+    """HOM-224: derive index.html via slug; legacy echo retained for synthetic state."""
+    slug = state.get("slug")
+    if slug:
+        return EpisodePaths(slug).index_html_path
+    compose = state.get("compose") or {}
+    legacy = compose.get("index_html_path")
+    if legacy:
+        return Path(legacy)
+    return None
+
+
+def _captions_block_path(state: dict) -> Path | None:
+    """HOM-224: derive captions.html via slug; legacy echo retained."""
+    slug = state.get("slug")
+    if slug:
+        return EpisodePaths(slug).captions_block_path
+    compose = state.get("compose") or {}
+    legacy = compose.get("captions_block_path")
+    if legacy:
+        return Path(legacy)
+    return None
+
 # Bump on assemble_html / shim shape / marker change. Spec §8.
+# v5 (HOM-224): identity-only state writes — `compose.index_html_path`
+# (v4 output mirror) and `compose.assemble.index_html_path` (legacy echo)
+# are no longer written. `assemble.assembled_at` ISO timestamp is the
+# success signal; consumers derive the path via `EpisodePaths(slug).index_html_path`.
+# Read site (input lookup) also migrated: index.html derived via slug
+# instead of consumed from `compose.index_html_path`. Brief / shim
+# generation unchanged.
 # v4 (HOM-214): the visibility shim now emits
 # `root.set('#scene-<id>', { opacity: 1 }, t)` for EVERY scene, including
 # i=0 at t=0 — not just non-first scenes. This is a **structural-observability**
@@ -86,7 +118,7 @@ from .._scene_id import scene_id_for
 # this, every scene-1+ frame stays at the fromTo from-state — the
 # Phase 4 black-screen symptom HOM-164 was filed for. Repro confirmed in a
 # clean `npx hyperframes init` scaffold; fix is purely orchestrator-side.
-_CACHE_VERSION = 4
+_CACHE_VERSION = 5
 
 
 def _scene_html_paths(state: dict) -> list[str | None]:
@@ -100,10 +132,10 @@ def _scene_html_paths(state: dict) -> list[str | None]:
     compose = state.get("compose") or {}
     plan = compose.get("plan") or {}
     plan_beats = plan.get("beats") or []
-    index_html_path = compose.get("index_html_path")
+    index_html_path = _index_html_path(state)
     if not index_html_path or not plan_beats:
         return []
-    compositions_dir = Path(index_html_path).parent / "compositions"
+    compositions_dir = index_html_path.parent / "compositions"
     paths: list[str | None] = []
     for beat in plan_beats:
         if not isinstance(beat, dict):
@@ -135,8 +167,11 @@ def _cache_key(state, *_args, **_kwargs):
         )
     slug = state.get("slug") or "__unbound__"
     files: list[str | None] = list(_scene_html_paths(state))
-    captions_path = (state.get("compose") or {}).get("captions_block_path")
-    if captions_path:
+    # HOM-224: derive captions path via slug (legacy `compose.captions_block_path`
+    # echo is gone). Existence-check on disk so absent captions don't poison
+    # the file fingerprint with a missing-file sentinel.
+    captions_path = _captions_block_path(state)
+    if captions_path is not None and captions_path.is_file():
         files.append(str(captions_path))
     # HOM-191: design palette + typography are inlined as a `:root { … }` tokens
     # block. They're in-memory state (not files), so fingerprint them as extras
@@ -515,12 +550,11 @@ def p4_assemble_index_node(state):
     if not plan_beats:
         return _skip("no beats in compose.plan (p4_plan must run first)")
 
-    index_html_path = compose.get("index_html_path")
-    if not index_html_path:
-        return _error("compose.index_html_path missing (p4_scaffold must run first)")
-    index_path = Path(index_html_path)
+    index_path = _index_html_path(state)
+    if index_path is None:
+        return _error("slug missing in state — cannot resolve index.html path")
     if not index_path.is_file():
-        return _error(f"root index.html not found at {index_path}")
+        return _error(f"root index.html not found at {index_path} (p4_scaffold must run first)")
 
     compositions_dir = index_path.parent / "compositions"
 
@@ -558,13 +592,16 @@ def p4_assemble_index_node(state):
     if missing:
         return _skip(f"missing scenes: {', '.join(missing)}")
 
+    # HOM-224: derive captions path via slug. Skip silently when the file
+    # is absent (captions are an optional layer; `gate:captions_track`
+    # surfaces the structural absence separately). Pre-HOM-224 behavior
+    # was to error on a non-existent path *if the state echo was set*; the
+    # new disk-existence test is structurally cleaner — no state echo
+    # means "look on disk", and absence == "no captions this run".
     captions_html: str | None = None
-    captions_path_str = compose.get("captions_block_path")
-    if captions_path_str:
-        cp = Path(captions_path_str)
-        if not cp.is_file():
-            return _error(f"captions block path does not exist: {cp}")
-        captions_html = cp.read_text(encoding="utf-8")
+    captions_path = _captions_block_path(state)
+    if captions_path is not None and captions_path.is_file():
+        captions_html = captions_path.read_text(encoding="utf-8")
 
     shim = build_visibility_shim(scene_ids, scene_starts)
     design = compose.get("design") or {}
@@ -586,9 +623,12 @@ def p4_assemble_index_node(state):
     if patched != root_html:
         _atomic_write_text(index_path, patched)
 
+    # HOM-224: identity-only state — no longer echo `compose.index_html_path`
+    # or `compose.assemble.index_html_path`. `assembled_at` ISO timestamp is
+    # the success signal; downstream consumers derive the path via
+    # `EpisodePaths(slug).index_html_path` at use-site.
     return {
         "compose": {
-            "index_html_path": str(index_path),
             "assemble": {
                 "assembled_at": _now(),
                 "beat_names": scene_ids,

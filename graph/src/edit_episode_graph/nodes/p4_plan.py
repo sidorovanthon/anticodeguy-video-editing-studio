@@ -26,13 +26,16 @@ from langgraph.types import CachePolicy
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
 from .._caching import make_llm_key, stable_fingerprint, strategy_fingerprint
+from .._paths import EpisodePaths
 from ..schemas.p4_plan import CompositionPlan
 from ._llm import LLMNode, _load_brief
 
 # Bump on brief / schema / tool-list change. See HOM-132 spec §8.
 # v2: HOM-190 — relaxed CompositionPlan.beats min_length 3→1, transitions
 # min_length 1→0 (schemas encode invariants, not creative-direction targets).
-_CACHE_VERSION = 2
+# v3 (HOM-224): identity-only state writes — paths derived via
+# `EpisodePaths(slug)` at use-sites; brief no longer renders `episode_dir`.
+_CACHE_VERSION = 3
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -42,8 +45,6 @@ def _cache_key(state, *_args, **_kwargs):
         )
     # See p4_design_system._cache_key for the empty-slug rationale.
     slug = state.get("slug") or "__unbound__"
-    compose = state.get("compose") or {}
-    transcripts = state.get("transcripts") or {}
     edit = state.get("edit") or {}
     # `strategy_json` and `edl_beats_json` are rendered verbatim into the
     # brief (lines 30-32 of briefs/p4_plan.j2). They live in-memory on
@@ -52,19 +53,23 @@ def _cache_key(state, *_args, **_kwargs):
     # Hashed as `extras` per spec §6 row update in this PR.
     strategy = edit.get("strategy") or {}
     edl_beats = _edl_beats(state)
-    # HOM-223: `transcripts.final_json_path` no longer echoed by p3 glue —
-    # surgical fallback to `EpisodePaths(slug)` at this read site.
-    final_json_path = transcripts.get("final_json_path")
-    if not final_json_path and slug and slug != "__unbound__":
-        from .._paths import EpisodePaths as _EP
-        final_json_path = str(_EP(slug).transcripts_final_json_path)
+    # HOM-224: derive paths via EpisodePaths(slug) — identity-only state.
+    if slug and slug != "__unbound__":
+        paths = EpisodePaths(slug)
+        design_md_path: str | None = str(paths.design_md_path)
+        expanded_prompt_path: str | None = str(paths.expanded_prompt_path)
+        final_json_path: str | None = str(paths.transcripts_final_json_path)
+    else:
+        design_md_path = None
+        expanded_prompt_path = None
+        final_json_path = None
     return make_llm_key(
         node="p4_plan",
         version=_CACHE_VERSION,
         slug=slug,
         files=[
-            compose.get("design_md_path"),
-            compose.get("expanded_prompt_path"),
+            design_md_path,
+            expanded_prompt_path,
             final_json_path,
         ],
         extras=(
@@ -94,6 +99,10 @@ def _edl_beats(state: dict) -> list[str]:
 
 
 def _design_md_path(state: dict) -> str:
+    """HOM-224: derive via slug; legacy fallback for pre-pickup synthetic state."""
+    slug = state.get("slug")
+    if slug:
+        return str(EpisodePaths(slug).design_md_path)
     compose = state.get("compose") or {}
     path = compose.get("design_md_path")
     if path:
@@ -103,6 +112,10 @@ def _design_md_path(state: dict) -> str:
 
 
 def _expanded_prompt_path(state: dict) -> str:
+    """HOM-224: derive via slug; legacy fallback for pre-pickup synthetic state."""
+    slug = state.get("slug")
+    if slug:
+        return str(EpisodePaths(slug).expanded_prompt_path)
     compose = state.get("compose") or {}
     path = compose.get("expanded_prompt_path")
     if path:
@@ -135,11 +148,15 @@ def _build_node() -> LLMNode:
 
 
 def p4_plan_node(state, *, router: BackendRouter | None = None):
-    episode_dir = state.get("episode_dir")
-    if not episode_dir:
-        return {"compose": {"plan": {"skipped": True, "skip_reason": "no episode_dir in state"}}}
+    slug = state.get("slug")
+    if not slug:
+        return {"compose": {"plan": {"skipped": True, "skip_reason": "no slug in state"}}}
 
-    if not _design_md_path(state):
+    # HOM-224: paths now always resolve via EpisodePaths(slug); skip when
+    # the upstream artifact does not exist on disk (the meaningful gate —
+    # "DESIGN.md is on disk" — replaces the previous "state echo present").
+    design_md = _design_md_path(state)
+    if not design_md or not Path(design_md).is_file():
         return {
             "compose": {
                 "plan": {
@@ -149,7 +166,8 @@ def p4_plan_node(state, *, router: BackendRouter | None = None):
             },
         }
 
-    if not _expanded_prompt_path(state):
+    expanded_prompt = _expanded_prompt_path(state)
+    if not expanded_prompt or not Path(expanded_prompt).is_file():
         return {
             "compose": {
                 "plan": {

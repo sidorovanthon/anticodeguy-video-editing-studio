@@ -14,22 +14,33 @@ from edit_episode_graph.schemas.p4_persist_session import PersistSessionResult
 
 
 def _ok_state(tmp_path, **overrides):
+    # HOM-224: identity-only state — paths derive via `EpisodePaths(slug)`.
+    # Tests must pin `HOMESTUDIO_PROJECT_ROOT=tmp_path` (via monkeypatch in
+    # the calling test) so `EpisodePaths("demo")` resolves under tmp_path.
+    # We pre-seed DESIGN.md / expanded-prompt.md / captions.html on disk so
+    # the brief render context picks up their slug-derived locations.
+    slug = "demo"
+    episode_dir = tmp_path / "episodes" / slug
+    hf_dir = episode_dir / "hyperframes"
+    state_dir = hf_dir / ".hyperframes"
+    hf_dir.mkdir(parents=True, exist_ok=True)
+    state_dir.mkdir(parents=True, exist_ok=True)
+    (hf_dir / "DESIGN.md").write_text("# DESIGN", encoding="utf-8")
+    (state_dir / "expanded-prompt.md").write_text("# expanded", encoding="utf-8")
+    (hf_dir / "captions.html").write_text("<div>captions</div>", encoding="utf-8")
     base = {
-        "slug": "demo",
-        "episode_dir": str(tmp_path),
+        "slug": slug,
         "compose": {
-            "design": {"design_md_path": str(tmp_path / "hyperframes" / "DESIGN.md")},
-            "expansion": {"expanded_prompt_path": str(tmp_path / "hyperframes" / ".hyperframes" / "expanded-prompt.md")},
             "plan": {
                 "beats": [
                     {"id": "b1", "title": "Hook", "duration_s": 3.0},
                     {"id": "b2", "title": "Reveal", "duration_s": 4.5},
                 ],
             },
-            "captions_block_path": str(tmp_path / "hyperframes" / ".hyperframes" / "captions.html"),
             "assemble": {
-                "assembled_at": str(tmp_path / "hyperframes" / "index.html"),
-                "index_html_path": str(tmp_path / "hyperframes" / "index.html"),
+                # HOM-224: `index_html_path` write removed; `assembled_at`
+                # is now an ISO timestamp.
+                "assembled_at": "2026-05-10T12:00:00+00:00",
             },
             "beats": [
                 {"beat_id": "b1", "scene_path": "compositions/b1.html", "status": "rendered"},
@@ -64,16 +75,16 @@ def _stub_router_returning(persisted_at: str, session_n: int) -> MagicMock:
     return router
 
 
-def test_skips_when_no_episode_dir():
+def test_skips_when_no_slug():
+    """HOM-224: identity is `slug`, not `episode_dir`."""
     update = p4_persist_session_node({}, router=MagicMock())
     assert update["compose"]["persist"]["skipped"] is True
-    assert "episode_dir" in update["compose"]["persist"]["skip_reason"]
+    assert "slug" in update["compose"]["persist"]["skip_reason"]
 
 
-def test_skips_when_assemble_skipped(tmp_path):
+def test_skips_when_assemble_skipped():
     state = {
         "slug": "demo",
-        "episode_dir": str(tmp_path),
         "compose": {"assemble": {"skipped": True, "skip_reason": "no scenes"}},
     }
     update = p4_persist_session_node(state, router=MagicMock())
@@ -81,10 +92,9 @@ def test_skips_when_assemble_skipped(tmp_path):
     assert "assemble skipped" in update["compose"]["persist"]["skip_reason"]
 
 
-def test_skips_when_no_assembled_index(tmp_path):
+def test_skips_when_no_assembled_index():
     state = {
         "slug": "demo",
-        "episode_dir": str(tmp_path),
         "compose": {"assemble": {}},
     }
     update = p4_persist_session_node(state, router=MagicMock())
@@ -106,15 +116,20 @@ def test_phase4_gate_filter_excludes_phase3_records():
     assert names == {"gate:plan_ok", "gate:static_guard"}
 
 
-def test_runs_with_tools_and_embeds_phase4_inputs(tmp_path):
-    target = str(tmp_path / "edit" / "project.md")
+def test_runs_with_tools_and_embeds_phase4_inputs(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOMESTUDIO_PROJECT_ROOT", str(tmp_path))
+    target = "2026-05-10T12:00:00+00:00"  # HOM-224: ISO timestamp, not path
     router = _stub_router_returning(target, 2)
     state = _ok_state(tmp_path)
 
     update = p4_persist_session_node(state, router=router)
 
     assert update["compose"]["persist"]["session_n"] == 2
-    assert update["compose"]["persist"]["persisted_at"].endswith("project.md")
+    # HOM-224: `persisted_at` is an ISO 8601 timestamp (runtime overwrite),
+    # not a filesystem path. Validate the shape (parseable by `datetime`).
+    from datetime import datetime
+    persisted_at = update["compose"]["persist"]["persisted_at"]
+    datetime.fromisoformat(persisted_at)  # raises if not ISO 8601
     assert update["compose"]["session_persisted"] is True
     assert update["llm_runs"][0]["node"] == "p4_persist_session"
 
@@ -136,11 +151,12 @@ def test_runs_with_tools_and_embeds_phase4_inputs(tmp_path):
     assert "gate:plan_ok" in task
 
 
-def test_idempotent_increments_session_n_on_re_run(tmp_path):
+def test_idempotent_increments_session_n_on_re_run(tmp_path, monkeypatch):
     """Re-running with a higher session_n response simulates the agent
     finding existing blocks in project.md and incrementing N. The node
     itself never overwrites — it just records what the agent reported."""
-    target = str(tmp_path / "edit" / "project.md")
+    monkeypatch.setenv("HOMESTUDIO_PROJECT_ROOT", str(tmp_path))
+    target = "2026-05-10T12:00:00+00:00"
     state = _ok_state(tmp_path)
 
     update1 = p4_persist_session_node(state, router=_stub_router_returning(target, 1))
@@ -148,8 +164,13 @@ def test_idempotent_increments_session_n_on_re_run(tmp_path):
 
     update2 = p4_persist_session_node(state, router=_stub_router_returning(target, 2))
     assert update2["compose"]["persist"]["session_n"] == 2
-    # Same persisted_at — both runs target the same file.
-    assert update1["compose"]["persist"]["persisted_at"] == update2["compose"]["persist"]["persisted_at"]
+    # HOM-224: `persisted_at` is overwritten with a fresh ISO 8601 timestamp
+    # at runtime — successive runs produce different values (the
+    # observation, "when", not the location, "where"). Both must parse
+    # as ISO 8601.
+    from datetime import datetime
+    datetime.fromisoformat(update1["compose"]["persist"]["persisted_at"])
+    datetime.fromisoformat(update2["compose"]["persist"]["persisted_at"])
 
 
 def test_brief_references_canon_memory_section():

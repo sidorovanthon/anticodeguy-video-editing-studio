@@ -20,7 +20,6 @@ load-bearing and we do not paraphrase them here):
   final-fade exit (and only the final scene).
 
 Inputs:
-- Episode dir: `/tmp/snapshot-fixture/episode`
 - DESIGN.md path (read it; concept and mood for each beat must align with
   the visual identity and beat_visual_mapping it defines): `/tmp/snapshot-fixture/episode/hyperframes/DESIGN.md`
 - expanded-prompt.md path (read it; the per-scene specs already produced by

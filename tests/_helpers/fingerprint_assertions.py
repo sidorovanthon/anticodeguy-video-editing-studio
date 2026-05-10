@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib
+import os
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Callable, Iterator
@@ -52,14 +53,34 @@ from typing import Any, Callable, Iterator
 # ---------------------------------------------------------------------------
 
 
+_FP_SLUG = "fp-fixture"
+
+
+def _pin_project_root_to(tmp_dir: Path) -> Path:
+    """HOM-224: pin HOMESTUDIO_PROJECT_ROOT so EpisodePaths(slug) resolves
+    under tmp_dir. Returns the slug-derived episode dir (created on disk).
+
+    Pre-HOM-223/224 the cache_key consumed state echoes (e.g.
+    `transcripts.takes_packed_path`); post-HOM-224 it derives via
+    `EpisodePaths(slug)`. The fingerprint test edits a real file and
+    expects the key to flip — so the file MUST live at the path
+    `_cache_key` resolves, which is now slug-derived.
+    """
+    os.environ["HOMESTUDIO_PROJECT_ROOT"] = str(tmp_dir)
+    episode_dir = tmp_dir / "episodes" / _FP_SLUG
+    episode_dir.mkdir(parents=True, exist_ok=True)
+    return episode_dir
+
+
 def _p3_strategy_base(tmp_dir: Path) -> dict:
-    takes = tmp_dir / "edit" / "takes_packed.md"
+    episode_dir = _pin_project_root_to(tmp_dir)
+    takes = episode_dir / "edit" / "takes_packed.md"
     takes.parent.mkdir(parents=True, exist_ok=True)
     takes.write_text("snapshot fixture takes\n", encoding="utf-8")
     return {
-        "slug": "fp-fixture",
-        "episode_dir": str(tmp_dir),
-        "transcripts": {"takes_packed_path": str(takes)},
+        "slug": _FP_SLUG,
+        "episode_dir": str(episode_dir),
+        "transcripts": {},
         "edit": {
             "pre_scan": {"slips": []},
             "strategy": {},
@@ -69,17 +90,21 @@ def _p3_strategy_base(tmp_dir: Path) -> dict:
 
 
 def _p4_design_system_base(tmp_dir: Path) -> dict:
-    transcript = tmp_dir / "edit" / "transcripts" / "raw.json"
+    episode_dir = _pin_project_root_to(tmp_dir)
+    # HOM-224: cache_key consumes the slug-derived `transcripts/final.json`,
+    # not the legacy `transcripts/raw.json` echo. Seed at the slug-derived
+    # path so the fingerprint test's edit lands where _cache_key reads.
+    transcript = episode_dir / "edit" / "transcripts" / "final.json"
     transcript.parent.mkdir(parents=True, exist_ok=True)
     transcript.write_text('{"segments":[]}', encoding="utf-8")
-    edl = tmp_dir / "edit" / "edl.json"
+    edl = episode_dir / "edit" / "edl.json"
     edl.write_text('{"ranges":[]}', encoding="utf-8")
     return {
-        "slug": "fp-fixture",
-        "episode_dir": str(tmp_dir),
-        "transcripts": {"final_json_path": str(transcript)},
+        "slug": _FP_SLUG,
+        "episode_dir": str(episode_dir),
+        "transcripts": {},
         "edit": {
-            "edl": {"edl_path": str(edl), "ranges": []},
+            "edl": {"ranges": []},
             "strategy": {"shape": "hpp", "takes": ["t1"]},
         },
     }
@@ -141,19 +166,18 @@ def _gate_animation_map_classify_base(tmp_dir: Path) -> dict:
 
 
 def _p4_beat_base(tmp_dir: Path) -> dict:
-    design_md = tmp_dir / "hyperframes" / "DESIGN.md"
+    episode_dir = _pin_project_root_to(tmp_dir)
+    # HOM-224: paths derive via EpisodePaths(slug); seed at slug-derived layout.
+    design_md = episode_dir / "hyperframes" / "DESIGN.md"
     design_md.parent.mkdir(parents=True, exist_ok=True)
     design_md.write_text("# DESIGN.md fixture\n", encoding="utf-8")
-    expanded = tmp_dir / "hyperframes" / ".hyperframes" / "expanded-prompt.md"
+    expanded = episode_dir / "hyperframes" / ".hyperframes" / "expanded-prompt.md"
     expanded.parent.mkdir(parents=True, exist_ok=True)
     expanded.write_text("# expanded\n", encoding="utf-8")
     return {
-        "slug": "fp-fixture",
-        "episode_dir": str(tmp_dir),
-        "compose": {
-            "design_md_path": str(design_md),
-            "expanded_prompt_path": str(expanded),
-        },
+        "slug": _FP_SLUG,
+        "episode_dir": str(episode_dir),
+        "compose": {},
         "_beat_dispatch": {
             "scene_id": "scene-hook",
             "plan_beat": {"beat": "HOOK", "concept": "fixture", "duration_s": 5.0},
@@ -166,21 +190,44 @@ def _p4_beat_base(tmp_dir: Path) -> dict:
 # ``primary_artifact_pointer`` is a callable ``(state) -> Path`` returning
 # the upstream file the node's ``_cache_key`` content-hashes via
 # ``files=`` — used by :func:`assert_upstream_artifact_change_invalidates`.
+def _slug_path(prop_name: str) -> Callable[[dict], Path]:
+    """HOM-224: primary_artifact_pointer that derives via EpisodePaths(slug).
+
+    Returns a callable suitable for the registry's third tuple slot.
+    Resolves at call time so HOMESTUDIO_PROJECT_ROOT (set by the per-node
+    base factory) is in effect.
+    """
+    from edit_episode_graph._paths import EpisodePaths
+
+    def _resolve(state: dict) -> Path:
+        slug = state["slug"]
+        ep = EpisodePaths(slug)
+        return getattr(ep, prop_name)
+
+    return _resolve
+
+
+def _p3_strategy_takes_packed(state: dict) -> Path:
+    """p3_strategy fingerprints `<edit>/takes_packed.md` (slug-derived)."""
+    from edit_episode_graph._paths import EpisodePaths
+    return EpisodePaths(state["slug"]).edit_dir / "takes_packed.md"
+
+
 _NODE_REGISTRY: dict[str, tuple[str, Callable[[Path], dict], Callable[[dict], Path]]] = {
     "p3_strategy": (
         "edit_episode_graph.nodes.p3_strategy",
         _p3_strategy_base,
-        lambda s: Path(s["transcripts"]["takes_packed_path"]),
+        _p3_strategy_takes_packed,
     ),
     "p4_design_system": (
         "edit_episode_graph.nodes.p4_design_system",
         _p4_design_system_base,
-        lambda s: Path(s["transcripts"]["final_json_path"]),
+        _slug_path("transcripts_final_json_path"),
     ),
     "p4_beat": (
         "edit_episode_graph.nodes.p4_beat",
         _p4_beat_base,
-        lambda s: Path(s["compose"]["design_md_path"]),
+        _slug_path("design_md_path"),
     ),
     # HOM-156 (review S1): cheap-tier LLM classifier extracted into its own
     # graph node so cache_policy= actually fires. Registry entry now points

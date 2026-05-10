@@ -126,6 +126,7 @@ def test_episode_paths_all_properties_round_trip(
         ep.transcripts_final_json_path == base / "edit" / "transcripts" / "final.json"
     )
     assert ep.hyperframes_dir == base / "hyperframes"
+    assert ep.hyperframes_state_dir == base / "hyperframes" / ".hyperframes"
     assert ep.index_html_path == base / "hyperframes" / "index.html"
     assert ep.design_md_path == base / "hyperframes" / "DESIGN.md"
     assert (

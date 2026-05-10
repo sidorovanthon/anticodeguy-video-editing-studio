@@ -61,9 +61,15 @@ Procedure:
 
 ```json
 {
-  "persisted_at": "{{ project_md_path }}",
+  "persisted_at": "<ISO 8601 timestamp at the moment you finish persisting>",
   "session_n": <N>
 }
 ```
+
+Note: the runtime overwrites `persisted_at` with its own UTC timestamp
+post-HOM-224 (identity-only state — paths are derived from slug, not
+echoed); your value is a placeholder to satisfy schema validation. The
+literal canonical path is `{{ project_md_path }}` if you need to write
+to it via the Write tool.
 
 Do not include prose outside the JSON block.

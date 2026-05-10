@@ -639,12 +639,21 @@ def test_node_omits_tokens_block_when_design_missing(tmp_path):
     assert _TOKENS_END_MARKER not in on_disk
 
 
-def test_node_errors_when_captions_path_missing(tmp_path):
+def test_node_skips_captions_silently_when_path_missing(tmp_path):
+    """HOM-224: captions are derived via slug + disk-existence check.
+
+    Missing captions file is silently skipped (not an error); the structural
+    absence is surfaced separately by `gate:captions_track`. This replaces
+    the pre-HOM-224 behavior where setting `compose.captions_block_path` to
+    a non-existent path was an error — that state echo is gone post-HOM-224.
+    """
     state = _plan_state(tmp_path, [("Hook", 3.0)])
     _write_fragment(state, "hook")
-    state["compose"]["captions_block_path"] = str(tmp_path / "nope.html")
+    # No captions file on disk at EpisodePaths(slug).captions_block_path —
+    # node should silently proceed without inlining captions.
     update = p4_assemble_index_node(state)
-    assert update["errors"][0]["node"] == "p4_assemble_index"
+    assert "errors" not in update
+    assert update["compose"]["assemble"]["captions_included"] is False
 
 
 # ---- HOM-214: root-timeline scene-position chain (structural observability) ----

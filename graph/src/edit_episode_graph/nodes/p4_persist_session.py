@@ -29,11 +29,18 @@ from langgraph.types import CachePolicy
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
 from .._caching import make_llm_key
+from .._paths import EpisodePaths
 from ..schemas.p4_persist_session import PersistSessionResult
 from ._llm import LLMNode, _load_brief
 
 # Bump on brief / schema / tool-list change. See HOM-132 spec §8.
-_CACHE_VERSION = 1
+# v2 (HOM-224): identity-only state — `compose.persist.persisted_at` no
+# longer holds a path; runtime overwrites with ISO 8601 timestamp (mirrors
+# the p3 shape post-HOM-223). Brief asks for ISO timestamp; schema/field
+# semantics shift from "where" → "when". `compose.index_html_path` cache
+# input replaced with slug-derived `EpisodePaths(slug).index_html_path`
+# (input file fingerprint stays semantically identical — same physical file).
+_CACHE_VERSION = 2
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -45,15 +52,18 @@ def _cache_key(state, *_args, **_kwargs):
     slug = state.get("slug") or "__unbound__"
     compose = state.get("compose") or {}
     assemble = compose.get("assemble") or {}
-    # Spec §6 specifies `compose.index_html_path`; the assembled artifact is
-    # actually carried as `compose.assemble.index_html_path` (with
-    # `assembled_at` as a legacy fallback). A re-run with identical
-    # `index.html` content cache-hits and skips appending a duplicate
-    # Session block — desirable: nothing changed, no new session.
-    index_html_path = (
-        assemble.get("index_html_path")
-        or assemble.get("assembled_at")
-    )
+    # HOM-224: index.html path derived via slug; legacy
+    # `compose.assemble.index_html_path` write removed. `assembled_at` ISO
+    # timestamp is the upstream success signal — fingerprint includes it
+    # via `extras` so cache invalidates when a new assembly run happens
+    # (different timestamp = different upstream content). The file itself
+    # is still in `files=[]` for content-fingerprint coverage.
+    index_html_path: str | None
+    if slug and slug != "__unbound__":
+        index_html_path = str(EpisodePaths(slug).index_html_path)
+    else:
+        index_html_path = assemble.get("index_html_path")  # legacy fallback
+    assembled_at = assemble.get("assembled_at") or ""
     # `today` (UTC YYYY-MM-DD) is rendered into the brief (line 33 of
     # briefs/p4_persist_session.j2) and dictates the date stamped on the
     # appended Session block. Including it in `extras` means a same-day
@@ -66,7 +76,7 @@ def _cache_key(state, *_args, **_kwargs):
         version=_CACHE_VERSION,
         slug=slug,
         files=[index_html_path],
-        extras=(today,),
+        extras=(today, assembled_at),
     )
 
 
@@ -91,7 +101,14 @@ _PHASE4_GATES = {
 
 
 def _project_md_path(state: dict) -> Path:
-    return Path(state["episode_dir"]) / "edit" / "project.md"
+    """HOM-224: derive via slug; legacy fallback for synthetic-state tests."""
+    slug = state.get("slug")
+    if slug:
+        return EpisodePaths(slug).edit_dir / "project.md"
+    episode_dir = state.get("episode_dir")
+    if episode_dir:
+        return Path(episode_dir) / "edit" / "project.md"
+    raise RuntimeError("p4_persist_session: slug missing from state")
 
 
 def _phase4_gate_records(state: dict) -> list[dict]:
@@ -129,23 +146,40 @@ def _beats_summary(compose: dict) -> list[dict]:
 
 def _render_ctx(state: dict) -> dict:
     compose = state.get("compose") or {}
-    design = compose.get("design") or {}
-    expansion = compose.get("expansion") or {}
     plan = compose.get("plan") or {}
     captions = compose.get("captions") or {}
-    assemble = compose.get("assemble") or {}
-    return {
-        "project_md_path": str(_project_md_path(state)),
-        "design_md_path": design.get("design_md_path") or "",
-        "expanded_prompt_path": expansion.get("expanded_prompt_path") or "",
-        "plan_json": json.dumps(plan, ensure_ascii=False),
-        "beats_json": json.dumps(_beats_summary(compose), ensure_ascii=False),
-        "captions_block_path": (
+    # HOM-224: derive paths via slug; legacy compose echoes dropped.
+    slug = state.get("slug")
+    if slug:
+        ep = EpisodePaths(slug)
+        design_md_path = str(ep.design_md_path)
+        expanded_prompt_path = str(ep.expanded_prompt_path)
+        index_html_path = str(ep.index_html_path)
+        # Captions are optional; surface the deterministic path only when the
+        # file is actually on disk. The brief otherwise gets the `""` it
+        # already handled pre-HOM-224.
+        cap_path = ep.captions_block_path
+        captions_block_path = str(cap_path) if cap_path.is_file() else ""
+    else:
+        design = compose.get("design") or {}
+        expansion = compose.get("expansion") or {}
+        assemble = compose.get("assemble") or {}
+        design_md_path = design.get("design_md_path") or ""
+        expanded_prompt_path = expansion.get("expanded_prompt_path") or ""
+        index_html_path = assemble.get("index_html_path") or ""
+        captions_block_path = (
             compose.get("captions_block_path")
             or captions.get("captions_block_path")
             or ""
-        ),
-        "index_html_path": assemble.get("index_html_path") or assemble.get("assembled_at") or "",
+        )
+    return {
+        "project_md_path": str(_project_md_path(state)),
+        "design_md_path": design_md_path,
+        "expanded_prompt_path": expanded_prompt_path,
+        "plan_json": json.dumps(plan, ensure_ascii=False),
+        "beats_json": json.dumps(_beats_summary(compose), ensure_ascii=False),
+        "captions_block_path": captions_block_path,
+        "index_html_path": index_html_path,
         "gate_results_json": json.dumps(_phase4_gate_records(state), ensure_ascii=False),
         "today": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
     }
@@ -166,9 +200,9 @@ def _build_node() -> LLMNode:
 
 
 def p4_persist_session_node(state, *, router: BackendRouter | None = None):
-    episode_dir = state.get("episode_dir")
-    if not episode_dir:
-        return {"compose": {"persist": {"skipped": True, "skip_reason": "no episode_dir in state"}}}
+    slug = state.get("slug")
+    if not slug:
+        return {"compose": {"persist": {"skipped": True, "skip_reason": "no slug in state"}}}
     compose = state.get("compose") or {}
     assemble = compose.get("assemble") or {}
     if assemble.get("skipped"):
@@ -183,7 +217,9 @@ def p4_persist_session_node(state, *, router: BackendRouter | None = None):
                 },
             },
         }
-    if not assemble.get("assembled_at") and not assemble.get("index_html_path"):
+    # HOM-224: `assemble.index_html_path` write removed; `assembled_at`
+    # ISO timestamp is the sole success signal.
+    if not assemble.get("assembled_at"):
         return {
             "compose": {
                 "persist": {
@@ -198,7 +234,14 @@ def p4_persist_session_node(state, *, router: BackendRouter | None = None):
     persist = (update.get("compose") or {}).get("persist") or {}
     update_compose = update.setdefault("compose", {})
     if "skipped" not in persist and "raw_text" not in persist:
-        persist.setdefault("persisted_at", str(_project_md_path(state)))
+        # HOM-224: `persisted_at` was previously stringified absolute path
+        # to project.md, abusing the `str | None` slot. Identity-only state:
+        # store an ISO timestamp instead — same `str | None` shape, but
+        # observation (when, not where), per the field's literal name. The
+        # canonical path lives at `EpisodePaths(slug).edit_dir / "project.md"`.
+        # OVERWRITES whatever the brief returned (the brief still echoes a
+        # value per the schema; the node body re-shapes it).
+        persist["persisted_at"] = datetime.now(timezone.utc).isoformat()
         update_compose["session_persisted"] = True
     update_compose["persist"] = persist
     return update

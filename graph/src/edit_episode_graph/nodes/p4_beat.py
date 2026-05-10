@@ -32,6 +32,7 @@ from langgraph.types import CachePolicy
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
 from .._caching import make_llm_key, stable_fingerprint
+from .._paths import EpisodePaths
 from ._llm import LLMNode, _load_brief
 
 # Bump on brief / schema / tool-list change. See HOM-132 spec §8.
@@ -61,7 +62,10 @@ from ._llm import LLMNode, _load_brief
 # brief now points at canon path + bullet name only (no quoted phrasing).
 # Per CLAUDE.md §"Decomposition via brief-references-canon" — verbatim
 # quotes still count as canon-fork risk if upstream wording shifts.
-_CACHE_VERSION = 6
+# v7 (HOM-224): cache_key + render ctx derive design.md / expanded-prompt.md
+# via `EpisodePaths(slug)`; `compose.design_md_path` / `compose.expanded_prompt_path`
+# state echoes dropped upstream.
+_CACHE_VERSION = 7
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -72,7 +76,6 @@ def _cache_key(state, *_args, **_kwargs):
     # Per-Send invocation: each beat's `_beat_dispatch.scene_id` namespaces
     # the key. See p4_design_system._cache_key for the empty-slug rationale.
     slug = state.get("slug") or "__unbound__"
-    compose = state.get("compose") or {}
     bd = state.get("_beat_dispatch") or {}
     beat_id = bd.get("scene_id") or bd.get("beat_id") or "__unbound__"
     # `plan_beat_json` (concept / mood / energy / duration for THIS beat) is
@@ -82,13 +85,21 @@ def _cache_key(state, *_args, **_kwargs):
     # plan-only change for the same beat_id (e.g. p4_plan re-runs and
     # produces different concept/mood for the same scene).
     plan_beat = bd.get("plan_beat") or {}
+    # HOM-224: derive paths via EpisodePaths(slug) — identity-only state.
+    if slug and slug != "__unbound__":
+        paths = EpisodePaths(slug)
+        design_md_path: str | None = str(paths.design_md_path)
+        expanded_prompt_path: str | None = str(paths.expanded_prompt_path)
+    else:
+        design_md_path = None
+        expanded_prompt_path = None
     return make_llm_key(
         node="p4_beat",
         version=_CACHE_VERSION,
         slug=slug,
         files=[
-            compose.get("design_md_path"),
-            compose.get("expanded_prompt_path"),
+            design_md_path,
+            expanded_prompt_path,
         ],
         extras=(beat_id, stable_fingerprint(plan_beat)),
     )
@@ -128,6 +139,15 @@ def _catalog_summary(state: dict) -> str:
 def _render_ctx(state: dict) -> dict:
     bd = state.get("_beat_dispatch") or {}
     compose = state.get("compose") or {}
+    # HOM-224: derive design.md / expanded-prompt.md via slug.
+    slug = state.get("slug")
+    if slug:
+        paths = EpisodePaths(slug)
+        design_md_path = str(paths.design_md_path)
+        expanded_prompt_path = str(paths.expanded_prompt_path)
+    else:
+        design_md_path = compose.get("design_md_path") or ""
+        expanded_prompt_path = compose.get("expanded_prompt_path") or ""
     return {
         "scene_id": bd.get("scene_id", ""),
         "beat_index": bd.get("beat_index", 0),
@@ -139,8 +159,8 @@ def _render_ctx(state: dict) -> dict:
         "data_width": bd.get("data_width", 1920),
         "data_height": bd.get("data_height", 1080),
         "plan_beat_json": json.dumps(bd.get("plan_beat") or {}, ensure_ascii=False),
-        "design_md_path": compose.get("design_md_path") or "",
-        "expanded_prompt_path": compose.get("expanded_prompt_path") or "",
+        "design_md_path": design_md_path,
+        "expanded_prompt_path": expanded_prompt_path,
         "catalog_summary": _catalog_summary(state),
         "scene_html_path": bd.get("scene_html_path", ""),
     }

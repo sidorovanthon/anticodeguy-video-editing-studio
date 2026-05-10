@@ -6,13 +6,21 @@ from edit_episode_graph.gates.eval_ok import EvalOkGate
 
 
 def _state(*, passed: bool, issues=None, total: float = 5.0, final: str | None = "/abs/final.mp4") -> dict:
-    return {
+    # HOM-224: gate now resolves final.mp4 via `EpisodePaths(slug)`, not from
+    # `state.edit.render.final_mp4`. We pass `slug` so the gate produces a
+    # path; the injected ffprobe stub determines whether duration "matches".
+    # The legacy `final` parameter selects between "slug present (path
+    # resolvable)" and "slug missing (the gate emits the missing-final_mp4
+    # violation)".
+    state: dict = {
         "edit": {
             "eval": {"passed": passed, "issues": issues or []},
-            "render": {"final_mp4": final},
             "edl": {"total_duration_s": total},
         }
     }
+    if final is not None:
+        state["slug"] = "demo"
+    return state
 
 
 def _fake_probe(value: float | None):

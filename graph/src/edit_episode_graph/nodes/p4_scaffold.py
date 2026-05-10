@@ -9,12 +9,11 @@ hardlink to final.mp4). After this node the LLM portion of Phase 4 begins
 
 import json
 import sys
-from pathlib import Path
 
 from langgraph.types import CachePolicy
 
 from .._caching import make_key
-from .._paths import scripts_root
+from .._paths import EpisodePaths, scripts_root
 from ._deterministic import deterministic_node
 
 SCRIPTS_ROOT = scripts_root()
@@ -24,7 +23,10 @@ SCRIPTS_ROOT = scripts_root()
 # `background: var(--bg, transparent);` so palette tokens land via
 # p4_assemble_index's `:root` block instead of a hard-coded hex that
 # `gate:design_adherence` (rightly) flags as out-of-palette.
-_CACHE_VERSION = 2
+# v3 (HOM-224): identity-only state writes — `compose.hyperframes_dir` and
+# `compose.index_html_path` no longer echoed; consumers derive via
+# `EpisodePaths(slug)`. Brief / subprocess shape unchanged.
+_CACHE_VERSION = 3
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -54,10 +56,15 @@ CACHE_POLICY = CachePolicy(key_func=_cache_key)
 
 
 def _cmd(state) -> list[str]:
-    episode_dir = state.get("episode_dir")
     slug = state.get("slug")
-    if not episode_dir or not slug:
-        raise RuntimeError("p4_scaffold: episode_dir/slug missing from state (pickup must run first)")
+    if not slug:
+        raise RuntimeError("p4_scaffold: slug missing from state (pickup must run first)")
+    # HOM-224: derive episode_dir via EpisodePaths instead of consuming the
+    # state echo. The scaffold subprocess wants an explicit --episode-dir
+    # so it can write under it; we pass the EpisodePaths-derived value.
+    # Legacy state echo (`state["episode_dir"]`) is honored as fallback so
+    # synthetic-state unit tests / pre-pickup states keep working.
+    episode_dir = state.get("episode_dir") or str(EpisodePaths(slug).episode_dir)
     return [
         sys.executable,
         "-m",
@@ -68,14 +75,13 @@ def _cmd(state) -> list[str]:
 
 
 def _parse(stdout: str) -> dict:
-    parsed = json.loads(stdout)
-    hf_dir = parsed.get("hyperframes_dir")
-    index_html = str(Path(hf_dir) / "index.html") if hf_dir else None
+    # HOM-224: subprocess still emits `hyperframes_dir` for back-compat /
+    # operator visibility, but we no longer echo it into state — consumers
+    # derive via `EpisodePaths(slug).hyperframes_dir`. Parse the stdout
+    # for its JSON-validity side effect (raises on malformed scaffold
+    # output) and discard the value.
+    json.loads(stdout)
     return {
-        "compose": {
-            "hyperframes_dir": hf_dir,
-            "index_html_path": index_html,
-        },
         "notices": [
             "v1 halt: scaffold complete; next phase `p4_design_system` requires LLM (v2+)",
         ],
