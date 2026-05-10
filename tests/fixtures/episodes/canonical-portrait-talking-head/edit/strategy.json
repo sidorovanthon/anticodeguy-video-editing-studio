@@ -1,12 +1,12 @@
 {
-  "shape": "hook → thesis → payoff",
+  "shape": "Single continuous monologue contrasting AI-era open-source/self-built tooling with nostalgia for pay-once software, opening with a hook ('Age of artificial intelligence') and ending on an aspirational unfinished thought.",
   "takes": [
-    "[000.12-001.34]",
-    "[003.10-013.60]",
-    "[018.82-029.50]"
+    "[000.12-001.34] Age of artificial intelligence.",
+    "[003.10-013.60] when I'm increasingly using free open-source tools because I can simply deploy them for myself easily with the help of AI agents or just write the software I need for work myself,",
+    "[015.72-017.36] I thought, \"Why don't we turn...\"",
+    "[018.82-030.80] I thought, \"Why don't we return to the roots, to good old software that you pay for once and use for life?\" Yes, maybe it's not as interesting from a business point-of-view, but how cool is it to..."
   ],
-  "grade": "warm neutral; gentle lift on midtones, slight desaturation in shadows to keep the talking-head intimate and unstyled",
-  "pacing": "deliberate; preserve natural pauses between phrases, no aggressive tightening — this is a reflective monologue, not a fast cut",
-  "length_estimate_s": 22.6,
-  "source_path": "C:\\Users\\sidor\\repos\\anticodeguy-video-editing-studio\\.worktrees\\hom-189\\tests\\fixtures\\episodes\\canonical-portrait-talking-head\\edit\\takes_packed.md"
+  "grade": "Neutral natural-light talking-head; gentle lift in shadows, mild contrast, slightly warm midtones to keep skin tones inviting; no stylized LUT.",
+  "pacing": "Conversational with tight phrase-boundary cuts removing the 'When,' false start and inter-phrase silences; preserve natural breath beats between the two 'I thought' clauses for rhetorical weight.",
+  "length_estimate_s": 26.5
 }

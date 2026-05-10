@@ -1,5 +1,16 @@
 [
   {
+    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-09T07:47:38.673631+00:00', 'beat_names': ['hook', 'thesis', 'payoff'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
+    "fingerprint": "0e4a2d6b1773ff5af4bd25558c6401ab",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
+    "node": "p4_assemble_index",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 313
+    }
+  },
+  {
     "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-08T14:17:13.771359+00:00', 'beat_names': ['hook', 'thesis', 'payoff'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
     "fingerprint": "10162f5e1afdbf7a61535ec2c0e4f147",
     "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
@@ -44,8 +55,30 @@
     }
   },
   {
+    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-09T07:26:26.586549+00:00', 'beat_names': ['hook', 'thesis', 'payoff'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
+    "fingerprint": "79e5ad51f68225b787b31c1e10e518f1",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
+    "node": "p4_assemble_index",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 313
+    }
+  },
+  {
     "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-08T14:15:03.883021+00:00', 'beat_names': ['hook', 'thesis', 'payoff'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
     "fingerprint": "7d1b2992053f969113ae64ff9d91e96a",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
+    "node": "p4_assemble_index",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 313
+    }
+  },
+  {
+    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-09T07:49:27.642889+00:00', 'beat_names': ['hook', 'thesis', 'payoff'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
+    "fingerprint": "7ddb2c4d58f5b49525069f98244bb37e",
     "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
     "node": "p4_assemble_index",
     "recorded_at": null,
@@ -66,8 +99,41 @@
     }
   },
   {
+    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-09T07:51:07.652826+00:00', 'beat_names': ['hook', 'thesis', 'payoff'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
+    "fingerprint": "8b49f94db88eaa3dd32b1cbedbdb0e93",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
+    "node": "p4_assemble_index",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 313
+    }
+  },
+  {
     "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-09T02:25:05.152256+00:00', 'beat_names': ['hook', 'thesis', 'payoff'], 'captions_included': False}}], ['branch:to:gate_lint', None]])",
     "fingerprint": "94eca904507c602fe82bb04af95a6379",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
+    "node": "p4_assemble_index",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 313
+    }
+  },
+  {
+    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-09T11:10:53.508887+00:00', 'beat_names': ['hook', 'thesis', 'payoff'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
+    "fingerprint": "c49faf43d60e9297ce0af97c930ff0dc",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
+    "node": "p4_assemble_index",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 313
+    }
+  },
+  {
+    "channel_writes": "deque([['compose', {'index_html_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\index.html', 'assemble': {'assembled_at': '2026-05-09T07:23:20.507301+00:00', 'beat_names': ['hook', 'thesis', 'payoff'], 'captions_included': True}}], ['branch:to:gate_lint', None]])",
+    "fingerprint": "dcc8cc2e41341c44fdb725ebf0ad2975",
     "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_assemble_index.p4_assemble_index_node,p4_assemble_index",
     "node": "p4_assemble_index",
     "recorded_at": null,

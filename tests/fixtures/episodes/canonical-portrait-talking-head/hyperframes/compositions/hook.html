@@ -1,237 +1,200 @@
 <div id="scene-hook" class="scene clip"
-     data-start="0.0" data-duration="1.2" data-track-index="1"
+     data-start="0.0" data-duration="1.22" data-track-index="1"
      data-width="1080" data-height="1920">
   <style>
     #scene-hook {
-      position: absolute; inset: 0; opacity: 1; overflow: hidden;
-      background: linear-gradient(180deg, #FFF8EC 0%, #E6DFD4 100%);
-      font-family: "Inter", system-ui, sans-serif;
-      color: #2a2a2a;
+      position: absolute;
+      inset: 0;
+      opacity: 1;
+      background: #0a0a0a;
+      overflow: hidden;
+      font-family: "Inter", sans-serif;
+      color: #f0f0f0;
     }
-    #scene-hook .scene-content { position: absolute; inset: 0; }
-
-    #scene-hook .grain {
-      position: absolute; inset: -24px;
-      background-image:
-        radial-gradient(rgba(42, 42, 42, 0.22) 1px, transparent 1px),
-        radial-gradient(rgba(42, 42, 42, 0.14) 1px, transparent 1px);
-      background-size: 3px 3px, 5px 5px;
-      background-position: 0 0, 1px 2px;
-      mix-blend-mode: multiply;
+    #scene-hook .hk-vignette {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 38% 42%, #0a0a0a 0%, #080808 55%, #050505 100%);
+      pointer-events: none;
+    }
+    #scene-hook .hk-grain {
+      position: absolute;
+      inset: 0;
       opacity: 0.04;
-      will-change: transform;
+      background-image:
+        repeating-linear-gradient(0deg,   #f0f0f0 0px, #f0f0f0 1px, transparent 1px, transparent 3px),
+        repeating-linear-gradient(90deg,  #f0f0f0 0px, #f0f0f0 1px, transparent 1px, transparent 3px);
+      mix-blend-mode: overlay;
       pointer-events: none;
     }
-
-    #scene-hook .speaker-plate {
+    #scene-hook .hk-ghost-numeral {
       position: absolute;
-      left: 0; right: 0;
-      top: 12%; height: 56%;
-      background:
-        radial-gradient(ellipse at 50% 38%, rgba(196, 163, 163, 0.55) 0%, rgba(176, 146, 146, 0.32) 38%, rgba(204, 198, 189, 0) 72%),
-        linear-gradient(180deg, #E6DFD4 0%, #CCC6BD 100%);
+      top: 8%;
+      right: 12%;
+      font-size: 4rem;
+      font-weight: 300;
+      letter-spacing: 0.05em;
+      color: #f0f0f0;
+      opacity: 0.04;
     }
-
-    #scene-hook .speaker-rim {
+    #scene-hook .hk-anchor-rule {
       position: absolute;
-      left: 0; right: 0;
-      top: 12%;
-      height: 4px;
-      background: linear-gradient(90deg, rgba(196, 163, 163, 0) 0%, #C4A3A3 50%, rgba(196, 163, 163, 0) 100%);
-      opacity: 0.5;
-    }
-
-    #scene-hook .vignette-top {
-      position: absolute;
-      left: 0; right: 0; top: 0;
-      height: 360px;
-      background: radial-gradient(ellipse at 50% 0%, #FFFDF8 0%, rgba(255, 253, 248, 0) 75%);
-      opacity: 0;
-      will-change: opacity;
-      pointer-events: none;
-    }
-
-    #scene-hook .glow {
-      position: absolute;
-      left: calc(50% - 360px);
-      top: calc(60% - 360px);
-      width: 720px; height: 720px;
-      background: radial-gradient(circle, #F5A623 0%, rgba(245, 166, 35, 0) 60%);
-      opacity: 0.08;
+      left: 12%;
+      top: 0;
+      width: 1px;
+      height: 100%;
+      background: #1a237e;
+      opacity: 0.30;
+      transform-origin: top center;
       will-change: transform, opacity;
-      pointer-events: none;
     }
-
-    #scene-hook .hairline {
+    #scene-hook .hk-content {
       position: absolute;
-      top: 96px; left: 96px; right: 96px;
+      left: 12%;
+      right: 11%;
+      top: 26%;
+      padding-left: 64px;
+    }
+    #scene-hook .hk-overline {
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: #d8d8d8;
+      margin: 0 0 16px 0;
+    }
+    #scene-hook .hk-divider {
+      width: 32%;
       height: 1px;
-      background: #C4A3A3;
-      opacity: 0;
-      transform-origin: right center;
-      transform: scaleX(0);
-      will-change: transform, opacity;
+      background: #f0f0f0;
+      opacity: 0.10;
+      margin: 0 0 32px 0;
+      transform-origin: left center;
+      will-change: transform;
     }
-
-    #scene-hook .corner-mark {
-      position: absolute;
-      top: 60px; left: 96px;
-      font-family: "Inter", sans-serif;
-      font-weight: 500;
-      font-size: 0.75rem;
-      letter-spacing: 0.18em;
+    #scene-hook .hk-headline {
+      font-size: 3rem;
+      font-weight: 300;
+      letter-spacing: 0.15em;
       text-transform: uppercase;
-      color: #404040;
-      opacity: 0;
+      line-height: 1.2;
+      color: #f0f0f0;
+      margin: 0;
       will-change: transform, opacity;
     }
-
-    #scene-hook .overline {
-      position: absolute;
-      top: 60px; right: 96px;
-      font-family: "Inter", sans-serif;
-      font-weight: 500;
-      font-size: 0.75rem;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: #404040;
-      opacity: 0;
-      will-change: transform, opacity;
+    #scene-hook .hk-emphasized {
+      position: relative;
+      display: inline-block;
+      color: #f0f0f0;
     }
-
-    #scene-hook .overline-rule {
+    #scene-hook .hk-emphasized .hk-underline {
       position: absolute;
-      top: 84px; right: 96px;
-      width: 24px; height: 2px;
-      background: #F5A623;
+      left: 0;
+      bottom: -6px;
+      width: 70%;
+      height: 1px;
+      background: #1a237e;
       transform: scaleX(0);
       transform-origin: left center;
       will-change: transform;
     }
-
-    #scene-hook .caption-strip {
-      position: absolute;
-      left: 96px; right: 96px; bottom: 96px;
-      padding: 18px 28px;
-      background: rgba(255, 253, 248, 0.82);
-      border-radius: 16px;
-      font-family: "Inter", sans-serif;
-      font-weight: 300;
-      font-size: 1.125rem;
-      line-height: 1.7;
-      color: #404040;
-      opacity: 0;
-      will-change: transform, opacity;
-    }
-
-    #scene-hook .footer-mark {
-      position: absolute;
-      left: 96px; bottom: 56px;
-      font-family: "Inter", sans-serif;
-      font-weight: 500;
-      font-size: 0.75rem;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: #404040;
-      opacity: 0;
-      will-change: transform, opacity;
-    }
   </style>
-
   <div class="scene-content">
-    <div class="grain"></div>
-    <div class="speaker-plate"></div>
-    <div class="speaker-rim"></div>
-    <div class="vignette-top"></div>
-    <div class="glow"></div>
-    <div class="hairline"></div>
-    <div class="corner-mark">soft signal</div>
-    <div class="overline">01 / Reflection</div>
-    <div class="overline-rule"></div>
-    <div class="caption-strip">a thought already in motion.</div>
-    <div class="footer-mark">take 01 &middot; cream seamless</div>
+    <div class="hk-vignette"></div>
+    <div class="hk-grain"></div>
+    <div class="hk-ghost-numeral">01</div>
+    <div class="hk-anchor-rule"></div>
+    <div class="hk-content">
+      <p class="hk-overline">01 / Premise</p>
+      <div class="hk-divider"></div>
+      <h1 class="hk-headline">
+        Age of Artificial
+        <span class="hk-emphasized">Intelligence<span class="hk-underline"></span></span>
+      </h1>
+    </div>
   </div>
-
   <script>
     (function () {
       window.__sceneTimelines = window.__sceneTimelines || {};
       const root = document.getElementById("scene-hook");
       const q = (s) => root.querySelector(s);
+
+      const vignette = q(".hk-vignette");
+      const ghost    = q(".hk-ghost-numeral");
+      const rule     = q(".hk-anchor-rule");
+      const overline = q(".hk-overline");
+      const divider  = q(".hk-divider");
+      const headline = q(".hk-headline");
+      const emph     = q(".hk-emphasized");
+      const ulLine   = q(".hk-underline");
+
+      const sceneDuration = 1.22;
       const tl = gsap.timeline({ paused: true });
 
-      const sceneDuration = 1.2;
+      tl.fromTo(rule,
+        { scaleY: 0, opacity: 0.30 },
+        { scaleY: 1, opacity: 0.30, duration: 0.55, ease: "sine.inOut" },
+        0.10);
 
-      tl.fromTo(q(".vignette-top"),
-        { opacity: 0 },
-        { opacity: 0.08, duration: 0.6, ease: "power1.inOut" },
-        0.10
-      );
+      tl.fromTo(overline,
+        { opacity: 0, y: 4 },
+        { opacity: 1, y: 0, duration: 0.32, ease: "sine.out" },
+        0.12);
 
-      tl.fromTo(q(".hairline"),
-        { scaleX: 0, opacity: 0 },
-        { scaleX: 1, opacity: 0.6, duration: 0.6, ease: "sine.out" },
-        0.10
-      );
-
-      tl.fromTo(q(".overline"),
-        { y: 24, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.9, ease: "sine.inOut" },
-        0.10
-      );
-
-      tl.fromTo(q(".corner-mark"),
-        { y: 24, opacity: 0 },
-        { y: 0, opacity: 0.55, duration: 0.9, ease: "sine.inOut" },
-        0.12
-      );
-
-      tl.fromTo(q(".overline-rule"),
+      tl.fromTo(divider,
         { scaleX: 0 },
-        { scaleX: 1, duration: 0.6, ease: "power2.out" },
-        0.18
-      );
+        { scaleX: 1, duration: 0.32, ease: "sine.inOut" },
+        0.32);
 
-      tl.fromTo(q(".caption-strip"),
-        { y: 24, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.9, ease: "sine.inOut" },
-        0.22
-      );
+      tl.fromTo(headline,
+        { opacity: 0, y: 8 },
+        { opacity: 1, y: 0, duration: 0.38, ease: "power2.out" },
+        0.45);
 
-      tl.fromTo(q(".footer-mark"),
-        { y: 16, opacity: 0 },
-        { y: 0, opacity: 0.45, duration: 0.7, ease: "power1.out" },
-        0.28
-      );
+      tl.fromTo(emph,
+        { color: "#f0f0f0" },
+        { color: "#ffffff", duration: 0.28, ease: "sine.inOut" },
+        0.68);
 
-      const glowHalf = 0.6;
-      tl.to(q(".glow"),
-        {
-          scale: 1.04,
-          opacity: 0.10,
-          duration: glowHalf,
-          ease: "sine.inOut",
-          yoyo: true,
-          repeat: Math.floor(sceneDuration / glowHalf)
-        },
-        0
-      );
+      tl.fromTo(ulLine,
+        { scaleX: 0 },
+        { scaleX: 1, duration: 0.30, ease: "power2.out" },
+        0.78);
 
-      tl.to(q(".grain"),
-        { x: 4, y: -3, duration: sceneDuration, ease: "sine.inOut" },
-        0
-      );
+      const vignetteCycle = 0.40;
+      tl.to(vignette,
+        { opacity: 0.92, yoyo: true,
+          repeat: Math.floor(sceneDuration / vignetteCycle),
+          duration: vignetteCycle, ease: "sine.inOut" },
+        0);
 
-      const hairHalf = 0.6;
-      tl.to(q(".hairline"),
-        {
-          opacity: 0.5,
-          duration: hairHalf,
-          ease: "sine.inOut",
-          yoyo: true,
-          repeat: Math.floor(sceneDuration / hairHalf)
-        },
-        0.6
-      );
+      const ghostCycle = 0.50;
+      tl.fromTo(ghost,
+        { y: -2 },
+        { y: 2, yoyo: true,
+          repeat: Math.floor(sceneDuration / ghostCycle),
+          duration: ghostCycle, ease: "sine.inOut" },
+        0);
+
+      const ruleBreathCycle = 0.45;
+      tl.to(rule,
+        { opacity: 0.45, yoyo: true,
+          repeat: Math.floor(sceneDuration / ruleBreathCycle),
+          duration: ruleBreathCycle, ease: "sine.inOut" },
+        0.65);
+
+      const fadeStart = sceneDuration - 0.20;
+      const fadeDur = 0.18;
+
+      tl.to(overline, { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.to(divider,  { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.to(headline, { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.to(ulLine,   { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+
+      tl.set(overline, { visibility: "hidden" }, fadeStart + fadeDur);
+      tl.set(divider,  { visibility: "hidden" }, fadeStart + fadeDur);
+      tl.set(headline, { visibility: "hidden" }, fadeStart + fadeDur);
+      tl.set(ulLine,   { visibility: "hidden" }, fadeStart + fadeDur);
 
       window.__sceneTimelines["hook"] = tl;
     })();

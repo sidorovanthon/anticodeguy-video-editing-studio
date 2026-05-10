@@ -1,5 +1,16 @@
 [
   {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_prompt_expansion', 'backend': 'claude', 'model': 'claude-opus-4-7', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 286.65599999999904, 'tokens_in': 8, 'tokens_out': 17181, 'timestamp': '2026-05-09T07:13:22.941342+00:00'}]], ['compose', {'expansion': {'expanded_prompt_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\.hyperframes\\\\expanded-prompt.md'}, 'expanded_prompt_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\.hyperframes\\\\expanded-prompt.md'}], ['branch:to:p4_plan', None]])",
+    "fingerprint": "6bc6d3d2afda4aa709afb3b5a87bf765",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_prompt_expansion.p4_prompt_expansion_node,p4_prompt_expansion",
+    "node": "p4_prompt_expansion",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 613
+    }
+  },
+  {
     "channel_writes": "deque([['llm_runs', [{'node': 'p4_prompt_expansion', 'backend': 'claude', 'model': 'claude-opus-4-7', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 420.5630000000001, 'tokens_in': 17, 'tokens_out': 24319, 'timestamp': '2026-05-09T02:17:08.809071+00:00'}]], ['compose', {'expansion': {'expanded_prompt_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\.hyperframes\\\\expanded-prompt.md'}, 'expanded_prompt_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\.hyperframes\\\\expanded-prompt.md'}], ['branch:to:p4_plan', None]])",
     "fingerprint": "b7dee3710b624116d20973a1265b70ba",
     "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_prompt_expansion.p4_prompt_expansion_node,p4_prompt_expansion",

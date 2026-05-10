@@ -11,6 +11,28 @@
     }
   },
   {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-opus-4-7', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 159.73500000000058, 'tokens_in': 10, 'tokens_out': 12439, 'timestamp': '2026-05-09T07:47:05.959248+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\compositions\\\\hook.html (11 elements, 9 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "24688784ba09b7d9f4cb1f6ec091fe53",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 448
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-opus-4-7', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 112.625, 'tokens_in': 9, 'tokens_out': 7036, 'timestamp': '2026-05-09T07:46:18.868619+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'The file already exists with compliant content matching all requirements (Pattern A shape, IIFE-wrapped script, 8 visible elements, fromTo entrances, finite-repeat ambient motion, palette+typography discipline). Leaving it as authored.\\n\\nWrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\compositions\\\\thesis.html (8 elements, 12 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "2b698d044df10f905d739ed97ad33106",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 688
+    }
+  },
+  {
     "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 428.6560000000027, 'tokens_in': 107, 'tokens_out': 27941, 'timestamp': '2026-05-08T14:10:35.072310+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Perfect! The file exists with a complete implementation. Let me verify it has all the required elements:\\n\\nThe PAYOFF scene fragment is complete with:\\n- **13 elements**: beat marker (dot + label), caption plate, caption text (2 groups), pull-line with quote glyph, hairline rule, timestamp, sign-off glow, and 3 BG decoratives (grain, vignette, gradient stop)\\n- **12 tweens**: 3 ambient (grain drift, vignette breathing, gradient breathing) + 7 entrances (pull-line, quote glyph, caption plate, caption groups 1-2, timestamp, glow) + 2 exits (group 1 fade + hard-kill) + final fade\\n\\nKey features honored:\\n- Pattern A scene div with `class=\"scene clip\"` and proper timing attributes\\n- `tl.fromTo()` for all entrances (motion-principles requirement to avoid immediateRender issues)\\n- Scene entrance at +0.1s, pull-line at +0.35s (matching expanded-prompt timing)\\n- Caption groups cycling per schedule (group 1 → 4.95s, group 2 → 5.25s)\\n- Ambient gradients breathing on seekable timeline (not bare gsap.to)\\n- Final fade HR4 permitted at +8.55s (maps to 22.55s absolute)\\n- 3+ distinct eases: sine.inOut, power1.out, power1.in\\n- Finite repeats: Math.floor(9.0 / cycleDuration) on all ambient loops\\n- All CSS scoped to `#scene-payoff`\\n- IIFE-wrapped timeline registration\\n\\nWrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\compositions\\\\payoff.html (13 elements, 12 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
     "fingerprint": "30e79b9bbc2b9be558e4f64b4297d06b",
     "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
@@ -19,6 +41,17 @@
     "recording_meta": {
       "encoding": "msgpack",
       "value_bytes": 1732
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-opus-4-7', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 102.64099999999962, 'tokens_in': 10, 'tokens_out': 7600, 'timestamp': '2026-05-09T07:23:20.502115+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\compositions\\\\payoff.html (8 elements, 11 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "39353426e998a738326d8ddfd598722d",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 450
     }
   },
   {
@@ -41,6 +74,17 @@
     "recording_meta": {
       "encoding": "msgpack",
       "value_bytes": 1842
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-opus-4-7', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 123.14099999999962, 'tokens_in': 10, 'tokens_out': 8625, 'timestamp': '2026-05-09T07:18:46.506272+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\compositions\\\\hook.html (8 elements, 9 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "518d0bf9904cfdc5fb6d34193ad40629",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 447
     }
   },
   {
@@ -77,6 +121,17 @@
     }
   },
   {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-opus-4-7', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 192.42199999999866, 'tokens_in': 10, 'tokens_out': 15363, 'timestamp': '2026-05-09T07:47:38.668284+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\compositions\\\\payoff.html (10 elements, 13 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "b1ae63108a869669f0191ab44269e7f2",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 451
+    }
+  },
+  {
     "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 297.45300000000134, 'tokens_in': 32, 'tokens_out': 14042, 'timestamp': '2026-05-08T14:02:29.233350+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\compositions\\\\payoff.html (13 elements, 15 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
     "fingerprint": "b1c6538dfcd6be09405ff18618e5f91e",
     "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
@@ -96,6 +151,17 @@
     "recording_meta": {
       "encoding": "msgpack",
       "value_bytes": 450
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_beat', 'backend': 'claude', 'model': 'claude-opus-4-7', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 147.5, 'tokens_in': 9, 'tokens_out': 13070, 'timestamp': '2026-05-09T07:19:10.864908+00:00'}]], ['compose', {'_beat_unused': {'raw_text': 'Wrote C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\compositions\\\\thesis.html (10 elements, 12 tweens).'}}], ['branch:to:p4_assemble_index', None]])",
+    "fingerprint": "bda69da12cf31452b7b7d68773ce545c",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_beat.p4_beat_node,p4_beat",
+    "node": "p4_beat",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 451
     }
   }
 ]

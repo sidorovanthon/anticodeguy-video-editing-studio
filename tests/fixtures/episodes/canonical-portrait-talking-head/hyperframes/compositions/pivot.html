@@ -1,0 +1,211 @@
+<div id="scene-pivot" class="scene clip"
+     data-start="11.72" data-duration="1.64" data-track-index="1"
+     data-width="1080" data-height="1920">
+  <style>
+    #scene-pivot {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      background-color: #0a0a0a;
+      font-family: "Inter", sans-serif;
+      color: #f0f0f0;
+      overflow: hidden;
+    }
+    #scene-pivot .bg-vignette {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 38% 42%, #0a0a0a 0%, #080808 55%, #050505 100%);
+      opacity: 0.92;
+      will-change: opacity, transform;
+    }
+    #scene-pivot .bg-grain {
+      position: absolute;
+      inset: 0;
+      background-image: repeating-linear-gradient(
+        0deg,
+        rgba(240, 240, 240, 0.03) 0px,
+        rgba(240, 240, 240, 0.03) 1px,
+        rgba(10, 10, 10, 0) 1px,
+        rgba(10, 10, 10, 0) 3px
+      );
+      opacity: 0.04;
+      mix-blend-mode: overlay;
+    }
+    #scene-pivot .ghost-numeral {
+      position: absolute;
+      top: 12%;
+      right: 8%;
+      font-family: "Inter", sans-serif;
+      font-weight: 300;
+      font-size: 4rem;
+      letter-spacing: 0.15em;
+      color: #f0f0f0;
+      opacity: 0.04;
+      will-change: transform;
+    }
+    #scene-pivot .anchor-rule {
+      position: absolute;
+      left: 12%;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background-color: #1a237e;
+      opacity: 0.30;
+      will-change: opacity;
+    }
+    #scene-pivot .content {
+      position: absolute;
+      left: 16%;
+      top: 28%;
+      width: 65%;
+    }
+    #scene-pivot .overline {
+      font-family: "Inter", sans-serif;
+      font-weight: 500;
+      font-size: 0.75rem;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: #d8d8d8;
+      margin-bottom: 16px;
+    }
+    #scene-pivot .hairline {
+      height: 1px;
+      width: 100%;
+      background-color: rgba(240, 240, 240, 0.10);
+      transform-origin: left center;
+      transform: scaleX(0);
+      margin-bottom: 32px;
+    }
+    #scene-pivot .pull-quote {
+      position: relative;
+      font-family: "Inter", sans-serif;
+      font-weight: 300;
+      font-style: italic;
+      font-size: 2rem;
+      line-height: 1.35;
+      color: #f0f0f0;
+      padding-left: 32px;
+      margin-top: 8px;
+    }
+    #scene-pivot .pull-quote-border {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1px;
+      height: 100%;
+      background-color: #131a5e;
+      transform-origin: top center;
+      transform: scaleY(0);
+    }
+    #scene-pivot .ellipsis {
+      display: inline-block;
+      font-style: italic;
+      color: #f0f0f0;
+    }
+    #scene-pivot .ellipsis .dot {
+      display: inline-block;
+      opacity: 0;
+      will-change: opacity, transform;
+    }
+  </style>
+  <div class="scene-content">
+    <div class="bg-vignette"></div>
+    <div class="bg-grain"></div>
+    <div class="ghost-numeral">03</div>
+    <div class="anchor-rule"></div>
+    <div class="content">
+      <div class="overline">03 / Question</div>
+      <div class="hairline"></div>
+      <div class="pull-quote">
+        <span class="pull-quote-border"></span>
+        <span class="quote-text">Why don&rsquo;t we turn</span><span class="ellipsis"><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      window.__sceneTimelines = window.__sceneTimelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      const root = document.getElementById("scene-pivot");
+      const vignette = root.querySelector(".bg-vignette");
+      const grain = root.querySelector(".bg-grain");
+      const ghost = root.querySelector(".ghost-numeral");
+      const rule = root.querySelector(".anchor-rule");
+      const overline = root.querySelector(".overline");
+      const hairline = root.querySelector(".hairline");
+      const quote = root.querySelector(".pull-quote .quote-text");
+      const border = root.querySelector(".pull-quote-border");
+      const dots = root.querySelectorAll(".ellipsis .dot");
+
+      const sceneDuration = 1.64;
+      const fadeDur = 0.22;
+      const exitStart = sceneDuration - fadeDur - 0.02;
+
+      tl.fromTo(overline,
+        { opacity: 0, y: 6 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "sine.inOut" },
+        0.10);
+
+      tl.fromTo(hairline,
+        { scaleX: 0 },
+        { scaleX: 1, duration: 0.6, ease: "sine.inOut" },
+        0.20);
+
+      tl.fromTo(border,
+        { scaleY: 0 },
+        { scaleY: 1, duration: 0.7, ease: "sine.inOut" },
+        0.28);
+
+      tl.fromTo(quote,
+        { opacity: 0, y: 6 },
+        { opacity: 1, y: 0, duration: 0.7, ease: "sine.inOut" },
+        0.32);
+
+      tl.fromTo(rule,
+        { opacity: 0.30 },
+        { opacity: 0.55, duration: 0.30, ease: "sine.inOut" },
+        0.40);
+      tl.to(rule,
+        { opacity: 0.30, duration: 0.30, ease: "sine.inOut" },
+        0.70);
+
+      dots.forEach(function (dot, i) {
+        tl.fromTo(dot,
+          { opacity: 0, y: 2 },
+          { opacity: 1, y: 0, duration: 0.20, ease: "power2.out" },
+          0.85 + i * 0.12);
+      });
+
+      const ambientCycle = 0.40;
+      const ambientRepeat = Math.floor(sceneDuration / ambientCycle) - 1;
+
+      tl.to(vignette,
+        { opacity: 1.0, duration: ambientCycle, ease: "sine.inOut",
+          yoyo: true, repeat: ambientRepeat },
+        0);
+
+      tl.to(ghost,
+        { y: -2, duration: ambientCycle, ease: "sine.inOut",
+          yoyo: true, repeat: ambientRepeat },
+        0);
+
+      tl.to(overline, { opacity: 0, duration: fadeDur, ease: "power1.in" }, exitStart);
+      tl.set(overline, { visibility: "hidden" }, exitStart + fadeDur);
+
+      tl.to(hairline, { opacity: 0, duration: fadeDur, ease: "power1.in" }, exitStart);
+      tl.set(hairline, { visibility: "hidden" }, exitStart + fadeDur);
+
+      tl.to(quote, { opacity: 0, duration: fadeDur, ease: "power1.in" }, exitStart);
+      tl.set(quote, { visibility: "hidden" }, exitStart + fadeDur);
+
+      tl.to(border, { opacity: 0, duration: fadeDur, ease: "power1.in" }, exitStart);
+      tl.set(border, { visibility: "hidden" }, exitStart + fadeDur);
+
+      tl.to(dots, { opacity: 0, duration: fadeDur, ease: "power1.in" }, exitStart);
+      tl.set(dots, { visibility: "hidden" }, exitStart + fadeDur);
+
+      window.__sceneTimelines["pivot"] = tl;
+    })();
+  </script>
+</div>
