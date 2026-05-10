@@ -125,15 +125,32 @@ def test_plan_schema_rejects_unknown_field():
         CompositionPlan.model_validate({**base, "subtitles": "no thanks"})
 
 
-def test_skips_when_episode_dir_missing():
+def test_skips_when_slug_missing():
+    """HOM-224: identity is `slug`, not `episode_dir`."""
     update = p4_plan_node({}, router=MagicMock())
     assert update["compose"]["plan"]["skipped"] is True
+    assert "slug" in update["compose"]["plan"]["skip_reason"]
 
 
-def test_skips_when_design_md_missing(tmp_path):
+def _seed_episode(tmp_path, monkeypatch, *, design=True, expansion=True):
+    """HOM-224 helper: pin HOMESTUDIO_PROJECT_ROOT and seed slug-derived files."""
+    slug = "demo"
+    monkeypatch.setenv("HOMESTUDIO_PROJECT_ROOT", str(tmp_path))
+    hf_dir = tmp_path / "episodes" / slug / "hyperframes"
+    state_dir = hf_dir / ".hyperframes"
+    hf_dir.mkdir(parents=True, exist_ok=True)
+    state_dir.mkdir(parents=True, exist_ok=True)
+    if design:
+        (hf_dir / "DESIGN.md").write_text("# DESIGN", encoding="utf-8")
+    if expansion:
+        (state_dir / "expanded-prompt.md").write_text("# expanded", encoding="utf-8")
+    return slug
+
+
+def test_skips_when_design_md_missing(tmp_path, monkeypatch):
+    slug = _seed_episode(tmp_path, monkeypatch, design=False, expansion=False)
     state = {
-        "slug": "demo",
-        "episode_dir": str(tmp_path),
+        "slug": slug,
         "compose": {},
         "edit": {"edl": {"ranges": [
             {"source": "raw", "start": 0.0, "end": 1.0,
@@ -145,11 +162,11 @@ def test_skips_when_design_md_missing(tmp_path):
     assert "DESIGN.md" in update["compose"]["plan"]["skip_reason"]
 
 
-def test_skips_when_expanded_prompt_missing(tmp_path):
+def test_skips_when_expanded_prompt_missing(tmp_path, monkeypatch):
+    slug = _seed_episode(tmp_path, monkeypatch, design=True, expansion=False)
     state = {
-        "slug": "demo",
-        "episode_dir": str(tmp_path),
-        "compose": {"design_md_path": str(tmp_path / "DESIGN.md")},
+        "slug": slug,
+        "compose": {},
         "edit": {"edl": {"ranges": [
             {"source": "raw", "start": 0.0, "end": 1.0,
              "beat": "HOOK", "quote": "x", "reason": "y"},
@@ -160,21 +177,18 @@ def test_skips_when_expanded_prompt_missing(tmp_path):
     assert "expanded-prompt.md" in update["compose"]["plan"]["skip_reason"]
 
 
-def test_skips_when_edl_empty(tmp_path):
+def test_skips_when_edl_empty(tmp_path, monkeypatch):
+    slug = _seed_episode(tmp_path, monkeypatch)
     state = {
-        "slug": "demo",
-        "episode_dir": str(tmp_path),
-        "compose": {
-            "design_md_path": str(tmp_path / "DESIGN.md"),
-            "expanded_prompt_path": str(tmp_path / "expanded-prompt.md"),
-        },
+        "slug": slug,
+        "compose": {},
         "edit": {"edl": {"ranges": []}},
     }
     update = p4_plan_node(state, router=MagicMock())
     assert update["compose"]["plan"]["skipped"] is True
 
 
-def test_runs_with_smart_tier_and_passes_canon_paths(tmp_path):
+def test_runs_with_smart_tier_and_passes_canon_paths(tmp_path, monkeypatch):
     payload = _good_plan_payload()
     router = MagicMock()
     router.invoke.return_value = (
@@ -191,13 +205,10 @@ def test_runs_with_smart_tier_and_passes_canon_paths(tmp_path):
           "tokens_in": 400, "tokens_out": 600, "wall_time_s": 20.0, "ts": "now"}],
     )
 
+    slug = _seed_episode(tmp_path, monkeypatch)
     state = {
-        "slug": "demo",
-        "episode_dir": str(tmp_path),
-        "compose": {
-            "design_md_path": str(tmp_path / "DESIGN.md"),
-            "expanded_prompt_path": str(tmp_path / "expanded-prompt.md"),
-        },
+        "slug": slug,
+        "compose": {},
         "edit": {
             "edl": {
                 "ranges": [

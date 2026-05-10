@@ -34,6 +34,7 @@ from langgraph.types import CachePolicy
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
 from .._caching import make_llm_key
+from .._paths import EpisodePaths
 from ._llm import LLMNode, _load_brief
 
 # Bump on brief / schema / tool-list change. See HOM-132 spec §8.
@@ -45,7 +46,11 @@ from ._llm import LLMNode, _load_brief
 # fires mid-exit and two captions paint together (HOM-210 fixture symptom
 # at t=11s). The brief now mandates a clamp `group[i].end =
 # min(group[i].end, group[i+1].start)` to enforce the partition.
-_CACHE_VERSION = 2
+# v3 (HOM-224): identity-only state writes — `compose.captions_block_path`
+# top-level mirror dropped (downstream nodes derive via
+# `EpisodePaths(slug).captions_block_path`); state.captions echo also
+# dropped. Brief unchanged but cache key inputs derive via slug.
+_CACHE_VERSION = 3
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -55,20 +60,20 @@ def _cache_key(state, *_args, **_kwargs):
         )
     # See p4_design_system._cache_key for the empty-slug rationale.
     slug = state.get("slug") or "__unbound__"
-    compose = state.get("compose") or {}
-    transcripts = state.get("transcripts") or {}
-    # HOM-223: `transcripts.final_json_path` no longer echoed by p3 glue —
-    # surgical fallback to `EpisodePaths(slug)`.
-    final_json_path = transcripts.get("final_json_path")
-    if not final_json_path and slug and slug != "__unbound__":
-        from .._paths import EpisodePaths as _EP
-        final_json_path = str(_EP(slug).transcripts_final_json_path)
+    # HOM-224: derive paths via EpisodePaths(slug) — identity-only state.
+    if slug and slug != "__unbound__":
+        paths = EpisodePaths(slug)
+        design_md_path: str | None = str(paths.design_md_path)
+        final_json_path: str | None = str(paths.transcripts_final_json_path)
+    else:
+        design_md_path = None
+        final_json_path = None
     return make_llm_key(
         node="p4_captions_layer",
         version=_CACHE_VERSION,
         slug=slug,
         files=[
-            compose.get("design_md_path"),
+            design_md_path,
             final_json_path,
         ],
     )
@@ -78,17 +83,21 @@ CACHE_POLICY = CachePolicy(key_func=_cache_key)
 
 
 def _captions_path(state: dict) -> Path | None:
-    compose = state.get("compose") or {}
-    hyperframes_dir = compose.get("hyperframes_dir")
-    if not hyperframes_dir:
-        episode_dir = state.get("episode_dir")
-        if not episode_dir:
-            return None
-        hyperframes_dir = str(Path(episode_dir) / "hyperframes")
-    return Path(hyperframes_dir) / "captions.html"
+    """HOM-224: derive via slug; legacy fallback for pre-pickup synthetic state."""
+    slug = state.get("slug")
+    if slug:
+        return EpisodePaths(slug).captions_block_path
+    episode_dir = state.get("episode_dir")
+    if episode_dir:
+        return Path(episode_dir) / "hyperframes" / "captions.html"
+    return None
 
 
 def _design_md_path(state: dict) -> str:
+    """HOM-224: derive via slug; legacy fallback for pre-pickup synthetic state."""
+    slug = state.get("slug")
+    if slug:
+        return str(EpisodePaths(slug).design_md_path)
     compose = state.get("compose") or {}
     path = compose.get("design_md_path")
     if path:
@@ -98,16 +107,11 @@ def _design_md_path(state: dict) -> str:
 
 
 def _transcript_path(state: dict) -> str:
-    """HOM-223: state echo gone; fall back to `EpisodePaths(slug)` on disk."""
-    transcripts = state.get("transcripts") or {}
-    explicit = transcripts.get("final_json_path") or transcripts.get("raw_json_path")
-    if explicit:
-        return str(explicit)
+    """HOM-224: derive via slug. Final wins over raw."""
     slug = state.get("slug")
     if not slug:
         return ""
-    from .._paths import EpisodePaths as _EP
-    paths = _EP(slug)
+    paths = EpisodePaths(slug)
     if paths.transcripts_final_json_path.exists():
         return str(paths.transcripts_final_json_path)
     if paths.transcripts_raw_json_path.exists():
@@ -239,19 +243,22 @@ def p4_captions_layer_node(state, *, router: BackendRouter | None = None):
     if isinstance(compose_namespace, dict):
         compose_namespace.pop("_captions_unused", None)
 
-    # FS source-of-truth promotion (mirrors p4_beat / p4_assemble_index).
-    # If the file landed, stamp the deterministic path into compose.* —
-    # `p4_assemble_index` reads it from there. If the dispatch errored or
-    # the sub-agent never wrote, leave the path unset; assemble proceeds
-    # without captions and surfaces the absence in the halt notice.
+    # HOM-224: identity-only state — no longer echo the captions_block_path
+    # into `compose.captions_block_path` or `compose.captions`. Downstream
+    # consumers (`p4_assemble_index`, `halt_llm_boundary`) derive the path
+    # via `EpisodePaths(slug).captions_block_path` and check disk existence
+    # there. Leave a minimal success record on `compose.captions` so the
+    # halt-notice "captions written" branch still has a signal — store an
+    # empty dict (presence indicates non-skip).
     try:
         wrote = captions_path.is_file() and captions_path.stat().st_size > 0
     except OSError:
         wrote = False
     if wrote:
         compose_update = update.setdefault("compose", {})
-        compose_update["captions_block_path"] = str(captions_path)
-        compose_update["captions"] = {
-            "captions_block_path": str(captions_path),
-        }
+        # Non-skip success marker — dict is intentionally empty (no path
+        # echo). `halt_llm_boundary._captions_summary` already consults
+        # disk via EpisodePaths, so absence of `skipped`/`captions_block_path`
+        # keys is the correct shape post-HOM-224.
+        compose_update.setdefault("captions", {})
     return update

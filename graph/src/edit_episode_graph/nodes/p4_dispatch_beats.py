@@ -26,6 +26,7 @@ from typing import Any
 from langgraph.constants import END
 from langgraph.types import Command, Send
 
+from .._paths import EpisodePaths
 from .._scene_id import scene_id_for
 
 
@@ -83,12 +84,17 @@ def p4_dispatch_beats_node(state: dict[str, Any]) -> Command:
     if not compose.get("catalog"):
         return _notice("compose.catalog missing (p4_catalog_scan must run first)")
 
-    index_html_path = compose.get("index_html_path")
-    if not index_html_path:
-        return _notice("compose.index_html_path missing (p4_scaffold must run first)")
-    index_path = Path(index_html_path)
+    # HOM-224: derive index.html via slug; legacy state echo is gone.
+    slug = state.get("slug")
+    if slug:
+        index_path = EpisodePaths(slug).index_html_path
+    else:
+        legacy = compose.get("index_html_path")
+        if not legacy:
+            return _notice("slug missing — cannot resolve index.html path")
+        index_path = Path(legacy)
     if not index_path.is_file():
-        return _notice(f"root index.html not found at {index_path}")
+        return _notice(f"root index.html not found at {index_path} (p4_scaffold must run first)")
 
     try:
         root_html = index_path.read_text(encoding="utf-8")

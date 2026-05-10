@@ -139,6 +139,14 @@ class EpisodePaths:
         return self.episode_dir / "hyperframes"
 
     @property
+    def hyperframes_state_dir(self) -> Path:
+        # Canonical HF dotdir for orchestrator-house state files
+        # (currently just `expanded-prompt.md`; future per-node JSON dumps,
+        # cache scratch, etc. land here too). See memory
+        # `feedback_hf_step2_prompt_expansion`.
+        return self.hyperframes_dir / ".hyperframes"
+
+    @property
     def index_html_path(self) -> Path:
         return self.hyperframes_dir / "index.html"
 
@@ -151,7 +159,7 @@ class EpisodePaths:
         # See nodes/p4_prompt_expansion.py::_expanded_prompt_path —
         # canonical name is `.hyperframes/expanded-prompt.md` per
         # memory `feedback_hf_step2_prompt_expansion`.
-        return self.hyperframes_dir / ".hyperframes" / "expanded-prompt.md"
+        return self.hyperframes_state_dir / "expanded-prompt.md"
 
     @property
     def compositions_dir(self) -> Path:

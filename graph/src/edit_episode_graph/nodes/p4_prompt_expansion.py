@@ -23,11 +23,15 @@ from langgraph.types import CachePolicy
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
 from .._caching import make_llm_key, stable_fingerprint
+from .._paths import EpisodePaths
 from ..schemas.p4_prompt_expansion import ExpandedPrompt
 from ._llm import LLMNode, _load_brief
 
 # Bump on brief / schema / tool-list change. See HOM-132 spec §8.
-_CACHE_VERSION = 1
+# v2 (HOM-224): identity-only state writes — `compose.expanded_prompt_path`
+# top-level mirror dropped; brief no longer renders `episode_dir`. Paths
+# derived via `EpisodePaths(slug)` at use-sites.
+_CACHE_VERSION = 2
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -39,26 +43,21 @@ def _cache_key(state, *_args, **_kwargs):
     # introspects `compiled.get_graph()` against the channel default).
     slug = state.get("slug") or "__unbound__"
     compose = state.get("compose") or {}
-    transcripts = state.get("transcripts") or {}
-    # `style_request` is a brief input (rendered as `style_request_json`)
-    # that is NOT produced by any upstream node — transitive invalidation
-    # through file fingerprints does not cover it. Hashed as `extras`.
-    # Spec §6 row for `p4_prompt_expansion` updated in this PR to reflect
-    # this; the HOM-149 pilot row was incomplete on first pass (per
-    # CLAUDE.md "Re-validate each row against the actual brief inputs").
     style_request = compose.get("style_request") or ""
-    # HOM-223: `transcripts.final_json_path` no longer echoed by p3 glue —
-    # surgical fallback to `EpisodePaths(slug)`.
-    final_json_path = transcripts.get("final_json_path")
-    if not final_json_path and slug and slug != "__unbound__":
-        from .._paths import EpisodePaths as _EP
-        final_json_path = str(_EP(slug).transcripts_final_json_path)
+    # HOM-224: derive paths via EpisodePaths(slug) — identity-only state.
+    if slug and slug != "__unbound__":
+        paths = EpisodePaths(slug)
+        design_md_path: str | None = str(paths.design_md_path)
+        final_json_path: str | None = str(paths.transcripts_final_json_path)
+    else:
+        design_md_path = None
+        final_json_path = None
     return make_llm_key(
         node="p4_prompt_expansion",
         version=_CACHE_VERSION,
         slug=slug,
         files=[
-            compose.get("design_md_path"),
+            design_md_path,
             final_json_path,
         ],
         extras=(stable_fingerprint(style_request),),
@@ -69,7 +68,14 @@ CACHE_POLICY = CachePolicy(key_func=_cache_key)
 
 
 def _expanded_prompt_path(state: dict) -> Path:
-    return Path(state["episode_dir"]) / "hyperframes" / ".hyperframes" / "expanded-prompt.md"
+    # HOM-224: derive from slug; no state echo.
+    slug = state.get("slug")
+    if not slug:
+        episode_dir = state.get("episode_dir")
+        if episode_dir:
+            return Path(episode_dir) / "hyperframes" / ".hyperframes" / "expanded-prompt.md"
+        raise RuntimeError("p4_prompt_expansion: slug missing from state (pickup must run first)")
+    return EpisodePaths(slug).expanded_prompt_path
 
 
 def _strategy(state: dict) -> dict:
@@ -89,6 +95,10 @@ def _edl_beats(state: dict) -> list[str]:
 
 
 def _design_md_path(state: dict) -> str:
+    """HOM-224: derive via slug; legacy fallback retained for pre-pickup states."""
+    slug = state.get("slug")
+    if slug:
+        return str(EpisodePaths(slug).design_md_path)
     compose = state.get("compose") or {}
     path = compose.get("design_md_path")
     if path:
@@ -98,21 +108,11 @@ def _design_md_path(state: dict) -> str:
 
 
 def _transcript_path(state: dict) -> str:
-    """Resolve transcript JSON path for brief render (HOM-223 — slug fallback).
-
-    Pre-HOM-223, p3 glue echoed `transcripts.final_json_path`; that echo
-    is gone. Falls back to `EpisodePaths(slug).transcripts_final_json_path`,
-    then `transcripts_raw_json_path` if `final.json` doesn't exist yet.
-    """
-    transcripts = state.get("transcripts") or {}
-    explicit = transcripts.get("final_json_path") or transcripts.get("raw_json_path")
-    if explicit:
-        return str(explicit)
+    """Resolve transcript JSON path via EpisodePaths(slug). Final wins over raw."""
     slug = state.get("slug")
     if not slug:
         return ""
-    from .._paths import EpisodePaths as _EP
-    paths = _EP(slug)
+    paths = EpisodePaths(slug)
     if paths.transcripts_final_json_path.exists():
         return str(paths.transcripts_final_json_path)
     if paths.transcripts_raw_json_path.exists():
@@ -147,12 +147,16 @@ def _build_node() -> LLMNode:
 
 
 def p4_prompt_expansion_node(state, *, router: BackendRouter | None = None):
-    episode_dir = state.get("episode_dir")
-    if not episode_dir:
-        return {"compose": {"expansion": {"skipped": True, "skip_reason": "no episode_dir in state"}}}
+    slug = state.get("slug")
+    if not slug:
+        return {"compose": {"expansion": {"skipped": True, "skip_reason": "no slug in state"}}}
 
     design_md_path = _design_md_path(state)
-    if not design_md_path:
+    # HOM-224: derived path is always non-empty when slug is present; gate
+    # on disk existence (the meaningful precondition — "DESIGN.md must be
+    # on disk before expansion runs"). Pre-HOM-224 the same outcome was
+    # achieved by the absence of the state echo.
+    if not design_md_path or not Path(design_md_path).is_file():
         return {
             "compose": {
                 "expansion": {
@@ -178,14 +182,6 @@ def p4_prompt_expansion_node(state, *, router: BackendRouter | None = None):
     # `feedback_hf_step2_prompt_expansion`.
     _expanded_prompt_path(state).parent.mkdir(parents=True, exist_ok=True)
 
-    node = _build_node()
-    update = node(state, router=router)
-    expansion = (update.get("compose") or {}).get("expansion") or {}
-    # Promote on positive signal — the structured path is populated. Avoids
-    # mis-promotion if the schema ever adds a `raw_text` field of its own
-    # and ensures the failure path (LLMNode falls back to {"raw_text": ...}
-    # on schema extraction failure) leaves the top-level mirror unset.
-    path = expansion.get("expanded_prompt_path")
-    if path:
-        update.setdefault("compose", {})["expanded_prompt_path"] = path
-    return update
+    # HOM-224: no longer mirror `compose.expanded_prompt_path` — identity-only
+    # state. Downstream nodes derive via `EpisodePaths(slug).expanded_prompt_path`.
+    return _build_node()(state, router=router)

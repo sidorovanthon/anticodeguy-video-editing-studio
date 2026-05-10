@@ -22,6 +22,7 @@ from langgraph.types import CachePolicy
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
 from .._caching import make_llm_key, strategy_fingerprint
+from .._paths import EpisodePaths
 from ..schemas.p4_design_system import DesignDoc
 from ._llm import LLMNode, _load_brief
 
@@ -30,7 +31,11 @@ from ._llm import LLMNode, _load_brief
 # v2 (HOM-201): brief now mandates pre-baked gradient-stop / highlight
 # derivatives in the palette so downstream `p4_beat` never improvises
 # off-palette hexes for gradients / shadows. Shape unchanged ({role, hex}).
-_CACHE_VERSION = 2
+# v3 (HOM-224): identity-only state writes — `compose.design_md_path`
+# top-level mirror dropped; brief no longer renders the absolute path
+# context for episode_dir / design_md_path (path derived via slug at
+# read sites). Brief context shape changed → cache invalidation.
+_CACHE_VERSION = 3
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -64,23 +69,20 @@ def _cache_key(state, *_args, **_kwargs):
     # empty slug at execution time fails downstream in the node body
     # (which requires `episode_dir`), so safety is preserved.
     slug = state.get("slug") or "__unbound__"
-    transcripts = state.get("transcripts") or {}
     edit = state.get("edit") or {}
-    edl = edit.get("edl") or {}
     strategy = edit.get("strategy") or {}
-    # HOM-223: p3 nodes no longer echo `transcripts.final_json_path` /
-    # `edl.edl_path` into state. Surgical fallback: derive via
-    # `EpisodePaths(slug)` when state lacks the echo. p4 internals stay
-    # untouched (Sub-3 owns); this is just the read-site of removed p3
-    # writes. Fingerprint stays identical because the paths point at the
-    # same files.
-    final_json_path = transcripts.get("final_json_path")
-    edl_path = edl.get("edl_path")
-    if (not final_json_path or not edl_path) and slug and slug != "__unbound__":
-        from .._paths import EpisodePaths as _EP
-        paths = _EP(slug)
-        final_json_path = final_json_path or str(paths.transcripts_final_json_path)
-        edl_path = edl_path or str(paths.edit_dir / "edl.json")
+    # HOM-224: derive paths via EpisodePaths(slug) — primary read path. p3
+    # state echoes (`transcripts.final_json_path`, `edl.edl_path`) are gone
+    # post-HOM-223. The unbound-slug case (graph introspection) still needs
+    # to produce a stable key, so fall through with `None` paths and let
+    # `make_llm_key` fingerprint the missing files as a stable nonce.
+    if slug and slug != "__unbound__":
+        paths = EpisodePaths(slug)
+        final_json_path = str(paths.transcripts_final_json_path)
+        edl_path = str(paths.edit_dir / "edl.json")
+    else:
+        final_json_path = None
+        edl_path = None
     return make_llm_key(
         node="p4_design_system",
         version=_CACHE_VERSION,
@@ -94,7 +96,16 @@ CACHE_POLICY = CachePolicy(key_func=_cache_key)
 
 
 def _design_md_path(state: dict) -> Path:
-    return Path(state["episode_dir"]) / "hyperframes" / "DESIGN.md"
+    # HOM-224: derive from slug; no state echo.
+    slug = state.get("slug")
+    if not slug:
+        # Legacy fallback used only when slug is missing (synthetic-state
+        # unit tests pre-pickup). Production graph always has slug post-pickup.
+        episode_dir = state.get("episode_dir")
+        if episode_dir:
+            return Path(episode_dir) / "hyperframes" / "DESIGN.md"
+        raise RuntimeError("p4_design_system: slug missing from state (pickup must run first)")
+    return EpisodePaths(slug).design_md_path
 
 
 def _strategy(state: dict) -> dict:
@@ -114,6 +125,10 @@ def _edl_beats(state: dict) -> list[str]:
 
 
 def _render_ctx(state: dict) -> dict:
+    # HOM-224: `design_md_path` still rendered into the brief (sub-agent
+    # `Write`s to that absolute path), but it's now derived via
+    # `EpisodePaths(slug)` rather than read from a state echo. The state
+    # write of `compose.design_md_path` is dropped (HOM-224 §"State writes").
     return {
         "design_md_path": str(_design_md_path(state)),
         "strategy_json": json.dumps(_strategy(state), ensure_ascii=False),
@@ -136,9 +151,9 @@ def _build_node() -> LLMNode:
 
 
 def p4_design_system_node(state, *, router: BackendRouter | None = None):
-    episode_dir = state.get("episode_dir")
-    if not episode_dir:
-        return {"compose": {"design": {"skipped": True, "skip_reason": "no episode_dir in state"}}}
+    slug = state.get("slug")
+    if not slug:
+        return {"compose": {"design": {"skipped": True, "skip_reason": "no slug in state"}}}
     edl = (state.get("edit") or {}).get("edl") or {}
     if edl.get("skipped") or not edl.get("ranges"):
         return {
@@ -156,11 +171,7 @@ def p4_design_system_node(state, *, router: BackendRouter | None = None):
     # in the v4 topology — scaffold then consumes DESIGN.md.
     _design_md_path(state).parent.mkdir(parents=True, exist_ok=True)
 
-    node = _build_node()
-    update = node(state, router=router)
-    design = (update.get("compose") or {}).get("design") or {}
-    if "skipped" not in design and "raw_text" not in design:
-        # Mirror the design_md_path from the structured output up to the
-        # `compose.design_md_path` ergonomic field referenced by the spec.
-        update.setdefault("compose", {})["design_md_path"] = design.get("design_md_path")
-    return update
+    # HOM-224: no longer mirror `compose.design_md_path` from the structured
+    # output. Identity-only state — downstream nodes derive the path via
+    # `EpisodePaths(slug).design_md_path` at use-site.
+    return _build_node()(state, router=router)

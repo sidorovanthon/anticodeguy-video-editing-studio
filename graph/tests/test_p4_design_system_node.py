@@ -74,23 +74,29 @@ def test_design_doc_schema_rejects_unknown_field():
         DesignDoc.model_validate({**base, "subtitles": "no thanks"})
 
 
-def test_skips_when_episode_dir_missing():
+def test_skips_when_slug_missing():
+    """HOM-224: identity is `slug`, not `episode_dir`."""
     update = p4_design_system_node({}, router=MagicMock())
     assert update["compose"]["design"]["skipped"] is True
+    assert "slug" in update["compose"]["design"]["skip_reason"]
 
 
-def test_skips_when_edl_empty(tmp_path):
+def test_skips_when_edl_empty(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOMESTUDIO_PROJECT_ROOT", str(tmp_path))
     state = {
         "slug": "demo",
-        "episode_dir": str(tmp_path),
         "edit": {"edl": {"ranges": []}},
     }
     update = p4_design_system_node(state, router=MagicMock())
     assert update["compose"]["design"]["skipped"] is True
 
 
-def test_runs_with_tools_and_writes_design_md_path(tmp_path):
-    design_md = tmp_path / "hyperframes" / "DESIGN.md"
+def test_runs_with_tools_and_writes_design_md_path(tmp_path, monkeypatch):
+    # HOM-224: pin HOMESTUDIO_PROJECT_ROOT so `EpisodePaths(slug).design_md_path`
+    # resolves under tmp_path.
+    monkeypatch.setenv("HOMESTUDIO_PROJECT_ROOT", str(tmp_path))
+    slug = "demo"
+    design_md = tmp_path / "episodes" / slug / "hyperframes" / "DESIGN.md"
     payload = _good_design_payload(str(design_md))
 
     router = MagicMock()
@@ -110,8 +116,7 @@ def test_runs_with_tools_and_writes_design_md_path(tmp_path):
     )
 
     state = {
-        "slug": "demo",
-        "episode_dir": str(tmp_path),
+        "slug": slug,
         "edit": {
             "edl": {
                 "ranges": [
@@ -126,7 +131,12 @@ def test_runs_with_tools_and_writes_design_md_path(tmp_path):
     update = p4_design_system_node(state, router=router)
 
     assert update["compose"]["design"]["style_name"] == "Swiss Pulse"
-    assert update["compose"]["design_md_path"] == str(design_md)
+    # HOM-224: top-level `compose.design_md_path` mirror dropped — the
+    # structured output's `design_md_path` survives on `compose.design`
+    # for the gate, but downstream nodes derive the path via
+    # `EpisodePaths(slug).design_md_path` instead of reading state.
+    assert "design_md_path" not in update["compose"]
+    assert update["compose"]["design"]["design_md_path"] == str(design_md)
     assert design_md.parent.is_dir(), "node must mkdir the destination dir"
 
     req, task = router.invoke.call_args.args[:2]

@@ -48,8 +48,12 @@ def halt_llm_boundary_node(state):
     # future partial-write that leaves an unrecognized assemble shape doesn't
     # silently format a misleading "assembled" notice.
     captions_state = compose_state.get("captions") or {}
-    captions_block_path = compose_state.get("captions_block_path") or captions_state.get(
-        "captions_block_path"
+    # HOM-224: identity-only state — `compose.captions_block_path` /
+    # `compose.captions.captions_block_path` echoes are gone. Probe disk
+    # via EpisodePaths(slug). When no slug, treat as absent.
+    slug = state.get("slug")
+    captions_on_disk = bool(
+        slug and EpisodePaths(slug).captions_block_path.is_file()
     )
 
     def _captions_summary() -> str:
@@ -58,7 +62,7 @@ def halt_llm_boundary_node(state):
         if captions_state.get("skipped"):
             reason = captions_state.get("skip_reason") or "no reason given"
             return f"captions skipped ({reason})"
-        if captions_block_path:
+        if captions_on_disk:
             return "captions written but not inlined"
         return "captions absent"
 
@@ -282,7 +286,7 @@ def halt_llm_boundary_node(state):
         # catalog stage with no captions yet, the next reachable artifact is
         # `p4_captions_layer`; otherwise it's `p4_assemble_index`.
         next_artifact = (
-            "p4_assemble_index" if captions_block_path else "p4_captions_layer"
+            "p4_assemble_index" if captions_on_disk else "p4_captions_layer"
         )
         n_b = len(catalog_state.get("blocks") or [])
         n_c = len(catalog_state.get("components") or [])

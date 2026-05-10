@@ -37,6 +37,29 @@ writers. Removed keys (writer in parens):
 
 The keys remain typed on the schema below for forward-compat parsing of
 already-recorded fixtures (cache.db rows). New code MUST NOT write them.
+
+HOM-224 — P4 absolute-path keys removed from state writes. P4 nodes now
+derive paths via `EpisodePaths(slug)` at use-site (mirrors the p3
+migration). Old recordings carrying these keys still parse cleanly. Removed
+keys (writer in parens):
+* `ComposeState.hyperframes_dir` (`p4_scaffold`)
+* `ComposeState.index_html_path` (`p4_scaffold` / `p4_assemble_index`)
+* `ComposeState.design_md_path` (`p4_design_system`)
+* `DesignState.design_md_path` (`p4_design_system` — structured-output
+  echo no longer mirrored up to the top-level `compose.design_md_path`;
+  the schema field stays so the LLM may still emit it, but the node body
+  does not promote it into state)
+* `ComposeState.expanded_prompt_path` (`p4_prompt_expansion`)
+* `ExpansionState.expanded_prompt_path` — same shape as design above
+* `ComposeState.captions_block_path` (`p4_captions_layer`)
+* `CaptionsState.captions_block_path` (`p4_captions_layer`)
+* `AssembleState.index_html_path` (`p4_assemble_index`) — `assembled_at`
+  ISO timestamp is the success signal; the path was redundant with
+  `compose.index_html_path` and EpisodePaths
+* `PersistState.persisted_at` (`p4_persist_session`) — same str|None slot
+  as p3, semantics shift from absolute path → ISO timestamp
+
+The keys remain typed on the schema below for forward-compat parsing.
 """
 
 from operator import add
