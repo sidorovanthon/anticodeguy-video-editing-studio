@@ -129,8 +129,8 @@ These are patterns the LLM keeps re-introducing despite canon. Each iteration of
    ```
 
    **Canon (READ BEFORE AUTHORING — do not rely on this brief's summary):**
-   - `~/.agents/skills/hyperframes/references/motion-principles.md` — bullet "Hard-kill every scene boundary, not just captions." That bullet's explicit phrasing: *"any element whose visibility changes at a beat boundary needs a deterministic `tl.set()` kill after its fade … Apply to every element with an exit animation"*. The canon names this the generalisation of the captions rule — captions are just the loudest example.
-   - `~/.agents/skills/hyperframes/references/captions.md` §"Caption Exit Guarantee" — same principle, captions-specific.
+   - `~/.agents/skills/hyperframes/references/motion-principles.md` — bullet "Hard-kill every scene boundary, not just captions." Read the bullet's full text; it is the generalisation of the captions rule.
+   - `~/.agents/skills/hyperframes/references/captions.md` §"Caption Exit Guarantee" — captions-specific instance of the same principle.
 
    The positive control is the canonical fixture's `payoff` scene (lines `tl.to(headline, { opacity: 0 }, fadeStart)` + `tl.set(headline, { visibility: "hidden" }, fadeStart + fadeDur)`) — every authored element in your scene's timeline should follow that shape at its own exit timestamp.
 

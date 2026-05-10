@@ -57,7 +57,11 @@ from ._llm import LLMNode, _load_brief
 # fade the scene container, not per-element nodes), and the canonical
 # fixture's payoff scene as positive control. Triggered by HOM-211 finding:
 # hook + thesis missing the pair while payoff has it.
-_CACHE_VERSION = 5
+# v6 (HOM-213 review S1): cut verbatim canon recital from anti-pattern 2;
+# brief now points at canon path + bullet name only (no quoted phrasing).
+# Per CLAUDE.md §"Decomposition via brief-references-canon" — verbatim
+# quotes still count as canon-fork risk if upstream wording shifts.
+_CACHE_VERSION = 6
 
 
 def _cache_key(state, *_args, **_kwargs):
