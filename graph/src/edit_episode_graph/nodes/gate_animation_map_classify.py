@@ -51,6 +51,7 @@ from langgraph.types import CachePolicy
 from pydantic import BaseModel, ConfigDict, Field
 
 from .._caching import make_llm_key, stable_fingerprint
+from .._paths import EpisodePaths
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
 from ._llm import LLMNode, _load_brief
@@ -67,7 +68,13 @@ from ._llm import LLMNode, _load_brief
 #      partial output (no length-parity requirement). Brief content is
 #      part of the LLM dispatch's effective input — bump invalidates
 #      stale recorded classifications under the old framing.
-_CACHE_VERSION = 3
+# v4 = HOM-225 — cache key + render ctx derive `hf_dir` / `design_md_path`
+#      via `EpisodePaths(slug)` rather than reading deprecated
+#      `compose.hyperframes_dir` / `compose.design_md_path` echoes (which
+#      no p4 node writes after HOM-224). Without this bump, DESIGN.md
+#      edits silently fail to invalidate the classifier cache on fresh
+#      runs because the legacy slot is `None`.
+_CACHE_VERSION = 4
 
 
 # ---------------------------------------------------------------------------
@@ -110,14 +117,17 @@ _OUT_FILE = "animation-map.json"
 
 
 def _hf_dir(state: dict) -> Path | None:
-    compose = state.get("compose") or {}
-    hf_dir = compose.get("hyperframes_dir")
-    if hf_dir:
-        return Path(hf_dir)
-    episode_dir = state.get("episode_dir")
-    if episode_dir:
-        return Path(episode_dir) / "hyperframes"
-    return None
+    """HOM-225: derive via `EpisodePaths(slug)` — identity-only state.
+
+    Returns ``None`` only when slug itself is missing (pre-pickup state).
+    The legacy ``compose.hyperframes_dir`` / ``state["episode_dir"]``
+    chain is gone — those keys are no longer written by any p4 node
+    after HOM-224.
+    """
+    slug = state.get("slug")
+    if not slug:
+        return None
+    return EpisodePaths(slug).hyperframes_dir
 
 
 def _animation_map_path(state: dict) -> Path | None:
@@ -128,12 +138,16 @@ def _animation_map_path(state: dict) -> Path | None:
 
 
 def _design_md_path(state: dict) -> str:
-    compose = state.get("compose") or {}
-    path = compose.get("design_md_path")
-    if path:
-        return str(path)
-    design = compose.get("design") or {}
-    return str(design.get("design_md_path") or "")
+    """HOM-225: derive via `EpisodePaths(slug)` — identity-only state.
+
+    Returns ``""`` only when slug itself is missing. The legacy
+    ``compose.design_md_path`` / ``compose.design.design_md_path`` chain
+    is gone — no p4 node writes those keys after HOM-224.
+    """
+    slug = state.get("slug")
+    if not slug:
+        return ""
+    return str(EpisodePaths(slug).design_md_path)
 
 
 def _plan_beats(state: dict) -> list[dict]:
@@ -203,14 +217,14 @@ def _cache_key(state, *_args, **_kwargs):
         )
     slug = state.get("slug") or "__unbound__"
     anim_path = _animation_map_path(state)
-    compose = state.get("compose") or {}
+    design_md = _design_md_path(state)
     return make_llm_key(
         node="gate_animation_map_classify",
         version=_CACHE_VERSION,
         slug=slug,
         files=[
             str(anim_path) if anim_path else None,
-            compose.get("design_md_path"),
+            design_md or None,
         ],
         extras=(
             stable_fingerprint(_plan_beats(state)),

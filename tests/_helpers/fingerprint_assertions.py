@@ -114,17 +114,20 @@ def _gate_animation_map_classify_base(tmp_dir: Path) -> dict:
     """Base state for the gate_animation_map_classify LLM node.
 
     HOM-156 — initial extraction; HOM-204 — input shape moved from
-    ``pending_justifiable`` to ``advisory_findings.pending_classify``.
+    ``pending_justifiable`` to ``advisory_findings.pending_classify``;
+    HOM-225 — paths derive via ``EpisodePaths(slug)``, so the base state
+    pins ``HOMESTUDIO_PROJECT_ROOT`` and seeds the slug-derived layout.
 
     The node's cache key reads:
-      - `compose.hyperframes_dir` → derives the animation-map.json path,
-        which is content-hashed.
-      - `compose.design_md_path` → content-hashed.
+      - `EpisodePaths(slug).hyperframes_dir / .hyperframes/anim-map/
+        animation-map.json` → content-hashed.
+      - `EpisodePaths(slug).design_md_path` → content-hashed.
       - `compose.plan.beats` → fingerprinted via stable_fingerprint.
       - `gate_results[*].advisory_findings.pending_classify` (latest
         gate:animation_map record) → fingerprinted via stable_fingerprint.
     """
-    hf_dir = tmp_dir / "hyperframes"
+    episode_dir = _pin_project_root_to(tmp_dir)
+    hf_dir = episode_dir / "hyperframes"
     hf_dir.mkdir(parents=True, exist_ok=True)
     anim_dir = hf_dir / ".hyperframes" / "anim-map"
     anim_dir.mkdir(parents=True, exist_ok=True)
@@ -133,11 +136,8 @@ def _gate_animation_map_classify_base(tmp_dir: Path) -> dict:
     design_md = hf_dir / "DESIGN.md"
     design_md.write_text("# DESIGN.md fixture\n", encoding="utf-8")
     return {
-        "slug": "fp-fixture",
-        "episode_dir": str(tmp_dir),
+        "slug": _FP_SLUG,
         "compose": {
-            "hyperframes_dir": str(hf_dir),
-            "design_md_path": str(design_md),
             "plan": {
                 "beats": [
                     {"beat": "HOOK", "concept": "c", "mood": "m",
@@ -232,10 +232,12 @@ _NODE_REGISTRY: dict[str, tuple[str, Callable[[Path], dict], Callable[[dict], Pa
     # HOM-156 (review S1): cheap-tier LLM classifier extracted into its own
     # graph node so cache_policy= actually fires. Registry entry now points
     # at the node module, not the gate module.
+    # HOM-225: primary_artifact derives via EpisodePaths(slug) — cache key
+    # no longer reads `compose.hyperframes_dir`.
     "gate_animation_map_classify": (
         "edit_episode_graph.nodes.gate_animation_map_classify",
         _gate_animation_map_classify_base,
-        lambda s: Path(s["compose"]["hyperframes_dir"])
+        lambda s: _slug_path("hyperframes_dir")(s)
         / ".hyperframes" / "anim-map" / "animation-map.json",
     ),
 }

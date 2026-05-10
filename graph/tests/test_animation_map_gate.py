@@ -30,14 +30,32 @@ from edit_episode_graph.gates import animation_map as gate_mod
 from edit_episode_graph.gates.animation_map import animation_map_gate_node
 
 
-def _hf_dir(tmp_path: Path) -> Path:
-    hf_dir = tmp_path / "hyperframes"
+_FIXTURE_SLUG = "anim-map-fixture"
+
+
+def _hf_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch | None = None) -> Path:
+    """Create the slug-derived HF dir under ``tmp_path`` and pin
+    ``HOMESTUDIO_PROJECT_ROOT`` so EpisodePaths(slug) resolves there.
+
+    HOM-225: the cache key + advisory-notice path helpers derive via
+    ``EpisodePaths(slug)``; the body's ``hyperframes_dir(state)``
+    helper still also reads ``compose.hyperframes_dir`` (shared
+    helper across gates), so the `_state` factory keeps that key for
+    body-level execution. The env var is what the cache-key /
+    notice-path helpers consume.
+    """
+    if monkeypatch is not None:
+        monkeypatch.setenv("HOMESTUDIO_PROJECT_ROOT", str(tmp_path))
+    hf_dir = tmp_path / "episodes" / _FIXTURE_SLUG / "hyperframes"
     hf_dir.mkdir(parents=True)
     return hf_dir
 
 
 def _state(hf_dir: Path) -> dict:
-    return {"compose": {"hyperframes_dir": str(hf_dir)}}
+    return {
+        "slug": _FIXTURE_SLUG,
+        "compose": {"hyperframes_dir": str(hf_dir)},
+    }
 
 
 def _stub_helper(monkeypatch, *, exit_code: int = 0, report: dict | None = None,
@@ -74,22 +92,26 @@ def _stub_resolver(monkeypatch, helper_path: Path, used_fallback: bool = False):
 # ── HOM-204: cache version bump ──────────────────────────────────────────────
 
 
-def test_cache_version_is_5():
-    """HOM-212 bumps 4→5 because verdict logic changed (per-flag blocking
-    carve-outs flip `passed` from True→False on structural findings).
+def test_cache_version_is_6():
+    """HOM-225 bumps 5→6: cache key derives `hf_dir` via
+    `EpisodePaths(slug)` rather than reading the deprecated
+    `compose.hyperframes_dir` / `state["episode_dir"]` chain (no p4
+    node writes those keys after HOM-224).
 
-    HOM-204 bumped 3→4 for the original advisory output-shape change.
-    The fingerprint registry's CREATIVE_NODES parametrisation does not
-    cover this deterministic gate (it uses ``make_key``, not
-    ``make_llm_key``); this direct assertion is the version-bump gate.
+    HOM-212 bumped 4→5 for the per-flag blocking carve-outs verdict
+    logic change. HOM-204 bumped 3→4 for the original advisory
+    output-shape change. The fingerprint registry's CREATIVE_NODES
+    parametrisation does not cover this deterministic gate (it uses
+    ``make_key``, not ``make_llm_key``); this direct assertion is the
+    version-bump gate.
     """
-    assert gate_mod._CACHE_VERSION == 5
+    assert gate_mod._CACHE_VERSION == 6
 
 
 def test_cache_key_includes_version(tmp_path, monkeypatch):
     """Editing _CACHE_VERSION must change the cache key (HOM-184 invariant
     applied directly to a deterministic gate)."""
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     state = _state(hf_dir)
     before = gate_mod._cache_key(state)
     monkeypatch.setattr(gate_mod, "_CACHE_VERSION", gate_mod._CACHE_VERSION + 1)
@@ -102,7 +124,7 @@ def test_cache_key_includes_version(tmp_path, monkeypatch):
 
 def test_clean_report_passes_with_empty_advisory_findings(tmp_path, monkeypatch):
     """No flags, no dead zones ⇒ passed=True; advisory_findings has empty lists."""
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
         "duration": 12.0,
@@ -135,7 +157,7 @@ def test_collision_on_decorative_is_advisory_not_blocking(tmp_path, monkeypatch)
     selectors (e.g. `.headline`) now flip to BLOCKING (see
     `test_collision_on_content_element_is_blocking`).
     """
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
         "tweens": [
@@ -161,7 +183,7 @@ def test_collision_on_decorative_is_advisory_not_blocking(tmp_path, monkeypatch)
 
 def test_paced_fast_records_pending_classify(tmp_path, monkeypatch):
     """paced-fast tween → advisory_findings.pending_classify; passed=True."""
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
         "tweens": [
@@ -181,7 +203,7 @@ def test_paced_fast_records_pending_classify(tmp_path, monkeypatch):
 
 def test_paced_slow_records_pending_classify(tmp_path, monkeypatch):
     """paced-slow flags also surface under pending_classify."""
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
         "tweens": [
@@ -198,7 +220,7 @@ def test_paced_slow_records_pending_classify(tmp_path, monkeypatch):
 
 def test_dead_zone_over_one_second_is_advisory(tmp_path, monkeypatch):
     """Dead zone > 1s ⇒ advisory_findings.dead_zones; passed=True (HOM-204)."""
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
         "tweens": [{"index": 1, "selector": ".a", "duration": 0.5, "flags": []}],
@@ -219,7 +241,7 @@ def test_collision_and_pace_and_dead_zone_all_advisory(tmp_path, monkeypatch):
     decorative collisions + 1px hairline degenerate + sub-threshold dead-
     zone + paced-fast all land as advisory findings; passed=True;
     violations=[]."""
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
         "tweens": [
@@ -259,7 +281,7 @@ def test_collision_and_pace_and_dead_zone_all_advisory(tmp_path, monkeypatch):
 
 
 def test_resolves_bundled_helper_in_preference_to_global(tmp_path, monkeypatch):
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     bundled = hf_dir / gate_mod._BUNDLED_REL
     bundled.parent.mkdir(parents=True)
     bundled.write_text("// stub", encoding="utf-8")
@@ -274,7 +296,7 @@ def test_resolves_bundled_helper_in_preference_to_global(tmp_path, monkeypatch):
 
 
 def test_falls_back_to_global_when_bundled_missing(tmp_path, monkeypatch):
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     fake_global = tmp_path / "fake-global-helper.mjs"
     fake_global.write_text("// stub", encoding="utf-8")
     monkeypatch.setattr(gate_mod, "_GLOBAL_FALLBACK", fake_global)
@@ -285,7 +307,7 @@ def test_falls_back_to_global_when_bundled_missing(tmp_path, monkeypatch):
 
 
 def test_fallback_use_emits_notice(tmp_path, monkeypatch):
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs", used_fallback=True)
     _stub_helper(monkeypatch, report={"tweens": [], "deadZones": []})
     update = animation_map_gate_node(_state(hf_dir))
@@ -300,7 +322,7 @@ def test_fallback_use_emits_notice(tmp_path, monkeypatch):
 
 def test_bootstrap_failure_emits_actionable_npm_i_command(tmp_path, monkeypatch):
     """HOM-204: bootstrap failure is infrastructure ⇒ passed=False stays."""
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     stderr = (
         "Could not resolve required package(s): @hyperframes/producer\n"
@@ -320,7 +342,7 @@ def test_bootstrap_failure_emits_actionable_npm_i_command(tmp_path, monkeypatch)
 
 
 def test_bootstrap_failure_global_fallback_no_version_pin(tmp_path, monkeypatch):
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     stderr = (
         "Error: Could not determine the bundled HyperFrames version for "
@@ -336,7 +358,7 @@ def test_bootstrap_failure_global_fallback_no_version_pin(tmp_path, monkeypatch)
 
 
 def test_bootstrap_failure_without_install_line_uses_documented_fallback(tmp_path, monkeypatch):
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     stderr = "spawnSync npm.cmd EINVAL\nRequired helper package(s) are missing.\n"
     _stub_helper(monkeypatch, exit_code=1, stderr=stderr)
@@ -357,7 +379,7 @@ def test_fails_when_no_hyperframes_dir_in_state():
 
 
 def test_fails_when_helper_not_found_anywhere(tmp_path, monkeypatch):
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     monkeypatch.setattr(gate_mod, "_GLOBAL_FALLBACK", tmp_path / "definitely-not-there.mjs")
     record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
     assert record["passed"] is False
@@ -367,7 +389,7 @@ def test_fails_when_helper_not_found_anywhere(tmp_path, monkeypatch):
 def test_runtime_filenotfound_records_failure_does_not_raise(tmp_path, monkeypatch):
     """Gates MUST NOT raise (per _base.py contract). Infrastructure failure
     surfaces as passed=False with violation text."""
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     helper = tmp_path / "fake-helper.mjs"
     helper.write_text("// stub", encoding="utf-8")
     _stub_resolver(monkeypatch, helper)
@@ -384,7 +406,7 @@ def test_runtime_filenotfound_records_failure_does_not_raise(tmp_path, monkeypat
 
 def test_fails_when_helper_exits_zero_but_no_json(tmp_path, monkeypatch):
     """Exit 0 but missing animation-map.json is infrastructure failure."""
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, exit_code=0, report=None)
     record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
@@ -401,7 +423,7 @@ def test_fails_when_helper_exits_zero_but_no_json(tmp_path, monkeypatch):
 
 def test_clean_run_notice_matches_canonical_format(tmp_path, monkeypatch):
     """HOM-205: success-no-findings notice is exactly the canonical line."""
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={"tweens": [], "deadZones": []})
     update = animation_map_gate_node(_state(hf_dir))
@@ -415,7 +437,7 @@ def test_mixed_findings_notice_matches_canonical_format(tmp_path, monkeypatch):
     line — `N finding(s) (always_fix: a, dead_zones: d, pending_classify: p)`
     plus the JSON path so the operator can open the helper output without
     hunting."""
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
         "tweens": [
@@ -447,7 +469,7 @@ def test_mixed_findings_notice_matches_canonical_format(tmp_path, monkeypatch):
 def test_fallback_helper_notice_appends_pin_deps_hint(tmp_path, monkeypatch):
     """HOM-205: when the global fallback helper ran, the canonical notice
     appends the pin-deps suggestion in parentheses."""
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs", used_fallback=True)
     _stub_helper(monkeypatch, report={
         # HOM-212: decorative selector → carved out, stays advisory so the
@@ -467,7 +489,7 @@ def test_fallback_helper_notice_appends_pin_deps_hint(tmp_path, monkeypatch):
 def test_infrastructure_failure_notice_uses_strong_wording(tmp_path, monkeypatch):
     """HOM-205: infra-failure notice is unchanged — 'infrastructure failure'
     prefix (NOT 'advisory') so the operator sees the severity clearly."""
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     stderr = (
         "Could not resolve required package(s): @hyperframes/producer\n"
@@ -502,7 +524,7 @@ def test_collision_on_content_element_is_blocking(tmp_path, monkeypatch):
     routing layer reads `violations` (the standard cluster-retry-helper
     contract) so this routes to p4_redispatch_beat with iter<3.
     """
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
         "tweens": [
@@ -532,7 +554,7 @@ def test_dead_zone_over_threshold_is_blocking(tmp_path, monkeypatch):
     Dead-zone duration > config threshold (default 2.0s) → blocking with
     the threshold value cited in the violation. Sub-threshold dead zones
     (≤ 2.0s) stay advisory."""
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
         "tweens": [{"index": 1, "selector": "div.grain", "duration": 0.6, "flags": []}],
@@ -556,7 +578,7 @@ def test_pending_classify_only_stays_advisory_no_redispatch(tmp_path, monkeypatc
     `pending_classify`-only run is HOM-203's correct case: paced flags
     are LLM-judgement territory; routing must stay advisory and advance
     to the classifier (or snapshot if no pending), never redispatch."""
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
         "tweens": [
@@ -584,7 +606,7 @@ def test_caption_canon_collision_stays_advisory(tmp_path, monkeypatch):
     findings on the canonical fixture). Promoting these wholesale to
     blocking would re-introduce the HOM-203 redispatch loop on the
     canonical fixture. Carved out — must stay advisory."""
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
         "tweens": [
@@ -609,7 +631,7 @@ def test_decorative_collision_stays_advisory(tmp_path, monkeypatch):
     corner-mark/footer-mark/caption-strip/margin-tick. Operator can
     extend via `gates.animation_map.collision_decorative_allowlist`.
     """
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
         "tweens": [
@@ -635,7 +657,7 @@ def test_degenerate_on_1px_hairline_stays_advisory(tmp_path, monkeypatch):
     HOM-211 found 5/5 canonical degenerate findings on `pf-hairline` /
     `margin-tick` / `kw-underline` — all 1-2 px decoratives whose
     `scaleX:0` initial state samples to zero-size bbox by construction."""
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
         "tweens": [
@@ -656,7 +678,7 @@ def test_degenerate_on_1px_hairline_stays_advisory(tmp_path, monkeypatch):
 def test_degenerate_on_real_element_is_blocking(tmp_path, monkeypatch):
     """Degenerate flag on an element with bbox >= 2px both dimensions IS
     blocking — that's the failure mode the canon Step 4 mandate targets."""
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
         "tweens": [
@@ -680,7 +702,7 @@ def test_degenerate_on_real_element_is_blocking(tmp_path, monkeypatch):
 def test_offscreen_is_unconditionally_blocking(tmp_path, monkeypatch):
     """No FP class identified for offscreen — element off-canvas the
     entire tween means audience never sees it. Blocking always."""
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
         "tweens": [
@@ -697,7 +719,7 @@ def test_offscreen_is_unconditionally_blocking(tmp_path, monkeypatch):
 
 def test_invisible_is_unconditionally_blocking(tmp_path, monkeypatch):
     """Same as offscreen — zero-opacity throughout = element never renders."""
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
         "tweens": [
@@ -716,7 +738,7 @@ def test_blocking_notice_lists_offending_categories(tmp_path, monkeypatch):
     category explicitly'. Notice format is
     `gate:animation_map: BLOCKING — N finding(s) require fix. <cat strs>. See <path>.`
     """
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
         "tweens": [
@@ -738,7 +760,7 @@ def test_dead_zone_threshold_is_strict_greater_than(tmp_path, monkeypatch):
     """HOM-212: threshold comparison is `>`, not `>=`. A dead zone whose
     duration equals the threshold stays advisory (intentional pacing
     beat at the boundary). Only strictly-greater-than blocks."""
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
         "tweens": [{"index": 1, "selector": "div.glow", "duration": 0.6, "flags": []}],
@@ -755,7 +777,7 @@ def test_dead_zone_threshold_overridable_via_config(tmp_path, monkeypatch):
     """`gates.animation_map.dead_zone_threshold_s` from graph/config.yaml
     overrides the 2.0s default. Lower threshold ⇒ more dead-zones flip
     to blocking; higher threshold ⇒ fewer."""
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
         "tweens": [{"index": 1, "selector": "div.glow", "duration": 0.6, "flags": []}],
@@ -873,7 +895,7 @@ def test_decorative_allowlist_overridable_via_config(tmp_path, monkeypatch):
     `gates.animation_map.collision_decorative_allowlist`. With an empty
     allowlist, even the chrome decoratives flip to blocking — useful as
     a strict-mode toggle."""
-    hf_dir = _hf_dir(tmp_path)
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
         "tweens": [

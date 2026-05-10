@@ -140,6 +140,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .._caching import make_key
+from .._paths import EpisodePaths
 from ._base import Gate, hyperframes_dir
 
 
@@ -154,7 +155,12 @@ from ._base import Gate, hyperframes_dir
 #   offscreen, invisible, dead_zone > threshold); routing reads `violations`
 #   again on the blocking branch. Output shape unchanged but verdict logic
 #   changed ⇒ cache invalidation.
-_CACHE_VERSION = 5
+# v6 = HOM-225: cache key derives `hf_dir` via `EpisodePaths(slug)` rather
+#   than reading the deprecated `compose.hyperframes_dir` /
+#   `state["episode_dir"]` chain. Mirrors the HOM-224 p4 migration —
+#   identity-only state. Same migration applied to `_animation_map_json_path`
+#   (used in advisory notice surface) for consistency.
+_CACHE_VERSION = 6
 
 
 # Helper script paths (relative to roots; joined with appropriate root).
@@ -570,20 +576,23 @@ def _extract_flags(
 
 
 def _gate_cache_key(state, *_args, **_kwargs):
-    """Deterministic cache key for gate_animation_map (post-helper-run)."""
+    """Deterministic cache key for gate_animation_map (post-helper-run).
+
+    HOM-225: ``hf_dir`` derives via ``EpisodePaths(slug)`` — identity-only
+    state. Legacy ``compose.hyperframes_dir`` / ``state["episode_dir"]``
+    chain removed (no p4 node writes those keys after HOM-224).
+    """
     if not isinstance(state, dict):
         raise TypeError(
             f"animation_map gate cache key requires dict state, got {type(state).__name__}"
         )
     slug = state.get("slug") or "__unbound__"
-    compose = state.get("compose") or {}
-    hf_dir = compose.get("hyperframes_dir")
-    if not hf_dir:
-        episode_dir = state.get("episode_dir")
-        hf_dir = str(Path(episode_dir) / "hyperframes") if episode_dir else ""
-    animation_map_path = (
-        Path(hf_dir) / _OUT_SUBDIR / _OUT_FILE if hf_dir else None
-    )
+    if slug and slug != "__unbound__":
+        animation_map_path: Path | None = (
+            EpisodePaths(slug).hyperframes_dir / _OUT_SUBDIR / _OUT_FILE
+        )
+    else:
+        animation_map_path = None
     return make_key(
         node="gate_animation_map",
         version=_CACHE_VERSION,
@@ -601,16 +610,13 @@ def _animation_map_json_path(state: dict) -> str:
     """Return the canonical path string for the animation-map.json output.
 
     Used in the advisory notice so the operator can open the helper
-    output directly from Studio.
+    output directly from Studio. HOM-225: derives via
+    ``EpisodePaths(slug)`` — identity-only state.
     """
-    compose = state.get("compose") or {}
-    hf_dir = compose.get("hyperframes_dir")
-    if not hf_dir:
-        episode_dir = state.get("episode_dir")
-        if not episode_dir:
-            return _OUT_FILE
-        hf_dir = str(Path(episode_dir) / "hyperframes")
-    return str(Path(hf_dir) / _OUT_SUBDIR / _OUT_FILE)
+    slug = state.get("slug")
+    if not slug:
+        return _OUT_FILE
+    return str(EpisodePaths(slug).hyperframes_dir / _OUT_SUBDIR / _OUT_FILE)
 
 
 class AnimationMapGate(Gate):
