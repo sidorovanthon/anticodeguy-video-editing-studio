@@ -116,7 +116,7 @@ Live docs (read 2026-05-10): <https://docs.langchain.com/oss/python/langgraph/pe
 **When BaseStore would be the right call** (and is not, today):
 
 - If we ever need cross-fixture artifact sharing (e.g. "the design tokens from episode A seed episode B"), BaseStore's namespacing is purpose-built for it. Today we don't.
-- If `JsonPlusSerializer` roundtrip on >1 MB strings becomes a bottleneck (§13 sizing budget says we're well under that — total Phase 4 state delta ~100–300 KB), spilling specific large bodies to BaseStore while leaving keys in state is a defensible escape hatch. Today the budget is fine.
+- If `JsonPlusSerializer` roundtrip on >1 MB strings becomes a bottleneck (§11 sizing budget says we're well under that — total Phase 4 state delta ~100–300 KB), spilling specific large bodies to BaseStore while leaving keys in state is a defensible escape hatch. Today the budget is fine.
 - **If the §7 pre-migration spike fails** (structured-output extraction proves unreliable for large bodies on the current model tier), BaseStore becomes the fallback architecture: producer nodes call `runtime.store.aput((slug, "compose"), "scene-<id>.html", body)` from their post-dispatch hook (still reading the body from the disk file the sub-agent's `Write` tool created — disk stays the producer-to-store-write bridge), the cache row stores a content-hash key, and downstream nodes fetch via `runtime.store.aget(...)`. This preserves the FS-source-of-truth pattern HOM-134 settled on while still committing all artifact bodies to one canonical persistence layer (the BaseStore SQLite file) instead of scattered `compositions/*.html`. The kill-switch in §7 makes this concrete.
 
 This section is the explicit "checked $URL — chose primitive X over primitive Y because Z" satisfying CLAUDE.md's search-docs-first rule. Doc URLs cited above; primitive chosen: state channels via existing `SqliteCache` row content (no new persistence layer introduced).
@@ -301,6 +301,8 @@ Reason: HOM-134 (`p4_captions_layer.py:172-180`, `p4_beat.py:174 output_schema=N
 
 **Scope:** `p4_beat` only. Single beat. Single brief revision. No topology changes. No materializer.
 
+**Status 2026-05-10:** spike executed (HOM-243 / PR #136), 6/6 PASS (1 pilot + 5 acceptance), 0 `SchemaValidationError`, 0 retries, 0 truncation, 0 JSON-escape corruption. `html_chars ∈ [5524, 7238]` on `claude-opus-4-7`. Step A clear to start. Re-trigger this gate if a downstream node downgrades to a smaller tier (Haiku/Sonnet) or if the brief mutates structurally.
+
 **Procedure:**
 
 1. Branch off `main`. Add a Pydantic `BeatBody(BaseModel): html: str` schema. Edit `p4_beat.py:174` to `output_schema=BeatBody`, drop `Write` from `allowed_tools`, swap `result_key="_beat_unused"` → `result_key="scenes"` (or per-`Send` write into `compose.scenes[scene_id]`).
@@ -424,7 +426,7 @@ If step D1 is reverted mid-rollout, Steps A–C continue working (the dual-write
 
 This section addresses incidents 1 (HOM-181) and 7 (HOM-216) at a different layer than state-first. Even after the state-first migration lands, the *recording* step (operator runs `record-on-miss`) produces two artefacts that must be committed together: `cache.db` (binary) and `recordings/*.json` (human-readable). A partial commit — `cache.db` updated but `recordings/*.json` stale, or vice versa — reproduces the HOM-216 failure shape one layer up. State-first does not prevent this; the operator's `git add` is the failure point.
 
-**Proposed (sub-issue HOM-243 candidate, NOT to be filed as part of this spec):**
+**Proposed (future sub-issue, number TBD; NOT to be filed as part of this spec — HOM-243 is the spike PR #136):**
 
 A `scripts/record_fixture.py` wrapper plus an opt-in `pre-commit` hook:
 
@@ -479,7 +481,7 @@ Each risk lists the failure mode (one line), the indicator that would tell us it
 
 **Rollback:** if a state-first node lands with this shape-drift latent, the symptom is the same as HOM-154 `752056f`: paid re-record on next iteration. Cost ~$5–10 per missed bump.
 
-
+## 11. Sizing budget
 
 The state envelope grows per Phase 4 episode by:
 
@@ -502,7 +504,7 @@ Three sizing checks:
 
 The pre-migration state is ~50–100 KB per episode (mostly transcript and EDL JSON). Post-migration is 3–5× larger but still well under the byte-budget threshold where checkpoint replay becomes user-perceptibly slow.
 
-## 12. Open questions
+## 13. Open questions
 
 1. **Will the LLM sub-agent reliably emit a single `html: str` Pydantic field?** Today the `Write` tool surface is forgiving — the sub-agent can write any string of any length. A structured-output schema with a single `html: str` field is stricter: malformed JSON in the response, or schema drift between brief and Pydantic model, will surface as a parser error rather than a silently-truncated file. Mitigation: keep the body field unconstrained (no length limit, no regex), and wrap the call in the existing retry-on-`SchemaValidationError` machinery already present in `_llm.py`. Open: do we need a structured-output "raw HTML" mode that bypasses JSON entirely for the body field? (Probably not — Anthropic's tool-use response format already handles long string fields.)
 2. **`compose.scenes` reducer correctness under `Send` fan-out.** Five parallel `Send`s each emit a partial dict `{scene_id: {"html": "..."}}`. The reducer must merge into a union dict, *not* overwrite. LangGraph's `add_messages` is the canonical reference; a generic dict-merge channel is a few lines but needs a smoke test under the real `Send` path before step B's `p4_beat` PR lands.
@@ -511,7 +513,7 @@ The pre-migration state is ~50–100 KB per episode (mostly transcript and EDL J
 5. **Wave-acceptance recording cost.** ~$8–12 once at step F. Subsequent re-records (on brief / schema bumps that affect the canonical fixture) are scoped to the bumped node + downstream via `record-on-miss`, mirroring the current model.
 6. **Breaking-change announcement.** The cutover (step D) `git rm`s committed fixture files. Any open feature branch that touched those files merges with conflicts. Plan: announce in the M-wave kickoff retro, freeze fixture-touching PRs for the cutover day, land step D first thing in the morning, unfreeze.
 
-## 13. Acceptance criteria for the epic
+## 14. Acceptance criteria for the epic
 
 - All six creative Phase 4 nodes return body strings in state. No production node calls the `Write` tool for canonical text artifacts.
 - `p4_materialize_disk_node` is the only Phase 4 writer to disk for text artifacts. Its cache policy uses `make_key` keyed on body content hashes.
@@ -522,7 +524,7 @@ The pre-migration state is ~50–100 KB per episode (mostly transcript and EDL J
 - CLAUDE.md sections updated per Step G.
 - One paid wave-acceptance run lands the new fixture; no follow-on re-records required for unrelated PRs.
 
-## 14. References
+## 15. References
 
 - Current state schema: `graph/src/edit_episode_graph/state.py:165-235` (`ComposeState`, `DesignState`, `ExpansionState`, `CaptionsState`, `AssembleState`).
 - Producer call sites: `graph/src/edit_episode_graph/nodes/p4_design_system.py:128-180`, `p4_prompt_expansion.py:142`, `p4_beat.py:169-194`, `p4_captions_layer.py:187-189`, `p4_assemble_index.py:588-638`, `p4_persist_session.py:209-211`.
@@ -537,7 +539,7 @@ The pre-migration state is ~50–100 KB per episode (mostly transcript and EDL J
 - Prior incidents (Linear): HOM-181, HOM-189, HOM-154, HOM-203, HOM-195 / HOM-222 / HOM-223 / HOM-224 / HOM-225 / HOM-226 / HOM-229, HOM-227 (cancelled), HOM-216 (current).
 - LangGraph references: `langgraph.checkpoint.serde.jsonplus.JsonPlusSerializer`, `langgraph.cache.sqlite.SqliteCache`, `langgraph.types.CachePolicy`. Docs: <https://docs.langchain.com/oss/python/langgraph/graph-api>, <https://langchain-ai.github.io/langgraph/reference/types/>.
 
-## 15. CLAUDE.md sections to amend after this epic lands (informational; do not edit now)
+## 16. CLAUDE.md sections to amend after this epic lands (informational; do not edit now)
 
 - **§"Idempotency"** — clarify that Phase 4 cache keys fingerprint state-string bodies, not on-disk paths. The §"LLM cache keys include routing-config fingerprint" paragraph remains correct in mechanism but its example (`p3_strategy.timeout_s 120 → 300`) stays as-is; add a sibling paragraph noting that creative-node `extras=` now contains body sha256s.
 - **§"Worktree data-dir resolution"** — narrow to "Phase 3 binary artifacts" scope. Phase 4 is no longer worktree-bound.
