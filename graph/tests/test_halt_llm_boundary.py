@@ -138,6 +138,41 @@ def test_v4_halt_after_assemble_success():
     # HOM-125: assemble-success without a static_guard record means
     # studio_launch errored — notice mentions both studio_launch and errors[].
     assert "studio_launch" in msg
+    # HOM-137: assemble-success notice now surfaces transitions outcome.
+    # Without compose.transitions populated, notice flags pending state.
+    assert "transitions" in msg
+
+
+def test_v4_halt_after_assemble_success_with_transitions_authored():
+    """HOM-137: when p4_transitions has run, halt notice surfaces mechanism mix."""
+    state = {
+        "compose": {
+            "assemble": {"assembled_at": "now", "beat_names": ["HOOK", "PAYOFF"]},
+            "transitions": {
+                "authored_at": "now",
+                "n_transitions": 2,
+                "mechanisms": ["css", "final-fade"],
+            },
+        },
+    }
+    msg = halt_llm_boundary_node(state)["notices"][0]
+    assert "transitions authored" in msg
+    assert "2" in msg
+    assert "css" in msg
+    assert "final-fade" in msg
+
+
+def test_v4_halt_after_assemble_success_with_transitions_skipped():
+    """HOM-137: 1-beat plan → transitions skipped — notice surfaces reason."""
+    state = {
+        "compose": {
+            "assemble": {"assembled_at": "now", "beat_names": ["HOOK"]},
+            "transitions": {"skipped": True, "skip_reason": "no transitions in plan"},
+        },
+    }
+    msg = halt_llm_boundary_node(state)["notices"][0]
+    assert "transitions skipped" in msg
+    assert "no transitions" in msg
 
 
 def test_v4_halt_after_static_guard_pass():

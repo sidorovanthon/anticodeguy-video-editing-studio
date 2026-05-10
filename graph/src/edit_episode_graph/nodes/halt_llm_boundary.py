@@ -47,6 +47,7 @@ def halt_llm_boundary_node(state):
     # markers (skipped or assembled_at) rather than dict truthiness so a
     # future partial-write that leaves an unrecognized assemble shape doesn't
     # silently format a misleading "assembled" notice.
+    transitions_state = compose_state.get("transitions") or {}
     captions_state = compose_state.get("captions") or {}
     # HOM-224: identity-only state — `compose.captions_block_path` /
     # `compose.captions.captions_block_path` echoes are gone. Probe disk
@@ -273,12 +274,31 @@ def halt_llm_boundary_node(state):
             # Reachable if studio_launch errored (routes to END but the halt
             # branch can still be hit via earlier topology paths). On the
             # happy path the static_guard branch above fires first.
+            # HOM-137: canonical transitions node now wires after assemble;
+            # surface its outcome (authored / skipped / not-yet-run) so the
+            # operator sees whether the root timeline carries crossfades or
+            # the legacy hard-cut.
             n = len(assemble_state.get("beat_names") or [])
+            if transitions_state.get("authored_at"):
+                n_t = transitions_state.get("n_transitions") or 0
+                mechs = transitions_state.get("mechanisms") or []
+                mech_summary = "/".join(sorted(set(mechs))) if mechs else "none"
+                trans_part = (
+                    f"transitions authored ({n_t} on root timeline, "
+                    f"mechanisms: {mech_summary})"
+                )
+            elif transitions_state.get("skipped"):
+                reason = transitions_state.get("skip_reason") or "no reason given"
+                trans_part = f"transitions skipped ({reason})"
+            else:
+                trans_part = "transitions not yet authored (p4_transitions pending)"
             msg = (
                 f"v4 halt: scenes assembled from compositions/*.html into root index.html "
-                f"({n} scene(s), {_captions_summary()}; hard-cut between scenes — "
-                "transitions node ships under HOM-77/v5); studio_launch did not "
-                "record a static_guard result — see errors[]"
+                f"({n} scene(s), {_captions_summary()}, {trans_part}); "
+                "next is gate cluster (lint → validate → inspect → "
+                "design_adherence → animation_map → snapshot → captions_track) "
+                "→ p4_persist_session → studio_launch; "
+                "studio_launch did not record a static_guard result — see errors[]"
             )
         return {"notices": [msg]}
     if catalog_state:

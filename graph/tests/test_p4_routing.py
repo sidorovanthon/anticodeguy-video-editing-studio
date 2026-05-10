@@ -177,11 +177,13 @@ def test_route_after_assemble_index_error_to_end():
     assert route_after_assemble_index(state) == END
 
 
-def test_route_after_assemble_index_default_to_gate_lint():
-    """HOM-127: a successful assemble (no error, no skip flag) advances into
-    the post-assemble gate cluster at gate_lint — empty state stands in for
-    "happy path". The persist hop now happens at the cluster tail."""
-    assert route_after_assemble_index({}) == "gate_lint"
+def test_route_after_assemble_index_default_to_p4_transitions():
+    """HOM-137: a successful assemble (no error, no skip flag) advances to
+    p4_transitions — the canonical transitions block must be authored before
+    the gate cluster (gate_lint, gate_validate) inspects index.html. Pre-HOM-137
+    this routed straight to gate_lint; the gate cluster now starts after
+    p4_transitions (see test_route_after_transitions_default_to_gate_lint)."""
+    assert route_after_assemble_index({}) == "p4_transitions"
 
 
 def test_route_after_assemble_index_skip_to_halt():
