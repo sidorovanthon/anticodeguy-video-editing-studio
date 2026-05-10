@@ -1,192 +1,367 @@
 <div id="scene-problem" class="scene clip"
-     data-start="1.22" data-duration="10.5" data-track-index="1"
+     data-start="2.0" data-duration="11.5" data-track-index="1"
      data-width="1080" data-height="1920">
   <style>
-    #scene-problem { position: absolute; inset: 0; opacity: 0; background: #0a0a0a; overflow: hidden; }
+    #scene-problem {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 60%, #1a1611 0%, transparent 60%),
+        linear-gradient(180deg, #0d0b08 0%, #0a0907 55%, #060504 100%);
+      font-family: "Inter", sans-serif;
+      color: #f4ede0;
+    }
 
-    #scene-problem .bg-vignette {
-      position: absolute; inset: 0;
-      background: radial-gradient(ellipse at 38% 42%, #0a0a0a 0%, #080808 55%, #050505 100%);
-      opacity: 0.92;
+    #scene-problem .scene-content {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      padding: 96px 64px;
+      box-sizing: border-box;
     }
-    #scene-problem .bg-grain {
-      position: absolute; inset: 0;
-      background-image: repeating-linear-gradient(
-        0deg, rgba(240,240,240,0.04) 0 1px, rgba(240,240,240,0.0) 1px 3px),
-        repeating-linear-gradient(
-        90deg, rgba(240,240,240,0.03) 0 1px, rgba(240,240,240,0.0) 1px 3px);
-      mix-blend-mode: overlay; opacity: 0.6; pointer-events: none;
+
+    #scene-problem .pr-grain {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.06;
+      background-image:
+        radial-gradient(rgba(244, 237, 224, 0.5) 1px, transparent 1px),
+        radial-gradient(rgba(244, 237, 224, 0.35) 1px, transparent 1px);
+      background-size: 3px 3px, 7px 7px;
+      background-position: 0 0, 1px 2px;
+      mix-blend-mode: screen;
     }
-    #scene-problem .ghost-numeral {
-      position: absolute; top: 8%; right: 12%;
-      font-family: "Inter", sans-serif; font-weight: 300;
-      font-size: 4rem; letter-spacing: 0.1em;
-      color: #f0f0f0; opacity: 0.04;
+
+    #scene-problem .pr-glow {
+      position: absolute;
+      left: -10%;
+      top: 25%;
+      width: 120%;
+      height: 70%;
+      pointer-events: none;
+      background: radial-gradient(circle at 50% 60%, rgba(200, 160, 75, 0.18) 0%, rgba(200, 160, 75, 0.08) 35%, transparent 65%);
+      opacity: 0.05;
+      filter: blur(2px);
     }
-    #scene-problem .anchor-rule {
-      position: absolute; left: 12%; top: 0; bottom: 0;
-      width: 1px; background: #1a237e; opacity: 0.30;
+
+    #scene-problem .pr-rail {
+      position: absolute;
+      left: 64px;
+      top: 0;
+      width: 1px;
+      height: 100%;
+      background: #b48f43;
+      opacity: 0.6;
       transform-origin: top center;
     }
-    #scene-problem .content {
-      position: absolute; left: 17%; right: 6%;
-      top: 22%;
+
+    #scene-problem .pr-column-rule {
+      position: absolute;
+      left: 33%;
+      top: 8%;
+      width: 1px;
+      height: 84%;
+      background: #5f5440;
+      opacity: 0.25;
     }
-    #scene-problem .overline {
-      font-family: "Inter", sans-serif; font-weight: 500;
-      font-size: 0.75rem; letter-spacing: 0.32em;
-      text-transform: uppercase; color: #d8d8d8;
-      margin-bottom: 12px;
+
+    #scene-problem .pr-ground-line {
+      position: absolute;
+      left: 64px;
+      right: 64px;
+      bottom: 22%;
+      height: 1px;
+      background: #a07e3b;
+      opacity: 0;
+      transform-origin: left center;
+      transform: scaleX(0);
     }
-    #scene-problem .hairline-divider {
-      width: 0; height: 1px; background: rgba(240,240,240,0.10);
-      margin-bottom: 32px;
+
+    #scene-problem .pr-ghost-word {
+      position: absolute;
+      left: -3%;
+      top: 4%;
+      font-family: "Inter", sans-serif;
+      font-weight: 300;
+      font-size: 11rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #f4ede0;
+      opacity: 0;
+      white-space: nowrap;
+      pointer-events: none;
     }
-    #scene-problem .body-paragraph {
-      font-family: "Inter", sans-serif; font-weight: 300;
-      font-size: 1.125rem; line-height: 1.6;
-      color: #f0f0f0; max-width: 60ch;
-      letter-spacing: 0.005em;
-    }
-    #scene-problem .body-paragraph .word { display: inline-block; }
-    #scene-problem .body-paragraph .hl { color: #f0f0f0; }
-    #scene-problem .margin-tick {
-      position: absolute; left: -28px; top: calc(1.6em * 2 + 0.4em);
-      width: 14px; height: 1px; background: #1a237e;
+
+    #scene-problem .pr-role-chip {
+      position: absolute;
+      left: 128px;
+      top: 18%;
+      max-width: 50%;
+      font-family: "Inter", sans-serif;
+      font-weight: 400;
+      font-size: 0.875rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #6b5e48;
+      line-height: 1.6;
       opacity: 0;
     }
-    #scene-problem .bottom-rule {
-      position: absolute; left: 12%; right: 6%; top: 78%;
-      height: 1px; background: rgba(240,240,240,0.06);
-      transform-origin: left center; transform: scaleX(0);
+
+    #scene-problem .pr-role-chip .pr-role-caret {
+      display: inline-block;
+      width: 0.5em;
+      color: #c8a04b;
+    }
+
+    #scene-problem .pr-timecode {
+      position: absolute;
+      right: 64px;
+      top: 96px;
+      font-family: "Inter", sans-serif;
+      font-weight: 400;
+      font-size: 0.875rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #6b5e48;
+      font-variant-numeric: tabular-nums;
+      opacity: 0;
+    }
+
+    #scene-problem .pr-timecode .pr-tc-num {
+      color: #dcd5c9;
+    }
+
+    #scene-problem .pr-caption {
+      position: absolute;
+      left: 128px;
+      right: 64px;
+      bottom: 12%;
+      font-family: "Inter", sans-serif;
+      font-weight: 300;
+      font-size: 1.7rem;
+      line-height: 1.6;
+      color: #dcd5c9;
+      letter-spacing: 0.01em;
+    }
+
+    #scene-problem .pr-caption .pr-cap-line {
+      display: block;
+      opacity: 0;
+    }
+
+    #scene-problem .pr-caption .pr-cap-mark-wrap {
+      position: relative;
+      display: inline-block;
+      padding: 0 0.05em;
+    }
+
+    #scene-problem .pr-caption .pr-cap-marker {
+      position: absolute;
+      left: 0;
+      bottom: -2px;
+      width: 100%;
+      height: 2px;
+      background: #d6b466;
+      transform-origin: left center;
+      transform: scaleX(0);
+    }
+
+    #scene-problem .pr-cap-divider {
+      position: absolute;
+      left: 128px;
+      width: 64px;
+      height: 1px;
+      bottom: calc(12% + 4.4rem);
+      background: #5f5440;
+      opacity: 0;
+      transform-origin: left center;
+      transform: scaleX(0);
     }
   </style>
-
   <div class="scene-content">
-    <div class="bg-vignette" aria-hidden="true"></div>
-    <div class="bg-grain" aria-hidden="true"></div>
-    <div class="ghost-numeral" aria-hidden="true">02</div>
-    <div class="anchor-rule" aria-hidden="true"></div>
-    <div class="bottom-rule" aria-hidden="true"></div>
-
-    <div class="content">
-      <div class="overline">02 / Now</div>
-      <div class="hairline-divider"></div>
-      <p class="body-paragraph">
-        <span class="margin-tick" aria-hidden="true"></span><span class="word">when</span>
-        <span class="word">I'm</span>
-        <span class="word">increasingly</span>
-        <span class="word">using</span>
-        <span class="word">free</span>
-        <span class="word">open-source</span>
-        <span class="word">tools</span>
-        <span class="word">because</span>
-        <span class="word">I</span>
-        <span class="word">can</span>
-        <span class="word">simply</span>
-        <span class="word">deploy</span>
-        <span class="word">them</span>
-        <span class="word">for</span>
-        <span class="word hl-myself-1">myself</span>
-        <span class="word">easily</span>
-        <span class="word">with</span>
-        <span class="word">the</span>
-        <span class="word">help</span>
-        <span class="word">of</span>
-        <span class="word hl-ai">AI</span>
-        <span class="word hl-agents">agents</span>
-        <span class="word">or</span>
-        <span class="word">just</span>
-        <span class="word">write</span>
-        <span class="word">the</span>
-        <span class="word">software</span>
-        <span class="word">I</span>
-        <span class="word">need</span>
-        <span class="word">for</span>
-        <span class="word">work</span>
-        <span class="word hl-myself-2">myself</span><span class="word">,</span>
-      </p>
+    <div class="pr-glow" aria-hidden="true"></div>
+    <div class="pr-grain" aria-hidden="true"></div>
+    <div class="pr-column-rule" aria-hidden="true"></div>
+    <div class="pr-ghost-word" aria-hidden="true">OPEN&nbsp;SOURCE</div>
+    <div class="pr-rail" aria-hidden="true"></div>
+    <div class="pr-ground-line" aria-hidden="true"></div>
+    <div class="pr-role-chip">
+      <span class="pr-role-text">Open-Source / Self-Built Tools</span><span class="pr-role-caret">_</span>
+    </div>
+    <div class="pr-timecode">EP·01 / <span class="pr-tc-num">00:02</span></div>
+    <div class="pr-cap-divider" aria-hidden="true"></div>
+    <div class="pr-caption">
+      <span class="pr-cap-line pr-cap-line-1">I'm increasingly using free, open-source tools,</span>
+      <span class="pr-cap-line pr-cap-line-2">deployed by <span class="pr-cap-mark-wrap">AI agents<span class="pr-cap-marker"></span></span>, to write the software</span>
+      <span class="pr-cap-line pr-cap-line-3">I rely on for work — quietly, day after day.</span>
     </div>
   </div>
-
   <script>
     (function () {
       window.__sceneTimelines = window.__sceneTimelines || {};
       const root = document.getElementById("scene-problem");
-      const $ = (s) => root.querySelector(s);
-      const $$ = (s) => root.querySelectorAll(s);
-
+      const sceneDuration = 11.5;
       const tl = gsap.timeline({ paused: true });
-      const sceneDuration = 10.5;
 
-      const vignette  = $(".bg-vignette");
-      const grain     = $(".bg-grain");
-      const ghost     = $(".ghost-numeral");
-      const anchor    = $(".anchor-rule");
-      const overline  = $(".overline");
-      const divider   = $(".hairline-divider");
-      const body      = $(".body-paragraph");
-      const tick      = $(".margin-tick");
-      const bottom    = $(".bottom-rule");
-      const hlAI      = $(".hl-ai");
-      const hlAgents  = $(".hl-agents");
-      const hlMy1     = $(".hl-myself-1");
-      const hlMy2     = $(".hl-myself-2");
+      const glow = root.querySelector(".pr-glow");
+      const grain = root.querySelector(".pr-grain");
+      const rail = root.querySelector(".pr-rail");
+      const column = root.querySelector(".pr-column-rule");
+      const ground = root.querySelector(".pr-ground-line");
+      const ghost = root.querySelector(".pr-ghost-word");
+      const chip = root.querySelector(".pr-role-chip");
+      const chipText = root.querySelector(".pr-role-text");
+      const chipCaret = root.querySelector(".pr-role-caret");
+      const timecode = root.querySelector(".pr-timecode");
+      const tcNum = root.querySelector(".pr-tc-num");
+      const capDivider = root.querySelector(".pr-cap-divider");
+      const capLine1 = root.querySelector(".pr-cap-line-1");
+      const capLine2 = root.querySelector(".pr-cap-line-2");
+      const capLine3 = root.querySelector(".pr-cap-line-3");
+      const capMarker = root.querySelector(".pr-cap-marker");
 
-      tl.fromTo(vignette, { opacity: 0 }, { opacity: 0.92, duration: 0.8, ease: "sine.inOut" }, 0.1);
-      tl.fromTo(grain,    { opacity: 0 }, { opacity: 0.6,  duration: 0.8, ease: "sine.inOut" }, 0.15);
-      tl.fromTo(ghost,    { opacity: 0, y: -4 }, { opacity: 0.04, y: 0, duration: 1.0, ease: "sine.inOut" }, 0.2);
-      tl.fromTo(anchor,   { scaleY: 0, opacity: 0.15 }, { scaleY: 1, opacity: 0.30, duration: 1.0, ease: "sine.inOut" }, 0.2);
+      // Rail draw + breathing
+      tl.fromTo(rail,
+        { scaleY: 0, opacity: 0.4, transformOrigin: "top center" },
+        { scaleY: 1, opacity: 0.6, duration: 0.9, ease: "sine.inOut" },
+        0.1);
 
-      tl.fromTo(overline, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.5, ease: "sine.inOut" }, 0.25);
-      tl.fromTo(divider,  { width: 0 }, { width: "100%", duration: 1.0, ease: "sine.inOut" }, 0.7);
-      tl.fromTo(body,     { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 1.2, ease: "power2.out" }, 1.1);
+      // Ambient glow breathing — finite repeat from sceneDuration
+      const glowCycle = 6.0;
+      tl.fromTo(glow,
+        { opacity: 0.05 },
+        { opacity: 0.10, duration: glowCycle / 2, ease: "sine.inOut",
+          yoyo: true, repeat: Math.floor(sceneDuration / glowCycle) },
+        0);
 
-      tl.fromTo(bottom,   { scaleX: 0 }, { scaleX: 1, duration: 1.4, ease: "sine.inOut" }, 1.6);
-      tl.fromTo(tick,     { opacity: 0 }, { opacity: 0.20, duration: 0.6, ease: "sine.inOut" }, 2.6);
+      // Rail breathing — finite cycle
+      const railCycle = 6.0;
+      tl.to(rail,
+        { opacity: 0.9, duration: railCycle / 2, ease: "sine.inOut",
+          yoyo: true, repeat: Math.floor(sceneDuration / railCycle) },
+        0.9);
 
-      tl.fromTo(hlMy1,    { color: "#f0f0f0" }, { color: "#ffffff", duration: 0.3, ease: "sine.inOut" }, 3.6);
-      tl.to(hlMy1,        { color: "#f0f0f0", duration: 0.4, ease: "sine.inOut" }, 4.0);
+      // Grain fades to its resting opacity
+      tl.fromTo(grain,
+        { opacity: 0 },
+        { opacity: 0.06, duration: 0.8, ease: "sine.inOut" },
+        0.15);
 
-      tl.fromTo(hlAI,     { color: "#f0f0f0" }, { color: "#ffffff", duration: 0.3, ease: "sine.inOut" }, 5.4);
-      tl.fromTo(hlAgents, { color: "#f0f0f0" }, { color: "#ffffff", duration: 0.3, ease: "sine.inOut" }, 5.55);
-      tl.to(hlAI,         { color: "#f0f0f0", duration: 0.4, ease: "sine.inOut" }, 5.9);
-      tl.to(hlAgents,     { color: "#f0f0f0", duration: 0.4, ease: "sine.inOut" }, 6.05);
+      // Column rule drifts horizontally — finite cycle
+      const driftCycle = 5.0;
+      tl.fromTo(column,
+        { x: -2, opacity: 0 },
+        { opacity: 0.25, duration: 0.6, ease: "sine.inOut" },
+        0.2);
+      tl.to(column,
+        { x: 2, duration: driftCycle / 2, ease: "sine.inOut",
+          yoyo: true, repeat: Math.floor(sceneDuration / driftCycle) },
+        0.6);
 
-      tl.fromTo(hlMy2,    { color: "#f0f0f0" }, { color: "#ffffff", duration: 0.3, ease: "sine.inOut" }, 8.6);
-      tl.to(hlMy2,        { color: "#f0f0f0", duration: 0.4, ease: "sine.inOut" }, 9.0);
+      // Ghost atmospheric word — fade in + slow drift
+      tl.fromTo(ghost,
+        { opacity: 0, y: -8 },
+        { opacity: 0.04, duration: 1.2, ease: "sine.inOut" },
+        0.3);
+      const ghostCycle = 8.0;
+      tl.to(ghost,
+        { y: 8, duration: ghostCycle / 2, ease: "sine.inOut",
+          yoyo: true, repeat: Math.floor(sceneDuration / ghostCycle) },
+        1.0);
 
-      const breathCycle = 3.0;
-      const breathReps  = Math.floor(sceneDuration / breathCycle);
-      tl.to(anchor, {
-        opacity: 0.45, duration: breathCycle, ease: "sine.inOut",
-        yoyo: true, repeat: breathReps
-      }, 1.5);
+      // Role chip enters then types
+      tl.fromTo(chip,
+        { opacity: 0, x: -12 },
+        { opacity: 1, x: 0, duration: 0.6, ease: "power2.out" },
+        0.25);
+      tl.fromTo(chipText,
+        { clipPath: "inset(0 100% 0 0)" },
+        { clipPath: "inset(0 0% 0 0)", duration: 0.55, ease: "power2.out" },
+        0.4);
+      tl.fromTo(chipCaret,
+        { opacity: 0 },
+        { opacity: 1, duration: 0.4, ease: "power2.out" },
+        0.4);
+      // caret blink — finite repeat
+      const caretCycle = 0.9;
+      tl.to(chipCaret,
+        { opacity: 0.2, duration: caretCycle / 2, ease: "sine.inOut",
+          yoyo: true, repeat: Math.floor((sceneDuration - 1.2) / caretCycle) },
+        1.0);
 
-      const vigCycle = 4.0;
-      const vigReps  = Math.floor(sceneDuration / vigCycle);
-      tl.to(vignette, {
-        opacity: 1.0, duration: vigCycle, ease: "sine.inOut",
-        yoyo: true, repeat: vigReps
-      }, 1.0);
+      // Timecode chip
+      tl.fromTo(timecode,
+        { opacity: 0, y: -6 },
+        { opacity: 1, y: 0, duration: 0.6, ease: "sine.inOut" },
+        0.45);
 
-      const ghostCycle = 5.0;
-      const ghostReps  = Math.floor(sceneDuration / ghostCycle);
-      tl.to(ghost, {
-        y: 2, duration: ghostCycle, ease: "sine.inOut",
-        yoyo: true, repeat: ghostReps
-      }, 1.2);
+      // Timecode count-up 00:02 → 00:13 across the beat
+      const tcState = { v: 2 };
+      tl.to(tcState,
+        { v: 13, duration: sceneDuration - 1.2, ease: "none",
+          onUpdate: () => {
+            const s = Math.floor(tcState.v);
+            tcNum.textContent = "00:" + (s < 10 ? "0" + s : s);
+          } },
+        0.5);
 
+      // Caption divider draws
+      tl.fromTo(capDivider,
+        { scaleX: 0, opacity: 0 },
+        { scaleX: 1, opacity: 0.55, duration: 0.5, ease: "expo.out" },
+        0.55);
+
+      // Captions arrive on phrase boundaries
+      tl.fromTo(capLine1,
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.55, ease: "power2.out" },
+        0.7);
+      tl.fromTo(capLine2,
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.55, ease: "power2.out" },
+        3.6);
+      tl.fromTo(capLine3,
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.55, ease: "power2.out" },
+        7.1);
+
+      // Marker sweep under "AI agents"
+      tl.fromTo(capMarker,
+        { scaleX: 0 },
+        { scaleX: 1, duration: 0.4, ease: "expo.out" },
+        4.2);
+
+      // Ground line — slow draw, signals settling argument
+      tl.fromTo(ground,
+        { scaleX: 0, opacity: 0 },
+        { scaleX: 1, opacity: 0.45, duration: 1.6, ease: "sine.inOut" },
+        2.0);
+
+      // Exit pairs — every authored element gets fade + visibility kill
+      // before the scene ends. Transitions own the container fade.
+      const fadeDur = 0.35;
       const fadeStart = sceneDuration - 0.5;
-      const fadeDur   = 0.4;
-      tl.to(overline, { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
-      tl.to(body,     { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
-      tl.to(divider,  { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
-      tl.to(tick,     { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
-      tl.set(overline, { visibility: "hidden" }, fadeStart + fadeDur);
-      tl.set(body,     { visibility: "hidden" }, fadeStart + fadeDur);
-      tl.set(divider,  { visibility: "hidden" }, fadeStart + fadeDur);
-      tl.set(tick,     { visibility: "hidden" }, fadeStart + fadeDur);
+
+      tl.to(chip,         { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.set(chip,        { visibility: "hidden" }, fadeStart + fadeDur);
+      tl.to(timecode,     { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.set(timecode,    { visibility: "hidden" }, fadeStart + fadeDur);
+      tl.to(capLine1,     { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.set(capLine1,    { visibility: "hidden" }, fadeStart + fadeDur);
+      tl.to(capLine2,     { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.set(capLine2,    { visibility: "hidden" }, fadeStart + fadeDur);
+      tl.to(capLine3,     { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.set(capLine3,    { visibility: "hidden" }, fadeStart + fadeDur);
+      tl.to(capDivider,   { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.set(capDivider,  { visibility: "hidden" }, fadeStart + fadeDur);
+      tl.to(ghost,        { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.set(ghost,       { visibility: "hidden" }, fadeStart + fadeDur);
+      tl.to(ground,       { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.set(ground,      { visibility: "hidden" }, fadeStart + fadeDur);
 
       window.__sceneTimelines["problem"] = tl;
     })();

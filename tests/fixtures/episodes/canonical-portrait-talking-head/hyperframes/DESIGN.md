@@ -1,44 +1,37 @@
 ---
-name: Velvet Standard — Quiet Editorial
+name: Velvet Standard — Enduring Craft
 colors:
-  background: "#0a0a0a"
-  background-stop-1: "#080808"
-  background-stop-2: "#050505"
-  background-highlight-1: "#141414"
-  surface: "#1a1a1a"
-  surface-stop-1: "#121212"
-  surface-highlight-1: "#262626"
-  foreground: "#f0f0f0"
-  foreground-stop-1: "#d8d8d8"
+  background: "#0d0b08"
+  background-stop-1: "#0a0907"
+  background-stop-2: "#060504"
+  background-highlight-1: "#1a1611"
+  background-highlight-2: "#272118"
+  foreground: "#f4ede0"
+  foreground-stop-1: "#dcd5c9"
   foreground-highlight-1: "#ffffff"
-  accent: "#1a237e"
-  accent-stop-1: "#131a5e"
-  accent-stop-2: "#0d1240"
-  accent-highlight-1: "#2e3aa3"
+  accent: "#c8a04b"
+  accent-stop-1: "#b48f43"
+  accent-stop-2: "#a07e3b"
+  accent-highlight-1: "#d6b466"
+  midtone: "#6b5e48"
+  midtone-stop-1: "#5f5440"
 typography:
   headline:
     fontFamily: Inter
-    fontSize: 3rem
+    fontSize: 4rem
     fontWeight: 300
-    letterSpacing: 0.15em
-    textTransform: uppercase
-  overline:
-    fontFamily: Inter
-    fontSize: 0.75rem
-    fontWeight: 500
-    letterSpacing: 0.32em
+    letterSpacing: 0.12em
     textTransform: uppercase
   body:
     fontFamily: Inter
-    fontSize: 1.125rem
+    fontSize: 1rem
     fontWeight: 300
     lineHeight: 1.6
-  pull-quote:
-    fontFamily: Inter
-    fontSize: 2rem
-    fontWeight: 300
+  serif-pull:
+    fontFamily: Playfair Display
+    fontSize: 3rem
+    fontWeight: 400
     fontStyle: italic
-    lineHeight: 1.35
 rounded:
   none: 0px
   sm: 2px
@@ -46,6 +39,7 @@ spacing:
   sm: 16px
   md: 32px
   lg: 64px
+  xl: 96px
 motion:
   energy: calm
   easing:
@@ -54,142 +48,102 @@ motion:
     ambient: "sine.inOut"
   duration:
     entrance: 1.0
-    hold: 2.6
+    hold: 2.5
     transition: 1.2
   atmosphere:
-    - subtle-grain
     - hairline-rules
-    - slow-vignette-breath
+    - subtle-grain
+    - ambient-glow
   transition: cross-warp-morph
 ---
 
 ## Overview
 
-A measured editorial monologue: one speaker contrasting the AI-built present
-with paid-once-use-forever software of the past. The visual identity must hold
-the viewer in a thinking posture — never hype, never neon. The frame breathes,
-hairline rules organize attention, and a single deep-indigo accent carries the
-emotional through-line from "Age of artificial intelligence" to the unfinished
-aspirational close. Architectural restraint over spectacle; the words do the
-heavy lifting and the design refuses to interrupt them.
+A reflective, portrait-orientation monologue contrasting the noisy "Age of artificial intelligence" with the quiet appeal of pay-once software you keep for life. The visual identity must read as **enduring craft, not AI launch**: warm near-black canvas, ivory body, muted brass accent — the patina of a tool that ages well rather than the chrome of a product page.
 
-The base style is **Velvet Standard** (Massimo Vignelli lineage) tuned toward
-quiet long-form editorial: longer holds, wider letter-spacing on display type,
-and a palette tinted away from pure black/white toward warm-cool neutrals so
-nothing reads as a default white-paper template.
+Architecturally Velvet Standard (Vignelli/Unimark — generous gutters, hairline rules, slow glides) but warmed away from corporate indigo toward an aged-brass accent that pairs with the spoken nostalgia. Type is restrained sans for labels and headlines; an italic serif appears only on the PIVOT to mark the rhetorical turn ("I thought…") — a single editorial gesture that earns its place.
+
+The talking-head video plate is the hero on every beat. Overlay typography frames the speaker, never competes — kept to the upper or lower third of the 1080×1920 portrait frame, anchored by a hairline rule rather than a card.
 
 ## Colors
 
-Single-accent system on a near-black canvas. Backgrounds are tinted off true
-`#000` (`#0a0a0a` base, with `#050808` shadow stops to feel slightly cool);
-foregrounds are tinted off true `#fff` (`#f0f0f0` base, `#ffffff` only as
-rim highlight). The accent is a deep navy-indigo `#1a237e` — referencing
-hardcover-book endpapers and IBM-era trade paperbacks rather than tech-startup
-royal blue. Gradient stops are pre-baked so beat sub-comps never invent
-off-palette hexes for shadows or highlights — the palette is closed.
+Palette is dark, warm, and tightly bounded. Every gradient stop and shadow tint is pre-baked so beat sub-agents never improvise an off-palette hex.
 
-- `background` / `-stop-1` / `-stop-2` — vignette and gradient bottoms.
-- `background-highlight-1` — surface lift behind hairline cards.
-- `surface` family — secondary plates only, never as primary background.
-- `foreground` is body text; `-highlight-1` is reserved for the single
-  emphasized word per beat (e.g. "intelligence", "roots").
-- `accent` and stops are for the rule-line, the single emphasized stat or
-  word underline, and the closing aspirational marker only.
+- **background `#0d0b08`** — warm ink (not pure black; tinted toward the brass accent so blacks read as paper-stained, not OLED-dead).
+  - `background-stop-1 #0a0907` — gradient bottom for vignette.
+  - `background-stop-2 #060504` — deepest stop for radial vignette / shader fades.
+  - `background-highlight-1 #1a1611` — surface elevation under hairlines.
+  - `background-highlight-2 #272118` — rim light on hairline rules.
+- **foreground `#f4ede0`** — ivory, never `#fff`. Reads warm against the ink ground.
+  - `foreground-stop-1 #dcd5c9` — secondary text, captions, attribution.
+  - `foreground-highlight-1 #ffffff` — reserved for a single PAYOFF emphasis word.
+- **accent `#c8a04b`** — aged brass / unlacquered gold. The ONE accent hue across all four beats. Used for hairlines, key-word fills, and the italic pull-quote on PIVOT.
+  - `accent-stop-1 #b48f43` — gradient mid for accent rules.
+  - `accent-stop-2 #a07e3b` — shadow base, deeper edge of glow.
+  - `accent-highlight-1 #d6b466` — rim / quick pulse on key terms.
+- **midtone `#6b5e48`** — warm grey for tertiary labels (timecode, role chips). Tints toward the brass hue so it never reads as dead grey.
+  - `midtone-stop-1 #5f5440` — divider lines below body copy.
+
+WCAG: foreground on background ≈ 13:1 (AAA); accent on background ≈ 6.4:1 (AA normal text). Body and labels stay above 4.5:1 with no color invented per-element.
 
 ## Typography
 
-Inter at four cuts: ultralight 300 for body and headlines, 500 overline for
-labels, italic 300 for the pull-quote treatment used on the PIVOT beat. No
-serif companion — the contrast comes from weight and tracking, not family
-mixing. Headlines sit at `3rem` ALL-CAPS with `0.15em` tracking; the body
-runs at `1.125rem / 1.6` for legibility on a calm dark canvas.
+Two families only. **Inter** carries 95% of the surface — `300` for body and headlines, with letterspacing and case carrying the editorial tone instead of weight. **Playfair Display** italic appears exactly once per composition: on PIVOT, sized at 3rem, to render the "I thought…" inflection as a literary aside, not a title.
 
-The single-display family is a deliberate departure from house "two families"
-guidance: this episode is monologue, not interview, and the design must feel
-like one voice. Adding a serif would suggest a second voice.
+- **Headline** — Inter 300, 4rem, uppercase, `letter-spacing: 0.12em`. Used only on HOOK ("AGE OF / ARTIFICIAL / INTELLIGENCE" — three lines, deliberate).
+- **Body / caption** — Inter 300, 1.5–2rem in portrait, `line-height: 1.6`, sentence case. Captions burned in lower rail.
+- **Pull / pivot serif** — Playfair Display italic, 3rem, mixed case. PIVOT only.
+- **Label / timecode** — Inter 400, 0.875rem, uppercase, `letter-spacing: 0.18em`, midtone. Used on HOOK and PAYOFF as orientation marks.
+
+Numbers use `font-variant-numeric: tabular-nums`. Banned: Roboto, default Helvetica fallback, gradient text, faux italic.
 
 ## Layout
 
-Asymmetric columns, anchored left. A persistent thin vertical rule at ~12%
-from the left edge anchors every beat; content sits in a 65%-width column to
-its right. Generous top padding (`lg`/`64px`) leaves the upper third quiet.
-The overline label sits above the rule's top terminus; the headline drops
-below with a single line-break of breathing room. Stats and quotes never
-center — they justify-left against the rule.
+Portrait 1080×1920. Safe zone keeps overlays in the upper or lower **third** so they never crash the speaker's face on the middle third.
 
-Grid: 12-column nominal but only 4 effective tracks used. Right edge is
-intentionally ragged. Nothing is centered; nothing is symmetric.
+- Container fills full scene via `width: 100%; height: 100%; padding: 96px 64px; box-sizing: border-box;` (per Layout-Before-Animation rule). No absolute-positioned content containers.
+- One vertical hairline rule (1px, `accent-stop-1`) anchors the left rail across all beats — visual continuity through transitions.
+- 12-column logical grid; copy stays in columns 1–8, leaving columns 9–12 for accent marks and timecode.
+- Generous negative space — at least 35% of any hero frame is empty ground. No edge-to-edge content.
+- No cards. Surfaces are implied by hairlines and tonal shifts in the background, never by borders or panels.
 
 ## Elevation
 
-Near-flat. Elevation is communicated by hairline rules and a 1px luminance
-shift, never by drop shadows. Allowed:
+Flat with hairline depth.
 
-- 1px hairline rule at `foreground` × 12% opacity for rules and dividers.
-- A `background-highlight-1` plate for cards (no border, no shadow).
-- A single `accent` 1px underline beneath the emphasized word per beat.
-
-Disallowed: any `box-shadow` larger than 1px blur, any glow, any rim-light.
+- No drop shadows on text or overlays.
+- A single `radial-gradient` ambient glow (`accent` at 8% opacity, large radius) sits behind the speaker on HOOK and PAYOFF, breathing on a 6s `sine.inOut` cycle (finite repeat count, never `repeat: -1`).
+- Hairline rules at 1px (`accent-stop-1`) carry separation duties that drop shadows would in a web-UI context.
+- Decoratives per beat: hairline rule, subtle procedural grain (low opacity), ambient brass glow, optional ghost word at 4% opacity (HOOK + PIVOT only). 3 decoratives per beat sharing one breath cycle.
 
 ## Components
 
-- **Overline label** — `overline` cut, sits 12px above the headline,
-  color `foreground-stop-1`. One line, never wraps.
-- **Headline** — `headline` cut, justify-left, 1–2 lines max. The single
-  emphasized word switches color to `foreground-highlight-1` and gains a 1px
-  `accent` underline at 70% character width.
-- **Body paragraph** — `body` cut, max 60ch line length, color `foreground`.
-- **Pull-quote (PIVOT only)** — `pull-quote` italic cut, 1px left border in
-  `accent-stop-1`, padding-left `md`, no background fill.
-- **Anchor rule** — vertical 1px line at 12% from left, full beat height,
-  color `accent` × 30% opacity, slow ambient opacity breath (0.25 ↔ 0.45,
-  6s sine).
-- **Hairline divider** — 1px horizontal rule, used between overline and
-  headline, color `foreground` × 10% opacity.
+- **Caption strip (all beats)** — burned-in word-grouped captions, `foreground-stop-1`, sentence case, lower rail. No background plate; relies on grain + hairline for legibility. Marker sweep on the key term per beat (HOOK: "intelligence"; PROBLEM: "AI agents"; PIVOT: "I thought"; PAYOFF: "for life").
+- **Hairline rule** — vertical 1px, `accent-stop-1`, full height, x = 64px. One ambient breath (opacity 0.6 → 0.9 → 0.6 over 6s, finite repeat).
+- **Timecode chip** — top-right, midtone, Inter 400 0.875rem, uppercase. Format `EP·01 / 00:00`. Static after entrance.
+- **Pull quote (PIVOT only)** — Playfair Display italic, 3rem, foreground, indented from left rail, with a 1px `accent-stop-1` rule beneath. Entrance: `sine.inOut`, 1.0s, y +24 → 0, opacity 0 → 1.
+- **Emphasis word (PAYOFF only)** — single word in `accent-highlight-1`, same Inter weight as surrounding body. No underline, no box. The color shift carries the emphasis.
+- **Ambient glow** — `radial-gradient(circle at 50% 60%, accent 8%, transparent 65%)` behind speaker. 6s breath, 0.05 → 0.10 opacity.
 
 ## Do's and Don'ts
 
-**Do**
+### Do
 
-- Lead the eye to one emphasized word per beat. One word, not three.
-- Let the anchor rule and overline do the structural work; trust whitespace.
-- Use the accent sparingly — at most one accent-colored element per beat
-  besides the anchor rule.
-- Pre-bake any gradient stops from the palette family (e.g.
-  `background → background-stop-2`); never invent an intermediate hex.
-- Keep ambient motion at sub-perceptual amplitude — a 6s sine breath, never
-  a visible pulse.
+- Tint blacks and whites toward the brass hue (background `#0d0b08`, foreground `#f4ede0`).
+- Let the speaker's face be the visual subject — overlays support, never compete.
+- Use one accent hue across all four beats. The brass IS the brand.
+- Use hairlines and tonal shifts for separation. Implied structure beats explicit borders.
+- Hold the PIVOT serif italic as a single rhetorical gesture — one beat, one quote, no repeats.
+- Vary entrance eases across the four beats (`sine.inOut`, `power2.out`, `expo.out`, `power3.out`) so beats don't feel mechanically identical.
 
-**Don't**
+### Don't
 
-- No gradient text. The "background-clip: text + gradient" tell would erase
-  the editorial restraint instantly.
-- No neon accents, no cyan-on-dark, no purple→blue gradients — those are
-  the AI-product visual default this video is critiquing.
-- No centered, equal-weight compositions. Asymmetry is the brand.
-- No drop shadows beyond 1px hairlines. No glow, no rim-light, no soft
-  shadows — those belong to a different style entirely.
-- No second display family. One voice, one typeface.
-- No emoji, no decorative icons, no abstract geometric "tech" shapes
-  (orbits, particles, mesh gradients) — they pull the frame toward the
-  AI-landing-page archetype.
-- No exit tweens on text — the cross-warp-morph transition handles the
-  hand-off between beats.
-
-## Beat Visual Mapping
-
-- **HOOK** — "Age of artificial intelligence." Headline at full `3rem` cut,
-  emphasized word: `intelligence` (`foreground-highlight-1` + accent
-  underline). Anchor rule fades in over 1.0s sine.in. No body. Overline:
-  "01 / Premise". Hold long.
-- **PROBLEM** — Body paragraph dominates (the open-source/AI-agents
-  passage). Overline: "02 / Now". Anchor rule sustains. No headline; the
-  body itself is the content. Body sets at `1.125rem` and runs to ~3 lines.
-- **PIVOT** — Pull-quote treatment: "Why don't we return to the roots?"
-  Italic, with `accent-stop-1` left border. Overline: "03 / Question".
-  Single 0.6s ambient brightness lift on the accent rule at quote entry.
-- **PAYOFF** — Two-line headline ("good old software / you pay for once").
-  Emphasized word: `once` (highlight + underline). A single accent dot
-  marker at the trailing position to read as "unfinished, continuing
-  thought." Overline: "04 / Aspiration". Longest hold; no exit tween —
-  cross-warp-morph carries to black.
+- **No AI-launch palette.** No cyan-on-dark, no purple-to-blue gradients, no neon. The episode argues AGAINST that aesthetic — using it would betray the content.
+- **No gradient text.** `background-clip: text` is the first lazy default of every LLM-styled landing page; this brand's accent appears as fills and rules only.
+- **No card grids or repeated cards.** Surfaces are hairlines. There are no boxes.
+- **No ALL-CAPS shouting beyond the HOOK.** PROBLEM, PIVOT, PAYOFF stay in mixed case — this is a quiet argument, not a hype reel.
+- **No drop shadows or colored glows behind text.** Depth comes from grain and hairlines, not blur.
+- **No pure `#000` or `#fff`.** Every black is `#0d0b08` or its stops; every white is `#f4ede0` or its stops. The single `#ffffff` highlight is reserved for one PAYOFF word.
+- **No serif on body copy.** Playfair appears once (PIVOT pull-quote). Everywhere else is Inter.
+- **No exit animations on HOOK / PROBLEM / PIVOT.** Transitions handle the exits; entrances only on those beats. PAYOFF (final) may fade out.
+- **No infinite repeats** (`repeat: -1`) on ambient breaths — calculate finite repeat counts from beat duration.
