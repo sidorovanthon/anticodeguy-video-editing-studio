@@ -25,15 +25,38 @@ per-node `model:` override; the dataclass below sets only the tier ceiling.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from langgraph.types import CachePolicy
+from pydantic import BaseModel, Field
 
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
 from .._caching import make_llm_key, stable_fingerprint
 from .._paths import EpisodePaths
 from ._llm import LLMNode, _load_brief
+
+
+class BeatOutput(BaseModel):
+    """HOM-243 spike: structured per-scene HTML return.
+
+    Reverses the HOM-134 FS-source-of-truth retreat for ``p4_beat`` ONLY,
+    pending acceptance evidence (5/5 successful dispatches without
+    ``SchemaValidationError`` or truncation on ~30 KB body). On failure the
+    spec pivots to LangGraph BaseStore (§6.0); this schema is reverted.
+
+    Field is intentionally minimal — the goal is to measure model-tier
+    reliability returning a large body inside Pydantic-structured output,
+    not to invent richer per-beat metadata.
+    """
+
+    html: str = Field(
+        ...,
+        description=(
+            "Pattern A scene fragment — the entire `<div id=scene-...>...</div>` "
+            "block, including <style> and <script>, exactly as previously written "
+            "to disk."
+        ),
+    )
 
 # Bump on brief / schema / tool-list change. See HOM-132 spec §8.
 # v2 (HOM-165): brief gained "Explicit anti-patterns (DO NOT DO)" section
@@ -65,7 +88,12 @@ from ._llm import LLMNode, _load_brief
 # v7 (HOM-224): cache_key + render ctx derive design.md / expanded-prompt.md
 # via `EpisodePaths(slug)`; `compose.design_md_path` / `compose.expanded_prompt_path`
 # state echoes dropped upstream.
-_CACHE_VERSION = 7
+# v8 (HOM-243 spike): output_schema swapped from None → BeatOutput; brief
+# instructs the sub-agent to return the scene HTML in the `html` field
+# instead of writing to `scene_html_path`. `Write` dropped from
+# allowed_tools. Reverses the HOM-134 FS-source-of-truth retreat for this
+# node only, gated on 5/5 acceptance.
+_CACHE_VERSION = 8
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -171,23 +199,23 @@ def _build_node() -> LLMNode:
         name="p4_beat",
         requirements=NodeRequirements(tier="expensive", needs_tools=True, backends=["claude"]),
         brief_template=_load_brief("p4_beat"),
-        output_schema=None,
+        # HOM-243 spike — see BeatOutput docstring + module v8 cache note.
+        output_schema=BeatOutput,
         result_namespace="compose",
-        result_key="_beat_unused",
+        # Per-beat key — fan-out reducer is OUT OF SCOPE for the spike per
+        # spec §10. Acceptance inspects the returned dict directly; the
+        # production fan-in remains FS-driven until the spike passes.
+        result_key="_beat_html_spike",
         timeout_s=300,
-        allowed_tools=["Read", "Write"],
+        allowed_tools=["Read"],
         extra_render_ctx=_render_ctx,
     )
 
 
 def p4_beat_node(state, *, router: BackendRouter | None = None):
-    bd = state.get("_beat_dispatch") or {}
-    scene_html_path = bd.get("scene_html_path")
-
-    # Ensure the destination directory exists so the sub-agent's `Write`
-    # call lands in a real folder.
-    if scene_html_path:
-        Path(scene_html_path).parent.mkdir(parents=True, exist_ok=True)
-
+    # HOM-243 spike: sub-agent no longer calls `Write` — html comes back
+    # in the structured response field. The production fan-in
+    # (`p4_assemble_index`) still reads from disk on the un-changed
+    # happy path; spike acceptance owns the disk→state migration.
     node = _build_node()
     return node(state, router=router)
