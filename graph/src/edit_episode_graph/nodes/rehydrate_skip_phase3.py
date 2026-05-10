@@ -31,6 +31,18 @@ def _strategy_json_path(slug: str) -> Path:
     return EpisodePaths(slug).edit_dir / "strategy.json"
 
 
+# HOM-223 review: legacy strategy.json files (recorded pre-HOM-223) carry
+# `source_path` (recording-machine absolute path) and may carry `skipped` /
+# `skip_reason`. Filter these out before re-injecting into state so the
+# rehydrated dict matches the post-HOM-223 contract that
+# `p3_edl_select._strategy()` enforces for fingerprinting.
+_DEPRECATED_STRATEGY_KEYS = frozenset({"source_path", "skipped", "skip_reason"})
+
+
+def _clean_strategy(persisted: dict) -> dict:
+    return {k: v for k, v in persisted.items() if k not in _DEPRECATED_STRATEGY_KEYS}
+
+
 def rehydrate_skip_phase3_node(state: dict) -> dict:
     slug = state.get("slug")
     if not slug:
@@ -54,7 +66,10 @@ def rehydrate_skip_phase3_node(state: dict) -> dict:
         if isinstance(persisted, dict):
             # HOM-223: `source_path` no longer echoed into state — the
             # canonical path lives at `EpisodePaths(slug).edit_dir / "strategy.json"`.
-            update["edit"] = {"strategy": persisted}
+            # Filter deprecated keys (`source_path`, `skipped`, `skip_reason`)
+            # so old recordings don't leak the recording-machine path back
+            # into state. Mirrors `p3_edl_select._strategy()`.
+            update["edit"] = {"strategy": _clean_strategy(persisted)}
             notices.append(
                 f"rehydrate_skip_phase3: restored strategy from {strategy_path.name}"
             )

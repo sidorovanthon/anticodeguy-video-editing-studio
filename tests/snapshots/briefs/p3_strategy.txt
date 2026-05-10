@@ -10,7 +10,6 @@ are not operator-tunable through strategy) are all load-bearing and we do
 not paraphrase them here.
 
 Inputs:
-- Episode dir: `/tmp/snapshot-fixture/episode`
 - Packed transcript path: `/tmp/snapshot-fixture/episode/edit/takes_packed.md`
 - Pre-scan slips/avoid list JSON: `[{"reason": "filler", "range_s": [1.2, 1.45]}]`
 - Packed transcript content:

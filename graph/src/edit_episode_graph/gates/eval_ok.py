@@ -81,15 +81,19 @@ class EvalOkGate(Gate):
             )
 
         # HOM-223: `final.mp4` resolved via EpisodePaths(slug); no state echo.
-        # Backward-compat: if `render.final_mp4` is present (legacy recording
-        # before HOM-223), still respect it. This makes the gate observable
-        # for unit tests that pass a synthetic state without `slug`.
+        # Prefer slug-derived path so Studio time-travel from a different
+        # machine resolves correctly — legacy `render.final_mp4` carries the
+        # recording-machine absolute path, which is exactly the failure mode
+        # HOM-195 fixes. Fall back to legacy only when slug is absent (e.g.
+        # synthetic-state unit tests).
+        # TODO(HOM-195 Sub-4): once old recordings are re-recorded post-HOM-223,
+        # the legacy fallback can be deleted entirely.
         slug = state.get("slug")
         legacy_final = render.get("final_mp4")
-        if legacy_final:
-            final_mp4: str | None = str(legacy_final)
-        elif slug:
-            final_mp4 = str(EpisodePaths(slug).final_mp4_path)
+        if slug:
+            final_mp4: str | None = str(EpisodePaths(slug).final_mp4_path)
+        elif legacy_final:
+            final_mp4 = str(legacy_final)
         else:
             final_mp4 = None
         expected = edl.get("total_duration_s")

@@ -32,7 +32,10 @@ from ._llm import LLMNode, _load_brief
 # Bump on brief / schema / tool-list change. Spec §8 review checkpoint.
 # v2 (HOM-223): identity-only state writes — `persist.persisted_at` no
 # longer holds an absolute path; paths derived via `EpisodePaths(slug)`.
-_CACHE_VERSION = 2
+# v3 (HOM-223 review): brief shape change — asks for ISO 8601 timestamp
+# (placeholder; runtime overwrites) instead of a path. Schema/brief now
+# match runtime semantics.
+_CACHE_VERSION = 3
 
 
 def _final_mp4_path_for_key(state: dict) -> str | None:
