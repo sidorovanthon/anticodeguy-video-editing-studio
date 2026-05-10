@@ -54,6 +54,30 @@ from .._caching import make_key, stable_fingerprint
 from .._scene_id import scene_id_for
 
 # Bump on assemble_html / shim shape / marker change. Spec §8.
+# v4 (HOM-214): two changes to make the Pattern A root-timeline composition
+# self-consistent and observable from the assembled `index.html` alone, per
+# canon `~/.agents/skills/hyperframes/patterns.md` "Top-Level Composition" +
+# `~/.agents/skills/hyperframes/references/transitions/catalog.md` Hard Rules:
+#   1. The visibility shim now emits `root.set('#scene-<id>', { opacity: 1 }, t)`
+#      for EVERY scene (including i=0 at t=0), not just non-first scenes.
+#      The fragment style still carries `opacity: 1` for scene-0 so the page
+#      renders the Hook before the timeline first ticks; the explicit
+#      anchor at t=0 makes "first scene at t=0" a structurally observable
+#      property of the root timeline (HOM-211 diagnostic surfaced an empty
+#      t=0..2 window — Hook absent on the root timeline). It also gives the
+#      future canonical transitions node (HOM-77) a clean handoff: it can
+#      replace these `set(... opacity: 1)` calls with fade-in tweens at
+#      identical positions without re-deriving cumulative starts.
+#   2. The root composition's `data-duration` is reconciled to
+#      `max(current, cumulative_end)` at assemble time. `p4_scaffold` writes
+#      `data-duration` from ffprobe of `final.mp4` (audio-driven), but
+#      `compose.plan.beats[]` durations are LLM-rounded and routinely sum
+#      higher (HOM-211: 22.367 vs 26.5). When the sum exceeds ffprobe length
+#      the last scene's `data-start + data-duration` runs past the root's
+#      end, producing a dead-zone black tail in preview. Reconciliation
+#      makes the timeline long enough to contain every scene; the renderer
+#      still cuts the audio at final.mp4's actual length via the el-audio
+#      `<audio>` element's own `data-duration`.
 # v3 (HOM-191): also injects a `:root { --bg: …; --fg: …; --font-body: …; }`
 # tokens block consuming `compose.design.palette` + `compose.design.typography`,
 # so `p4_scaffold`'s `var(--bg, transparent)` placeholder resolves to the
@@ -69,7 +93,7 @@ from .._scene_id import scene_id_for
 # this, every scene-1+ frame stays at the fromTo from-state — the
 # Phase 4 black-screen symptom HOM-164 was filed for. Repro confirmed in a
 # clean `npx hyperframes init` scaffold; fix is purely orchestrator-side.
-_CACHE_VERSION = 3
+_CACHE_VERSION = 4
 
 
 def _scene_html_paths(state: dict) -> list[str | None]:
@@ -391,10 +415,16 @@ def build_visibility_shim(
 
     Produces hard-cut scene visibility pending the canonical transitions node
     (HOM-77/v5). For each scene at index `i` with start time `t`:
-      - if `i > 0`: `root.set('#scene-<id>', { opacity: 1 }, t)` — the first
-        scene starts visible (opacity: 1 in its fragment style); subsequent
-        scenes carry `opacity: 0` initially per `transitions/catalog.md` L9.
-      - always: unpause `window.__sceneTimelines[id]` and nest it via
+      - `root.set('#scene-<id>', { opacity: 1 }, t)` — for EVERY scene,
+        including i=0 at t=0. The fragment style still carries `opacity: 1`
+        for scene-0 (so the page paints before the timeline first ticks),
+        but the explicit `set` at t=0 makes "first scene anchors at t=0"
+        a property observable from the assembled root-timeline JS rather
+        than relying on inter-fragment coupling. See `_CACHE_VERSION` v4
+        note (HOM-214). Subsequent scenes carry `opacity: 0` initially per
+        canon `~/.agents/skills/hyperframes/references/transitions/catalog.md`
+        Hard Rules — the `set` reveals them at their cumulative start.
+      - unpause `window.__sceneTimelines[id]` and nest it via
         `root.add(sceneTl, t)` — see `_CACHE_VERSION` v2 note for the GSAP
         rationale (a paused child timeline does not advance under parent
         `seek()`, so HOM-164's black-screen symptom is fixed by clearing the
@@ -418,9 +448,11 @@ def build_visibility_shim(
         f"  var ids = {ids_json};\n"
         f"  var starts = {starts_json};\n"
         "  ids.forEach(function(id, i) {\n"
-        "    if (i > 0) {\n"
-        "      root.set('#scene-' + id, { opacity: 1 }, starts[i]);\n"
-        "    }\n"
+        "    // HOM-214: anchor every scene's reveal on the root timeline,\n"
+        "    // including i=0 at t=0, so the position chain is observable\n"
+        "    // from the shim alone. Scene-0's fragment also has opacity: 1\n"
+        "    // in CSS for first-paint, so this is a no-op visually.\n"
+        "    root.set('#scene-' + id, { opacity: 1 }, starts[i]);\n"
         "    var sceneTl = window.__sceneTimelines && window.__sceneTimelines[id];\n"
         "    if (sceneTl) {\n"
         "      // HOM-164: unpause child timeline before nesting — GSAP does\n"
@@ -436,6 +468,60 @@ def build_visibility_shim(
     )
 
 
+# Targets ONLY the root composition's `data-duration`, not nested element
+# `data-duration` attributes (scene divs, video/audio clips). The match is
+# anchored to the same `<div ... data-composition-id="..." ...>` opening tag
+# `p4_scaffold` writes; sibling timed elements live OUTSIDE that opening tag.
+_ROOT_DATA_DURATION_RE = re.compile(
+    r"""(<div\b[^>]*?\bdata-composition-id\s*=\s*["'][^"']+["'][^>]*?\bdata-duration\s*=\s*["'])"""
+    r"""(?P<value>[\d.]+)"""
+    r"""(["'])""",
+    flags=re.IGNORECASE | re.DOTALL,
+)
+
+
+def _reconcile_root_data_duration(html: str, cumulative_end_s: float) -> str:
+    """Patch the root composition's `data-duration` to `max(current, cumulative_end_s)`.
+
+    HOM-214/HOM-211: `p4_scaffold` writes `data-duration` from ffprobe of
+    `final.mp4` (audio length). LLM-rounded `compose.plan.beats[]` durations
+    routinely sum higher (canonical fixture: 22.367 ffprobe vs 26.5 cumulative).
+    When the sum exceeds ffprobe length, the last scene's data-start +
+    data-duration runs past the root timeline end → preview dead-zone /
+    black tail. Reconciliation extends the root timeline to contain every
+    scene; the audio element keeps its own data-duration so playback still
+    cuts at final.mp4's actual length.
+
+    Idempotent: if the current value already meets/exceeds cumulative_end_s,
+    the HTML is returned unchanged. Returns the input unchanged if no root
+    data-duration is found (defensive — keeps the function total).
+    """
+    if cumulative_end_s <= 0.0:
+        return html
+
+    match = _ROOT_DATA_DURATION_RE.search(html)
+    if not match:
+        return html
+
+    try:
+        current = float(match.group("value"))
+    except ValueError:
+        return html
+
+    if current >= cumulative_end_s:
+        return html
+
+    # Format with one decimal when fractional, integer otherwise — keeps
+    # diffs minimal vs the scaffold's typical integer durations.
+    new_value = (
+        f"{cumulative_end_s:.3f}".rstrip("0").rstrip(".")
+        if cumulative_end_s != int(cumulative_end_s)
+        else str(int(cumulative_end_s))
+    )
+    start, end = match.span("value")
+    return html[:start] + new_value + html[end:]
+
+
 def assemble_html(
     *,
     root_html: str,
@@ -443,6 +529,7 @@ def assemble_html(
     captions_html: str | None,
     visibility_shim: str | None = None,
     tokens_block: str | None = None,
+    cumulative_end_s: float | None = None,
 ) -> str:
     """Inject beat fragments + optional captions block + optional v4 shim
     before `</body>`.
@@ -459,6 +546,8 @@ def assemble_html(
             already attached by `build_visibility_shim`); injected last.
     """
     cleaned = _strip_existing_injection(root_html)
+    if cumulative_end_s is not None:
+        cleaned = _reconcile_root_data_duration(cleaned, cumulative_end_s)
     pieces: list[str] = []
     if tokens_block:
         pieces.append(tokens_block)
@@ -553,6 +642,7 @@ def p4_assemble_index_node(state):
         captions_html=captions_html,
         visibility_shim=shim,
         tokens_block=tokens_block,
+        cumulative_end_s=cumulative_s,
     )
     if patched != root_html:
         _atomic_write_text(index_path, patched)
