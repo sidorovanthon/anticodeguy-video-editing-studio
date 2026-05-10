@@ -138,6 +138,7 @@ from .nodes._routing import (
     route_after_strategy,
     route_after_strategy_confirmed,
     route_after_studio_launch,
+    route_after_transitions,
     route_after_validate,
 )
 from .nodes.edl_failure_interrupt import edl_failure_interrupt_node
@@ -221,6 +222,10 @@ from .nodes.p4_redispatch_beat import p4_redispatch_beat_node
 from .nodes.p4_scaffold import (
     CACHE_POLICY as p4_scaffold_cache_policy,
     p4_scaffold_node,
+)
+from .nodes.p4_transitions import (
+    CACHE_POLICY as p4_transitions_cache_policy,
+    p4_transitions_node,
 )
 from .nodes.pickup import pickup_node
 from .nodes.preflight_canon import preflight_canon_node
@@ -324,6 +329,15 @@ def build_graph_uncompiled() -> StateGraph:
         "p4_assemble_index",
         p4_assemble_index_node,
         cache_policy=p4_assemble_index_cache_policy,
+    )
+    # HOM-137: deterministic transitions node — replaces v4 visibility
+    # shim block in root index.html with canonical scene-to-scene tweens
+    # on the root timeline (CSS crossfade / shader-transitions / final-fade
+    # per `BeatTransition.mechanism` chosen by HOM-120's p4_plan).
+    g.add_node(
+        "p4_transitions",
+        p4_transitions_node,
+        cache_policy=p4_transitions_cache_policy,
     )
     # HOM-127: post-assemble gate cluster (spec §4.3, §6.2). Each gate
     # routes pass→next, fail→halt_llm_boundary. Order matches spec —
@@ -665,6 +679,18 @@ def build_graph_uncompiled() -> StateGraph:
         {
             END: END,
             "halt_llm_boundary": "halt_llm_boundary",
+            "p4_transitions": "p4_transitions",
+        },
+    )
+    # HOM-137: transitions runs between assemble and the gate cluster so
+    # gate_lint/gate_validate see the canonical transitions block instead
+    # of the v4 visibility shim. A node-body error halts to END; success
+    # (or no-op skip on a 1-beat plan) advances into the cluster at gate_lint.
+    g.add_conditional_edges(
+        "p4_transitions",
+        route_after_transitions,
+        {
+            END: END,
             "gate_lint": "gate_lint",
         },
     )

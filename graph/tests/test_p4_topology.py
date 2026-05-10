@@ -34,6 +34,9 @@ def test_phase4_nodes_present_in_compiled_graph():
         "p4_dispatch_beats",
         "p4_beat",
         "p4_assemble_index",
+        # HOM-137: deterministic transitions node — root-timeline scene-to-scene
+        # tweens (CSS / shader / final-fade), replaces v4 visibility shim.
+        "p4_transitions",
         # HOM-127: post-assemble gate cluster (spec §4.3, §6.2)
         "gate_lint",
         "gate_validate",
@@ -105,10 +108,12 @@ def test_phase4_chain_edges_wired():
         # before firing this edge into p4_assemble_index.
         ("p4_beat", "p4_assemble_index"),
         ("p4_assemble_index", "halt_llm_boundary"),
-        # HOM-127: post-assemble success leg now enters the gate cluster
-        # at gate_lint. Skip-side (no scenes assembled) still routes
-        # straight to halt.
-        ("p4_assemble_index", "gate_lint"),
+        # HOM-137: post-assemble success leg now routes through p4_transitions
+        # before entering the gate cluster — the canonical transitions block
+        # must be in index.html before gate_lint/gate_validate inspect it.
+        # Skip-side (no scenes assembled) still routes straight to halt.
+        ("p4_assemble_index", "p4_transitions"),
+        ("p4_transitions", "gate_lint"),
         # Gate-cluster pass edges (each fail edge → halt_llm_boundary).
         ("gate_lint", "gate_validate"),
         ("gate_lint", "halt_llm_boundary"),

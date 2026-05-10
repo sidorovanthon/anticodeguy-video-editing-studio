@@ -114,10 +114,13 @@ def test_route_after_scaffold_still_ends_when_scaffold_just_failed():
 
 def test_route_after_assemble_index_proceeds_with_historical_llm_error():
     """A historical LLM-origin error from earlier in Phase 4 must not block
-    the gate cluster entry once assemble succeeds.
+    advancement once assemble succeeds. HOM-137: target node is now
+    p4_transitions (was gate_lint pre-HOM-137 — transitions sit between
+    assemble and the gate cluster so the canonical block is in index.html
+    before lint/validate inspect it).
     """
     state = {
         "errors": [{"node": "p4_beat", "message": "old", "timestamp": "old"}],
         "compose": {"assemble": {"assembled_at": "/tmp/index.html"}},
     }
-    assert route_after_assemble_index(state) == "gate_lint"
+    assert route_after_assemble_index(state) == "p4_transitions"

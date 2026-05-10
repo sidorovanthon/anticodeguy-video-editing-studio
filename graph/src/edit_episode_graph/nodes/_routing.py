@@ -535,12 +535,18 @@ def route_after_captions_layer(state) -> str:
 
 
 def route_after_assemble_index(state) -> str:
-    """p4_assemble_index → END on error | gate_lint | halt_llm_boundary.
+    """p4_assemble_index → END on error | p4_transitions | halt_llm_boundary.
 
-    HOM-127 wires the post-assemble gate cluster — the success leg now
-    enters the chain at `gate_lint`. A skipped assemble (e.g. missing
-    scenes) still routes to halt so the boundary's notice surfaces;
-    there is nothing to lint or preview.
+    HOM-127 wired the post-assemble gate cluster (entered at `gate_lint`).
+    HOM-137 inserts `p4_transitions` between assemble and the gate cluster:
+    transitions need both `from_beat` and `to_beat` containers materialised
+    in the same DOM (only true after p4_assemble_index has inlined every
+    fragment), and `gate_lint`/`gate_validate` consume the assembled
+    `index.html` *with* the canonical transitions block in place — running
+    them against the pre-transitions HTML would mean the v4 shim block
+    gets validated instead of the real output. A skipped assemble (e.g.
+    missing scenes) still routes to halt; there is nothing for transitions
+    to author.
 
     HOM-158: p4_assemble_index is deterministic — errors check scoped to
     this predecessor.
@@ -550,6 +556,22 @@ def route_after_assemble_index(state) -> str:
     assemble = (state.get("compose") or {}).get("assemble") or {}
     if assemble.get("skipped"):
         return "halt_llm_boundary"
+    return "p4_transitions"
+
+
+def route_after_transitions(state) -> str:
+    """p4_transitions → END on error | gate_lint | halt_llm_boundary.
+
+    HOM-137: deterministic transitions node sits between p4_assemble_index
+    and the post-assemble gate cluster. Errors land on END (predecessor
+    just failed); a skip (no transitions in plan — schema-valid for
+    1-beat plans) still advances into the gate cluster because the
+    assembled HTML is itself valid (the assemble step ran successfully;
+    transitions are an *enrichment* of the timeline, not a precondition
+    for lint/validate). Authoring success advances to `gate_lint`.
+    """
+    if _predecessor_just_failed(state, "p4_transitions"):
+        return END
     return "gate_lint"
 
 
