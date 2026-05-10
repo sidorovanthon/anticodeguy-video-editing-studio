@@ -11,6 +11,17 @@
     }
   },
   {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_captions_layer', 'backend': 'claude', 'model': 'claude-opus-4-7', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 135.15599999999904, 'tokens_in': 11, 'tokens_out': 9575, 'timestamp': '2026-05-09T07:16:43.332451+00:00'}]], ['compose', {'captions_block_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\captions.html', 'captions': {'captions_block_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\captions.html'}}], ['branch:to:p4_dispatch_beats', None]])",
+    "fingerprint": "a3364ccc1d56070e19cb6ab01bc053d3",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_captions_layer.p4_captions_layer_node,p4_captions_layer",
+    "node": "p4_captions_layer",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 582
+    }
+  },
+  {
     "channel_writes": "deque([['compose', {'captions': {'skipped': True, 'skip_reason': 'no transcript JSON available (transcripts.final_json_path / raw_json_path missing) — Phase 3 must run first'}}], ['branch:to:p4_dispatch_beats', None]])",
     "fingerprint": "da1c566394c80bab1c9526089f34cec6",
     "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_captions_layer.p4_captions_layer_node,p4_captions_layer",

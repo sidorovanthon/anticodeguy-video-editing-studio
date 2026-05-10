@@ -1,300 +1,375 @@
-# Expanded Prompt — Soft Signal · Portrait Reflection (Canonical Portrait Talking-Head)
+# Expanded Production Prompt — canonical-portrait-talking-head
 
 ## 1. Title + Style Block
 
-**Title:** Soft Signal — Portrait Reflection. A reflective portrait talking-head, 1080×1920, ~22.6s, three beats (HOOK → THESIS → PAYOFF) per the Phase 3 strategy shape.
+**Title:** Velvet Standard — Quiet Editorial (AI-Era / Pay-Once Monologue)
 
-**Mood (from DESIGN.md Overview):** intimate, breath-paced, restrained. The visual identity yields to the speaker; the canvas is a warm photographic seamless, not a "page". Editorial portrait register — Sagmeister intimacy earned through restraint plus a single warm amber accent that holds the eye where the speaker pauses.
+**Palette (cited from DESIGN.md, do not invent intermediates):**
 
-**Palette (cited verbatim from `hyperframes/DESIGN.md`):**
+- background: `#0a0a0a` (stops `#080808`, `#050505`; highlight `#141414`)
+- surface: `#1a1a1a` (stop `#121212`, highlight `#262626`)
+- foreground: `#f0f0f0` (stop `#d8d8d8`, highlight `#ffffff`)
+- accent: `#1a237e` (stops `#131a5e`, `#0d1240`; highlight `#2e3aa3`)
 
-| Role                     | Hex        | Use                                                                                  |
-| ------------------------ | ---------- | ------------------------------------------------------------------------------------ |
-| `background`             | `#FFF8EC`  | Warm cream — the photographic seamless. Canvas across all three beats.               |
-| `background-stop-1`      | `#E6DFD4`  | Gradient bottom for radial atmosphere glows.                                         |
-| `background-stop-2`      | `#CCC6BD`  | Shadow-side gradient stop, used sparingly.                                           |
-| `background-highlight-1` | `#FFFDF8`  | Rim-light highlight for soft vignette top; caption strip translucent fill.           |
-| `foreground`             | `#2a2a2a`  | Charcoal — body & headline color (THESIS, HOOK overline label).                      |
-| `foreground-stop-1`      | `#1f1f1f`  | Pull-quote / italic emphasis (PAYOFF headline — slightly deeper charcoal).            |
-| `foreground-highlight-1` | `#404040`  | Secondary copy, attribution, timestamps, caption fill.                                |
-| `accent`                 | `#F5A623`  | Warm amber — the eye-rest color. Once per beat: underline rule, glow tint, OR word.   |
-| `accent-stop-1`          | `#DC951F`  | Accent gradient body.                                                                 |
-| `accent-stop-2`          | `#C4841C`  | Accent gradient deep stop, hairline rules.                                            |
-| `accent-highlight-1`     | `#F6AF39`  | Accent rim / pulse peak.                                                              |
-| `midtone`                | `#C4A3A3`  | Muted rose — connective tissue, dividers (hairline rule at 60% opacity).              |
-| `midtone-stop-1`         | `#B09292`  | Midtone deep stop.                                                                    |
+**Typography (cited from DESIGN.md):**
 
-One accent hue only — amber. The rose midtone is connective, never headline, never an action color. Cream backgrounds across all three beats; beat-level distinction comes from amber **opacity and placement**, not from changing the canvas. Per DESIGN.md Don'ts: no sage-green, even though Soft Signal canon offers it.
+- Headline — Inter 300, `3rem`, letter-spacing `0.15em`, ALL CAPS.
+- Overline — Inter 500, `0.75rem`, letter-spacing `0.32em`, ALL CAPS.
+- Body — Inter 300, `1.125rem`, line-height `1.6`.
+- Pull-quote — Inter 300 italic, `2rem`, line-height `1.35`.
+- Single display family. No serif companion.
 
-**Typography (cited verbatim from `hyperframes/DESIGN.md`):**
+**Mood:** Architectural restraint over spectacle. Hardcover-book endpaper navy
+on tinted near-black canvas. Massimo Vignelli lineage tuned to long-form
+editorial. The frame breathes; hairline rules organize attention; one deep
+indigo accent carries the through-line. Never neon, never hype.
 
-- **headline** — Playfair Display, regular weight (400), italic, `4.5rem` (72px at 1080-wide), `letterSpacing: -0.01em`, `lineHeight: 1.05`. Used on THESIS and PAYOFF only — one phrase per frame, pulled directly from the speaker's words. `font-variant-numeric: oldstyle-nums`.
-- **body** — Inter, weight 300, `1.125rem`, `lineHeight: 1.7`. Subtitling/attribution.
-- **overline** — Inter, weight 500, `0.75rem`, `letterSpacing: 0.18em`, uppercase. Beat label only ("01 / REFLECTION", "02 / THESIS", "03 / PAYOFF") — top-right of frame, once per beat.
-
-Two families maximum: Playfair Display (italic, display) + Inter (everything else). No third sans (DESIGN.md Don'ts: "no second sans-serif. Inter is the sans.").
-
-**Tokens:**
-
-- `rounded.sm = 8px` · `rounded.md = 16px` · `rounded.lg = 24px`
-- `spacing.sm = 12px` · `spacing.md = 24px` · `spacing.lg = 48px` · `spacing.xl = 96px`
-- `motion.energy = calm` · `easing.entry = sine.inOut` · `easing.exit = power1.inOut` · `easing.ambient = sine.inOut`
-- `duration.entrance = 0.9s` · `duration.hold = 2.4s` (default — pacing yields to performance) · `duration.transition = 1.2s`
-
-**Atmosphere set (from DESIGN.md `motion.atmosphere`):** `warm-grain`, `soft-radial-glow`, `hairline-margin-rule`. **Transition family:** `thermal-distortion` (canonical Soft Signal transition; mandatory between beats per DESIGN.md Don'ts: "No hard cuts between beats.").
+**Format:** 1080×1920 portrait, ~26.5s, locked talking-head video plate
+muted as MG; HF beat layer composites overlays + accent rule + typographic
+chrome. Grade per strategy: neutral natural-light, gentle shadow lift, mild
+contrast, slightly warm midtones — no LUT.
 
 ## 2. Rhythm Declaration
 
-**Rhythm:** `drift-build-resolve` — the calm-end shape of `drift-build-PEAK-drift-resolve` from `references/beat-direction.md`. There is no PEAK in the percussive sense; the PEAK is the THESIS headline landing, but it lands as a settle, not a slam.
+**Pattern:** `hook-HOLD-breathe-PIVOT-hold-resolve`
 
-| Beat   | Take              | Approx. duration | Energy            | Function                                                  |
-| ------ | ----------------- | ---------------- | ----------------- | --------------------------------------------------------- |
-| HOOK   | `[000.12-001.34]` | ~1.2s            | drift / arrival   | open into the room; speaker only; no headline             |
-| THESIS | `[003.10-013.60]` | ~10.5s           | build / sustained | the argument lands; italic headline; longest hold         |
-| PAYOFF | `[018.82-029.50]` | ~10.7s           | resolve           | grounded sign-off; final 0.4s headline fade is only exit  |
+Mapped to EDL beats:
 
-**Total runtime:** ~22.6s. **No hard cuts.** No PUNCH. No SLAM. `motion.energy: calm` → every transition rides `sine.inOut` (entry) or `power1.inOut` (exit). Strategy says "preserve natural pauses between phrases, no aggressive tightening — this is a reflective monologue, not a fast cut." The rhythm honors that: every beat ends with a 0.4s held tail before its `thermal-distortion` transition begins, so audio resolves into stillness before the visual moves.
+- HOOK (`Age of artificial intelligence.`) — long hold, anchor rule fades in.
+- PROBLEM — body-paragraph dominance, sustained anchor, calm.
+- PIVOT — italic pull-quote, single ambient brightness lift on the rule
+  (the only moment the accent gets brighter than its sustained 30%).
+- PAYOFF — two-line headline, longest hold, no exit tween — cross-warp-morph
+  carries to black on the unfinished thought.
+
+Energy stays calm throughout. No PUNCH, no SLAM. The rhythm is in *holds*,
+not *hits*. Pacing per strategy: tight phrase-boundary cuts, breath beats
+preserved between the two "I thought" clauses for rhetorical weight.
 
 ## 3. Global Rules
 
-**Frame:** 1080×1920 portrait. Three horizontal bands per DESIGN.md §Layout:
+**Parallax / depth layers (every beat):** BG (vignette + grain + slow
+breath) — MG (talking-head video plate, dimmed to ~92% luminance, plus
+content typography column) — FG (overline label, anchor rule, accent
+underline / dot, hairline divider).
 
-- **Top 12%** (y ≤ 230) — quiet zone. Hairline rule at 96px from frame top, `midtone` `#C4A3A3` at 60% opacity, 1px. Overline label right-aligned to the rule's right edge.
-- **Middle 56%** (230 ≤ y ≤ 1305) — the speaker. Talking-head video clip occupies this band edge-to-edge with grade applied (warm-neutral, midtone lift, slight shadow desaturation per Phase 3 strategy). **No overlay copy crosses this band's midpoint.**
-- **Bottom 32%** (y ≥ 1305) — typographic stage. Padding `xl` (96px) sides, `lg` (48px) bottom. Headline phrase sits flush-left with a slight optical hang (`margin-left: -0.05em`).
+**Element count per beat:** 8–10 (per video-composition.md). Counted as:
+1 video plate · 1 vignette · 1 grain · 1 anchor rule · 1 overline · 1
+hairline divider · 1 headline / body / pull-quote · 1 accent mark
+(underline or dot) · 1 ghost numeral (background atmosphere) · 1
+slow-vignette-breath layer.
 
-**Container:** Containers fill the scene via `width: 100%; height: 100%; padding: …; box-sizing: border-box` — never absolute-positioned (DESIGN.md §Layout). Decoratives use `position: absolute` inside an `overflow: hidden` parent.
+**Micro-motion (mandatory on every decorative):**
 
-**Parallax / depth layers (every beat — house-style §Background Layer minimum 2–5 decoratives, here three sharing one ambient breath):**
+- Anchor rule — opacity breath 0.25 ↔ 0.45, 6s sine.inOut, infinite.
+- Vignette — radial-gradient luminance breath 0.92 ↔ 1.0, 8s sine.inOut.
+- Grain — frame-locked 0.04 opacity static (no animation; deterministic
+  pre-rendered tile to avoid `Math.random()`).
+- Hairline divider — width 0 → 100% on beat entry, 1.0s sine.inOut.
+- Ghost numeral (the "01" / "02" / "03" / "04") — y drift ±2px,
+  10s sine.inOut, opacity sustained at 0.04.
 
-- **BG-1 (atmosphere)** Warm grain — baked-in noise PNG at **4% opacity, `mix-blend-mode: multiply`** (DESIGN.md §Elevation #3). Drift translateX `0 → 4 → -3 → 0` px over 7.4s `sine.inOut`, infinite yoyo. The film stock.
-- **BG-2 (atmosphere)** Soft radial glow — `radial-gradient(circle at 50% 60%, accent 0%, transparent 60%)` at **12% layer opacity** (DESIGN.md §Elevation #1, §Components → Radial glow). Breathing scale `0.96 ↔ 1.04` over `transition` duration (1.2s), ease `sine.inOut`, infinite yoyo. Repositioned per beat — see §4.
-- **BG-3 (structural)** Hairline margin rule — 1px solid `midtone` `#C4A3A3` at **60% opacity**, full bleed minus `xl` (96px) padding on each side, anchored at the band boundary (96px from top). Slow opacity pulse `0.55 ↔ 0.65` over 4.0s `sine.inOut`, infinite yoyo.
+**Transitions:**
 
-**Midground:** the speaker plate (BG-1-video equivalent — the talking-head footage itself, full-bleed in the middle band) plus, on THESIS/PAYOFF only, a flush-left italic Playfair headline anchored in the bottom band.
+- Primary: `cross-warp-morph` (per DESIGN.md) — 0.8s, power2.inOut.
+- Used between every beat, including PAYOFF → black.
+- No CSS exit tweens on text — DESIGN.md "Don't" #7 explicitly forbids
+  exit tweens; the shader morph carries the hand-off.
+- Entry tweens on text are allowed: `opacity 0 → 1, y 8 → 0`, 1.0s
+  sine.inOut (matches DESIGN.md `motion.easing.entry`).
 
-**Foreground:** the overline label (top-right) with its 24px-wide accent underline rule (HOOK only — see §4 amber discipline). On PAYOFF, a single attribution/cadence note `md` (24px) below the headline at `foreground-highlight-1`.
+**Easing (cited from DESIGN.md):**
 
-**Caption plate (handled by the captions composition, constraints set here):**
+- Entry: `sine.inOut`
+- Exit: `power1.in` (used only on the cross-warp-morph wrapper, not on text)
+- Ambient: `sine.inOut`
 
-- Font family inherits from `--body-family` (Inter 300).
-- Fill: `foreground-highlight-1` `#404040` over a `background-highlight-1` `#FFFDF8` translucent strip.
-- No caps. No per-word color flips. `max-width` consistent with the bottom band's `xl` padding.
+**Durations (cited from DESIGN.md):**
 
-**Density target:** 8–10 visible elements per scene per `references/video-composition.md`. Two of those are decoratives the user did not request — added because empty frames look broken. Per-beat element list is enumerated in §4. The DESIGN.md also adds a hard ceiling: within a single instant, **two text elements maximum** (overline + headline, OR overline + caption — not three). Atmosphere decoratives don't count toward that text-element budget.
-
-**Ambient motion (every decorative — house-style §Motion: "static decoratives feel dead"):**
-
-- Warm-grain — drift 7.4s `sine.inOut`, infinite yoyo (see BG-1).
-- Soft radial glow — breathe 1.2s scale + opacity yoyo, `sine.inOut` (see BG-2). Per DESIGN.md §Components: 720px diameter, `accent` 12%, scale 0.96→1.04.
-- Hairline margin rule — opacity pulse 4.0s `sine.inOut`, yoyo (see BG-3).
-- Overline accent underline (HOOK) — single 24px-wide `accent` underline at 2px height, *static* once drawn (anchor weight; the eye-rest amber must not pulse, or it stops being a rest-point).
-
-**Transition style — primary:** `thermal-distortion` (DESIGN.md §Motion: "Scene-to-scene change is the canonical `thermal-distortion` shader transition (matches Soft Signal canon) — duration 1.2s, eased `sine.inOut`."). The warm-grain heat-shimmer aesthetic is the connective tissue.
-
-**Accent transition (HOOK→THESIS, THESIS→PAYOFF):** the overline label content cross-fades inside the `thermal-distortion` warp (opacity 1 → 0 → 1 over 0.4s `power1.inOut`, mid-warp), so the label text mutates ("01 / REFLECTION" → "02 / THESIS" → "03 / PAYOFF") without leaving the frame.
-
-**Velocity match (`references/beat-direction.md` §Velocity-Matched Transitions):** every beat ends with a 0.4s decelerating tail (motion settling to zero), then `thermal-distortion` enters at low velocity matching that tail. **No accelerating exits** — the calm energy forbids `power3.in` snap-outs.
-
-**Hold pacing yields to performance** (DESIGN.md §Motion): "if the speaker's pause runs to 3.7s, the headline holds for 3.7s — the `2.4` token is a default, not a rule." The transcript at `edit/transcripts/final.json` is the source of truth for caption swap timings; the scene sub-agent reads it for natural-pause boundaries.
-
-**Color presence:** `accent` `#F5A623` is visible in every beat through **exactly one element**, per DESIGN.md Do's: "Use amber `#F5A623` exactly once per beat as a single eye-rest mark — the underline beneath the overline, OR the radial glow tint, OR a single underlined word in the headline. Never two amber marks in the same frame." HOOK = underline beneath overline. THESIS = single underlined word in headline. PAYOFF = radial glow tint only (no headline word). `accent` is decorative-only at small sizes (fails AA on cream); for amber text, ≥40px or set on `foreground-stop-1` panels (DESIGN.md WCAG note).
-
-**No banned defaults** (house-style §Lazy Defaults to Question + DESIGN.md Don'ts):
-
-- No gradient text (`background-clip: text` + gradient).
-- No center-stacked equal-weight composition. Headline is flush-left; speaker is mid-frame. Eye must travel face → phrase, never bounce on a center axis.
-- No drop shadows under any type. Flat layering is the entire point of the warm-neutral grade.
-- No ALL-CAPS display headlines. Caps shout; this monologue invites. Overlines are the only place caps appear.
-- No sage-green accent.
-- No second sans-serif.
-- No hard cuts.
-- No element appears fully formed — every overline, headline, hairline rule animates IN via `gsap.from()` at its beat's start (DESIGN.md Don'ts).
-- No banned fonts (Roboto, Arial, Helvetica, Open Sans, DM Sans, Space Grotesk).
+- Entrance: 1.0s · Hold: 2.6s · Transition: 1.2s
 
 ## 4. Per-Scene Beats
 
-### Beat 1 — HOOK · `[000.12-001.34]` · ~1.2s
-
-**Concept.** The speaker is already mid-thought; we slip into a conversation that has been happening before the camera arrived. The room is warm, the cream canvas is the photographic seamless, the air carries one breath of grain. Nothing competes with the face — no headline, no display type, just the speaker, an overline label that confirms we are in the right register, and a single amber underline that the eye eventually finds. This beat is the doorway. Per DESIGN.md §Beat Visual Mapping: "Hold the speaker; the frame teaches the visual language without showing it off."
-
-**Mood direction.** Editorial portrait photography. Late-evening, candle-warm, the first page of a Sebald novel. The opening title of a Wong Kar-wai film — warm, slow, slightly melancholic, deeply considered. Sagmeister's intimate work, not a tech reveal. Not a wellness ad — DESIGN.md explicitly bans the wellness-category cliché (no sage-green, no gradient text).
-
-**Depth layers (8 elements).**
-
-- **BG-1** Speaker plate — talking-head footage in the middle band (230 ≤ y ≤ 1305), warm-neutral grade with midtone lift and slight shadow desaturation per strategy. Edge-to-edge in the band.
-- **BG-2** Warm-grain overlay — full-frame, noise PNG at 4% opacity, `mix-blend-mode: multiply`, drift ambient (7.4s yoyo).
-- **BG-3** Soft radial glow — `radial-gradient(circle at 50% 60%, #F5A623 0%, transparent 60%)` at **8% layer opacity** (DESIGN.md §Beat Visual Mapping: HOOK glow is "slightly under canon — the eye should commit to the face, not the design"). Breathing 1.2s scale + opacity ambient.
-- **BG-4** Hairline margin rule (top band) — 1px `midtone` 60%, anchored 96px from top, full-bleed minus `xl` padding. Slow opacity pulse ambient.
-- **MG-1** Overline label — top-right, anchored to the right end of the hairline rule. Inter 500, `0.75rem`, uppercase, `letterSpacing: 0.18em`, `foreground-highlight-1` `#404040`. Text: **"01 / REFLECTION"** (per DESIGN.md §Beat Visual Mapping HOOK label text).
-- **MG-2** Overline accent underline — 24px wide, 2px height, solid `accent` `#F5A623`, sitting beneath the overline label. **(This is HOOK's amber lead — the single eye-rest mark per DESIGN.md Do's.)**
-- **FG-1** Caption strip — Inter 300, `1.125rem`, `lineHeight: 1.7`, fill `foreground-highlight-1` `#404040` on a `background-highlight-1` `#FFFDF8` translucent strip, anchored in the bottom band, `xl` padding sides, `lg` bottom. Burned-in transcript content for the HOOK take.
-- **FG-2** Soft vignette top — `radial-gradient` rim-light highlight using `background-highlight-1` `#FFFDF8` at the very top of the frame (subtle "rim-light highlight for soft vignette top" per DESIGN.md `background-highlight-1` description). 8% opacity, static.
-
-*HOOK has no headline (DESIGN.md §Beat Visual Mapping: "speaker only, no headline" + "HOOK is type-free except for the small overline. The opening belongs to the face.").*
-
-**Animation choreography.** Every element gets a verb.
-
-- **BG-1 speaker plate** — *holds* (footage already plays from t=0; we don't fade in the face on a portrait monologue, we open into it).
-- **BG-2 warm-grain** — *drifts* (ambient, see Global Rules).
-- **BG-3 radial glow** — *breathes* (ambient).
-- **BG-4 hairline rule (top band)** — *draws in* via `gsap.from(scaleX: 0, transformOrigin: 'right center', duration: 0.6, ease: 'sine.inOut', delay: 0.1)` so the rule unfurls leftward from the overline anchor — DESIGN.md §Beat Visual Mapping: "Hairline rule fades in at 0.4s." We use `0.4s` for hairline in/visible, leading edge enters at `t=0.1` so it completes by `t=0.4–0.7`.
-- **MG-1 overline label** — *settles in* via `gsap.from({y: +24, opacity: 0}, duration: 0.9, ease: 'sine.inOut', delay: 0.0)` per DESIGN.md §Motion: "Overlay copy fades up from `y: +24` and `opacity: 0` to its CSS rest position."
-- **MG-2 overline accent underline** — *draws* via `gsap.from({scaleX: 0}, transformOrigin: 'left center', duration: 0.6, ease: 'sine.inOut', delay: 0.18)` — staggered 180ms after the overline per DESIGN.md §Motion: "vary stagger between elements (0ms / 180ms / 320ms — three different offsets, never identical)." Once drawn, *holds static* — amber is the rest-point; it does not pulse.
-- **FG-1 caption strip** — *fades up* via `gsap.from({y: +24, opacity: 0}, duration: 0.9, ease: 'sine.inOut', delay: 0.32)` — third stagger offset per DESIGN.md.
-- **FG-2 soft vignette top** — *settles* (opacity 0 → 0.08, 0.6s `sine.inOut` from t=0.0; then static).
-
-**Pacing within the beat.** t=0.0 the room is there (plate holds, grain drifts, glow breathes). t=0.10 the hairline begins drawing leftward. t=0.18 overline accent underline draws. t=0.0–0.9 overline label settles in (peaks at t=0.45, eases to rest by t=0.9). t=0.32–1.22 caption strip fades up (settled by t=1.22). The remaining ~0.05s is the held tail; the next phrase from the take's tail bleeds toward the transition. **No exits except the transition itself** — DESIGN.md Don'ts forbid premature opacity-0 fades.
-
-**SFX cues.** None overlaid; the speaker's voice carries. Ambient room-tone is the soundscape.
-
-**Transition out → THESIS.** `thermal-distortion` shader, 1.2s `sine.inOut`. Per DESIGN.md §Components / §Motion. Inside the warp:
-
-- The radial glow opacity steps up from 8% → 12% over the 1.2s warp (DESIGN.md §Beat Visual Mapping THESIS: glow opacity steps up; here the step happens *during* the transition, not after, so THESIS opens with the new opacity already settled).
-- The radial glow's *position* eases from `(50%, 60%)` to bottom-left (DESIGN.md THESIS: "repositioned to bottom-left to lead the eye into the headline") — 1.2s `sine.inOut` co-running with the warp.
-- Overline label content mutates "01 / REFLECTION" → "02 / THESIS" via mid-warp opacity bridge (0.4s `power1.inOut`, peak at t=0.6 of the warp).
-- Overline accent underline cross-fades to opacity 0 (0.4s `power1.inOut`, mid-warp) — THESIS does not use the underline (THESIS's amber lead moves to the headline word).
-- Caption strip cross-fades content (0.3s `sine.inOut` opacity bridge inside warp) to THESIS's first caption phrase. The strip itself does not exit.
-- Hairline margin rule (top band) carries across — does not retract.
-
 ---
 
-### Beat 2 — THESIS · `[003.10-013.60]` · ~10.5s
+### Beat 1 — HOOK · `[00:00.12 – 00:01.34]` · 1.22s
+> "Age of artificial intelligence."
 
-**Concept.** The argument lands. Not loudly — this is the long middle of a quiet conversation, the part where the speaker's reasoning unfolds in the upper band and a single italic phrase, pulled directly from their words, surfaces in the lower band. The italic earns the typographic intimacy that an upright cut would not — and avoids the Maximalist Type trap of shouting (DESIGN.md §Typography). The frame holds longer than feels safe; the captions update on natural pauses, but the rest of the room barely moves. One amber word — the emotional weight-point of the phrase — is the only saturated color in the frame. This beat is a held breath: "let me explain."
+**Concept.** A library at midnight, lit by a single reading lamp. The
+viewer is asked to *settle in*. Not "the future is here" excitement —
+"a thought is forming". The phrase lands like the first sentence of a
+hardcover essay; the page is dark, the indigo rule on the spine just
+visible. The viewer should feel they have been invited to *think*, not
+to *react*.
 
-**Mood direction.** Long-take editorial documentary. The interview shot in a Werner Herzog character close-up — the camera that doesn't blink. Editorial calm, late-night radio, a fireside reading. Bauhaus restraint applied to portraiture. No competing visual events.
+**Mood direction.** IBM-era trade paperback opening. Hardcover endpaper
+indigo. Vignelli editorial poster typography. Adjacent references: a
+Penguin Modern Classics title page; the first frame of a Criterion
+Collection title sequence held longer than expected.
 
-**Depth layers (9 elements).**
+**Depth layers (≈9 elements).**
 
-- **BG-1** Speaker plate — continuing from HOOK, no re-fade.
-- **BG-2** Warm-grain overlay — same 4% opacity / `multiply` blend, drifting (ambient).
-- **BG-3** Soft radial glow — repositioned to bottom-left (per DESIGN.md THESIS: "repositioned to bottom-left to lead the eye into the headline"). `accent` `#F5A623` at **12% opacity** (per DESIGN.md §Components → Radial glow canonical 12% — THESIS is at-canon). Breathing 1.2s ambient.
-- **BG-4** Hairline margin rule (top band) — held from HOOK, ambient pulse.
-- **MG-1** Overline label — top-right, content **"02 / THESIS"** (mutated during the HOOK→THESIS warp). Inter 500, 0.75rem, uppercase, `letterSpacing: 0.18em`, `foreground-highlight-1`. Held in place.
-- **MG-2** Headline phrase — Playfair Display, italic, 400 weight, **4.5rem (72px)**, `letterSpacing: -0.01em`, `lineHeight: 1.05`, color `foreground` `#2a2a2a`, `font-variant-numeric: oldstyle-nums`. Anchored flush-left in the bottom band with optical hang `margin-left: -0.05em`. `max-width: 80%` of the bottom band (DESIGN.md §Components → Headline phrase). One phrase — pulled from the speaker's actual words in the THESIS take, derived by the scene sub-agent from the transcript at `edit/transcripts/final.json`. **No `<br>`** — wraps naturally. Lowercase except proper nouns (DESIGN.md Don'ts: no ALL-CAPS).
-- **MG-3** Headline accent underline — beneath a **single underlined word** in the headline (the phrase's emotional weight-point — chosen by the scene sub-agent). 2px solid `accent` `#F5A623` at **100% opacity** (DESIGN.md §Beat Visual Mapping THESIS: "Amber accent moves to a single underlined word in the headline … at `accent` 100%"). **(This is THESIS's amber lead — the single eye-rest mark.)**
-- **FG-1** Caption strip — Inter 300, content swaps on natural pause boundaries from the transcript (each swap: 0.3s `sine.inOut` opacity cross-fade only — no y-translate; too much motion competes with the speaker). 3–5 swaps over 10.5s, gated to `edit/transcripts/final.json` word timings.
-- **FG-2** Soft vignette top — held from HOOK, static.
-
-*No timestamp / attribution on THESIS — that is PAYOFF-only territory per DESIGN.md §Components.*
+- BG: `#0a0a0a` canvas; radial vignette `background → background-stop-2`
+  centered at 38% / 42% (off-axis, asymmetric); subtle-grain tile at 4%
+  opacity; ghost numeral "01" at 8% / 12% from top-right, `4rem` Inter 300,
+  color `foreground` × 4% opacity.
+- MG: talking-head video plate at 92% luminance, anchored full-frame;
+  content column at 12% from left through 77% width.
+- FG: overline `01 / PREMISE` at top-of-column; 1px hairline divider;
+  headline `AGE OF ARTIFICIAL INTELLIGENCE` with emphasized word
+  `INTELLIGENCE` in `foreground-highlight-1` (`#ffffff`) plus 1px
+  `accent` (`#1a237e`) underline at 70% character width; vertical
+  anchor rule at 12% from left, full beat height,
+  `accent` × 30% opacity.
 
 **Animation choreography.**
 
-- **BG-1 speaker plate** — *holds*.
-- **BG-2 warm-grain** — *drifts* (ambient).
-- **BG-3 radial glow** — *settled into new position from warp; breathes* (ambient).
-- **BG-4 hairline rule (top band)** — *holds; pulses* (ambient).
-- **MG-1 overline label** — *holds* (text already mutated mid-warp).
-- **MG-2 headline phrase** — *surfaces* via `gsap.from({y: +24, opacity: 0}, duration: 0.9, ease: 'sine.inOut', delay: 0.32)` (DESIGN.md §Beat Visual Mapping THESIS: "Headline staggers in 320ms after overline" — overline settled during transition; we treat the warp's end as t=0 of THESIS, so headline enters at t=0.32 of the beat).
-- **MG-3 headline accent underline** — *draws* via `gsap.from({scaleX: 0}, transformOrigin: 'left center', duration: 0.6, ease: 'sine.inOut', delay: 0.95)` — sequenced AFTER the headline settles (entrance peak at t≈0.95), like a hand underlining the chosen word in real time. Once drawn, *holds static* (amber rest-point).
-- **FG-1 caption strip** — *holds*; *swaps content* per phrase (opacity 1 → 0 → 1 over 0.3s `sine.inOut`, gated to natural pause boundaries).
-- **FG-2 soft vignette top** — *holds*.
+- Video plate — fades in to 92% luminance over 0.6s sine.inOut, holds.
+- Anchor rule — *draws down* from top, 1.0s sine.inOut, then enters
+  ambient breath (0.25 ↔ 0.45, 6s sine).
+- Overline — types on character-by-character at 35ms/char, 0.42s total,
+  sine.inOut.
+- Hairline divider — width 0 → 100%, 1.0s sine.inOut, lagged 0.2s
+  after overline finishes.
+- Headline — `opacity 0 → 1, y 8 → 0`, 1.0s sine.inOut, lagged 0.4s
+  after divider.
+- Emphasized word `INTELLIGENCE` — color crossfades from `foreground`
+  to `foreground-highlight-1` over 0.6s sine.inOut, 0.3s after the
+  headline lands.
+- Accent underline — width 0 → 70%-of-word, 0.7s sine.inOut,
+  immediately following the color shift.
+- Vignette — slow-vignette-breath ambient (0.92 ↔ 1.0, 8s sine).
+- Ghost numeral "01" — y drift ±2px ambient.
 
-**Pacing within the beat.**
-
-- t=0.0–0.32: arrival from transition. Plate holds; glow now at 12% in bottom-left; overline already says "02 / THESIS"; first caption phrase visible.
-- t=0.32–1.22: headline phrase surfaces. (`y: +24 → 0`, 0.9s, `sine.inOut`.)
-- t=0.95–1.55: amber underline draws beneath the chosen word. Underline holds.
-- t=1.55–8.5: the held middle. 3–4 caption swaps on natural pauses. Ambient motion only — breathe, drift, pulse. No discrete events. The speaker's voice carries the beat.
-- t=8.5–10.1s: closing phrase of the thesis lands and holds.
-- t=10.1–10.5s: 0.4s held tail — speaker's voice has resolved; visual is dead-still except for ambient breathing — before the transition into PAYOFF.
-
-**SFX cues.** None overlaid. Speaker carries. The amber underline draw should land in silence — no chime, no swoosh; the sine.inOut ease is the gesture.
-
-**Transition out → PAYOFF.** `thermal-distortion`, 1.2s `sine.inOut`. Inside the warp:
-
-- The headline phrase exits — but **NOT via opacity-to-zero** on the element itself. The thermal-distortion shader visually dissolves it; we do not animate `opacity: 0` on `MG-2` or `MG-3`. (DESIGN.md Don'ts: "the transition IS the exit" implication; explicit "No element appears fully formed" + "No exits except on PAYOFF's final fade" means inter-beat exits ride the shader, not element opacity.)
-- Headline accent underline retracts inside the warp (`scaleX: 1 → 0`, `transformOrigin: left center`, 0.5s `sine.inOut`, kicked off at warp midpoint t=0.6) — PAYOFF does not use the underline (PAYOFF's amber lead is the radial glow only). Retracting cleanly avoids carry-over.
-- Radial glow eases from bottom-left back to centered-and-slightly-low (per DESIGN.md PAYOFF: "Amber accent retreats to the radial glow only"; positioning held at the canonical center-60% with a slight lift on PAYOFF — 1.2s `sine.inOut` co-running with warp).
-- Overline label content mutates "02 / THESIS" → "03 / PAYOFF" via mid-warp opacity bridge (0.4s `power1.inOut`).
-- Caption strip cross-fades content (0.3s `sine.inOut` opacity bridge inside warp) to PAYOFF's first caption phrase.
+**Transition out.** `cross-warp-morph`, 0.8s, `power2.inOut`. The rule
+and overline persist *through* the morph to read as continuous spine.
 
 ---
 
-### Beat 3 — PAYOFF · `[018.82-029.50]` · ~10.7s
+### Beat 2 — PROBLEM · `[00:03.10 – 00:13.60]` · 10.5s
+> "when I'm increasingly using free open-source tools because I can simply
+> deploy them for myself easily with the help of AI agents or just write
+> the software I need for work myself,"
 
-**Concept.** The thought resolves. The speaker has said the thing; now there is room for the viewer to feel it. PAYOFF is the slow exhale — a second italic Playfair headline, slightly deeper charcoal than THESIS, surfaces flush-left in the bottom band as a grounded sign-off. The amber accent retreats from the headline word back into the radial glow itself — a return to atmosphere. The room breathes one last cycle, and then the headline alone fades to opacity 0 over 0.4s `power1.inOut` (DESIGN.md §Beat Visual Mapping PAYOFF: "Final 0.4s of the beat is the only allowed exit"). The composition resolves on speaker + cream + grain — the visual identity has done its work and gets out of the way.
+**Concept.** The page turns. We are inside the body of the essay. The
+reader's eye moves across long lines of measured prose; nothing flashes,
+nothing demands, the design is *getting out of the way* of the speaker's
+sentence. This is the longest hold — calm, sustained, the visual
+equivalent of someone explaining their workflow over a second coffee.
 
-**Mood direction.** End-credit calm. The closing image of a Sofia Coppola film. A handwritten signature at the bottom of a journal page. The kind of resolution that doesn't punctuate with a cut — it dissolves into stillness.
+**Mood direction.** Editorial calm. Magazine long-read. The kind of
+column where the only ornament is the drop-cap and the rule. Reference:
+*The New Yorker* main feature interior page; *Wired* long-form column
+when it still ran 1.6 line-height body.
 
-**Depth layers (9 elements).**
+**Depth layers (≈9 elements).**
 
-- **BG-1** Speaker plate — continuing.
-- **BG-2** Warm-grain overlay — same 4% / multiply, drifting.
-- **BG-3** Soft radial glow — repositioned back to canonical `circle at 50% 60%` per DESIGN.md §Components default position. `accent` `#F5A623` at **12% layer opacity** (canonical). Breathing ambient. **(This is PAYOFF's amber lead — the single eye-rest mark, per DESIGN.md PAYOFF: "Amber accent retreats to the radial glow only — no underlined word.")**
-- **BG-4** Hairline margin rule (top band) — held, pulsing ambient.
-- **MG-1** Overline label — top-right, content **"03 / PAYOFF"** (mutated during the THESIS→PAYOFF warp). Inter 500, 0.75rem, uppercase, `letterSpacing: 0.18em`, `foreground-highlight-1`. Held.
-- **MG-2** Headline phrase (sign-off) — Playfair Display, italic, 400, 4.5rem, `letterSpacing: -0.01em`, `lineHeight: 1.05`, color `foreground-stop-1` **`#1f1f1f`** (DESIGN.md §Beat Visual Mapping PAYOFF: "at `foreground-stop-1` (slightly deeper charcoal — the resolution feels grounded)"). Anchored flush-left, `margin-left: -0.05em`, `max-width: 80%`. One phrase — distilled from the speaker's final sentence in the take, lowercase except proper nouns. Wraps naturally.
-- **MG-3** Attribution / cadence note — Inter 300, `1.125rem`, color `foreground-highlight-1` `#404040`, anchored `md` (24px) below the headline (DESIGN.md §Layout: "Attribution/cadence note sits `md` (24px) below the headline at `foreground-highlight-1`"). Optional — present only if the take's final sentence has a clear secondary clause; if the sub-agent decides to omit, the count drops to 8 elements and that is also valid. Default: include, with content drawn from a quiet thematic register (e.g. cadence label or take-marker).
-- **FG-1** Caption strip — Inter 300; PAYOFF caption (final phrase verbatim from transcript). Single phrase or short two-clause sentence depending on `[018.82-029.50]`. Plate carries through; only inner text settled in via warp.
-- **FG-2** Soft vignette top — held, static.
+- BG: `#0a0a0a`; radial vignette unchanged; subtle-grain at 4%; ghost
+  numeral "02" replaces "01" with cross-warp-morph carry.
+- MG: video plate sustained; content column hosts a body paragraph
+  set at `1.125rem / 1.6`, color `foreground`, max 60ch.
+- FG: overline `02 / NOW`; hairline divider; anchor rule sustained;
+  no headline (per DESIGN.md beat mapping); a single 1px `accent` ×
+  20% opacity tick at the line start of the body's third line —
+  reads as a margin-mark, the editorial cue that this is the *idea*.
 
 **Animation choreography.**
 
-- **BG-1 speaker plate** — *holds*.
-- **BG-2 warm-grain** — *drifts* (ambient).
-- **BG-3 radial glow** — *holds new position from warp; breathes* (ambient). Glow is the amber lead — it must not pulse outside its breathing rhythm; no separate emphasis cue.
-- **BG-4 hairline rule (top band)** — *holds; pulses* (ambient).
-- **MG-1 overline label** — *holds*.
-- **MG-2 headline phrase** — *surfaces* via `gsap.from({y: +24, opacity: 0}, duration: 0.9, ease: 'sine.inOut', delay: 0.32)` (same stagger as THESIS — overline → headline 320ms offset).
-- **MG-3 attribution** — *fades up* via `gsap.from({y: +24, opacity: 0}, duration: 0.9, ease: 'sine.inOut', delay: 1.10)` — arrives like a postscript, well after the headline settles.
-- **FG-1 caption strip** — *holds*; the warp's caption opacity bridge already settled the PAYOFF first phrase. Subsequent caption swaps (if any — possibly 1–2 over 10.7s) ride 0.3s `sine.inOut` opacity cross-fades on natural pauses.
-- **FG-2 soft vignette top** — *holds*.
+- Overline `02 / NOW` — types on 0.42s sine.inOut at beat start.
+- Hairline divider — width 0 → 100%, 1.0s sine.inOut, lagged 0.2s.
+- Body paragraph — paragraph-level `opacity 0 → 1`, 1.2s sine.inOut,
+  lagged 0.4s after the divider. Word-level highlight: as the speaker
+  hits "AI agents" and "myself," those tokens crossfade their color
+  from `foreground` to `foreground-highlight-1` for 0.4s sine.inOut
+  then back, synced to per-word transcript timing.
+- Margin tick — fades in `opacity 0 → 0.2` over 0.6s as the third
+  line lands.
+- Anchor rule — sustained ambient breath (no re-trigger).
+- Ghost numeral "02" — y drift ±2px ambient.
+- Vignette — sustained breath.
 
-**Pacing within the beat.**
+**Transition out.** `cross-warp-morph`, 0.8s, `power2.inOut`.
+A breath beat (per strategy: "preserve natural breath beats between
+the two 'I thought' clauses") sits *across* the morph — the morph's
+mid-point coincides with the silence.
 
-- t=0.0–0.32: arrival from transition. PAYOFF caption settled; overline already says "03 / PAYOFF"; glow at center-60% breathing.
-- t=0.32–1.22: headline (sign-off) surfaces.
-- t=1.10–2.00: attribution fades up below the headline.
-- t=2.00–10.30: the long held resolution. ~8.3s of held, breathing stillness — only ambient motion (grain drift, glow breath, hairline pulse). The viewer sits with the sign-off. Audio carries.
-- t=10.30–10.70: **the ONLY allowed exit in the entire composition**. Headline fades to opacity 0 over 0.4s `power1.inOut` (DESIGN.md §Beat Visual Mapping PAYOFF: "Final 0.4s of the beat is the only allowed exit: headline fades to `opacity: 0` over 0.4s, ease `power1.inOut`, leaving the speaker on cream before the cut to black."). Attribution fades simultaneously (same easing, same duration). Caption, overline, glow, grain, hairline, vignette: all hold. The beat resolves on speaker + cream + ambient atmosphere.
+---
 
-**SFX cues.** None overlaid. Speaker's voice carries to its natural resolution; the 0.4s headline fade rides silence.
+### Beat 3 — PIVOT · `[00:15.72 – 00:17.36]` · 1.64s
+> "I thought, 'Why don't we turn...'"
 
-**Transition out → end.** No outgoing transition — PAYOFF is the terminal beat. The composition resolves on its held final state (speaker + cream + atmosphere). If the orchestrator (`graph` p4_render or downstream) requires a final fade-to-black or fade-to-cream, that lives outside this composition's authored timeline. Per DESIGN.md, the authored content ends with the headline opacity:0 — the speaker remains on cream.
+**Concept.** A held breath. The sentence breaks off mid-thought — and
+we honor that. The frame becomes more *quiet*, not more loud. The
+italic pull-quote is the visual equivalent of a writer sliding their
+glasses up and starting again. This is the only beat where the accent
+brightens — a single 0.6s lift on the rule, like a thought flickering.
+
+**Mood direction.** A page margin where someone has written in pencil.
+Cinematic title-sequence pause. Reference: a Saul Bass title card held
+two beats longer than expected; the silence in a Nicolas Jaar bridge.
+
+**Depth layers (≈9 elements).**
+
+- BG: `#0a0a0a`; vignette + grain unchanged; ghost numeral "03".
+- MG: video plate sustained at 92%; content column hosts the
+  pull-quote — italic `pull-quote` cut, with a 1px `accent-stop-1`
+  (`#131a5e`) left border, padding-left `md` (32px), no fill.
+- FG: overline `03 / QUESTION`; hairline divider; anchor rule, but
+  this beat the rule briefly lifts opacity 0.30 → 0.55 → 0.30 over
+  0.6s sine.inOut on quote entry; ellipsis `...` is a separate
+  inline span animated independently.
+
+**Animation choreography.**
+
+- Overline `03 / QUESTION` — types on 0.42s sine.inOut.
+- Hairline divider — width 0 → 100%, 1.0s sine.inOut.
+- Pull-quote body — `opacity 0 → 1, y 6 → 0`, 1.0s sine.inOut,
+  lagged 0.3s after the divider.
+- Left border (1px `accent-stop-1`) — height 0 → 100%, 0.8s sine.inOut,
+  drawing downward in sync with the quote text appearing.
+- Anchor rule — opacity lift 0.30 → 0.55 → 0.30 over 0.6s sine.inOut,
+  triggered on quote entry. This is the only intentional non-ambient
+  motion the accent rule performs across the whole video.
+- Ellipsis `...` — three dots fade in sequentially, 120ms stagger,
+  sine.inOut, after the quote completes — the visual breath-hold.
+- Ghost numeral "03" — y drift ±2px ambient.
+- Vignette + grain — sustained.
+
+**Transition out.** `cross-warp-morph`, 0.8s, `power2.inOut`. The
+ellipsis carries through the morph and dissolves into the PAYOFF
+overline's first character — a typographic hand-off.
+
+---
+
+### Beat 4 — PAYOFF · `[00:18.82 – 00:30.80]` · 11.98s
+> "I thought, 'Why don't we return to the roots, to good old software
+> that you pay for once and use for life?' Yes, maybe it's not as
+> interesting from a business point-of-view, but how cool is it to..."
+
+**Concept.** A library at dawn. The thought completes, and then —
+deliberately — does not. The headline carries the *offer* ("good old
+software / you pay for once"); the trailing accent dot is the
+*invitation* — the unfinished sentence, the next reader's turn. The
+longest hold of the video. Calm, certain, never triumphant. This is
+the closing page, not the curtain call.
+
+**Mood direction.** A printed quotation on the inside back cover of a
+hardcover book. Editorial restraint at its most confident. Reference:
+the closing frame of a *Field Notes* almanac entry; the credit page
+of a slim Penguin essay edition.
+
+**Depth layers (≈10 elements).**
+
+- BG: `#0a0a0a`; vignette + grain unchanged; ghost numeral "04";
+  a second ghost layer — a faint horizontal hairline at 78% from
+  top, `foreground` × 6% opacity, full-width — reads as the
+  bottom-of-page rule of a printed book.
+- MG: video plate sustained; content column hosts a two-line
+  headline: line 1 `GOOD OLD SOFTWARE` / line 2 `YOU PAY FOR ONCE`,
+  Inter 300, `3rem`, letter-spacing `0.15em`, ALL CAPS.
+- FG: overline `04 / ASPIRATION`; hairline divider; anchor rule;
+  emphasized word `ONCE` (`foreground-highlight-1` + 1px `accent`
+  underline at 70% character width); a single accent dot
+  (8px × 8px filled circle in `accent`) at the trailing position
+  after `ONCE`, separated by 24px — the "unfinished, continuing
+  thought" mark from DESIGN.md.
+
+**Animation choreography.**
+
+- Overline `04 / ASPIRATION` — types on 0.42s sine.inOut.
+- Hairline divider — width 0 → 100%, 1.0s sine.inOut.
+- Bottom-of-page hairline — width 0 → 100%, 1.4s sine.inOut, lagged
+  0.6s, inward from both edges (left edge anchored, right edge meets
+  it — slow, asymmetric).
+- Headline line 1 (`GOOD OLD SOFTWARE`) — `opacity 0 → 1, y 8 → 0`,
+  1.0s sine.inOut.
+- Headline line 2 (`YOU PAY FOR ONCE`) — same tween, lagged 0.4s.
+- Emphasized word `ONCE` — color crossfade `foreground` →
+  `foreground-highlight-1` over 0.6s sine.inOut, 0.4s after line 2.
+- Accent underline beneath `ONCE` — width 0 → 70%-of-word, 0.7s
+  sine.inOut, immediately after the color shift.
+- Accent dot — `opacity 0 → 1, scale 0 → 1`, 0.5s sine.inOut, lagged
+  1.2s after the underline. Then enters a *very* slow ambient
+  brightness breath: `accent` ↔ `accent-highlight-1`, 4s sine.inOut,
+  infinite — the only element still moving at the end. This is the
+  unfinished thought.
+- Anchor rule — sustained ambient breath; no re-trigger.
+- Ghost numeral "04" — y drift ±2px ambient.
+- Vignette + grain — sustained.
+
+**Transition out.** `cross-warp-morph` to black, 1.2s (matches
+DESIGN.md `motion.duration.transition`), `power2.inOut`. No exit
+tweens on text — the morph alone carries the dissolve. The accent
+dot is the last visible element.
 
 ## 5. Recurring Motifs
 
-Visual threads that repeat across all three beats — they are how the viewer knows it is the same world.
+- **The vertical anchor rule at 12% from left.** Persists through every
+  beat at `accent` × 30% opacity, ambient breath. It is the spine of
+  the book — the through-line from "Age of artificial intelligence"
+  to the trailing dot. Never re-triggered, never reset. The rule
+  *survives* every cross-warp-morph as continuous geometry.
+- **Ghost numerals (`01`, `02`, `03`, `04`).** Top-right of frame at
+  `foreground` × 4% opacity, Inter 300 `4rem`. They cross-warp from
+  one to the next on each beat boundary — the page numbers of the
+  essay.
+- **Accent indigo (`#1a237e`) used at most once per beat besides the
+  anchor rule.** HOOK: underline beneath `INTELLIGENCE`. PROBLEM:
+  margin tick. PIVOT: pull-quote left border + the single brightness
+  lift. PAYOFF: underline beneath `ONCE` + the trailing dot. The
+  accent is never two foreground objects in the same beat.
+- **Type-on overlines.** Every beat opens with the overline typing on
+  at 35ms/char. The cadence is the audible click of editorial pacing.
+- **The hairline divider.** Drawn fresh every beat, 1.0s sine.inOut.
+  The unit of "this is a new section" without ever using a hard cut.
+- **Subtle-grain + slow-vignette-breath + hairline-rules** — the three
+  atmosphere primitives from DESIGN.md, present in every beat.
 
-- **Cream canvas (`#FFF8EC`) — invariant.** Same background hex across all three beats. Beat distinction comes from amber placement and opacity, never from canvas swaps. (DESIGN.md §Colors: "Cream backgrounds across all three beats; beat-level distinction comes from amber **opacity and placement**, not from changing the canvas.")
-- **Warm-grain overlay — invariant.** 4% opacity, `mix-blend-mode: multiply`, identical 7.4s drift in all beats. The film stock never changes; the room never changes its texture.
-- **Soft radial glow — repositioned, never absent.** Present in every beat, repositioned per beat to track compositional weight (HOOK center-60% at 8%, THESIS bottom-left at 12%, PAYOFF center-60% at 12%). Always `accent` `#F5A623` led, always breathing 1.2s `sine.inOut`. The glow is the room's candle; it never leaves.
-- **Hairline margin rule (top band) — held.** 1px `midtone` 60%, anchored 96px from frame top, full-bleed minus `xl` padding. Pulses ambient (0.55 ↔ 0.65) in all three beats. The structural through-line.
-- **Overline label (top-right)** — same architecture, text mutates "01 / REFLECTION" → "02 / THESIS" → "03 / PAYOFF". Inter 500, 0.75rem, uppercase, +0.18em tracking, `foreground-highlight-1`. Mutations happen mid-warp via opacity bridge — the label never leaves the frame.
-- **Amber discipline (DESIGN.md Do's: "exactly once per beat as a single eye-rest mark").** Exactly one amber lead per beat: HOOK = 24px overline accent underline. THESIS = single underlined word in headline at 100%. PAYOFF = radial glow tint only. Never two amber marks in the same frame.
-- **Italic Playfair headline as resolution language.** THESIS and PAYOFF both carry an italic Playfair phrase, flush-left in the bottom band, `margin-left: -0.05em` optical hang, lowercase except proper nouns. The form repeats; only the color shifts (`#2a2a2a` → `#1f1f1f`) to mark thesis vs resolve.
-- **`thermal-distortion` transition family** — 1.2s `sine.inOut`. Both inter-beat transitions use the same warp; consistency reads as one unbroken room being seen from different distances.
-- **Calm easing.** Every entrance is `sine.inOut` 0.9s; transitions are `sine.inOut` 1.2s; the only `power1.inOut` is the PAYOFF terminal exit. No `power3.in`, no `back.out`, no overshoot, no spring. Per DESIGN.md §Motion: "nothing snaps; nothing overshoots."
-- **Three staggers, never identical** (DESIGN.md §Motion: "vary stagger between elements (0ms / 180ms / 320ms — three different offsets, never identical)"). HOOK demonstrates: hairline at 100ms, overline at 0ms, accent underline at 180ms, caption at 320ms.
-- **Two-text-element ceiling.** No frame ever shows three or more text elements simultaneously: HOOK has overline + caption (2). THESIS has overline + headline + caption — but the caption is a continuous strip, not a discrete element competing with the headline; the discrete-text reading is overline (top) + headline (bottom) = 2. PAYOFF same logic, plus brief overlap with attribution = 3 only during a 0.9s entrance window, otherwise 2.
+## 6. Negative Prompt — What to Avoid
 
-## 6. Negative Prompt — Do Not Include
+Cited from DESIGN.md "Don'ts" plus video-medium constraints:
 
-Informed by `DESIGN.md` Don'ts and `house-style.md` "Lazy Defaults to Question":
+- **No gradient text.** No `background-clip: text`, no
+  purple→blue display-type tells. The editorial restraint depends on
+  weight + tracking, not color tricks.
+- **No neon, no cyan-on-dark, no purple→blue gradients.** Those are
+  the AI-product visual vocabulary this video is *critiquing*. Using
+  them would be the joke landing on the wrong side.
+- **No centered or symmetric compositions.** Asymmetry is the brand.
+  Justify-left against the anchor rule.
+- **No drop shadows beyond 1px hairlines, no glow, no rim-light, no
+  soft blur shadows.** Elevation is luminance shift, not depth-of-field.
+- **No second display family.** Inter is the only typeface. No serif
+  companion, even for the pull-quote — italic Inter is the contrast.
+- **No emoji, no decorative icons, no abstract "tech" geometry**
+  (orbits, particles, mesh gradients, audio-reactive waveforms,
+  rotating cubes). Those pull the frame toward the AI-landing-page
+  archetype the video is rejecting.
+- **No exit tweens on text.** The cross-warp-morph alone hands off.
+  Do not animate text out — that's two transitions stacked on the
+  same cut and reads as nervous.
+- **No PUNCH / SLAM / CRASH animation verbs.** Energy is `calm` per
+  DESIGN.md `motion.energy`. Verbs are *fades*, *types on*,
+  *floats*, *crossfades*, *draws*, *breathes* — never percussive.
+- **No `Math.random()`, no `Date.now()`, no network fetches** (HF Key
+  Rule #6). Grain is a deterministic pre-rendered tile; ambient
+  motion is GSAP `repeat: -1` with `yoyo: true`.
+- **No more than one accent-colored foreground element per beat
+  besides the anchor rule** (DESIGN.md "Do" #3).
+- **No invented intermediate hexes.** Use only the named tokens from
+  the DESIGN.md frontmatter — `background-stop-2`, `accent-stop-1`,
+  etc. Pre-baked palette is closed.
+- **No captions burned over the speaker's face.** Content typography
+  lives in the right-of-rule column, not floating across the video
+  plate. The talking head and the typography are *adjacent*, not
+  *stacked*.
+- **No audio-reactive visualization.** The voice is the content; the
+  design refuses to translate it into shapes.
 
-- **No exit animations on overlines, captions, or headlines except the PAYOFF terminal headline fade.** DESIGN.md is explicit: "Final 0.4s of the beat is the only allowed exit." Inter-beat handoffs ride `thermal-distortion`; element opacity-to-0 between beats breaks Soft Signal's continuity.
-- **No gradient text** (`background-clip: text` + gradient). DESIGN.md Don'ts: "would convert this from editorial intimacy to wellness-app advert in one keystroke."
-- **No center-stacked equal-weight composition.** DESIGN.md Don'ts: "Headline is flush-left; speaker is mid-frame. The eye must travel from face to phrase, not bounce on a center axis."
-- **No drop shadows under the headline (or any type).** DESIGN.md §Elevation: "Flat. No drop shadows on type." Depth budget spends on glow, hairline, and grain — nothing else.
-- **No ALL-CAPS display headlines.** DESIGN.md Don'ts: "Caps shout; this monologue invites." Overlines are the only caps in the composition.
-- **No sage-green accent**, even though Soft Signal canon offers it. DESIGN.md Don'ts: "pushes the piece into the wellness-category cliché and dilutes the single-accent discipline."
-- **No second sans-serif.** DESIGN.md Don'ts: "Inter is the sans. Do not pair Inter with DM Sans, Space Grotesk, or any other neutral grotesque."
-- **No hard cuts between beats.** DESIGN.md Don'ts: "The thermal-distortion transition is mandatory — jump cuts would break the reflective register."
-- **No element appears fully formed.** DESIGN.md Don'ts: "Every overline, headline, hairline rule animates IN via `gsap.from()` at its beat's start."
-- **No pure `#000000`, no pure `#ffffff`.** Background is `#FFF8EC`; foreground is `#2a2a2a`. The grade is warm-neutral; the UI follows. (House-style §Lazy Defaults.)
-- **No banned fonts** — no Roboto, Arial, Helvetica, Open Sans, DM Sans, Space Grotesk. (Two families: Playfair Display + Inter.)
-- **No third accent color.** Amber `#F5A623` leads (once per beat). Rose `#C4A3A3` is connective tissue at midtone usage, never headline, never action color. That's it. No green, no blue, no white-flash. (DESIGN.md §Colors.)
-- **No accent fill behind body text.** Amber on cream fails AA at body sizes (DESIGN.md WCAG note); use amber for ≥40px or on `foreground-stop-1` panels only — currently used only as an underline rule and a glow tint, never as text color or full panel fill.
-- **No two amber marks in the same frame.** DESIGN.md Do's: "Never two amber marks in the same frame."
-- **No competing focal events during the speaker's pauses.** This is a talking-head; the speaker's face is the primary focal point. UI does not pull attention away from the speaker except in the held moments after each phrase resolves.
-- **No PUNCH / SLAM / CRASH / SHATTER choreography.** `motion.energy: calm`. Verbs in this composition are: *holds, drifts, breathes, pulses, surfaces, settles, draws, fades, narrows, retracts, mutates*. Anything ballistic is wrong.
-- **No `<br>` in headlines.** Headlines wrap naturally via `max-width: 80%`.
-- **No timestamps on HOOK or THESIS.** Attribution / cadence note is PAYOFF only (DESIGN.md §Layout).
-- **No card / button / chip components.** "There are no cards, no buttons. This is a portrait, not a UI surface." (DESIGN.md §Elevation.)
-- **No aggressive caption tightening.** Strategy says "preserve natural pauses between phrases, no aggressive tightening — this is a reflective monologue, not a fast cut." Caption swaps gate to transcript natural-pause boundaries; do not collapse pauses to compress runtime.
-- **No animated headline color shift.** THESIS `#2a2a2a` and PAYOFF `#1f1f1f` are static; the difference is per-beat, not within a beat.
-- **No ambient pulse on amber rest-points.** The amber lead is the eye-rest color (DESIGN.md). Underlines and glow tint are the rest; pulsing the rest-point defeats it. Glow breathes (scale + opacity) because that is the canonical glow ambient — the breath is part of "rest", not an emphasis cue.
-- **No visual SFX overlays** (whoosh swooshes, particle bursts, sparkle effects). The grain is the texture; nothing else overlays.
-- **No asymmetric per-beat transition family.** Both transitions are `thermal-distortion`. Mixing in a `glitch` or `cinematic-zoom` would fracture the unbroken-room reading.
+---
+
+*Total beats: 4 · Approximate length: 26.5s · Energy: calm sustained ·
+Transitions: 3× cross-warp-morph (between beats) + 1× cross-warp-morph
+to black (after PAYOFF). Per-beat element count holds 9–10. All hex,
+type, easing, and duration values are cited from
+`hyperframes/DESIGN.md` and not invented at this layer.*

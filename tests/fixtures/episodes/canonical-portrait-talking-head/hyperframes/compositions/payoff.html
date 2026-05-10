@@ -1,232 +1,223 @@
 <div id="scene-payoff" class="scene clip"
-     data-start="11.7" data-duration="10.7" data-track-index="1"
+     data-start="13.360000000000001" data-duration="11.98" data-track-index="1"
      data-width="1080" data-height="1920">
   <style>
     #scene-payoff {
       position: absolute;
       inset: 0;
       opacity: 0;
+      background-color: #0a0a0a;
       overflow: hidden;
-      background: linear-gradient(180deg, #FFF8EC 0%, #E6DFD4 100%);
-      font-family: "Inter", system-ui, sans-serif;
-      color: #2a2a2a;
+      font-family: "Inter", sans-serif;
+      color: #f0f0f0;
     }
-    #scene-payoff .scene-content {
+    #scene-payoff .pf-vignette {
       position: absolute;
       inset: 0;
-      width: 100%;
-      height: 100%;
-    }
-    #scene-payoff .pf-speaker-plate {
-      position: absolute;
-      left: 0;
-      right: 0;
-      top: 12%;
-      height: 56%;
-      background:
-        radial-gradient(ellipse at 50% 45%, rgba(255, 253, 248, 0.55) 0%, rgba(204, 198, 189, 0) 70%),
-        linear-gradient(180deg, #E6DFD4 0%, #CCC6BD 100%);
-    }
-    #scene-payoff .pf-vignette-top {
-      position: absolute;
-      left: 0;
-      right: 0;
-      top: 0;
-      height: 18%;
-      background: radial-gradient(ellipse at 50% 0%, #FFFDF8 0%, rgba(255, 253, 248, 0) 75%);
-      opacity: 0;
+      background: radial-gradient(ellipse at 38% 42%, #0a0a0a 0%, #080808 55%, #050505 100%);
+      opacity: 1;
       pointer-events: none;
     }
     #scene-payoff .pf-grain {
       position: absolute;
-      inset: -2%;
+      inset: 0;
+      background-color: #141414;
       opacity: 0.04;
-      mix-blend-mode: multiply;
-      background-image:
-        repeating-radial-gradient(circle at 17% 23%, #2a2a2a 0px, #2a2a2a 1px, transparent 1px, transparent 3px),
-        repeating-radial-gradient(circle at 73% 61%, #1f1f1f 0px, #1f1f1f 1px, transparent 1px, transparent 4px);
+      mix-blend-mode: overlay;
       pointer-events: none;
     }
-    #scene-payoff .pf-radial-glow {
+    #scene-payoff .pf-ghost-numeral {
       position: absolute;
-      left: 50%;
-      top: 60%;
-      width: 720px;
-      height: 720px;
-      margin-left: -360px;
-      margin-top: -360px;
-      border-radius: 50%;
-      background: radial-gradient(circle at 50% 50%, #F5A623 0%, rgba(245, 166, 35, 0) 60%);
-      opacity: 0.12;
-      pointer-events: none;
-      transform-origin: 50% 50%;
+      top: 8%;
+      right: 10%;
+      font-family: "Inter", sans-serif;
+      font-weight: 300;
+      font-size: 4rem;
+      letter-spacing: 0.15em;
+      color: rgba(240, 240, 240, 0.04);
+      line-height: 1;
+      user-select: none;
     }
-    #scene-payoff .pf-hairline {
+    #scene-payoff .pf-page-rule {
       position: absolute;
-      top: 96px;
-      left: 96px;
-      right: 96px;
+      top: 78%;
+      left: 0;
+      width: 0;
       height: 1px;
-      background: #C4A3A3;
-      opacity: 0.6;
-      transform-origin: right center;
-    }
-    #scene-payoff .pf-margin-tick {
-      position: absolute;
-      bottom: 320px;
-      left: 96px;
-      width: 24px;
-      height: 1px;
-      background: #C4A3A3;
-      opacity: 0.6;
+      background-color: rgba(240, 240, 240, 0.06);
       transform-origin: left center;
     }
-    #scene-payoff .pf-overline {
+    #scene-payoff .pf-anchor-rule {
       position: absolute;
-      top: 56px;
-      right: 96px;
-      font-family: "Inter", system-ui, sans-serif;
+      left: 12%;
+      top: 14%;
+      width: 1px;
+      height: 72%;
+      background-color: #1a237e;
+      opacity: 0.30;
+    }
+    #scene-payoff .pf-content {
+      position: absolute;
+      left: 16%;
+      top: 22%;
+      width: 70%;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+    #scene-payoff .pf-overline {
+      font-family: "Inter", sans-serif;
       font-weight: 500;
       font-size: 0.75rem;
-      letter-spacing: 0.18em;
+      letter-spacing: 0.32em;
       text-transform: uppercase;
-      color: #404040;
+      color: #d8d8d8;
       opacity: 0;
     }
-    #scene-payoff .pf-headline-wrap {
-      position: absolute;
-      left: 96px;
-      right: 96px;
-      bottom: 196px;
-      max-width: 80%;
+    #scene-payoff .pf-divider {
+      width: 0;
+      height: 1px;
+      background-color: rgba(240, 240, 240, 0.10);
+      transform-origin: left center;
     }
     #scene-payoff .pf-headline {
-      font-family: "Playfair Display", serif;
-      font-weight: 400;
-      font-style: italic;
-      font-size: 4.5rem;
-      line-height: 1.05;
-      letter-spacing: -0.01em;
-      color: #1f1f1f;
-      margin: 0 0 0 -0.05em;
-      font-variant-numeric: oldstyle-nums;
-      opacity: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 24px;
     }
-    #scene-payoff .pf-attribution {
-      position: absolute;
-      left: 96px;
-      bottom: 144px;
-      font-family: "Inter", system-ui, sans-serif;
+    #scene-payoff .pf-line {
+      font-family: "Inter", sans-serif;
       font-weight: 300;
-      font-size: 1.125rem;
-      line-height: 1.7;
-      color: #404040;
+      font-size: 3rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #f0f0f0;
+      line-height: 1.05;
       opacity: 0;
-      letter-spacing: 0.01em;
+      display: flex;
+      align-items: baseline;
+      gap: 24px;
+    }
+    #scene-payoff .pf-once-wrap {
+      position: relative;
+      display: inline-block;
+      color: #f0f0f0;
+    }
+    #scene-payoff .pf-once-underline {
+      position: absolute;
+      left: 0;
+      bottom: -6px;
+      width: 0;
+      height: 1px;
+      background-color: #1a237e;
+      max-width: 70%;
+    }
+    #scene-payoff .pf-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 4px;
+      background-color: #1a237e;
+      opacity: 0;
+      transform: scale(0);
+      align-self: center;
     }
   </style>
   <div class="scene-content">
-    <div class="pf-speaker-plate"></div>
+    <div class="pf-vignette"></div>
     <div class="pf-grain"></div>
-    <div class="pf-radial-glow"></div>
-    <div class="pf-vignette-top"></div>
-    <div class="pf-hairline"></div>
-    <div class="pf-margin-tick"></div>
-    <div class="pf-overline">03 / PAYOFF</div>
-    <div class="pf-headline-wrap">
-      <h1 class="pf-headline">and that&rsquo;s the quiet part &mdash; the part you keep.</h1>
+    <div class="pf-ghost-numeral">04</div>
+    <div class="pf-page-rule"></div>
+    <div class="pf-anchor-rule"></div>
+    <div class="pf-content">
+      <div class="pf-overline">04 / Aspiration</div>
+      <div class="pf-divider"></div>
+      <div class="pf-headline">
+        <div class="pf-line pf-line-1">GOOD OLD SOFTWARE</div>
+        <div class="pf-line pf-line-2">
+          <span>YOU PAY FOR&nbsp;</span>
+          <span class="pf-once-wrap">
+            ONCE
+            <span class="pf-once-underline"></span>
+          </span>
+          <span class="pf-dot"></span>
+        </div>
+      </div>
     </div>
-    <div class="pf-attribution">a closing reflection &middot; take 03</div>
   </div>
   <script>
-    (function () {
+    (function() {
       window.__sceneTimelines = window.__sceneTimelines || {};
-      const root = document.getElementById("scene-payoff");
-      const q = (sel) => root.querySelector(sel);
-      const glow = q(".pf-radial-glow");
-      const grain = q(".pf-grain");
-      const hairline = q(".pf-hairline");
-      const overline = q(".pf-overline");
-      const headline = q(".pf-headline");
-      const attribution = q(".pf-attribution");
-      const vignette = q(".pf-vignette-top");
-      const tick = q(".pf-margin-tick");
+      const root = document.querySelector("#scene-payoff");
+      const vignette = root.querySelector(".pf-vignette");
+      const ghost = root.querySelector(".pf-ghost-numeral");
+      const pageRule = root.querySelector(".pf-page-rule");
+      const anchor = root.querySelector(".pf-anchor-rule");
+      const overline = root.querySelector(".pf-overline");
+      const divider = root.querySelector(".pf-divider");
+      const line1 = root.querySelector(".pf-line-1");
+      const line2 = root.querySelector(".pf-line-2");
+      const onceWrap = root.querySelector(".pf-once-wrap");
+      const onceUnderline = root.querySelector(".pf-once-underline");
+      const dot = root.querySelector(".pf-dot");
 
-      const sceneDuration = 10.7;
-      const glowCycle = 1.2;
-      const grainCycle = 7.4;
-      const hairlineCycle = 4.0;
-      const fadeStart = 10.3;
-      const fadeDur = 0.4;
-
+      const sceneDuration = 11.98;
       const tl = gsap.timeline({ paused: true });
 
-      // Scene container reveal — held opacity:0 until the future transitions node fades it in.
-      tl.fromTo(root,
-        { opacity: 0 },
-        { opacity: 1, duration: 0.4, ease: "sine.inOut" }, 0.0);
+      tl.fromTo(overline, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.6, ease: "sine.inOut" }, 0.20);
+      tl.fromTo(divider, { width: "0%" }, { width: "100%", duration: 1.0, ease: "sine.inOut" }, 0.60);
+      tl.fromTo(pageRule, { width: "0%" }, { width: "100%", duration: 1.4, ease: "sine.inOut" }, 0.80);
+      tl.fromTo(line1, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 1.0, ease: "sine.inOut" }, 1.10);
+      tl.fromTo(line2, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 1.0, ease: "sine.inOut" }, 1.50);
+      tl.fromTo(onceWrap, { color: "#f0f0f0" }, { color: "#ffffff", duration: 0.6, ease: "sine.inOut" }, 2.10);
+      tl.fromTo(onceUnderline, { width: "0%" }, { width: "70%", duration: 0.7, ease: "power2.out" }, 2.30);
+      tl.fromTo(dot, { opacity: 0, scale: 0 }, { opacity: 1, scale: 1, duration: 0.5, ease: "sine.inOut" }, 3.50);
 
-      // First content entrance — overline label settles in (offset within 0.1-0.3s).
-      tl.fromTo(overline,
-        { y: 24, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.9, ease: "sine.inOut" }, 0.10);
-
-      tl.fromTo(vignette,
-        { opacity: 0 },
-        { opacity: 1, duration: 0.6, ease: "sine.out" }, 0.10);
-
-      tl.fromTo(hairline,
-        { scaleX: 0 },
-        { scaleX: 1, duration: 0.6, ease: "sine.inOut" }, 0.18);
-
-      tl.fromTo(tick,
-        { scaleX: 0 },
-        { scaleX: 1, duration: 0.5, ease: "sine.out" }, 0.25);
-
-      // Headline (sign-off) surfaces 320ms after the overline starts (DESIGN.md mandate).
-      tl.fromTo(headline,
-        { y: 24, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.9, ease: "sine.inOut" }, 0.42);
-
-      tl.fromTo(attribution,
-        { y: 24, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.9, ease: "sine.inOut" }, 1.20);
-
-      // Ambient: radial glow breathing — finite repeat derived from scene length.
-      tl.to(glow, {
-        scale: 1.04,
-        opacity: 0.14,
+      const anchorCycle = 6.0;
+      tl.to(anchor, {
+        opacity: 0.45,
+        duration: anchorCycle / 2,
         yoyo: true,
-        duration: glowCycle,
-        ease: "sine.inOut",
-        repeat: Math.floor(sceneDuration / glowCycle)
+        repeat: Math.floor(sceneDuration / anchorCycle),
+        ease: "sine.inOut"
       }, 0);
 
-      // Ambient: warm-grain drift — slow yoyo across the full beat.
-      tl.to(grain, {
-        x: 4,
-        y: -3,
+      const vigCycle = 8.0;
+      tl.to(vignette, {
+        opacity: 0.92,
+        duration: vigCycle / 2,
         yoyo: true,
-        duration: grainCycle,
-        ease: "sine.inOut",
-        repeat: Math.floor(sceneDuration / grainCycle)
+        repeat: Math.floor(sceneDuration / vigCycle),
+        ease: "sine.inOut"
       }, 0);
 
-      // Ambient: hairline opacity pulse.
-      tl.to(hairline, {
-        opacity: 0.5,
+      const ghostCycle = 10.0;
+      tl.to(ghost, {
+        y: -2,
+        duration: ghostCycle / 2,
         yoyo: true,
-        duration: hairlineCycle,
-        ease: "sine.inOut",
-        repeat: Math.floor(sceneDuration / hairlineCycle)
-      }, 0.7);
+        repeat: Math.floor(sceneDuration / ghostCycle),
+        ease: "sine.inOut"
+      }, 0);
 
-      // HR 4 final-fade (is_final=true): headline + attribution alone fade over the last 0.4s,
-      // leaving speaker + cream + ambient atmosphere intact.
-      tl.to(headline,    { opacity: 0, duration: fadeDur, ease: "power1.inOut" }, fadeStart);
-      tl.to(attribution, { opacity: 0, duration: fadeDur, ease: "power1.inOut" }, fadeStart);
-      tl.set(headline,    { visibility: "hidden" }, fadeStart + fadeDur);
-      tl.set(attribution, { visibility: "hidden" }, fadeStart + fadeDur);
+      const dotCycle = 4.0;
+      tl.to(dot, {
+        backgroundColor: "#2e3aa3",
+        duration: dotCycle / 2,
+        yoyo: true,
+        repeat: Math.floor(sceneDuration / dotCycle),
+        ease: "sine.inOut"
+      }, 4.10);
+
+      const fadeStart = sceneDuration - 1.2;
+      const fadeDur = 1.0;
+      tl.to(line1, { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.set(line1, { visibility: "hidden" }, fadeStart + fadeDur);
+      tl.to(line2, { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.set(line2, { visibility: "hidden" }, fadeStart + fadeDur);
+      tl.to(overline, { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.set(overline, { visibility: "hidden" }, fadeStart + fadeDur);
+      tl.to(root, { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
 
       window.__sceneTimelines["payoff"] = tl;
     })();

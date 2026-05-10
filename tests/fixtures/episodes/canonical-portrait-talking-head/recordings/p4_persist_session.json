@@ -1,0 +1,11 @@
+{
+  "channel_writes": "deque([['llm_runs', [{'node': 'p4_persist_session', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'cheap', 'success': True, 'reason': None, 'wall_time_s': 83.79699999999866, 'tokens_in': 23, 'tokens_out': 7946, 'timestamp': '2026-05-09T11:15:00.695156+00:00'}]], ['compose', {'persist': {'persisted_at': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\edit\\\\project.md', 'session_n': 3}, 'session_persisted': True}], ['branch:to:studio_launch', None]])",
+  "fingerprint": "14bbbfc14282bf718717a2731f2d3ed6",
+  "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_persist_session.p4_persist_session_node,p4_persist_session",
+  "node": "p4_persist_session",
+  "recorded_at": null,
+  "recording_meta": {
+    "encoding": "msgpack",
+    "value_bytes": 440
+  }
+}

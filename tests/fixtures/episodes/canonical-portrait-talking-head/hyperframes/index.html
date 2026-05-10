@@ -25,7 +25,7 @@
       id="root"
       data-composition-id="root"
       data-start="0"
-      data-duration="22.367"
+      data-duration="26.283"
       data-width="1080"
       data-height="1920"
     >
@@ -41,57 +41,14 @@
       // Example: tl.from("#title", { opacity: 0, y: -50, duration: 1 }, 0);
       window.__timelines["root"] = tl;
     </script>
-  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<!-- p4_assemble_index: tokens begin -->
+  <!-- p4_assemble_index: tokens begin -->
 <style>
 :root {
-  --bg: #FFF8EC;
-  --fg: #2a2a2a;
-  --accent: #F5A623;
-  --font-display: "Playfair Display", sans-serif;
+  --bg: #0a0a0a;
+  --surface: #1a1a1a;
+  --fg: #f0f0f0;
+  --accent: #1a237e;
+  --font-display: Inter, sans-serif;
   --font-body: Inter, sans-serif;
 }
 </style>
@@ -99,865 +56,991 @@
 <!-- p4_assemble_index: beats -->
 <!-- beat: hook -->
 <div id="scene-hook" class="scene clip"
-     data-start="0.0" data-duration="1.2" data-track-index="1"
+     data-start="0.0" data-duration="1.22" data-track-index="1"
      data-width="1080" data-height="1920">
   <style>
     #scene-hook {
-      position: absolute; inset: 0; opacity: 1; overflow: hidden;
-      background: linear-gradient(180deg, #FFF8EC 0%, #E6DFD4 100%);
-      font-family: "Inter", system-ui, sans-serif;
-      color: #2a2a2a;
+      position: absolute;
+      inset: 0;
+      opacity: 1;
+      background: #0a0a0a;
+      overflow: hidden;
+      font-family: "Inter", sans-serif;
+      color: #f0f0f0;
     }
-    #scene-hook .scene-content { position: absolute; inset: 0; }
-
-    #scene-hook .grain {
-      position: absolute; inset: -24px;
-      background-image:
-        radial-gradient(rgba(42, 42, 42, 0.22) 1px, transparent 1px),
-        radial-gradient(rgba(42, 42, 42, 0.14) 1px, transparent 1px);
-      background-size: 3px 3px, 5px 5px;
-      background-position: 0 0, 1px 2px;
-      mix-blend-mode: multiply;
+    #scene-hook .hk-vignette {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 38% 42%, #0a0a0a 0%, #080808 55%, #050505 100%);
+      pointer-events: none;
+    }
+    #scene-hook .hk-grain {
+      position: absolute;
+      inset: 0;
       opacity: 0.04;
-      will-change: transform;
+      background-image:
+        repeating-linear-gradient(0deg,   #f0f0f0 0px, #f0f0f0 1px, transparent 1px, transparent 3px),
+        repeating-linear-gradient(90deg,  #f0f0f0 0px, #f0f0f0 1px, transparent 1px, transparent 3px);
+      mix-blend-mode: overlay;
       pointer-events: none;
     }
-
-    #scene-hook .speaker-plate {
+    #scene-hook .hk-ghost-numeral {
       position: absolute;
-      left: 0; right: 0;
-      top: 12%; height: 56%;
-      background:
-        radial-gradient(ellipse at 50% 38%, rgba(196, 163, 163, 0.55) 0%, rgba(176, 146, 146, 0.32) 38%, rgba(204, 198, 189, 0) 72%),
-        linear-gradient(180deg, #E6DFD4 0%, #CCC6BD 100%);
+      top: 8%;
+      right: 12%;
+      font-size: 4rem;
+      font-weight: 300;
+      letter-spacing: 0.05em;
+      color: #f0f0f0;
+      opacity: 0.04;
     }
-
-    #scene-hook .speaker-rim {
+    #scene-hook .hk-anchor-rule {
       position: absolute;
-      left: 0; right: 0;
-      top: 12%;
-      height: 4px;
-      background: linear-gradient(90deg, rgba(196, 163, 163, 0) 0%, #C4A3A3 50%, rgba(196, 163, 163, 0) 100%);
-      opacity: 0.5;
-    }
-
-    #scene-hook .vignette-top {
-      position: absolute;
-      left: 0; right: 0; top: 0;
-      height: 360px;
-      background: radial-gradient(ellipse at 50% 0%, #FFFDF8 0%, rgba(255, 253, 248, 0) 75%);
-      opacity: 0;
-      will-change: opacity;
-      pointer-events: none;
-    }
-
-    #scene-hook .glow {
-      position: absolute;
-      left: calc(50% - 360px);
-      top: calc(60% - 360px);
-      width: 720px; height: 720px;
-      background: radial-gradient(circle, #F5A623 0%, rgba(245, 166, 35, 0) 60%);
-      opacity: 0.08;
+      left: 12%;
+      top: 0;
+      width: 1px;
+      height: 100%;
+      background: #1a237e;
+      opacity: 0.30;
+      transform-origin: top center;
       will-change: transform, opacity;
-      pointer-events: none;
     }
-
-    #scene-hook .hairline {
+    #scene-hook .hk-content {
       position: absolute;
-      top: 96px; left: 96px; right: 96px;
+      left: 12%;
+      right: 11%;
+      top: 26%;
+      padding-left: 64px;
+    }
+    #scene-hook .hk-overline {
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: #d8d8d8;
+      margin: 0 0 16px 0;
+    }
+    #scene-hook .hk-divider {
+      width: 32%;
       height: 1px;
-      background: #C4A3A3;
-      opacity: 0;
-      transform-origin: right center;
-      transform: scaleX(0);
-      will-change: transform, opacity;
+      background: #f0f0f0;
+      opacity: 0.10;
+      margin: 0 0 32px 0;
+      transform-origin: left center;
+      will-change: transform;
     }
-
-    #scene-hook .corner-mark {
-      position: absolute;
-      top: 60px; left: 96px;
-      font-family: "Inter", sans-serif;
-      font-weight: 500;
-      font-size: 0.75rem;
-      letter-spacing: 0.18em;
+    #scene-hook .hk-headline {
+      font-size: 3rem;
+      font-weight: 300;
+      letter-spacing: 0.15em;
       text-transform: uppercase;
-      color: #404040;
-      opacity: 0;
+      line-height: 1.2;
+      color: #f0f0f0;
+      margin: 0;
       will-change: transform, opacity;
     }
-
-    #scene-hook .overline {
-      position: absolute;
-      top: 60px; right: 96px;
-      font-family: "Inter", sans-serif;
-      font-weight: 500;
-      font-size: 0.75rem;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: #404040;
-      opacity: 0;
-      will-change: transform, opacity;
+    #scene-hook .hk-emphasized {
+      position: relative;
+      display: inline-block;
+      color: #f0f0f0;
     }
-
-    #scene-hook .overline-rule {
+    #scene-hook .hk-emphasized .hk-underline {
       position: absolute;
-      top: 84px; right: 96px;
-      width: 24px; height: 2px;
-      background: #F5A623;
+      left: 0;
+      bottom: -6px;
+      width: 70%;
+      height: 1px;
+      background: #1a237e;
       transform: scaleX(0);
       transform-origin: left center;
       will-change: transform;
     }
-
-    #scene-hook .caption-strip {
-      position: absolute;
-      left: 96px; right: 96px; bottom: 96px;
-      padding: 18px 28px;
-      background: rgba(255, 253, 248, 0.82);
-      border-radius: 16px;
-      font-family: "Inter", sans-serif;
-      font-weight: 300;
-      font-size: 1.125rem;
-      line-height: 1.7;
-      color: #404040;
-      opacity: 0;
-      will-change: transform, opacity;
-    }
-
-    #scene-hook .footer-mark {
-      position: absolute;
-      left: 96px; bottom: 56px;
-      font-family: "Inter", sans-serif;
-      font-weight: 500;
-      font-size: 0.75rem;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: #404040;
-      opacity: 0;
-      will-change: transform, opacity;
-    }
   </style>
-
   <div class="scene-content">
-    <div class="grain"></div>
-    <div class="speaker-plate"></div>
-    <div class="speaker-rim"></div>
-    <div class="vignette-top"></div>
-    <div class="glow"></div>
-    <div class="hairline"></div>
-    <div class="corner-mark">soft signal</div>
-    <div class="overline">01 / Reflection</div>
-    <div class="overline-rule"></div>
-    <div class="caption-strip">a thought already in motion.</div>
-    <div class="footer-mark">take 01 &middot; cream seamless</div>
+    <div class="hk-vignette"></div>
+    <div class="hk-grain"></div>
+    <div class="hk-ghost-numeral">01</div>
+    <div class="hk-anchor-rule"></div>
+    <div class="hk-content">
+      <p class="hk-overline">01 / Premise</p>
+      <div class="hk-divider"></div>
+      <h1 class="hk-headline">
+        Age of Artificial
+        <span class="hk-emphasized">Intelligence<span class="hk-underline"></span></span>
+      </h1>
+    </div>
   </div>
-
   <script>
     (function () {
       window.__sceneTimelines = window.__sceneTimelines || {};
       const root = document.getElementById("scene-hook");
       const q = (s) => root.querySelector(s);
+
+      const vignette = q(".hk-vignette");
+      const ghost    = q(".hk-ghost-numeral");
+      const rule     = q(".hk-anchor-rule");
+      const overline = q(".hk-overline");
+      const divider  = q(".hk-divider");
+      const headline = q(".hk-headline");
+      const emph     = q(".hk-emphasized");
+      const ulLine   = q(".hk-underline");
+
+      const sceneDuration = 1.22;
       const tl = gsap.timeline({ paused: true });
 
-      const sceneDuration = 1.2;
+      tl.fromTo(rule,
+        { scaleY: 0, opacity: 0.30 },
+        { scaleY: 1, opacity: 0.30, duration: 0.55, ease: "sine.inOut" },
+        0.10);
 
-      tl.fromTo(q(".vignette-top"),
-        { opacity: 0 },
-        { opacity: 0.08, duration: 0.6, ease: "power1.inOut" },
-        0.10
-      );
+      tl.fromTo(overline,
+        { opacity: 0, y: 4 },
+        { opacity: 1, y: 0, duration: 0.32, ease: "sine.out" },
+        0.12);
 
-      tl.fromTo(q(".hairline"),
-        { scaleX: 0, opacity: 0 },
-        { scaleX: 1, opacity: 0.6, duration: 0.6, ease: "sine.out" },
-        0.10
-      );
-
-      tl.fromTo(q(".overline"),
-        { y: 24, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.9, ease: "sine.inOut" },
-        0.10
-      );
-
-      tl.fromTo(q(".corner-mark"),
-        { y: 24, opacity: 0 },
-        { y: 0, opacity: 0.55, duration: 0.9, ease: "sine.inOut" },
-        0.12
-      );
-
-      tl.fromTo(q(".overline-rule"),
+      tl.fromTo(divider,
         { scaleX: 0 },
-        { scaleX: 1, duration: 0.6, ease: "power2.out" },
-        0.18
-      );
+        { scaleX: 1, duration: 0.32, ease: "sine.inOut" },
+        0.32);
 
-      tl.fromTo(q(".caption-strip"),
-        { y: 24, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.9, ease: "sine.inOut" },
-        0.22
-      );
+      tl.fromTo(headline,
+        { opacity: 0, y: 8 },
+        { opacity: 1, y: 0, duration: 0.38, ease: "power2.out" },
+        0.45);
 
-      tl.fromTo(q(".footer-mark"),
-        { y: 16, opacity: 0 },
-        { y: 0, opacity: 0.45, duration: 0.7, ease: "power1.out" },
-        0.28
-      );
+      tl.fromTo(emph,
+        { color: "#f0f0f0" },
+        { color: "#ffffff", duration: 0.28, ease: "sine.inOut" },
+        0.68);
 
-      const glowHalf = 0.6;
-      tl.to(q(".glow"),
-        {
-          scale: 1.04,
-          opacity: 0.10,
-          duration: glowHalf,
-          ease: "sine.inOut",
-          yoyo: true,
-          repeat: Math.floor(sceneDuration / glowHalf)
-        },
-        0
-      );
+      tl.fromTo(ulLine,
+        { scaleX: 0 },
+        { scaleX: 1, duration: 0.30, ease: "power2.out" },
+        0.78);
 
-      tl.to(q(".grain"),
-        { x: 4, y: -3, duration: sceneDuration, ease: "sine.inOut" },
-        0
-      );
+      const vignetteCycle = 0.40;
+      tl.to(vignette,
+        { opacity: 0.92, yoyo: true,
+          repeat: Math.floor(sceneDuration / vignetteCycle),
+          duration: vignetteCycle, ease: "sine.inOut" },
+        0);
 
-      const hairHalf = 0.6;
-      tl.to(q(".hairline"),
-        {
-          opacity: 0.5,
-          duration: hairHalf,
-          ease: "sine.inOut",
-          yoyo: true,
-          repeat: Math.floor(sceneDuration / hairHalf)
-        },
-        0.6
-      );
+      const ghostCycle = 0.50;
+      tl.fromTo(ghost,
+        { y: -2 },
+        { y: 2, yoyo: true,
+          repeat: Math.floor(sceneDuration / ghostCycle),
+          duration: ghostCycle, ease: "sine.inOut" },
+        0);
+
+      const ruleBreathCycle = 0.45;
+      tl.to(rule,
+        { opacity: 0.45, yoyo: true,
+          repeat: Math.floor(sceneDuration / ruleBreathCycle),
+          duration: ruleBreathCycle, ease: "sine.inOut" },
+        0.65);
+
+      const fadeStart = sceneDuration - 0.20;
+      const fadeDur = 0.18;
+
+      tl.to(overline, { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.to(divider,  { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.to(headline, { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.to(ulLine,   { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+
+      tl.set(overline, { visibility: "hidden" }, fadeStart + fadeDur);
+      tl.set(divider,  { visibility: "hidden" }, fadeStart + fadeDur);
+      tl.set(headline, { visibility: "hidden" }, fadeStart + fadeDur);
+      tl.set(ulLine,   { visibility: "hidden" }, fadeStart + fadeDur);
 
       window.__sceneTimelines["hook"] = tl;
     })();
   </script>
 </div>
-<!-- beat: thesis -->
-<div id="scene-thesis" class="scene clip"
-     data-start="1.2" data-duration="10.5" data-track-index="1"
+<!-- beat: problem -->
+<div id="scene-problem" class="scene clip"
+     data-start="1.22" data-duration="10.5" data-track-index="1"
      data-width="1080" data-height="1920">
   <style>
-    #scene-thesis {
-      position: absolute; inset: 0; opacity: 0; overflow: hidden;
-      background: linear-gradient(180deg, #FFF8EC 0%, #E6DFD4 100%);
-      font-family: 'Inter', system-ui, sans-serif;
-      color: #2a2a2a;
-    }
-    #scene-thesis .scene-content { position: absolute; inset: 0; }
+    #scene-problem { position: absolute; inset: 0; opacity: 0; background: #0a0a0a; overflow: hidden; }
 
-    #scene-thesis .speaker-plate {
-      position: absolute; left: 0; right: 0;
-      top: 12%; height: 56%;
-      background:
-        radial-gradient(ellipse at 50% 38%, rgba(196, 163, 163, 0.45) 0%, rgba(176, 146, 146, 0.28) 38%, rgba(204, 198, 189, 0) 72%),
-        linear-gradient(180deg, #E6DFD4 0%, #CCC6BD 100%);
+    #scene-problem .bg-vignette {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 38% 42%, #0a0a0a 0%, #080808 55%, #050505 100%);
+      opacity: 0.92;
     }
-
-    #scene-thesis .speaker-rim {
-      position: absolute; left: 0; right: 0;
-      top: 12%; height: 4px;
-      background: linear-gradient(90deg, rgba(196, 163, 163, 0) 0%, #C4A3A3 50%, rgba(196, 163, 163, 0) 100%);
-      opacity: 0.55;
+    #scene-problem .bg-grain {
+      position: absolute; inset: 0;
+      background-image: repeating-linear-gradient(
+        0deg, rgba(240,240,240,0.04) 0 1px, rgba(240,240,240,0.0) 1px 3px),
+        repeating-linear-gradient(
+        90deg, rgba(240,240,240,0.03) 0 1px, rgba(240,240,240,0.0) 1px 3px);
+      mix-blend-mode: overlay; opacity: 0.6; pointer-events: none;
     }
-
-    #scene-thesis .vignette-top {
-      position: absolute; top: 0; left: 0; right: 0; height: 360px;
-      background: radial-gradient(ellipse at 50% 0%, #FFFDF8 0%, rgba(255, 253, 248, 0) 75%);
-      opacity: 0.6;
-      pointer-events: none;
-      will-change: opacity;
+    #scene-problem .ghost-numeral {
+      position: absolute; top: 8%; right: 12%;
+      font-family: "Inter", sans-serif; font-weight: 300;
+      font-size: 4rem; letter-spacing: 0.1em;
+      color: #f0f0f0; opacity: 0.04;
     }
-
-    #scene-thesis .grain {
-      position: absolute; inset: -24px;
-      background-image:
-        radial-gradient(rgba(42, 42, 42, 0.22) 1px, transparent 1px),
-        radial-gradient(rgba(42, 42, 42, 0.14) 1px, transparent 1px);
-      background-size: 3px 3px, 5px 5px;
-      background-position: 0 0, 1px 2px;
-      mix-blend-mode: multiply;
-      opacity: 0.05;
-      pointer-events: none;
-      will-change: transform;
+    #scene-problem .anchor-rule {
+      position: absolute; left: 12%; top: 0; bottom: 0;
+      width: 1px; background: #1a237e; opacity: 0.30;
+      transform-origin: top center;
     }
-
-    #scene-thesis .glow {
-      position: absolute;
-      left: calc(50% - 360px);
-      top: calc(60% - 360px);
-      width: 720px; height: 720px;
-      background: radial-gradient(circle, #F5A623 0%, rgba(245, 166, 35, 0) 60%);
-      opacity: 0.10;
-      transform-origin: center center;
-      will-change: transform, opacity;
-      pointer-events: none;
+    #scene-problem .content {
+      position: absolute; left: 17%; right: 6%;
+      top: 22%;
     }
-
-    #scene-thesis .hairline-rule {
-      position: absolute; top: 96px; left: 96px; right: 96px; height: 1px;
-      background-color: #C4A3A3; opacity: 0.55;
-      transform-origin: right center;
-      will-change: opacity;
+    #scene-problem .overline {
+      font-family: "Inter", sans-serif; font-weight: 500;
+      font-size: 0.75rem; letter-spacing: 0.32em;
+      text-transform: uppercase; color: #d8d8d8;
+      margin-bottom: 12px;
     }
-
-    #scene-thesis .margin-tick {
-      position: absolute; bottom: 320px; left: 96px;
-      width: 24px; height: 1px;
-      background: #C4A3A3; opacity: 0.55;
-      transform: scaleX(0); transform-origin: left center;
-      will-change: transform;
+    #scene-problem .hairline-divider {
+      width: 0; height: 1px; background: rgba(240,240,240,0.10);
+      margin-bottom: 32px;
     }
-
-    #scene-thesis .corner-mark {
-      position: absolute; top: 60px; left: 96px;
-      font-family: 'Inter', sans-serif;
-      font-weight: 500; font-size: 0.75rem;
-      letter-spacing: 0.18em; text-transform: uppercase;
-      color: #404040; opacity: 0;
-      will-change: transform, opacity;
+    #scene-problem .body-paragraph {
+      font-family: "Inter", sans-serif; font-weight: 300;
+      font-size: 1.125rem; line-height: 1.6;
+      color: #f0f0f0; max-width: 60ch;
+      letter-spacing: 0.005em;
     }
-
-    #scene-thesis .overline {
-      position: absolute; top: 60px; right: 96px;
-      font-family: 'Inter', sans-serif;
-      font-weight: 500; font-size: 0.75rem;
-      letter-spacing: 0.18em; text-transform: uppercase;
-      color: #404040; opacity: 0;
-      will-change: transform, opacity;
-    }
-
-    #scene-thesis .overline-rule {
-      position: absolute; top: 84px; right: 96px;
-      width: 24px; height: 2px;
-      background: #F5A623;
-      transform: scaleX(0); transform-origin: left center;
-      will-change: transform;
-    }
-
-    #scene-thesis .headline {
-      position: absolute;
-      left: 96px; right: 96px; bottom: 360px;
-      font-family: 'Playfair Display', serif;
-      font-style: italic; font-weight: 400;
-      font-size: 4.5rem; line-height: 1.05; letter-spacing: -0.01em;
-      color: #2a2a2a;
-      max-width: 80%; margin-left: -0.05em;
-      font-variant-numeric: oldstyle-nums;
+    #scene-problem .body-paragraph .word { display: inline-block; }
+    #scene-problem .body-paragraph .hl { color: #f0f0f0; }
+    #scene-problem .margin-tick {
+      position: absolute; left: -28px; top: calc(1.6em * 2 + 0.4em);
+      width: 14px; height: 1px; background: #1a237e;
       opacity: 0;
-      will-change: transform, opacity;
     }
-    #scene-thesis .keyword { position: relative; display: inline-block; }
-    #scene-thesis .kw-underline {
-      position: absolute; left: 0; right: 0; bottom: 0.04em;
-      height: 2px; background-color: #F5A623;
-      transform: scaleX(0); transform-origin: left center;
-      will-change: transform;
-    }
-
-    #scene-thesis .caption-strip {
-      position: absolute; left: 96px; right: 96px; bottom: 96px;
-      padding: 18px 28px; border-radius: 16px;
-      background: rgba(255, 253, 248, 0.82);
-      font-family: 'Inter', sans-serif;
-      font-weight: 300; font-size: 1.125rem; line-height: 1.7;
-      color: #404040; opacity: 0;
-      will-change: transform, opacity;
-    }
-
-    #scene-thesis .footer-mark {
-      position: absolute; left: 96px; bottom: 56px;
-      font-family: 'Inter', sans-serif;
-      font-weight: 500; font-size: 0.75rem;
-      letter-spacing: 0.18em; text-transform: uppercase;
-      color: #404040; opacity: 0.45;
+    #scene-problem .bottom-rule {
+      position: absolute; left: 12%; right: 6%; top: 78%;
+      height: 1px; background: rgba(240,240,240,0.06);
+      transform-origin: left center; transform: scaleX(0);
     }
   </style>
 
   <div class="scene-content">
-    <div class="speaker-plate"></div>
-    <div class="speaker-rim"></div>
-    <div class="vignette-top"></div>
-    <div class="grain"></div>
-    <div class="glow"></div>
-    <div class="hairline-rule"></div>
-    <div class="margin-tick"></div>
-    <div class="corner-mark">soft signal</div>
-    <div class="overline">02 / Thesis</div>
-    <div class="overline-rule"></div>
-    <div class="headline">the <span class="keyword">held<span class="kw-underline" aria-hidden="true"></span></span> breath of the moment.</div>
-    <div class="caption-strip">when you stop reaching for the next thing &mdash; that&rsquo;s where the real work begins.</div>
-    <div class="footer-mark">take 02 &middot; cream seamless</div>
+    <div class="bg-vignette" aria-hidden="true"></div>
+    <div class="bg-grain" aria-hidden="true"></div>
+    <div class="ghost-numeral" aria-hidden="true">02</div>
+    <div class="anchor-rule" aria-hidden="true"></div>
+    <div class="bottom-rule" aria-hidden="true"></div>
+
+    <div class="content">
+      <div class="overline">02 / Now</div>
+      <div class="hairline-divider"></div>
+      <p class="body-paragraph">
+        <span class="margin-tick" aria-hidden="true"></span><span class="word">when</span>
+        <span class="word">I'm</span>
+        <span class="word">increasingly</span>
+        <span class="word">using</span>
+        <span class="word">free</span>
+        <span class="word">open-source</span>
+        <span class="word">tools</span>
+        <span class="word">because</span>
+        <span class="word">I</span>
+        <span class="word">can</span>
+        <span class="word">simply</span>
+        <span class="word">deploy</span>
+        <span class="word">them</span>
+        <span class="word">for</span>
+        <span class="word hl-myself-1">myself</span>
+        <span class="word">easily</span>
+        <span class="word">with</span>
+        <span class="word">the</span>
+        <span class="word">help</span>
+        <span class="word">of</span>
+        <span class="word hl-ai">AI</span>
+        <span class="word hl-agents">agents</span>
+        <span class="word">or</span>
+        <span class="word">just</span>
+        <span class="word">write</span>
+        <span class="word">the</span>
+        <span class="word">software</span>
+        <span class="word">I</span>
+        <span class="word">need</span>
+        <span class="word">for</span>
+        <span class="word">work</span>
+        <span class="word hl-myself-2">myself</span><span class="word">,</span>
+      </p>
+    </div>
   </div>
 
   <script>
     (function () {
       window.__sceneTimelines = window.__sceneTimelines || {};
-      const root = document.getElementById('scene-thesis');
-      const q = (sel) => root.querySelector(sel);
-
-      const grain    = q('.grain');
-      const glow     = q('.glow');
-      const hairline = q('.hairline-rule');
-      const tick     = q('.margin-tick');
-      const overline = q('.overline');
-      const corner   = q('.corner-mark');
-      const ovrRule  = q('.overline-rule');
-      const headline = q('.headline');
-      const kwUnder  = q('.kw-underline');
-      const caption  = q('.caption-strip');
+      const root = document.getElementById("scene-problem");
+      const $ = (s) => root.querySelector(s);
+      const $$ = (s) => root.querySelectorAll(s);
 
       const tl = gsap.timeline({ paused: true });
       const sceneDuration = 10.5;
 
-      // Foreground text entrances (every entrance via tl.fromTo).
+      const vignette  = $(".bg-vignette");
+      const grain     = $(".bg-grain");
+      const ghost     = $(".ghost-numeral");
+      const anchor    = $(".anchor-rule");
+      const overline  = $(".overline");
+      const divider   = $(".hairline-divider");
+      const body      = $(".body-paragraph");
+      const tick      = $(".margin-tick");
+      const bottom    = $(".bottom-rule");
+      const hlAI      = $(".hl-ai");
+      const hlAgents  = $(".hl-agents");
+      const hlMy1     = $(".hl-myself-1");
+      const hlMy2     = $(".hl-myself-2");
+
+      tl.fromTo(vignette, { opacity: 0 }, { opacity: 0.92, duration: 0.8, ease: "sine.inOut" }, 0.1);
+      tl.fromTo(grain,    { opacity: 0 }, { opacity: 0.6,  duration: 0.8, ease: "sine.inOut" }, 0.15);
+      tl.fromTo(ghost,    { opacity: 0, y: -4 }, { opacity: 0.04, y: 0, duration: 1.0, ease: "sine.inOut" }, 0.2);
+      tl.fromTo(anchor,   { scaleY: 0, opacity: 0.15 }, { scaleY: 1, opacity: 0.30, duration: 1.0, ease: "sine.inOut" }, 0.2);
+
+      tl.fromTo(overline, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.5, ease: "sine.inOut" }, 0.25);
+      tl.fromTo(divider,  { width: 0 }, { width: "100%", duration: 1.0, ease: "sine.inOut" }, 0.7);
+      tl.fromTo(body,     { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 1.2, ease: "power2.out" }, 1.1);
+
+      tl.fromTo(bottom,   { scaleX: 0 }, { scaleX: 1, duration: 1.4, ease: "sine.inOut" }, 1.6);
+      tl.fromTo(tick,     { opacity: 0 }, { opacity: 0.20, duration: 0.6, ease: "sine.inOut" }, 2.6);
+
+      tl.fromTo(hlMy1,    { color: "#f0f0f0" }, { color: "#ffffff", duration: 0.3, ease: "sine.inOut" }, 3.6);
+      tl.to(hlMy1,        { color: "#f0f0f0", duration: 0.4, ease: "sine.inOut" }, 4.0);
+
+      tl.fromTo(hlAI,     { color: "#f0f0f0" }, { color: "#ffffff", duration: 0.3, ease: "sine.inOut" }, 5.4);
+      tl.fromTo(hlAgents, { color: "#f0f0f0" }, { color: "#ffffff", duration: 0.3, ease: "sine.inOut" }, 5.55);
+      tl.to(hlAI,         { color: "#f0f0f0", duration: 0.4, ease: "sine.inOut" }, 5.9);
+      tl.to(hlAgents,     { color: "#f0f0f0", duration: 0.4, ease: "sine.inOut" }, 6.05);
+
+      tl.fromTo(hlMy2,    { color: "#f0f0f0" }, { color: "#ffffff", duration: 0.3, ease: "sine.inOut" }, 8.6);
+      tl.to(hlMy2,        { color: "#f0f0f0", duration: 0.4, ease: "sine.inOut" }, 9.0);
+
+      const breathCycle = 3.0;
+      const breathReps  = Math.floor(sceneDuration / breathCycle);
+      tl.to(anchor, {
+        opacity: 0.45, duration: breathCycle, ease: "sine.inOut",
+        yoyo: true, repeat: breathReps
+      }, 1.5);
+
+      const vigCycle = 4.0;
+      const vigReps  = Math.floor(sceneDuration / vigCycle);
+      tl.to(vignette, {
+        opacity: 1.0, duration: vigCycle, ease: "sine.inOut",
+        yoyo: true, repeat: vigReps
+      }, 1.0);
+
+      const ghostCycle = 5.0;
+      const ghostReps  = Math.floor(sceneDuration / ghostCycle);
+      tl.to(ghost, {
+        y: 2, duration: ghostCycle, ease: "sine.inOut",
+        yoyo: true, repeat: ghostReps
+      }, 1.2);
+
+      const fadeStart = sceneDuration - 0.5;
+      const fadeDur   = 0.4;
+      tl.to(overline, { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.to(body,     { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.to(divider,  { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.to(tick,     { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.set(overline, { visibility: "hidden" }, fadeStart + fadeDur);
+      tl.set(body,     { visibility: "hidden" }, fadeStart + fadeDur);
+      tl.set(divider,  { visibility: "hidden" }, fadeStart + fadeDur);
+      tl.set(tick,     { visibility: "hidden" }, fadeStart + fadeDur);
+
+      window.__sceneTimelines["problem"] = tl;
+    })();
+  </script>
+</div>
+<!-- beat: pivot -->
+<div id="scene-pivot" class="scene clip"
+     data-start="11.72" data-duration="1.64" data-track-index="1"
+     data-width="1080" data-height="1920">
+  <style>
+    #scene-pivot {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      background-color: #0a0a0a;
+      font-family: "Inter", sans-serif;
+      color: #f0f0f0;
+      overflow: hidden;
+    }
+    #scene-pivot .bg-vignette {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 38% 42%, #0a0a0a 0%, #080808 55%, #050505 100%);
+      opacity: 0.92;
+      will-change: opacity, transform;
+    }
+    #scene-pivot .bg-grain {
+      position: absolute;
+      inset: 0;
+      background-image: repeating-linear-gradient(
+        0deg,
+        rgba(240, 240, 240, 0.03) 0px,
+        rgba(240, 240, 240, 0.03) 1px,
+        rgba(10, 10, 10, 0) 1px,
+        rgba(10, 10, 10, 0) 3px
+      );
+      opacity: 0.04;
+      mix-blend-mode: overlay;
+    }
+    #scene-pivot .ghost-numeral {
+      position: absolute;
+      top: 12%;
+      right: 8%;
+      font-family: "Inter", sans-serif;
+      font-weight: 300;
+      font-size: 4rem;
+      letter-spacing: 0.15em;
+      color: #f0f0f0;
+      opacity: 0.04;
+      will-change: transform;
+    }
+    #scene-pivot .anchor-rule {
+      position: absolute;
+      left: 12%;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background-color: #1a237e;
+      opacity: 0.30;
+      will-change: opacity;
+    }
+    #scene-pivot .content {
+      position: absolute;
+      left: 16%;
+      top: 28%;
+      width: 65%;
+    }
+    #scene-pivot .overline {
+      font-family: "Inter", sans-serif;
+      font-weight: 500;
+      font-size: 0.75rem;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: #d8d8d8;
+      margin-bottom: 16px;
+    }
+    #scene-pivot .hairline {
+      height: 1px;
+      width: 100%;
+      background-color: rgba(240, 240, 240, 0.10);
+      transform-origin: left center;
+      transform: scaleX(0);
+      margin-bottom: 32px;
+    }
+    #scene-pivot .pull-quote {
+      position: relative;
+      font-family: "Inter", sans-serif;
+      font-weight: 300;
+      font-style: italic;
+      font-size: 2rem;
+      line-height: 1.35;
+      color: #f0f0f0;
+      padding-left: 32px;
+      margin-top: 8px;
+    }
+    #scene-pivot .pull-quote-border {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1px;
+      height: 100%;
+      background-color: #131a5e;
+      transform-origin: top center;
+      transform: scaleY(0);
+    }
+    #scene-pivot .ellipsis {
+      display: inline-block;
+      font-style: italic;
+      color: #f0f0f0;
+    }
+    #scene-pivot .ellipsis .dot {
+      display: inline-block;
+      opacity: 0;
+      will-change: opacity, transform;
+    }
+  </style>
+  <div class="scene-content">
+    <div class="bg-vignette"></div>
+    <div class="bg-grain"></div>
+    <div class="ghost-numeral">03</div>
+    <div class="anchor-rule"></div>
+    <div class="content">
+      <div class="overline">03 / Question</div>
+      <div class="hairline"></div>
+      <div class="pull-quote">
+        <span class="pull-quote-border"></span>
+        <span class="quote-text">Why don&rsquo;t we turn</span><span class="ellipsis"><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      window.__sceneTimelines = window.__sceneTimelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      const root = document.getElementById("scene-pivot");
+      const vignette = root.querySelector(".bg-vignette");
+      const grain = root.querySelector(".bg-grain");
+      const ghost = root.querySelector(".ghost-numeral");
+      const rule = root.querySelector(".anchor-rule");
+      const overline = root.querySelector(".overline");
+      const hairline = root.querySelector(".hairline");
+      const quote = root.querySelector(".pull-quote .quote-text");
+      const border = root.querySelector(".pull-quote-border");
+      const dots = root.querySelectorAll(".ellipsis .dot");
+
+      const sceneDuration = 1.64;
+      const fadeDur = 0.22;
+      const exitStart = sceneDuration - fadeDur - 0.02;
+
       tl.fromTo(overline,
-        { y: 24, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.9, ease: 'sine.inOut' }, 0.10);
+        { opacity: 0, y: 6 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "sine.inOut" },
+        0.10);
 
-      tl.fromTo(corner,
-        { y: 24, opacity: 0 },
-        { y: 0, opacity: 0.55, duration: 0.9, ease: 'sine.inOut' }, 0.14);
-
-      tl.fromTo(tick,
+      tl.fromTo(hairline,
         { scaleX: 0 },
-        { scaleX: 1, duration: 0.5, ease: 'power2.out' }, 0.20);
+        { scaleX: 1, duration: 0.6, ease: "sine.inOut" },
+        0.20);
 
-      tl.fromTo(ovrRule,
-        { scaleX: 0 },
-        { scaleX: 1, duration: 0.6, ease: 'power2.out' }, 0.22);
+      tl.fromTo(border,
+        { scaleY: 0 },
+        { scaleY: 1, duration: 0.7, ease: "sine.inOut" },
+        0.28);
 
-      tl.fromTo(headline,
-        { y: 24, opacity: 0 },
-        { y: 0, opacity: 1, duration: 1.0, ease: 'sine.inOut' }, 0.32);
+      tl.fromTo(quote,
+        { opacity: 0, y: 6 },
+        { opacity: 1, y: 0, duration: 0.7, ease: "sine.inOut" },
+        0.32);
 
-      tl.fromTo(caption,
-        { y: 24, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.9, ease: 'power1.inOut' }, 0.55);
+      tl.fromTo(rule,
+        { opacity: 0.30 },
+        { opacity: 0.55, duration: 0.30, ease: "sine.inOut" },
+        0.40);
+      tl.to(rule,
+        { opacity: 0.30, duration: 0.30, ease: "sine.inOut" },
+        0.70);
 
-      tl.fromTo(kwUnder,
-        { scaleX: 0 },
-        { scaleX: 1, duration: 0.6, ease: 'sine.out' }, 1.05);
+      dots.forEach(function (dot, i) {
+        tl.fromTo(dot,
+          { opacity: 0, y: 2 },
+          { opacity: 1, y: 0, duration: 0.20, ease: "power2.out" },
+          0.85 + i * 0.12);
+      });
 
-      // Ambient motion (BG decoratives) — finite repeats only.
-      const glowCycle = 1.2;
-      tl.to(glow,
-        { scale: 1.04, opacity: 0.14, yoyo: true,
-          duration: glowCycle, ease: 'sine.inOut',
-          repeat: Math.floor(sceneDuration / glowCycle) },
+      const ambientCycle = 0.40;
+      const ambientRepeat = Math.floor(sceneDuration / ambientCycle) - 1;
+
+      tl.to(vignette,
+        { opacity: 1.0, duration: ambientCycle, ease: "sine.inOut",
+          yoyo: true, repeat: ambientRepeat },
         0);
 
-      const grainCycle = 5.2;
-      tl.to(grain,
-        { x: 4, y: -3, yoyo: true,
-          duration: grainCycle, ease: 'sine.inOut',
-          repeat: Math.floor(sceneDuration / grainCycle) },
+      tl.to(ghost,
+        { y: -2, duration: ambientCycle, ease: "sine.inOut",
+          yoyo: true, repeat: ambientRepeat },
         0);
 
-      const hairlineCycle = 4.0;
-      tl.to(hairline,
-        { opacity: 0.35, yoyo: true,
-          duration: hairlineCycle, ease: 'sine.inOut',
-          repeat: Math.floor(sceneDuration / hairlineCycle) },
-        0.7);
+      tl.to(overline, { opacity: 0, duration: fadeDur, ease: "power1.in" }, exitStart);
+      tl.set(overline, { visibility: "hidden" }, exitStart + fadeDur);
 
-      window.__sceneTimelines["thesis"] = tl;
+      tl.to(hairline, { opacity: 0, duration: fadeDur, ease: "power1.in" }, exitStart);
+      tl.set(hairline, { visibility: "hidden" }, exitStart + fadeDur);
+
+      tl.to(quote, { opacity: 0, duration: fadeDur, ease: "power1.in" }, exitStart);
+      tl.set(quote, { visibility: "hidden" }, exitStart + fadeDur);
+
+      tl.to(border, { opacity: 0, duration: fadeDur, ease: "power1.in" }, exitStart);
+      tl.set(border, { visibility: "hidden" }, exitStart + fadeDur);
+
+      tl.to(dots, { opacity: 0, duration: fadeDur, ease: "power1.in" }, exitStart);
+      tl.set(dots, { visibility: "hidden" }, exitStart + fadeDur);
+
+      window.__sceneTimelines["pivot"] = tl;
     })();
   </script>
 </div>
 <!-- beat: payoff -->
 <div id="scene-payoff" class="scene clip"
-     data-start="11.7" data-duration="10.7" data-track-index="1"
+     data-start="13.360000000000001" data-duration="11.98" data-track-index="1"
      data-width="1080" data-height="1920">
   <style>
     #scene-payoff {
       position: absolute;
       inset: 0;
       opacity: 0;
+      background-color: #0a0a0a;
       overflow: hidden;
-      background: linear-gradient(180deg, #FFF8EC 0%, #E6DFD4 100%);
-      font-family: "Inter", system-ui, sans-serif;
-      color: #2a2a2a;
+      font-family: "Inter", sans-serif;
+      color: #f0f0f0;
     }
-    #scene-payoff .scene-content {
+    #scene-payoff .pf-vignette {
       position: absolute;
       inset: 0;
-      width: 100%;
-      height: 100%;
-    }
-    #scene-payoff .pf-speaker-plate {
-      position: absolute;
-      left: 0;
-      right: 0;
-      top: 12%;
-      height: 56%;
-      background:
-        radial-gradient(ellipse at 50% 45%, rgba(255, 253, 248, 0.55) 0%, rgba(204, 198, 189, 0) 70%),
-        linear-gradient(180deg, #E6DFD4 0%, #CCC6BD 100%);
-    }
-    #scene-payoff .pf-vignette-top {
-      position: absolute;
-      left: 0;
-      right: 0;
-      top: 0;
-      height: 18%;
-      background: radial-gradient(ellipse at 50% 0%, #FFFDF8 0%, rgba(255, 253, 248, 0) 75%);
-      opacity: 0;
+      background: radial-gradient(ellipse at 38% 42%, #0a0a0a 0%, #080808 55%, #050505 100%);
+      opacity: 1;
       pointer-events: none;
     }
     #scene-payoff .pf-grain {
       position: absolute;
-      inset: -2%;
+      inset: 0;
+      background-color: #141414;
       opacity: 0.04;
-      mix-blend-mode: multiply;
-      background-image:
-        repeating-radial-gradient(circle at 17% 23%, #2a2a2a 0px, #2a2a2a 1px, transparent 1px, transparent 3px),
-        repeating-radial-gradient(circle at 73% 61%, #1f1f1f 0px, #1f1f1f 1px, transparent 1px, transparent 4px);
+      mix-blend-mode: overlay;
       pointer-events: none;
     }
-    #scene-payoff .pf-radial-glow {
+    #scene-payoff .pf-ghost-numeral {
       position: absolute;
-      left: 50%;
-      top: 60%;
-      width: 720px;
-      height: 720px;
-      margin-left: -360px;
-      margin-top: -360px;
-      border-radius: 50%;
-      background: radial-gradient(circle at 50% 50%, #F5A623 0%, rgba(245, 166, 35, 0) 60%);
-      opacity: 0.12;
-      pointer-events: none;
-      transform-origin: 50% 50%;
+      top: 8%;
+      right: 10%;
+      font-family: "Inter", sans-serif;
+      font-weight: 300;
+      font-size: 4rem;
+      letter-spacing: 0.15em;
+      color: rgba(240, 240, 240, 0.04);
+      line-height: 1;
+      user-select: none;
     }
-    #scene-payoff .pf-hairline {
+    #scene-payoff .pf-page-rule {
       position: absolute;
-      top: 96px;
-      left: 96px;
-      right: 96px;
+      top: 78%;
+      left: 0;
+      width: 0;
       height: 1px;
-      background: #C4A3A3;
-      opacity: 0.6;
-      transform-origin: right center;
-    }
-    #scene-payoff .pf-margin-tick {
-      position: absolute;
-      bottom: 320px;
-      left: 96px;
-      width: 24px;
-      height: 1px;
-      background: #C4A3A3;
-      opacity: 0.6;
+      background-color: rgba(240, 240, 240, 0.06);
       transform-origin: left center;
     }
-    #scene-payoff .pf-overline {
+    #scene-payoff .pf-anchor-rule {
       position: absolute;
-      top: 56px;
-      right: 96px;
-      font-family: "Inter", system-ui, sans-serif;
+      left: 12%;
+      top: 14%;
+      width: 1px;
+      height: 72%;
+      background-color: #1a237e;
+      opacity: 0.30;
+    }
+    #scene-payoff .pf-content {
+      position: absolute;
+      left: 16%;
+      top: 22%;
+      width: 70%;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+    #scene-payoff .pf-overline {
+      font-family: "Inter", sans-serif;
       font-weight: 500;
       font-size: 0.75rem;
-      letter-spacing: 0.18em;
+      letter-spacing: 0.32em;
       text-transform: uppercase;
-      color: #404040;
+      color: #d8d8d8;
       opacity: 0;
     }
-    #scene-payoff .pf-headline-wrap {
-      position: absolute;
-      left: 96px;
-      right: 96px;
-      bottom: 196px;
-      max-width: 80%;
+    #scene-payoff .pf-divider {
+      width: 0;
+      height: 1px;
+      background-color: rgba(240, 240, 240, 0.10);
+      transform-origin: left center;
     }
     #scene-payoff .pf-headline {
-      font-family: "Playfair Display", serif;
-      font-weight: 400;
-      font-style: italic;
-      font-size: 4.5rem;
-      line-height: 1.05;
-      letter-spacing: -0.01em;
-      color: #1f1f1f;
-      margin: 0 0 0 -0.05em;
-      font-variant-numeric: oldstyle-nums;
-      opacity: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 24px;
     }
-    #scene-payoff .pf-attribution {
-      position: absolute;
-      left: 96px;
-      bottom: 144px;
-      font-family: "Inter", system-ui, sans-serif;
+    #scene-payoff .pf-line {
+      font-family: "Inter", sans-serif;
       font-weight: 300;
-      font-size: 1.125rem;
-      line-height: 1.7;
-      color: #404040;
+      font-size: 3rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #f0f0f0;
+      line-height: 1.05;
       opacity: 0;
-      letter-spacing: 0.01em;
+      display: flex;
+      align-items: baseline;
+      gap: 24px;
+    }
+    #scene-payoff .pf-once-wrap {
+      position: relative;
+      display: inline-block;
+      color: #f0f0f0;
+    }
+    #scene-payoff .pf-once-underline {
+      position: absolute;
+      left: 0;
+      bottom: -6px;
+      width: 0;
+      height: 1px;
+      background-color: #1a237e;
+      max-width: 70%;
+    }
+    #scene-payoff .pf-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 4px;
+      background-color: #1a237e;
+      opacity: 0;
+      transform: scale(0);
+      align-self: center;
     }
   </style>
   <div class="scene-content">
-    <div class="pf-speaker-plate"></div>
+    <div class="pf-vignette"></div>
     <div class="pf-grain"></div>
-    <div class="pf-radial-glow"></div>
-    <div class="pf-vignette-top"></div>
-    <div class="pf-hairline"></div>
-    <div class="pf-margin-tick"></div>
-    <div class="pf-overline">03 / PAYOFF</div>
-    <div class="pf-headline-wrap">
-      <h1 class="pf-headline">and that&rsquo;s the quiet part &mdash; the part you keep.</h1>
+    <div class="pf-ghost-numeral">04</div>
+    <div class="pf-page-rule"></div>
+    <div class="pf-anchor-rule"></div>
+    <div class="pf-content">
+      <div class="pf-overline">04 / Aspiration</div>
+      <div class="pf-divider"></div>
+      <div class="pf-headline">
+        <div class="pf-line pf-line-1">GOOD OLD SOFTWARE</div>
+        <div class="pf-line pf-line-2">
+          <span>YOU PAY FOR&nbsp;</span>
+          <span class="pf-once-wrap">
+            ONCE
+            <span class="pf-once-underline"></span>
+          </span>
+          <span class="pf-dot"></span>
+        </div>
+      </div>
     </div>
-    <div class="pf-attribution">a closing reflection &middot; take 03</div>
   </div>
   <script>
-    (function () {
+    (function() {
       window.__sceneTimelines = window.__sceneTimelines || {};
-      const root = document.getElementById("scene-payoff");
-      const q = (sel) => root.querySelector(sel);
-      const glow = q(".pf-radial-glow");
-      const grain = q(".pf-grain");
-      const hairline = q(".pf-hairline");
-      const overline = q(".pf-overline");
-      const headline = q(".pf-headline");
-      const attribution = q(".pf-attribution");
-      const vignette = q(".pf-vignette-top");
-      const tick = q(".pf-margin-tick");
+      const root = document.querySelector("#scene-payoff");
+      const vignette = root.querySelector(".pf-vignette");
+      const ghost = root.querySelector(".pf-ghost-numeral");
+      const pageRule = root.querySelector(".pf-page-rule");
+      const anchor = root.querySelector(".pf-anchor-rule");
+      const overline = root.querySelector(".pf-overline");
+      const divider = root.querySelector(".pf-divider");
+      const line1 = root.querySelector(".pf-line-1");
+      const line2 = root.querySelector(".pf-line-2");
+      const onceWrap = root.querySelector(".pf-once-wrap");
+      const onceUnderline = root.querySelector(".pf-once-underline");
+      const dot = root.querySelector(".pf-dot");
 
-      const sceneDuration = 10.7;
-      const glowCycle = 1.2;
-      const grainCycle = 7.4;
-      const hairlineCycle = 4.0;
-      const fadeStart = 10.3;
-      const fadeDur = 0.4;
-
+      const sceneDuration = 11.98;
       const tl = gsap.timeline({ paused: true });
 
-      // Scene container reveal — held opacity:0 until the future transitions node fades it in.
-      tl.fromTo(root,
-        { opacity: 0 },
-        { opacity: 1, duration: 0.4, ease: "sine.inOut" }, 0.0);
+      tl.fromTo(overline, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.6, ease: "sine.inOut" }, 0.20);
+      tl.fromTo(divider, { width: "0%" }, { width: "100%", duration: 1.0, ease: "sine.inOut" }, 0.60);
+      tl.fromTo(pageRule, { width: "0%" }, { width: "100%", duration: 1.4, ease: "sine.inOut" }, 0.80);
+      tl.fromTo(line1, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 1.0, ease: "sine.inOut" }, 1.10);
+      tl.fromTo(line2, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 1.0, ease: "sine.inOut" }, 1.50);
+      tl.fromTo(onceWrap, { color: "#f0f0f0" }, { color: "#ffffff", duration: 0.6, ease: "sine.inOut" }, 2.10);
+      tl.fromTo(onceUnderline, { width: "0%" }, { width: "70%", duration: 0.7, ease: "power2.out" }, 2.30);
+      tl.fromTo(dot, { opacity: 0, scale: 0 }, { opacity: 1, scale: 1, duration: 0.5, ease: "sine.inOut" }, 3.50);
 
-      // First content entrance — overline label settles in (offset within 0.1-0.3s).
-      tl.fromTo(overline,
-        { y: 24, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.9, ease: "sine.inOut" }, 0.10);
-
-      tl.fromTo(vignette,
-        { opacity: 0 },
-        { opacity: 1, duration: 0.6, ease: "sine.out" }, 0.10);
-
-      tl.fromTo(hairline,
-        { scaleX: 0 },
-        { scaleX: 1, duration: 0.6, ease: "sine.inOut" }, 0.18);
-
-      tl.fromTo(tick,
-        { scaleX: 0 },
-        { scaleX: 1, duration: 0.5, ease: "sine.out" }, 0.25);
-
-      // Headline (sign-off) surfaces 320ms after the overline starts (DESIGN.md mandate).
-      tl.fromTo(headline,
-        { y: 24, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.9, ease: "sine.inOut" }, 0.42);
-
-      tl.fromTo(attribution,
-        { y: 24, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.9, ease: "sine.inOut" }, 1.20);
-
-      // Ambient: radial glow breathing — finite repeat derived from scene length.
-      tl.to(glow, {
-        scale: 1.04,
-        opacity: 0.14,
+      const anchorCycle = 6.0;
+      tl.to(anchor, {
+        opacity: 0.45,
+        duration: anchorCycle / 2,
         yoyo: true,
-        duration: glowCycle,
-        ease: "sine.inOut",
-        repeat: Math.floor(sceneDuration / glowCycle)
+        repeat: Math.floor(sceneDuration / anchorCycle),
+        ease: "sine.inOut"
       }, 0);
 
-      // Ambient: warm-grain drift — slow yoyo across the full beat.
-      tl.to(grain, {
-        x: 4,
-        y: -3,
+      const vigCycle = 8.0;
+      tl.to(vignette, {
+        opacity: 0.92,
+        duration: vigCycle / 2,
         yoyo: true,
-        duration: grainCycle,
-        ease: "sine.inOut",
-        repeat: Math.floor(sceneDuration / grainCycle)
+        repeat: Math.floor(sceneDuration / vigCycle),
+        ease: "sine.inOut"
       }, 0);
 
-      // Ambient: hairline opacity pulse.
-      tl.to(hairline, {
-        opacity: 0.5,
+      const ghostCycle = 10.0;
+      tl.to(ghost, {
+        y: -2,
+        duration: ghostCycle / 2,
         yoyo: true,
-        duration: hairlineCycle,
-        ease: "sine.inOut",
-        repeat: Math.floor(sceneDuration / hairlineCycle)
-      }, 0.7);
+        repeat: Math.floor(sceneDuration / ghostCycle),
+        ease: "sine.inOut"
+      }, 0);
 
-      // HR 4 final-fade (is_final=true): headline + attribution alone fade over the last 0.4s,
-      // leaving speaker + cream + ambient atmosphere intact.
-      tl.to(headline,    { opacity: 0, duration: fadeDur, ease: "power1.inOut" }, fadeStart);
-      tl.to(attribution, { opacity: 0, duration: fadeDur, ease: "power1.inOut" }, fadeStart);
-      tl.set(headline,    { visibility: "hidden" }, fadeStart + fadeDur);
-      tl.set(attribution, { visibility: "hidden" }, fadeStart + fadeDur);
+      const dotCycle = 4.0;
+      tl.to(dot, {
+        backgroundColor: "#2e3aa3",
+        duration: dotCycle / 2,
+        yoyo: true,
+        repeat: Math.floor(sceneDuration / dotCycle),
+        ease: "sine.inOut"
+      }, 4.10);
+
+      const fadeStart = sceneDuration - 1.2;
+      const fadeDur = 1.0;
+      tl.to(line1, { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.set(line1, { visibility: "hidden" }, fadeStart + fadeDur);
+      tl.to(line2, { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.set(line2, { visibility: "hidden" }, fadeStart + fadeDur);
+      tl.to(overline, { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.set(overline, { visibility: "hidden" }, fadeStart + fadeDur);
+      tl.to(root, { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
 
       window.__sceneTimelines["payoff"] = tl;
     })();
   </script>
 </div>
 <!-- p4_assemble_index: captions -->
-<!--
-  Captions track for canonical-portrait-talking-head.
-  Source transcript: edit/transcripts/final.json (word-level timing).
-  Tone profile: storytelling/measured (Soft Signal reflective monologue).
-  Word-grouping band: 4-6 words per canon §"Word Grouping" (measured/calm).
-  Typography + palette inherited from DESIGN.md (Inter Light, foreground-highlight-1
-  on translucent background-highlight-1; no caps, no per-word color flips).
--->
 <div id="captions-layer" class="captions-layer">
+  <!-- Captions track. Source transcript: ../edit/transcripts/final.json -->
+  <!-- Tone: measured editorial monologue (4-6 word groups, calm pacing). -->
   <style>
     #captions-layer {
       position: absolute;
       inset: 0;
       pointer-events: none;
       overflow: visible;
-      font-family: "Inter", system-ui, -apple-system, sans-serif;
+      font-family: 'Inter', system-ui, sans-serif;
     }
     #captions-layer .cg {
       position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 96px;
-      margin: 0 auto;
-      max-width: 1500px;
-      padding: 16px 36px;
-      text-align: center;
-      font-family: "Inter", system-ui, sans-serif;
+      left: 12%;
+      right: 12%;
+      bottom: 14%;
+      max-width: 76%;
+      font-size: 2.25rem;
       font-weight: 300;
-      font-size: 44px;
-      line-height: 1.4;
-      letter-spacing: 0.005em;
-      color: #404040;
-      background: rgba(255, 253, 248, 0.78);
-      border-radius: 8px;
+      line-height: 1.25;
+      letter-spacing: 0.04em;
+      color: #f0f0f0;
+      text-align: left;
       opacity: 0;
       visibility: hidden;
       will-change: opacity, transform;
-      overflow: visible;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
     }
-    #captions-layer .cg .w-key {
+    #captions-layer .cg .w {
+      display: inline-block;
+      margin-right: 0.32em;
+      color: inherit;
+    }
+    #captions-layer .cg .w.brand {
+      color: #ffffff;
       font-weight: 500;
-      color: #2a2a2a;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+    #captions-layer .cg .w.allcaps {
+      color: #ffffff;
+      font-weight: 500;
+      letter-spacing: 0.20em;
+    }
+    #captions-layer .cg .w.emotional {
+      color: #ffffff;
+      font-weight: 400;
+      border-bottom: 1px solid #1a237e;
+      padding-bottom: 0.05em;
+    }
+    #captions-layer .cg .w.cta {
+      color: #ffffff;
+      font-weight: 400;
+      border-bottom: 1px solid #2e3aa3;
+      padding-bottom: 0.05em;
     }
   </style>
 
-  <!-- One caption group visible at a time. Source: edit/transcripts/final.json -->
-  <div class="cg" id="cg-0"><span>Age of </span><span class="w-key">artificial intelligence.</span></div>
-  <div class="cg" id="cg-1"><span>when I'm </span><span class="w-key">increasingly</span><span> using</span></div>
-  <div class="cg" id="cg-2"><span>free </span><span class="w-key">open-source tools</span></div>
-  <div class="cg" id="cg-3"><span>because I can simply </span><span class="w-key">deploy</span><span> them</span></div>
-  <div class="cg" id="cg-4"><span>for myself easily</span></div>
-  <div class="cg" id="cg-5"><span>with the help of </span><span class="w-key">AI agents</span></div>
-  <div class="cg" id="cg-6"><span>or just write the </span><span class="w-key">software</span></div>
-  <div class="cg" id="cg-7"><span>I need for work myself,</span></div>
-  <div class="cg" id="cg-8"><span>I thought,</span></div>
-  <div class="cg" id="cg-9"><span>&ldquo;Why don't we </span><span class="w-key">return</span></div>
-  <div class="cg" id="cg-10"><span>to the </span><span class="w-key">roots,</span></div>
-  <div class="cg" id="cg-11"><span>to good old </span><span class="w-key">software</span></div>
-  <div class="cg" id="cg-12"><span>that you </span><span class="w-key">pay for once</span></div>
-  <div class="cg" id="cg-13"><span>and </span><span class="w-key">use for life?&rdquo;</span></div>
-  <div class="cg" id="cg-14"><span>Yes, maybe it's not</span></div>
-  <div class="cg" id="cg-15"><span>as </span><span class="w-key">interesting</span><span> from a business</span></div>
-  <div class="cg" id="cg-16"><span class="w-key">point-of-view,</span></div>
+  <div class="cg" id="cg-0"><span class="w">Age</span><span class="w">of</span><span class="w">artificial</span><span class="w emotional">intelligence.</span></div>
+  <div class="cg" id="cg-1"><span class="w">when</span><span class="w">I'm</span><span class="w">increasingly</span><span class="w">using</span><span class="w">free</span></div>
+  <div class="cg" id="cg-2"><span class="w">open-source</span><span class="w">tools</span><span class="w">because</span><span class="w">I</span><span class="w">can</span></div>
+  <div class="cg" id="cg-3"><span class="w">simply</span><span class="w">deploy</span><span class="w">them</span><span class="w">for</span><span class="w">myself</span><span class="w">easily</span></div>
+  <div class="cg" id="cg-4"><span class="w">with</span><span class="w">the</span><span class="w">help</span><span class="w">of</span><span class="w allcaps">AI</span><span class="w">agents</span></div>
+  <div class="cg" id="cg-5"><span class="w">or</span><span class="w">just</span><span class="w">write</span><span class="w">the</span><span class="w">software</span><span class="w">I</span></div>
+  <div class="cg" id="cg-6"><span class="w">need</span><span class="w">for</span><span class="w">work</span><span class="w">myself,</span></div>
+  <div class="cg" id="cg-7"><span class="w">I</span><span class="w">thought,</span><span class="w">"Why</span><span class="w">don't</span><span class="w">we</span><span class="w">turn..."</span></div>
+  <div class="cg" id="cg-8"><span class="w">I</span><span class="w">thought,</span><span class="w">"Why</span><span class="w">don't</span><span class="w">we</span><span class="w">return</span></div>
+  <div class="cg" id="cg-9"><span class="w">to</span><span class="w">the</span><span class="w emotional">roots,</span></div>
+  <div class="cg" id="cg-10"><span class="w">to</span><span class="w">good</span><span class="w">old</span><span class="w">software</span></div>
+  <div class="cg" id="cg-11"><span class="w">that</span><span class="w">you</span><span class="w">pay</span><span class="w">for</span><span class="w emotional">once</span></div>
+  <div class="cg" id="cg-12"><span class="w">and</span><span class="w">use</span><span class="w">for</span><span class="w cta">life?"</span></div>
+  <div class="cg" id="cg-13"><span class="w">Yes,</span><span class="w">maybe</span><span class="w">it's</span><span class="w">not</span></div>
+  <div class="cg" id="cg-14"><span class="w">as</span><span class="w">interesting</span><span class="w">from</span><span class="w">a</span><span class="w">business</span></div>
+  <div class="cg" id="cg-15"><span class="w">point-of-view,</span><span class="w">but</span><span class="w">how</span><span class="w">cool</span></div>
+  <div class="cg" id="cg-16"><span class="w">is</span><span class="w">it</span><span class="w">to...</span></div>
 
   <script>
     (function () {
-      // Caption groups baked at build time from edit/transcripts/final.json.
-      // Static literal — deterministic per canon §"Constraints" (no fetches).
+      // Source transcript: ../edit/transcripts/final.json
+      // Static GROUPS table — non-overlapping ordered partition.
+      // Invariant: GROUPS[i].end <= GROUPS[i+1].start (clamped from raw transcript
+      // to honor canon "one caption visible at a time").
       var GROUPS = [
-        { id: "cg-0",  start: 0.05,   end: 1.27   },
-        { id: "cg-1",  start: 1.40,   end: 2.721  },
-        { id: "cg-2",  start: 2.84,   end: 3.98   },
-        { id: "cg-3",  start: 4.06,   end: 5.82   },
-        { id: "cg-4",  start: 5.94,   end: 7.021  },
-        { id: "cg-5",  start: 7.08,   end: 8.40   },
-        { id: "cg-6",  start: 8.78,   end: 9.981  },
-        { id: "cg-7",  start: 10.04,  end: 11.90  },
-        { id: "cg-8",  start: 12.049, end: 12.27  },
-        { id: "cg-9",  start: 12.529, end: 13.43  },
-        { id: "cg-10", start: 13.469, end: 14.189 },
-        { id: "cg-11", start: 14.349, end: 15.629 },
-        { id: "cg-12", start: 15.689, end: 17.209 },
-        { id: "cg-13", start: 17.269, end: 18.389 },
-        { id: "cg-14", start: 18.809, end: 19.91  },
-        { id: "cg-15", start: 19.99,  end: 21.549 },
-        { id: "cg-16", start: 21.609, end: 22.15  }
+        { id: "cg-0",  start: 0.05,   end: 1.27 },
+        { id: "cg-1",  start: 1.47,   end: 3.07 },
+        { id: "cg-2",  start: 3.17,   end: 4.65 },
+        { id: "cg-3",  start: 4.77,   end: 7.091 },
+        { id: "cg-4",  start: 7.15,   end: 8.47 },
+        { id: "cg-5",  start: 8.85,   end: 10.211 },
+        { id: "cg-6",  start: 10.27,  end: 11.97 },
+        { id: "cg-7",  start: 12.17,  end: 13.81 },
+        { id: "cg-8",  start: 14.01,  end: 15.391 },
+        { id: "cg-9",  start: 15.43,  end: 16.15 },
+        { id: "cg-10", start: 16.31,  end: 17.59 },
+        { id: "cg-11", start: 17.65,  end: 19.17 },
+        { id: "cg-12", start: 19.23,  end: 20.35 },
+        { id: "cg-13", start: 20.77,  end: 21.871 },
+        { id: "cg-14", start: 21.951, end: 23.51 },
+        { id: "cg-15", start: 23.57,  end: 24.85 },
+        { id: "cg-16", start: 25.21,  end: 25.34 }
       ];
 
       window.__captionTimelines = window.__captionTimelines || {};
-      var capTl = gsap.timeline({ paused: true });
+      var ctl = gsap.timeline({ paused: true });
+
+      var ENTER_DUR = 0.42;
+      var EXIT_DUR = 0.16;
 
       GROUPS.forEach(function (group) {
         var el = document.getElementById(group.id);
         if (!el) return;
 
-        // Reveal — flip visibility on at the group's start so the entrance tween
-        // is observable; CSS keeps the element hidden pre-entrance.
-        capTl.set(el, { visibility: "visible" }, group.start);
+        ctl.set(el, { opacity: 0, visibility: "hidden", y: 14 }, group.start - 0.001);
 
-        // Entrance — fromTo per motion-principles.md L115-123 (never tl.from).
-        // Soft Signal entry ease: sine.inOut over 0.5s.
-        capTl.fromTo(
+        ctl.fromTo(
           el,
-          { opacity: 0, y: 16 },
-          { opacity: 1, y: 0, duration: 0.5, ease: "sine.inOut" },
+          { opacity: 0, y: 14, visibility: "visible" },
+          { opacity: 1, y: 0, duration: ENTER_DUR, ease: "sine.inOut" },
           group.start
         );
 
-        // Exit — soft fade-out over 0.32s with power1.inOut (DESIGN.md exit ease,
-        // distinct from entrance ease). Floored so very short groups still fade.
-        var exitDur = 0.32;
-        var exitStart = Math.max(group.start + 0.5, group.end - exitDur);
-        capTl.to(
+        var exitStart = Math.max(group.start + ENTER_DUR + 0.05, group.end - EXIT_DUR);
+        ctl.to(
           el,
-          { opacity: 0, y: -8, duration: exitDur, ease: "power1.inOut" },
+          { opacity: 0, y: -6, duration: EXIT_DUR, ease: "power1.in" },
           exitStart
         );
-        // Final-frame compression — power2.in (third distinct ease).
-        capTl.to(
-          el,
-          { scale: 0.985, duration: 0.12, ease: "power2.in" },
-          Math.max(exitStart, group.end - 0.12)
-        );
 
-        // Deterministic kill — canon §"Caption Exit Guarantee" (non-negotiable).
-        capTl.set(el, { opacity: 0, visibility: "hidden" }, group.end);
+        // Canon-mandated hard kill at group.end.
+        ctl.set(el, { opacity: 0, visibility: "hidden" }, group.end);
       });
 
-      // Self-lint — surface caption-leak warnings to the console at composition init,
-      // before publishing to window.__timelines.
+      // Self-lint per canon "Caption Exit Guarantee".
       GROUPS.forEach(function (group, gi) {
         var el = document.getElementById(group.id);
         if (!el) return;
-        capTl.seek(group.end + 0.01);
+        ctl.seek(group.end + 0.01);
         var computed = window.getComputedStyle(el);
         if (computed.opacity !== "0" && computed.visibility !== "hidden") {
-          console.warn(
-            "[caption-lint] group " + gi + " still visible at t=" +
-              (group.end + 0.01).toFixed(2) + "s"
-          );
+          console.warn("[caption-lint] group " + gi + " still visible at t=" + (group.end + 0.01).toFixed(2) + "s");
         }
       });
-      capTl.seek(0);
+      ctl.seek(0);
 
-      window.__captionTimelines["captions"] = capTl;
+      window.__captionTimelines["captions"] = ctl;
 
-      // Nest under the root timeline so it advances with the composition seek.
-      // GSAP requires unpause before parent.add — see memory
-      // feedback_gsap_paused_child_under_parent_seek (HOM-164).
-      var rootTl = window.__timelines && window.__timelines["root"];
-      if (rootTl) {
-        capTl.paused(false);
-        rootTl.add(capTl, 0);
+      var root = window.__timelines && window.__timelines["root"];
+      if (root) {
+        ctl.paused(false);
+        root.add(ctl, 0);
       }
     })();
   </script>
@@ -968,12 +1051,14 @@
 (function() {
   var root = window.__timelines && window.__timelines["root"];
   if (!root) return;
-  var ids = ["hook", "thesis", "payoff"];
-  var starts = [0.0, 1.2, 11.7];
+  var ids = ["hook", "problem", "pivot", "payoff"];
+  var starts = [0.0, 1.22, 11.72, 13.360000000000001];
   ids.forEach(function(id, i) {
-    if (i > 0) {
-      root.set('#scene-' + id, { opacity: 1 }, starts[i]);
-    }
+    // HOM-214: anchor every scene's reveal on the root timeline,
+    // including i=0 at t=0, so the position chain is observable
+    // from the shim alone. Scene-0's fragment also has opacity: 1
+    // in CSS for first-paint, so this is a no-op visually.
+    root.set('#scene-' + id, { opacity: 1 }, starts[i]);
     var sceneTl = window.__sceneTimelines && window.__sceneTimelines[id];
     if (sceneTl) {
       // HOM-164: unpause child timeline before nesting — GSAP does
