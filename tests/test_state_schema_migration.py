@@ -98,6 +98,33 @@ def test_old_top_level_state_parses() -> None:
     assert "scenes" not in state["compose"]
 
 
+def test_old_shape_roundtrips_through_jsonplus_serializer() -> None:
+    """In-flight checkpoint compat — spec §6.1 / §12.2.
+
+    The TypedDict-only assertions above pin the structural contract but
+    pass trivially (TypedDict has no runtime validation). The actual
+    risk per the spec is `JsonPlusSerializer` — LangGraph's checkpoint
+    serde — failing to roundtrip an old-shape state dict written before
+    HOM-231 added the new fields. This test exercises that path
+    explicitly so a future serde tightening (custom type tags, schema
+    versioning) breaks loudly here instead of corrupting in-flight
+    threads on resume.
+    """
+    from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+
+    serde = JsonPlusSerializer()
+    original = _old_shape_state()
+    type_tag, blob = serde.dumps_typed(original)
+    restored = serde.loads_typed((type_tag, blob))
+
+    assert restored == original
+    # Spot-check the keys the new schema added — they must remain absent
+    # post-roundtrip (forward-compat only, not auto-population).
+    assert "scenes" not in restored["compose"]
+    assert "html" not in restored["compose"]["captions"]
+    assert "design_md" not in restored["compose"]["design"]
+
+
 def test_new_scenes_field_merges_via_reducer_when_added() -> None:
     """A migrated state can grow `scenes` incrementally without breaking
     the existing ``compose`` shape — i.e. the new field plays nicely with
