@@ -76,7 +76,12 @@ Output shape (write to `/tmp/snapshot-fixture/episode/hyperframes/captions.html`
         if (!el) return;
         // Entrance via tl.fromTo (motion-principles.md L115-123 — never tl.from)
         tl.fromTo(el, /* from */ {}, /* to */ {}, group.start);
-        // Exit + hard kill (canon §"Caption Exit Guarantee" — non-negotiable)
+        // Exit + hard kill (canon §"Caption Exit Guarantee" — non-negotiable).
+        // The exit window MUST end at or before the NEXT group's entrance —
+        // see GROUPS-table invariant in the hard-rules section below
+        // (group[i].end ≤ group[i+1].start). Two captions on screen at the
+        // same instant is the HOM-210 / HOM-215 symptom: "fragments of two
+        // captions stacked at t=11".
         tl.to(el, { opacity: 0, scale: 0.95, duration: 0.12, ease: "power2.in" }, group.end - 0.12);
         tl.set(el, { opacity: 0, visibility: "hidden" }, group.end);
       });
@@ -111,6 +116,25 @@ Hard rules (orchestrator-house, derived from canon — surfaced so you don't mis
   `left: 50%; transform: translateX(-50%)` on the container — clips at composition edges.
 - **One caption group visible at a time.** Word grouping per canon: 2–3 words for hype,
   3–5 for conversational, 4–6 for measured/calm — choose the band from the detected tone.
+- **Caption-block exit MUST land at or before the next block's entrance —
+  the GROUPS table is a non-overlapping ordered partition.** For every
+  consecutive pair `(group[i], group[i+1])` in the static GROUPS literal,
+  `group[i].end ≤ group[i+1].start` MUST hold. Two captions on screen at
+  the same instant is the HOM-210 / HOM-215 symptom (fragments of two
+  captions stacked at t=11s on the canonical fixture); root cause is a
+  GROUPS table whose entries overlap in time, NOT a missing kill-tween
+  (the canon-mandated `tl.set(... { opacity: 0, visibility: "hidden" },
+  group.end)` is necessary but not sufficient — if `group[i+1].start <
+  group[i].end`, the next entrance fires while the previous block is
+  still mid-exit and they paint together for that overlap window).
+  When transcript timestamps from a single word stream produce naturally
+  abutting groups, set `group[i].end = min(group[i].end, group[i+1].start)`
+  — clamp the exit to the next entrance rather than letting them overlap.
+  This is the captions-track instance of the same Pattern A pair contract
+  that HOM-213 enforces on per-scene content. Canon: `~/.agents/skills/hyperframes/references/captions.md`
+  §"Constraints" (bullet "One group visible at a time") + §"Caption Exit
+  Guarantee"; `~/.agents/skills/hyperframes/references/motion-principles.md`
+  bullet "Hard-kill every scene boundary, not just captions."
 - **CSS scoping**: every rule prefixed with `#captions-layer`. No bare class selectors.
 - **`tl.fromTo()` for entrances** (motion-principles.md L115-123). Never `tl.from()`,
   never bare `gsap.from()`. Non-linear seek breaks otherwise.

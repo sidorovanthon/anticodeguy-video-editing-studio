@@ -37,7 +37,15 @@ from .._caching import make_llm_key
 from ._llm import LLMNode, _load_brief
 
 # Bump on brief / schema / tool-list change. See HOM-132 spec §8.
-_CACHE_VERSION = 1
+# v2 (HOM-215): brief gained the caption-block exit-before-next-entrance
+# imperative — the GROUPS table is now declared a non-overlapping ordered
+# partition (`group[i].end ≤ group[i+1].start`). The canon-mandated
+# `tl.set(...)` kill at group.end was already present but not sufficient
+# on its own: if the GROUPS literal overlaps in time, the next entrance
+# fires mid-exit and two captions paint together (HOM-210 fixture symptom
+# at t=11s). The brief now mandates a clamp `group[i].end =
+# min(group[i].end, group[i+1].start)` to enforce the partition.
+_CACHE_VERSION = 2
 
 
 def _cache_key(state, *_args, **_kwargs):
