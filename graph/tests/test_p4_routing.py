@@ -13,6 +13,7 @@ from edit_episode_graph.nodes._routing import (
     route_after_plan_ok,
     route_after_prompt_expansion,
     route_after_scaffold,
+    route_after_transitions,
 )
 
 
@@ -184,6 +185,27 @@ def test_route_after_assemble_index_default_to_p4_transitions():
     this routed straight to gate_lint; the gate cluster now starts after
     p4_transitions (see test_route_after_transitions_default_to_gate_lint)."""
     assert route_after_assemble_index({}) == "p4_transitions"
+
+
+def test_route_after_transitions_default_to_gate_lint():
+    """HOM-137: a successful (or no-op) p4_transitions advances into the
+    post-assemble gate cluster starting at gate_lint."""
+    assert route_after_transitions({}) == "gate_lint"
+
+
+def test_route_after_transitions_error_to_end():
+    """HOM-137: a terminal failure in p4_transitions (deterministic node —
+    pregel commits the errors entry) routes to END."""
+    state = {"errors": [{"node": "p4_transitions", "message": "x", "timestamp": "now"}]}
+    assert route_after_transitions(state) == END
+
+
+def test_route_after_transitions_skip_advances_to_gate_lint():
+    """HOM-137: a skip (no transitions in plan — schema-valid for 1-beat plans)
+    still advances into the gate cluster; the assembled HTML is itself valid
+    and lint/validate must run against it."""
+    state = {"compose": {"transitions": {"skipped": True, "skip_reason": "no transitions"}}}
+    assert route_after_transitions(state) == "gate_lint"
 
 
 def test_route_after_assemble_index_skip_to_halt():

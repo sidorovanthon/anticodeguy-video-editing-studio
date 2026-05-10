@@ -311,8 +311,7 @@ def _emit_final_fade(
     + memory `feedback_translucent_transitions` — final-fade is the only
     canon-allowed exit animation. `gate:plan_ok` (`gates/plan_ok.py` L106-121)
     enforces `from_beat == last beat label` and `to_beat == "END"`; this
-    helper trusts that contract, but the dangling-ref check in the node body
-    independently guards `from_beat == last_label`.
+    helper trusts that contract.
     """
     from_sid = scene_id_for(transition["from_beat"])
     duration = float(transition["duration_s"])
