@@ -40,7 +40,12 @@ from ._llm import LLMNode, _load_brief
 # semantics shift from "where" → "when". `compose.index_html_path` cache
 # input replaced with slug-derived `EpisodePaths(slug).index_html_path`
 # (input file fingerprint stays semantically identical — same physical file).
-_CACHE_VERSION = 2
+# v3 (HOM-229): `today` is no longer a fingerprint extra — it derives from
+# `assembled_at[:10]` (already in extras) inside `_render_ctx`. Cache key
+# is now a pure function of upstream content; same-content re-runs cache-hit
+# regardless of which calendar day they happen on. Session block reflects
+# the day the composition was assembled, not the day persist ran.
+_CACHE_VERSION = 3
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -64,19 +69,19 @@ def _cache_key(state, *_args, **_kwargs):
     else:
         index_html_path = assemble.get("index_html_path")  # legacy fallback
     assembled_at = assemble.get("assembled_at") or ""
-    # `today` (UTC YYYY-MM-DD) is rendered into the brief (line 33 of
-    # briefs/p4_persist_session.j2) and dictates the date stamped on the
-    # appended Session block. Including it in `extras` means a same-day
-    # re-run with unchanged `index.html` cache-hits (no duplicate Session
-    # block — desirable, nothing changed); a next-day re-run misses
-    # exactly when the brief would write a different date.
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    # HOM-229: `today` is derived from `assembled_at[:10]` inside
+    # `_render_ctx`, so it's a pure function of `assembled_at` (already in
+    # extras). Including the wall-clock `datetime.now()` in the key was
+    # unsound — it made cross-day replays of identical content miss for no
+    # semantic reason. The Session block now reflects the assembly day, not
+    # the persist execution day; same-content re-runs cache-hit regardless
+    # of calendar.
     return make_llm_key(
         node="p4_persist_session",
         version=_CACHE_VERSION,
         slug=slug,
         files=[index_html_path],
-        extras=(today, assembled_at),
+        extras=(assembled_at,),
     )
 
 
@@ -148,6 +153,7 @@ def _render_ctx(state: dict) -> dict:
     compose = state.get("compose") or {}
     plan = compose.get("plan") or {}
     captions = compose.get("captions") or {}
+    assemble = compose.get("assemble") or {}
     # HOM-224: derive paths via slug; legacy compose echoes dropped.
     slug = state.get("slug")
     if slug:
@@ -163,7 +169,6 @@ def _render_ctx(state: dict) -> dict:
     else:
         design = compose.get("design") or {}
         expansion = compose.get("expansion") or {}
-        assemble = compose.get("assemble") or {}
         design_md_path = design.get("design_md_path") or ""
         expanded_prompt_path = expansion.get("expanded_prompt_path") or ""
         index_html_path = assemble.get("index_html_path") or ""
@@ -181,7 +186,16 @@ def _render_ctx(state: dict) -> dict:
         "captions_block_path": captions_block_path,
         "index_html_path": index_html_path,
         "gate_results_json": json.dumps(_phase4_gate_records(state), ensure_ascii=False),
-        "today": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        # HOM-229: derive `today` from `assembled_at` so the Session block
+        # date is a function of upstream content, not wall-clock at persist
+        # time. The fallback to `datetime.now()` only fires for legacy
+        # synthetic-state tests where `assembled_at` is empty; the
+        # production path always sets it (p4_persist_session_node skips
+        # otherwise).
+        "today": (
+            (assemble.get("assembled_at") or "")[:10]
+            or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        ),
     }
 
 

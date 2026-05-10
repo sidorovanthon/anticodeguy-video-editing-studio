@@ -34,6 +34,9 @@ CREATIVE_NODES = (
     # graph node so cache_policy= actually fires. Same three invariants
     # apply (version bump, cfg fingerprint, upstream artifact edit).
     "gate_animation_map_classify",
+    # HOM-229: persist-session cache key made deterministic by deriving
+    # `today` from `assembled_at[:10]` instead of `datetime.now()`.
+    "p4_persist_session",
 )
 
 
