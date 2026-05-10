@@ -574,7 +574,7 @@ def p4_assemble_index_node(state):
     root_html = index_path.read_text(encoding="utf-8")
     # NOTE: cumulative_s computed for `scene_starts` passed to
     # `build_visibility_shim`. Root `data-duration` reconciliation deliberately
-    # NOT done here — see HOM-217 (follow-up) for refitting `p4_plan` beat
+    # NOT done here — see HOM-220 (follow-up) for refitting `p4_plan` beat
     # durations to authoritative audio length instead.
     patched = assemble_html(
         root_html=root_html,
