@@ -3,9 +3,13 @@
 Implements hyperframes SKILL.md §"Step 1: Design system" via a brief that
 REFERENCES the canon path rather than embedding it (per
 `feedback_graph_decomposition_brief_references_canon`). The dispatched
-sub-agent reads canon at call time using the `Read` tool, writes a real
-`DESIGN.md` to disk via the `Write` tool, and returns a structured
-`DesignDoc` for `gate:design_ok` to validate.
+sub-agent reads canon at call time using the `Read` tool and returns a
+structured `DesignDoc` with the full DESIGN.md body in the `design_md`
+field; the orchestrator writes the file to disk (HOM-232 — state-first
+artifacts, Step B of HOM-230). `gate:design_ok` validates the structured
+substance bounds; downstream disk-readers (`p4_assemble_index.py:588`
+etc.) keep working off the dual-written file until Step D2 strips the
+dual-write.
 
 Tier: smart. Visual identity is creative — palette, typography,
 references, alternatives, anti-patterns, beat→visual mapping. Cheap models
@@ -35,7 +39,14 @@ from ._llm import LLMNode, _load_brief
 # top-level mirror dropped; brief no longer renders the absolute path
 # context for episode_dir / design_md_path (path derived via slug at
 # read sites). Brief context shape changed → cache invalidation.
-_CACHE_VERSION = 3
+# v4 (HOM-232): state-first artifacts (Step B of HOM-230 epic). Brief
+# no longer instructs the sub-agent to call `Write`; the full DESIGN.md
+# body now comes back in the structured `DesignDoc.design_md` field and
+# the orchestrator dual-writes the file to `design_md_path` so today's
+# disk-readers (e.g. `p4_assemble_index.py:588`) keep working. `Write`
+# dropped from `allowed_tools`. Output schema and brief both changed →
+# cache invalidation.
+_CACHE_VERSION = 4
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -125,10 +136,10 @@ def _edl_beats(state: dict) -> list[str]:
 
 
 def _render_ctx(state: dict) -> dict:
-    # HOM-224: `design_md_path` still rendered into the brief (sub-agent
-    # `Write`s to that absolute path), but it's now derived via
-    # `EpisodePaths(slug)` rather than read from a state echo. The state
-    # write of `compose.design_md_path` is dropped (HOM-224 §"State writes").
+    # `design_md_path` is rendered into the brief so the sub-agent can echo
+    # it back in `DesignDoc.design_md_path` for `gate:design_ok`; the
+    # orchestrator (not the sub-agent) does the file write post-HOM-232.
+    # Path derived via `EpisodePaths(slug)` (HOM-224); state echo dropped.
     return {
         "design_md_path": str(_design_md_path(state)),
         "strategy_json": json.dumps(_strategy(state), ensure_ascii=False),
@@ -145,7 +156,7 @@ def _build_node() -> LLMNode:
         result_namespace="compose",
         result_key="design",
         timeout_s=240,
-        allowed_tools=["Read", "Write"],
+        allowed_tools=["Read"],
         extra_render_ctx=_render_ctx,
     )
 
@@ -165,13 +176,27 @@ def p4_design_system_node(state, *, router: BackendRouter | None = None):
             },
         }
 
-    # Ensure the destination directory exists so the sub-agent's `Write`
-    # call lands in a real folder. The hyperframes scaffold (p4_scaffold)
-    # also creates this dir, but design_system runs upstream of scaffold
-    # in the v4 topology — scaffold then consumes DESIGN.md.
-    _design_md_path(state).parent.mkdir(parents=True, exist_ok=True)
+    # Ensure the destination directory exists so the orchestrator's
+    # dual-write below lands in a real folder. The hyperframes scaffold
+    # (p4_scaffold) also creates this dir, but design_system runs upstream
+    # of scaffold in the v4 topology — scaffold then consumes DESIGN.md.
+    design_md_path = _design_md_path(state)
+    design_md_path.parent.mkdir(parents=True, exist_ok=True)
 
     # HOM-224: no longer mirror `compose.design_md_path` from the structured
     # output. Identity-only state — downstream nodes derive the path via
     # `EpisodePaths(slug).design_md_path` at use-site.
-    return _build_node()(state, router=router)
+    result = _build_node()(state, router=router)
+
+    # HOM-232 dual-write: the sub-agent returns the DESIGN.md body in
+    # `compose.design.design_md` (state-first artifacts, Step B of HOM-230).
+    # Today's downstream readers still expect the file on disk (e.g.
+    # `p4_assemble_index.py:588` reads DESIGN.md via `read_text`), so the
+    # orchestrator writes from the returned body. Step D2 strips this
+    # dual-write once the read-switch has soaked.
+    compose = result.get("compose") or {}
+    design = compose.get("design") or {}
+    body = design.get("design_md")
+    if isinstance(body, str) and body:
+        design_md_path.write_text(body, encoding="utf-8")
+    return result
