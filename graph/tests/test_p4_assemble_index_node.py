@@ -213,7 +213,7 @@ def test_assemble_html_shim_is_idempotent_on_rerun():
     assert twice.count(_SHIM_END_MARKER) == 1
 
 
-# ---- node: source-of-truth = compose.plan.beats[] + on-disk fragments ----
+# ---- node: source-of-truth = compose.plan.beats[] + state["scenes"] channel ----
 
 def _plan_state(tmp_path: Path, beats: list[tuple[str, float]]) -> dict:
     """Build a minimal state with scaffolded index + plan.beats.
@@ -240,21 +240,14 @@ def _plan_state(tmp_path: Path, beats: list[tuple[str, float]]) -> dict:
 
 
 def _write_fragment(state: dict, scene_id: str, body: str = "x") -> Path:
-    """HOM-236: populate `state["scenes"][scene_id]["html"]` with a
-    Pattern A fragment. Also dual-writes to disk to mirror what the
-    production `p4_beat` node does today (so any leftover disk-presence
-    assertions remain valid). Returns the disk path for back-compat with
-    tests that still inspect the dual-written file.
+    """Populate `state["scenes"][scene_id].html` with `body`. Post-HOM-236
+    the node reads bodies from this channel; no disk fragment is needed.
     """
     fragment = _pattern_a_fragment(scene_id, body)
     scenes = state.setdefault("scenes", {})
     scenes[scene_id] = {"html": fragment}
     hf_dir = Path(state["compose"]["index_html_path"]).parent
-    comp_dir = hf_dir / "compositions"
-    comp_dir.mkdir(exist_ok=True)
-    p = comp_dir / f"{scene_id}.html"
-    p.write_text(fragment, encoding="utf-8")
-    return p
+    return hf_dir / "compositions" / f"{scene_id}.html"
 
 
 def test_node_skips_when_no_plan_beats():
