@@ -22,14 +22,17 @@ Inputs:
 - Strategy from Phase 3 (shape / takes / grade / pacing / length): `{{ strategy_json }}`
 - EDL beats already chosen for the cut (use these as `beat_visual_mapping` keys): `{{ edl_beats_json }}`
 
-Outputs (BOTH are required):
+Outputs:
 
-1. **Write `DESIGN.md` to disk** at `{{ design_md_path }}` using the `Write` tool.
-   The spec format (YAML frontmatter keys + prose section names) is defined
-   in `references/design-picker.md` — follow it exactly as written there. Do
-   not rely on remembered structure; read the canon file. The downstream beat
-   sub-agents will consume this file as their source of truth — make every
-   section operational, not aspirational.
+1. **Return the DESIGN.md body in the `design_md` field** of the structured
+   `DesignDoc` response below. Do NOT call the `Write` tool. Do NOT touch
+   the filesystem. The orchestrator writes the file to `{{ design_md_path }}`
+   from your returned body (HOM-232 — state-first artifacts, Step B of the
+   HOM-230 epic). The spec format (YAML frontmatter keys + prose section
+   names) is defined in `references/design-picker.md` — follow it exactly
+   as written there. Do not rely on remembered structure; read the canon
+   file. The downstream beat sub-agents will consume this content as their
+   source of truth — make every section operational, not aspirational.
 
 2. **Return ONLY JSON** matching the `DesignDoc` schema shown below. Substance
    bounds are non-negotiable — the deterministic gate `gate:design_ok` rejects
@@ -106,9 +109,18 @@ just needs the derived hexes present.
     {"beat": "PROBLEM",  "treatment": "Stat at 7rem dominates frame; foreground tinted toward accent at 8% opacity."},
     {"beat": "PAYOFF",   "treatment": "Wide reveal with hairline rules; entrance staggered 120ms; no exit tween, transition handles."}
   ],
-  "design_md_path": "{{ design_md_path }}"
+  "design_md_path": "{{ design_md_path }}",
+  "design_md": "---\nstyle: Swiss Pulse\npalette:\n  background: \"#0a0a0a\"\n  foreground: \"#f0f0f0\"\n  accent: \"#0066FF\"\n---\n\n# Overview\n\nGrid-locked editorial design...\n\n# Colors\n\n... (full body, YAML frontmatter + prose sections per references/design-picker.md)"
 }
 ```
+
+The `design_md` field carries the FULL body (YAML frontmatter + every prose
+section the design-picker spec mandates) as a single JSON-escaped string —
+backslashes, double-quotes, and newlines need standard JSON escaping. The
+snippet above is illustrative; your output is ~3–8 KB of real content. The
+orchestrator's extractor accepts the first valid fenced ```json``` code
+block (see `graph/src/edit_episode_graph/backends/_schema_extract.py`); take
+care not to truncate.
 
 Do not include prose outside the JSON. Hex colors must be CSS-valid (`#RGB`,
 `#RRGGBB`, or `#RRGGBBAA`). The HARD-GATE in the canon you just read is real —

@@ -96,5 +96,16 @@ class DesignDoc(BaseModel):
     beat_visual_mapping: list[BeatVisualMapping] = Field(min_length=1)
     design_md_path: str = Field(
         min_length=1,
-        description="Absolute path to the DESIGN.md the sub-agent wrote to disk.",
+        description="Absolute path to the DESIGN.md the orchestrator writes to disk "
+                    "(derived from slug via `EpisodePaths`; echoed for gate convenience). "
+                    "Step E (HOM-230 epic) removes this field once disk-readers are gone.",
+    )
+    design_md: str = Field(
+        min_length=1,
+        description="Full DESIGN.md body — YAML frontmatter + prose sections (Overview, "
+                    "Colors, Typography, Layout, Elevation, Components, Do's and Don'ts) "
+                    "per `~/.agents/skills/hyperframes/references/design-picker.md`. "
+                    "HOM-232: returned in state (state-first artifacts, Step B of HOM-230). "
+                    "Orchestrator dual-writes to `design_md_path` for today's disk-readers; "
+                    "Step D2 strips that dual-write.",
     )
