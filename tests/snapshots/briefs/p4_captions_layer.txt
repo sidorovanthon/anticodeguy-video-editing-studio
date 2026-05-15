@@ -22,8 +22,31 @@ portrait vs. landscape positioning rules from canon §"Positioning".
 Total composition duration: `30.0` seconds (used for the
 GSAP root timeline length).
 
-Output file: `/tmp/snapshot-fixture/episode/hyperframes/captions.html` (write a single HTML fragment via
-the `Write` tool).
+Outputs:
+
+1. **Return the captions block body in the `html` field** of the structured
+   `CaptionsOutput` response below. Do NOT call the `Write` tool. Do NOT
+   touch the filesystem. The orchestrator writes the file to
+   `/tmp/snapshot-fixture/episode/hyperframes/captions.html` from your returned body (HOM-235 —
+   state-first artifacts, Step B of the HOM-230 epic). The shape, hard
+   rules, and process steps below define what the body MUST contain.
+
+2. **Return ONLY JSON** matching the `CaptionsOutput` schema (no prose
+   outside the JSON):
+
+```json
+{ "html": "<div id=\"captions-layer\" class=\"captions-layer\">\n  <style>…</style>\n  …\n  <script>(function(){ … })();</script>\n</div>" }
+```
+
+The `html` field carries the FULL fragment (scoped `<style>`, all per-group
+`<div>`s, IIFE-wrapped `<script>` with the GROUPS literal + GSAP timeline +
+canon-mandated `tl.set(...)` kills) as a single JSON-escaped string —
+backslashes, double-quotes, and newlines need standard JSON escaping. The
+snippet above is illustrative; your output is typically ~5–15 KB of real
+content. The orchestrator's extractor accepts the first valid fenced
+```json``` code block (see
+`graph/src/edit_episode_graph/backends/_schema_extract.py`); take care not
+to truncate.
 
 Canon to read BEFORE writing the fragment (use the `Read` tool on each — do
 not rely on memory for shape or hard rules):
@@ -47,7 +70,7 @@ not rely on memory for shape or hard rules):
 4. `~/.agents/skills/hyperframes/SKILL.md` §"Animation Guardrails" — applies
    to the captions timeline too (≥ 3 distinct eases, deterministic seek).
 
-Output shape (write to `/tmp/snapshot-fixture/episode/hyperframes/captions.html`):
+Output shape (return as the `html` string in the `CaptionsOutput` JSON above):
 
 ```html
 <div id="captions-layer" class="captions-layer">
@@ -152,8 +175,10 @@ Process:
 4. Group words per §"Word Grouping" using the band that matches the detected tone.
 5. Apply per-word emphasis per §"Per-Word Styling" — brand/product names, ALL CAPS,
    numbers/statistics, emotional keywords, calls-to-action.
-6. `Write` ONE file to `/tmp/snapshot-fixture/episode/hyperframes/captions.html` containing the fragment shape above.
-7. Reply on a single line: `Wrote /tmp/snapshot-fixture/episode/hyperframes/captions.html (<N> groups, tone=<profile>).`
+6. Return the fragment shape above in the `html` field of the `CaptionsOutput`
+   JSON (single fenced ```json``` code block, no prose outside). Do NOT call
+   `Write` — it is not in your `allowed_tools`. The orchestrator writes the
+   file from your returned body.
 
 Do NOT modify the root `index.html`, do NOT touch sibling `compositions/*.html`, do NOT
 add `<script src=...>` tags. Stay inside the captions block.

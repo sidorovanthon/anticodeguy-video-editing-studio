@@ -68,6 +68,9 @@ _PREDECESSORS: dict[str, str] = {
     "p3_edl_select": "strategy_confirmed_interrupt",
     "p4_design_system": "p4_scaffold",
     "p4_prompt_expansion": "gate_design_ok",
+    # HOM-235: captions layer sits between `p4_catalog_scan` and
+    # `p4_dispatch_beats` on the happy path.
+    "p4_captions_layer": "p4_catalog_scan",
     # `p4_beat` is fan-out via Send from `p4_dispatch_beats`; the closest
     # deterministic predecessor on the happy path is `p4_captions_layer`.
     "p4_beat": "p4_captions_layer",

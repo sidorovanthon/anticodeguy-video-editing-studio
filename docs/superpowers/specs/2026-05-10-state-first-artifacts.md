@@ -373,6 +373,8 @@ Order: `p4_design_system` → `p4_prompt_expansion` → `p4_beat` (the `_scenes_
 
 After Step B all six creative nodes return body strings in state *and* still write to disk. The fixture cache.db's bodies are now populated (after one re-record per node, but each is replayable at $0 once recorded).
 
+**Step B progress (landed PRs):** B1 `p4_design_system` (HOM-232, PR #138) · B2 `p4_prompt_expansion` (HOM-233, PR #139) · B3 `p4_beat` (HOM-234, PR #140) · B4 `p4_captions_layer` (HOM-235) — sub-agent returns `CaptionsOutput.html`; orchestrator dual-writes to `EpisodePaths(slug).captions_block_path`.
+
 ### Step C — Add `p4_materialize_disk_node` as no-op (1 PR, ~1 day)
 
 New node module `nodes/p4_materialize_disk.py`. Wired into `graph.py` between `p4_persist_session` and `studio_launch` (or per `_routing.py`'s decision tree). Initially a no-op: reads `compose.*.html` / `compose.*.markdown` from state and asserts they exist; does not write. Cache policy: `make_key` keyed on body hashes.
