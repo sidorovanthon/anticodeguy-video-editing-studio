@@ -2,18 +2,21 @@
 
 Reads the Phase-3 transcript and `DESIGN.md` via the dispatched sub-agent's
 `Read` tool, detects tone per HF canon `references/captions.md` §"Style
-Detection", and writes a single self-contained captions HTML fragment to
-`<hyperframes_dir>/captions.html` via the `Write` tool. The deterministic
-`p4_assemble_index` node reads `compose.captions_block_path` and inlines the
-fragment into the root `index.html` (between the beat fragments and the v4
-visibility shim).
+Detection", and returns a single self-contained captions HTML fragment in
+the structured `CaptionsOutput.html` field. The orchestrator dual-writes
+the body to `<hyperframes_dir>/captions.html` (HOM-235 — state-first
+artifacts, Step B of HOM-230); the deterministic `p4_assemble_index` node
+keeps reading from disk and inlining the fragment into the root
+`index.html` (between the beat fragments and the v4 visibility shim)
+until Step D2 of the HOM-230 epic strips the dual-write.
 
 Per spec §6.3 + HOM-123 amendment:
   - tier=smart (creative — `feedback_creative_nodes_flagship_tier`; canon
     is explicitly tone-adaptive across 4 dimensions × 5 tone profiles, with
     per-word emphasis decisions; cheap models hollow out brand-defining
     creative work).
-  - allowed_tools = [Read, Write].
+  - allowed_tools = [Read]. `Write` removed in HOM-235 (state-first); the
+    orchestrator handles the file write from the returned body.
   - briefs reference canon paths, never embed canon
     (`feedback_graph_decomposition_brief_references_canon`).
   - caching: `CACHE_POLICY` keyed on (slug, design_md_path,
@@ -33,6 +36,7 @@ from langgraph.types import CachePolicy
 
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
+from ..schemas.p4_captions_layer import CaptionsOutput
 from .._caching import make_llm_key
 from .._paths import EpisodePaths
 from ._llm import LLMNode, _load_brief
@@ -50,7 +54,14 @@ from ._llm import LLMNode, _load_brief
 # top-level mirror dropped (downstream nodes derive via
 # `EpisodePaths(slug).captions_block_path`); state.captions echo also
 # dropped. Brief unchanged but cache key inputs derive via slug.
-_CACHE_VERSION = 3
+# v4 (HOM-235): state-first artifacts (Step B of HOM-230 epic). Brief no
+# longer instructs the sub-agent to call `Write`; the full captions HTML
+# fragment now comes back in the structured `CaptionsOutput.html` field
+# and the orchestrator dual-writes the file to `captions_block_path` so
+# today's `p4_assemble_index` disk-reader keeps working. `Write` dropped
+# from `allowed_tools`. Output schema and brief both changed → cache
+# invalidation.
+_CACHE_VERSION = 4
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -170,23 +181,25 @@ def _render_ctx(state: dict) -> dict:
 
 
 def _build_node() -> LLMNode:
-    # output_schema=None — same FS-source-of-truth pattern as p4_beat
-    # (HOM-134). The output path is deterministic
-    # (`<hyperframes_dir>/captions.html`), so requiring the sub-agent to
-    # echo it back as JSON adds an extraction failure mode for zero
-    # structural value: smoke runs hit `SchemaValidationError` because the
-    # canon-shaped reply was prose ("Wrote captions.html (...)") rather
-    # than the JSON the schema expected. The post-dispatch check below
-    # promotes from disk instead.
+    # HOM-235 (Step B of HOM-230 state-first-artifacts): the sub-agent
+    # returns the full captions HTML fragment in `CaptionsOutput.html`
+    # rather than calling `Write`. The orchestrator dual-writes the body
+    # to `<hyperframes_dir>/captions.html` below so today's
+    # `p4_assemble_index` disk-reader keeps working until Step D2 strips
+    # the dual-write. HOM-134's previous FS-source-of-truth rationale was
+    # validated against the current model tier by the HOM-243 spike
+    # (docs/spikes/hom-243-results.json — 6/6 paid attempts on `p4_beat`
+    # returned 5–7 KB html cleanly, no SchemaValidationError, no
+    # truncation, no retry loops) and reversed for the HOM-230 epic.
     return LLMNode(
         name="p4_captions_layer",
         requirements=NodeRequirements(tier="expensive", needs_tools=True, backends=["claude"]),
         brief_template=_load_brief("p4_captions_layer"),
-        output_schema=None,
+        output_schema=CaptionsOutput,
         result_namespace="compose",
-        result_key="_captions_unused",
+        result_key="captions",
         timeout_s=300,
-        allowed_tools=["Read", "Write"],
+        allowed_tools=["Read"],
         extra_render_ctx=_render_ctx,
     )
 
@@ -235,30 +248,22 @@ def p4_captions_layer_node(state, *, router: BackendRouter | None = None):
     node = _build_node()
     update = node(state, router=router)
 
-    # `LLMNode` always writes `compose[result_key] = {"raw_text": ...}` even
-    # when `output_schema is None`, leaving a noisy `_captions_unused` key in
-    # every checkpoint. Drop it: the FS-source-of-truth model below carries
-    # the only signal we want downstream nodes to see.
-    compose_namespace = update.get("compose")
-    if isinstance(compose_namespace, dict):
-        compose_namespace.pop("_captions_unused", None)
+    # HOM-235 dual-write: the sub-agent returns the captions HTML body in
+    # `compose.captions.html` (state-first artifacts, Step B of HOM-230).
+    # Today's downstream reader still expects the file on disk
+    # (`p4_assemble_index` reads `<hyperframes_dir>/captions.html`), so the
+    # orchestrator writes from the returned body. Step D2 strips this
+    # dual-write once the read-switch has soaked.
+    compose_namespace = update.get("compose") or {}
+    captions_ns = compose_namespace.get("captions") or {}
+    body = captions_ns.get("html")
+    if isinstance(body, str) and body:
+        captions_path.write_text(body, encoding="utf-8")
 
-    # HOM-224: identity-only state — no longer echo the captions_block_path
-    # into `compose.captions_block_path` or `compose.captions`. Downstream
-    # consumers (`p4_assemble_index`, `halt_llm_boundary`) derive the path
-    # via `EpisodePaths(slug).captions_block_path` and check disk existence
-    # there. Leave a minimal success record on `compose.captions` so the
-    # halt-notice "captions written" branch still has a signal — store an
-    # empty dict (presence indicates non-skip).
-    try:
-        wrote = captions_path.is_file() and captions_path.stat().st_size > 0
-    except OSError:
-        wrote = False
-    if wrote:
-        compose_update = update.setdefault("compose", {})
-        # Non-skip success marker — dict is intentionally empty (no path
-        # echo). `halt_llm_boundary._captions_summary` already consults
-        # disk via EpisodePaths, so absence of `skipped`/`captions_block_path`
-        # keys is the correct shape post-HOM-224.
-        compose_update.setdefault("captions", {})
+    # HOM-224 / HOM-235: identity-only state — `compose.captions` now
+    # carries the body via `html`; no separate success-marker block
+    # required. Downstream consumers (`p4_assemble_index`,
+    # `halt_llm_boundary`) still derive the disk path via
+    # `EpisodePaths(slug).captions_block_path` and check existence there
+    # until the Step D1 read-switch.
     return update

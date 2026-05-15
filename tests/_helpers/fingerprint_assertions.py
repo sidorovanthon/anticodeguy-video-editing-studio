@@ -184,6 +184,28 @@ def _p4_persist_session_base(tmp_dir: Path) -> dict:
     }
 
 
+def _p4_captions_layer_base(tmp_dir: Path) -> dict:
+    """Base state for p4_captions_layer cache key.
+
+    HOM-224: paths derive via EpisodePaths(slug). The node fingerprints
+    `design_md_path` (DESIGN.md) and `transcripts_final_json_path` —
+    both must exist on disk so file_fingerprint can sha256 them.
+    """
+    episode_dir = _pin_project_root_to(tmp_dir)
+    hf_dir = episode_dir / "hyperframes"
+    hf_dir.mkdir(parents=True, exist_ok=True)
+    design_md = hf_dir / "DESIGN.md"
+    design_md.write_text("# DESIGN.md fixture\n", encoding="utf-8")
+    transcript = episode_dir / "edit" / "transcripts" / "final.json"
+    transcript.parent.mkdir(parents=True, exist_ok=True)
+    transcript.write_text('{"words":[]}', encoding="utf-8")
+    return {
+        "slug": _FP_SLUG,
+        "episode_dir": str(episode_dir),
+        "compose": {},
+    }
+
+
 def _p4_beat_base(tmp_dir: Path) -> dict:
     episode_dir = _pin_project_root_to(tmp_dir)
     # HOM-224: paths derive via EpisodePaths(slug); seed at slug-derived layout.
@@ -252,6 +274,16 @@ _NODE_REGISTRY: dict[str, tuple[str, Callable[[Path], dict], Callable[[dict], Pa
     "p4_beat": (
         "edit_episode_graph.nodes.p4_beat",
         _p4_beat_base,
+        _slug_path("design_md_path"),
+    ),
+    # HOM-235: cache key fingerprints `design_md_path` (primary) AND
+    # `transcripts_final_json_path` via `files=`. The parametrised
+    # invariant only exercises the primary; the secondary is the only
+    # other `files=` entry and is exercised implicitly via _CACHE_VERSION
+    # bump + cfg fingerprint coverage.
+    "p4_captions_layer": (
+        "edit_episode_graph.nodes.p4_captions_layer",
+        _p4_captions_layer_base,
         _slug_path("design_md_path"),
     ),
     # HOM-229: cache key now deterministic — extras=(assembled_at,) and

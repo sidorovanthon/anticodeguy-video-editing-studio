@@ -30,6 +30,10 @@ CREATIVE_NODES = (
     "p3_strategy",
     "p4_design_system",
     "p4_beat",
+    # HOM-235: state-first artifacts (Step B of HOM-230 epic). Same three
+    # invariants apply (version bump, cfg fingerprint, upstream
+    # artifact edit on the primary `design_md_path`).
+    "p4_captions_layer",
     # HOM-156 (review S1): cheap-tier classifier extracted into its own
     # graph node so cache_policy= actually fires. Same three invariants
     # apply (version bump, cfg fingerprint, upstream artifact edit).
