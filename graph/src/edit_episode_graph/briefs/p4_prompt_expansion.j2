@@ -30,22 +30,35 @@ Inputs:
   must produce per-scene specs for: `{{ edl_beats_json }}`
 - Transcript JSON path (per-word timing for pacing references): `{{ transcript_json_path }}`
 
-Outputs (BOTH are required):
+Outputs:
 
-1. **Write the expansion to disk** at `{{ expanded_prompt_path }}` using the
-   `Write` tool. Section names, ordering, per-scene format, and length
-   guidance are defined in `references/prompt-expansion.md` and
-   `references/beat-direction.md` — follow them exactly as written there.
-   Do not rely on remembered structure; read the canon files. The file
-   itself is the artifact — do NOT dump its contents into the chat.
+1. **Return the expansion body in the `expanded_prompt` field** of the
+   structured `ExpandedPrompt` response below. Do NOT call the `Write`
+   tool. Do NOT touch the filesystem. The orchestrator writes the file
+   to `{{ expanded_prompt_path }}` from your returned body (HOM-233 —
+   state-first artifacts, Step B of the HOM-230 epic). Section names,
+   ordering, per-scene format, and length guidance are defined in
+   `references/prompt-expansion.md` and `references/beat-direction.md` —
+   follow them exactly as written there. Do not rely on remembered
+   structure; read the canon files.
 
 2. **Return ONLY JSON** matching this shape (no prose outside the JSON):
 
 ```json
-{ "expanded_prompt_path": "{{ expanded_prompt_path }}" }
+{
+  "expanded_prompt_path": "{{ expanded_prompt_path }}",
+  "expanded_prompt": "# Scene 1 — HOOK\n\n... (full body, six required sections + per-scene specs per references/prompt-expansion.md)"
+}
 ```
+
+The `expanded_prompt` field carries the FULL body (every required section
++ per-scene spec) as a single JSON-escaped string — backslashes,
+double-quotes, and newlines need standard JSON escaping. The snippet above
+is illustrative; your output is typically ~5–15 KB of real content. The
+orchestrator's extractor accepts the first valid fenced ```json``` code
+block (see `graph/src/edit_episode_graph/backends/_schema_extract.py`);
+take care not to truncate.
 
 Canonical opt-out honored: this node produces the expansion only. Do NOT
 generate composition HTML, scene sub-agents, or DESIGN.md here — those are
-later graph nodes (`p4_beats`, etc.). Stop after writing the file and
-returning the JSON.
+later graph nodes (`p4_beats`, etc.). Stop after returning the JSON.

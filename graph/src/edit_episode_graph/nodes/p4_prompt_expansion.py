@@ -3,9 +3,12 @@
 Implements hyperframes SKILL.md §"Step 2: Prompt expansion" via a brief that
 REFERENCES the canon path rather than embedding it (per
 `feedback_graph_decomposition_brief_references_canon`). The dispatched
-sub-agent reads canon at call time, consumes DESIGN.md from disk, and writes
-the per-scene production spec to `.hyperframes/expanded-prompt.md`. The
-structured return surfaces the artifact path back into state.
+sub-agent reads canon at call time, consumes DESIGN.md from disk, and
+returns a structured `ExpandedPrompt` with the full per-scene production
+spec body in the `expanded_prompt` field; the orchestrator writes the file
+to `.hyperframes/expanded-prompt.md` (HOM-233 — state-first artifacts,
+Step B of HOM-230). Downstream disk-readers (`p4_plan`, `p4_beats`) keep
+working off the dual-written file until Step D2 strips the dual-write.
 
 Tier: smart. Canon `references/prompt-expansion.md` is explicit that "the
 quality gap between a single-pass composition and a multi-scene-pipeline
@@ -31,7 +34,14 @@ from ._llm import LLMNode, _load_brief
 # v2 (HOM-224): identity-only state writes — `compose.expanded_prompt_path`
 # top-level mirror dropped; brief no longer renders `episode_dir`. Paths
 # derived via `EpisodePaths(slug)` at use-sites.
-_CACHE_VERSION = 2
+# v3 (HOM-233): state-first artifacts (Step B of HOM-230 epic). Brief no
+# longer instructs the sub-agent to call `Write`; the full expanded-prompt
+# body now comes back in the structured `ExpandedPrompt.expanded_prompt`
+# field and the orchestrator dual-writes the file to `expanded_prompt_path`
+# so today's disk-readers (`p4_plan`, `p4_beats`) keep working. `Write`
+# dropped from `allowed_tools`. Output schema and brief both changed →
+# cache invalidation.
+_CACHE_VERSION = 3
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -141,7 +151,7 @@ def _build_node() -> LLMNode:
         result_namespace="compose",
         result_key="expansion",
         timeout_s=300,
-        allowed_tools=["Read", "Write"],
+        allowed_tools=["Read"],
         extra_render_ctx=_render_ctx,
     )
 
@@ -177,11 +187,25 @@ def p4_prompt_expansion_node(state, *, router: BackendRouter | None = None):
             },
         }
 
-    # Ensure the destination dir exists so the sub-agent's `Write` lands.
-    # `.hyperframes/` is the canonical HF dotdir per memory
-    # `feedback_hf_step2_prompt_expansion`.
-    _expanded_prompt_path(state).parent.mkdir(parents=True, exist_ok=True)
+    # Ensure the destination dir exists so the orchestrator's dual-write
+    # below lands in a real folder. `.hyperframes/` is the canonical HF
+    # dotdir per memory `feedback_hf_step2_prompt_expansion`.
+    expanded_prompt_path = _expanded_prompt_path(state)
+    expanded_prompt_path.parent.mkdir(parents=True, exist_ok=True)
 
     # HOM-224: no longer mirror `compose.expanded_prompt_path` — identity-only
     # state. Downstream nodes derive via `EpisodePaths(slug).expanded_prompt_path`.
-    return _build_node()(state, router=router)
+    result = _build_node()(state, router=router)
+
+    # HOM-233 dual-write: the sub-agent returns the expanded-prompt body
+    # in `compose.expansion.expanded_prompt` (state-first artifacts, Step B
+    # of HOM-230). Today's downstream readers still expect the file on disk
+    # (`p4_plan`, `p4_beats` read `.hyperframes/expanded-prompt.md`), so the
+    # orchestrator writes from the returned body. Step D2 strips this
+    # dual-write once the read-switch has soaked.
+    compose = result.get("compose") or {}
+    expansion = compose.get("expansion") or {}
+    body = expansion.get("expanded_prompt")
+    if isinstance(body, str) and body:
+        expanded_prompt_path.write_text(body, encoding="utf-8")
+    return result
