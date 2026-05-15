@@ -1,15 +1,20 @@
 """p4_beat — smart LLM node for per-scene Pattern A authoring (HOM-134).
 
 One Send per beat from `p4_dispatch_beats`. Each invocation reads the
-upstream design system + expanded-prompt + canon docs via the `Read` tool
-and writes a single Pattern A fragment to
-`compositions/<scene_id>.html` via the `Write` tool. The deterministic
-`p4_assemble_index` node fans in and inlines those fragments into the
-root `index.html`.
+upstream design system + expanded-prompt + canon docs via the `Read`
+tool and returns the full Pattern A fragment in ``BeatOutput.html``
+(HOM-234 — state-first artifacts, HOM-230 epic Step B3). The
+orchestrator dual-writes the body to ``compositions/<scene_id>.html``
+so today's disk-readers (`p4_assemble_index.py:588`) keep working
+until HOM-230 Step D switches the consumer-side to read from
+``state['scenes'][scene_id]['html']`` (top-level channel; see
+``state.py::_scenes_merge`` + spec §10 Step B amendment). The
+deterministic `p4_assemble_index` node fans in and inlines those
+fragments into the root `index.html`.
 
 Per spec `2026-05-04-hom-122-p4-beats-fan-out-design.md`:
   - tier=smart (creative — `feedback_creative_nodes_flagship_tier`)
-  - allowed_tools = [Read, Write]
+  - allowed_tools = [Read]
   - briefs reference canon paths, never embed canon
     (`feedback_graph_decomposition_brief_references_canon`)
 
@@ -33,6 +38,7 @@ from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
 from .._caching import make_llm_key, stable_fingerprint
 from .._paths import EpisodePaths
+from ..schemas.p4_beat import BeatOutput
 from ._llm import LLMNode, _load_brief
 
 # Bump on brief / schema / tool-list change. See HOM-132 spec §8.
@@ -65,7 +71,13 @@ from ._llm import LLMNode, _load_brief
 # v7 (HOM-224): cache_key + render ctx derive design.md / expanded-prompt.md
 # via `EpisodePaths(slug)`; `compose.design_md_path` / `compose.expanded_prompt_path`
 # state echoes dropped upstream.
-_CACHE_VERSION = 7
+# v8 (HOM-234): state-first artifacts (Step B3 of HOM-230 epic). Brief no
+# longer instructs the sub-agent to call `Write`; the full scene fragment
+# now comes back in `BeatOutput.html` and the orchestrator dual-writes the
+# file to `scene_html_path` so today's disk-readers (`p4_assemble_index.py:588`)
+# keep working. `Write` dropped from `allowed_tools`. Output schema and
+# brief both changed → cache invalidation.
+_CACHE_VERSION = 8
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -171,23 +183,45 @@ def _build_node() -> LLMNode:
         name="p4_beat",
         requirements=NodeRequirements(tier="expensive", needs_tools=True, backends=["claude"]),
         brief_template=_load_brief("p4_beat"),
-        output_schema=None,
+        output_schema=BeatOutput,
         result_namespace="compose",
-        result_key="_beat_unused",
+        result_key="_beat_raw",
         timeout_s=300,
-        allowed_tools=["Read", "Write"],
+        allowed_tools=["Read"],
         extra_render_ctx=_render_ctx,
     )
 
 
 def p4_beat_node(state, *, router: BackendRouter | None = None):
     bd = state.get("_beat_dispatch") or {}
+    scene_id = bd.get("scene_id")
     scene_html_path = bd.get("scene_html_path")
 
-    # Ensure the destination directory exists so the sub-agent's `Write`
-    # call lands in a real folder.
+    # Ensure the destination directory exists so the orchestrator's
+    # dual-write below lands in a real folder.
     if scene_html_path:
         Path(scene_html_path).parent.mkdir(parents=True, exist_ok=True)
 
-    node = _build_node()
-    return node(state, router=router)
+    result = _build_node()(state, router=router)
+
+    # HOM-234 dual-write + state shape correction. LLMNode returns the
+    # structured `BeatOutput` under `result["compose"]["_beat_raw"]`; we
+    # re-route it into the top-level `scenes[scene_id].html` channel
+    # (promoted from `compose.scenes` by the HOM-234 pre-check — see
+    # tests/test_compose_scenes_fanout.py for the rationale: LangGraph
+    # reducers do NOT walk nested Annotated channels, so the
+    # `_scenes_merge` reducer only fires when `scenes` lives at the top
+    # level). We also write the body to disk so today's downstream
+    # reader (`p4_assemble_index.py:588`) keeps working until Step D2
+    # of HOM-230 strips this dual-write.
+    compose = result.get("compose") or {}
+    raw = compose.pop("_beat_raw", None) or {}
+    body = raw.get("html") if isinstance(raw, dict) else None
+
+    if isinstance(body, str) and body and scene_html_path:
+        Path(scene_html_path).write_text(body, encoding="utf-8")
+
+    out: dict = {"llm_runs": result.get("llm_runs", [])}
+    if isinstance(body, str) and body and scene_id:
+        out["scenes"] = {scene_id: {"html": body}}
+    return out

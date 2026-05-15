@@ -95,7 +95,14 @@ def _scenes_merge(left: dict | None, right: dict | None) -> dict:
     sorted by scene_id so downstream content-hash fingerprints are
     iteration-order independent.
 
-    Used as the reducer for ``ComposeState.scenes`` (HOM-231). The
+    Used as the reducer for the top-level ``GraphState.scenes`` channel
+    (HOM-234). The HOM-231 nested annotation on ``ComposeState.scenes``
+    was rendered non-functional by LangGraph's reducer semantics — only
+    top-level ``Annotated`` channels fire their reducer, nested
+    ``Annotated`` types inside another ``Annotated`` channel are
+    ignored. The HOM-234 pre-check (``tests/test_compose_scenes_fanout``)
+    empirically pinned this; the channel was promoted from
+    ``compose.scenes`` to the top-level ``scenes`` on ``GraphState``. The
     sorted-by-key output is load-bearing for the future materializer's
     cache key (spec §6.3) — Python dict iteration is insertion-ordered,
     and parallel ``Send`` completion order is non-deterministic, so an
@@ -300,10 +307,21 @@ class ComposeState(TypedDict, total=False):
     expanded_prompt_path: str | None
     catalog: CatalogReport
     # HOM-231 (Step A): per-scene fragment bodies, keyed by scene_id.
-    # Wired through `_scenes_merge` so parallel `Send` writes from the
-    # p4_beat fan-out (Step B) merge deterministically into a sorted
-    # dict — load-bearing for materializer cache keys (spec §6.3).
-    scenes: Annotated[dict[str, SceneState], _scenes_merge]
+    # DEPRECATED location — HOM-234 pre-check (2026-05-15) proved
+    # LangGraph reducers do NOT walk nested ``Annotated`` channels:
+    # two parallel ``Send``s into ``compose.scenes`` clobbered each
+    # other because only the outer ``compose: Annotated[..., dict_merge]``
+    # reducer fired at the top level (shallow `{**left, **right}` over
+    # whole `scenes` dicts, last Send wins). ``scenes`` was promoted to a
+    # top-level channel on ``GraphState`` so ``_scenes_merge`` actually
+    # runs over the parallel fan-out from ``p4_beat``. This field stays
+    # on ``ComposeState`` only so already-recorded checkpoints carrying
+    # the deprecated nested key still parse cleanly; new code MUST write
+    # to ``GraphState.scenes`` (top-level). See
+    # ``tests/test_compose_scenes_fanout.py`` for the empirical pin and
+    # ``docs/superpowers/specs/2026-05-10-state-first-artifacts.md`` §10
+    # Step B for the spec amendment.
+    scenes: dict[str, SceneState]
     # DEPRECATED — `compose.beats` is no longer populated by any node. The
     # per-beat fan-out (HOM-133/134) writes scene fragments to
     # `<hyperframes_dir>/compositions/<scene_id>.html` directly, and
@@ -469,6 +487,19 @@ class GraphState(TypedDict, total=False):
     audio: Annotated[AudioState, dict_merge]
     transcripts: Annotated[TranscriptsState, dict_merge]
     compose: Annotated[ComposeState, dict_merge]
+    # HOM-234: per-scene fragment bodies from the p4_beat fan-out. Top-level
+    # rather than nested under ``compose`` because LangGraph reducers do NOT
+    # walk nested ``Annotated`` channels — two parallel ``Send``s writing
+    # into ``compose.scenes`` clobber each other under the outer
+    # ``dict_merge``. Promoting ``scenes`` to a top-level channel routes the
+    # parallel writes through ``_scenes_merge`` (union + sorted-by-key for
+    # deterministic content-hash fingerprints, spec §6.3). Empirical pin:
+    # ``tests/test_compose_scenes_fanout.py``. Spec amendment:
+    # ``docs/superpowers/specs/2026-05-10-state-first-artifacts.md`` §10
+    # Step B. Step E (HOM-230 epic close) keeps this channel; the
+    # deprecated ``ComposeState.scenes`` field stays only for forward-compat
+    # parsing of pre-HOM-234 checkpoints.
+    scenes: Annotated[dict[str, SceneState], _scenes_merge]
     edit: Annotated[EditState, dict_merge]
     preflight: Annotated[PreflightState, dict_merge]
     errors: Annotated[list[GraphError], add]

@@ -359,13 +359,17 @@ Without this PR landing the reducer + tests *first*, `p4_beat`'s step-B PR would
 
 Six independent, sequential PRs; each:
 
+- **Consumers of `compose.scenes` must read from the new top-level `state['scenes']` channel, not `state['compose']['scenes']`** (see HOM-234 amendment below — nested `Annotated` reducers do not fire; the channel was promoted to `GraphState.scenes`). Any future `p4_assemble_index` / `p4_captions_layer` rewire that consumes per-scene fragment bodies MUST read the top-level channel; reading the deprecated nested key returns stale data because no reducer ever fired there.
+
 1. Bumps `_CACHE_VERSION` for the node.
 2. Edits the brief (`briefs/<node>.j2`) to drop the "write to `<path>`" instruction and require structured return (`html: str` or `markdown: str`).
 3. Updates `LLMNode` config: drops `Write` from `allowed_tools`, swaps the placeholder `result_key="_*_unused"` for a real key, defines an `output_schema` Pydantic model with the body field.
 4. Adds dual-write: the node still writes the body to disk (using the body it received from the LLM, not via the `Write` tool) so downstream disk-readers (today's `p4_assemble_index.py:588` etc.) keep working.
 5. Updates the brief snapshot, fingerprint registry, and replay smoke (per CLAUDE.md §"Definition of done for LLM-node tickets").
 
-Order: `p4_design_system` → `p4_prompt_expansion` → `p4_beat` (the `compose.scenes` reducer landed in Step A; this PR only wires `p4_beat`'s per-`Send` writes into the existing reducer-channel) → `p4_captions_layer` → `p4_assemble_index` (rewires inputs from state, but keeps writing to disk) → `p4_persist_session`.
+Order: `p4_design_system` → `p4_prompt_expansion` → `p4_beat` (the `_scenes_merge` reducer landed in Step A; this PR only wires `p4_beat`'s per-`Send` writes into the top-level `scenes` channel — promoted out of `ComposeState.scenes` by the HOM-234 amendment below) → `p4_captions_layer` → `p4_assemble_index` (rewires inputs from state, but keeps writing to disk) → `p4_persist_session`.
+
+**Amendment — HOM-234 pre-check (2026-05-15).** Step A wired the `scenes` reducer at `ComposeState.scenes` (nested inside the `compose: Annotated[..., dict_merge]` channel). The HOM-234 pre-check (`tests/test_compose_scenes_fanout.py`) empirically proved that LangGraph reducers do NOT walk nested `Annotated` channels — only the top-level reducer fires, and the outer `dict_merge` ran shallow `{**left, **right}` over whole `scenes` dicts, so the second parallel `Send` from `p4_beat` clobbered the first. The fix landed in the HOM-234 PR: `scenes` was promoted to a TOP-LEVEL channel on `GraphState` (`scenes: Annotated[dict[str, SceneState], _scenes_merge]`). The deprecated `ComposeState.scenes` slot remains on the schema for forward-compat parsing of pre-HOM-234 checkpoints, but new producers (Step B `p4_beat` onward) write to `state["scenes"][scene_id]`, not `state["compose"]["scenes"][scene_id]`. Downstream consumers in later Step-B PRs (`p4_assemble_index`, `p4_captions_layer` inputs, etc.) and the Step D1 read-switch must read from the top-level channel.
 
 After Step B all six creative nodes return body strings in state *and* still write to disk. The fixture cache.db's bodies are now populated (after one re-record per node, but each is replayable at $0 once recorded).
 

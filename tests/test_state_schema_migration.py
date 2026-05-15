@@ -91,11 +91,17 @@ def test_old_compose_shape_parses_under_new_schema() -> None:
 
 
 def test_old_top_level_state_parses() -> None:
-    """A pre-HOM-231 ``GraphState`` snapshot is still a valid GraphState dict."""
+    """A pre-HOM-231 ``GraphState`` snapshot is still a valid GraphState dict.
+
+    HOM-234 also promoted ``scenes`` to a top-level channel; old snapshots
+    never carried that key either, so it must be absent at the top level
+    too. (The deprecated nested ``compose.scenes`` slot is also absent.)
+    """
     state: GraphState = _old_shape_state()  # type: ignore[assignment]
     assert state["slug"] == "foo"
     assert "compose" in state
     assert "scenes" not in state["compose"]
+    assert "scenes" not in state
 
 
 def test_old_shape_roundtrips_through_jsonplus_serializer() -> None:
@@ -121,6 +127,7 @@ def test_old_shape_roundtrips_through_jsonplus_serializer() -> None:
     # Spot-check the keys the new schema added — they must remain absent
     # post-roundtrip (forward-compat only, not auto-population).
     assert "scenes" not in restored["compose"]
+    assert "scenes" not in restored  # HOM-234: top-level scenes channel.
     assert "html" not in restored["compose"]["captions"]
     assert "design_md" not in restored["compose"]["design"]
 

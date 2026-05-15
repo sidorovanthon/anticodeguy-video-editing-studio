@@ -243,6 +243,12 @@ _NODE_REGISTRY: dict[str, tuple[str, Callable[[Path], dict], Callable[[dict], Pa
         _p4_design_system_base,
         _slug_path("transcripts_final_json_path"),
     ),
+    # NOTE(HOM-234 PR #140 review S2): primary_artifact is `design_md_path`,
+    # but `_cache_key` hashes BOTH `design_md_path` AND `expanded_prompt_path`
+    # via `files=`. The parametrised invariant only exercises the primary;
+    # the secondary (expanded-prompt.md) is covered by the focused
+    # `test_p4_beat_expanded_prompt_invalidates_fingerprint` in
+    # tests/test_fingerprint_invalidation.py.
     "p4_beat": (
         "edit_episode_graph.nodes.p4_beat",
         _p4_beat_base,
