@@ -373,7 +373,7 @@ Order: `p4_design_system` → `p4_prompt_expansion` → `p4_beat` (the `_scenes_
 
 After Step B all six creative nodes return body strings in state *and* still write to disk. The fixture cache.db's bodies are now populated (after one re-record per node, but each is replayable at $0 once recorded).
 
-**Step B progress (landed PRs):** B1 `p4_design_system` (HOM-232, PR #138) · B2 `p4_prompt_expansion` (HOM-233, PR #139) · B3 `p4_beat` (HOM-234, PR #140) · B4 `p4_captions_layer` (HOM-235) — sub-agent returns `CaptionsOutput.html`; orchestrator dual-writes to `EpisodePaths(slug).captions_block_path`.
+**Step B progress (landed PRs):** B1 `p4_design_system` (HOM-232, PR #138) · B2 `p4_prompt_expansion` (HOM-233, PR #139) · B3 `p4_beat` (HOM-234, PR #140) · B4 `p4_captions_layer` (HOM-235) — sub-agent returns `CaptionsOutput.html`; orchestrator dual-writes to `EpisodePaths(slug).captions_block_path`. · B5 `p4_assemble_index` (HOM-236) — read-site rewired from disk to state (`state["scenes"][sid].html` + `compose.captions.html`); node returns `compose.index_html` body; disk atomic-write retained as dual-write until Step D.
 
 ### Step C — Add `p4_materialize_disk_node` as no-op (1 PR, ~1 day)
 

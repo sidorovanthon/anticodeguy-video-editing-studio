@@ -213,10 +213,15 @@ def test_assemble_html_shim_is_idempotent_on_rerun():
     assert twice.count(_SHIM_END_MARKER) == 1
 
 
-# ---- node: source-of-truth = compose.plan.beats[] + on-disk fragments ----
+# ---- node: source-of-truth = compose.plan.beats[] + state["scenes"] channel ----
 
 def _plan_state(tmp_path: Path, beats: list[tuple[str, float]]) -> dict:
-    """Build a minimal state with scaffolded index + plan.beats."""
+    """Build a minimal state with scaffolded index + plan.beats.
+
+    HOM-236: scene bodies live in the top-level `scenes` channel (populated
+    by `_write_fragment` below); the node no longer reads fragments from
+    `<hyperframes_dir>/compositions/<scene_id>.html`.
+    """
     hf_dir = tmp_path / "hyperframes"
     hf_dir.mkdir()
     index = hf_dir / "index.html"
@@ -230,16 +235,19 @@ def _plan_state(tmp_path: Path, beats: list[tuple[str, float]]) -> dict:
                 ],
             },
         },
+        "scenes": {},
     }
 
 
 def _write_fragment(state: dict, scene_id: str, body: str = "x") -> Path:
+    """Populate `state["scenes"][scene_id].html` with `body`. Post-HOM-236
+    the node reads bodies from this channel; no disk fragment is needed.
+    """
+    fragment = _pattern_a_fragment(scene_id, body)
+    scenes = state.setdefault("scenes", {})
+    scenes[scene_id] = {"html": fragment}
     hf_dir = Path(state["compose"]["index_html_path"]).parent
-    comp_dir = hf_dir / "compositions"
-    comp_dir.mkdir(exist_ok=True)
-    p = comp_dir / f"{scene_id}.html"
-    p.write_text(_pattern_a_fragment(scene_id, body), encoding="utf-8")
-    return p
+    return hf_dir / "compositions" / f"{scene_id}.html"
 
 
 def test_node_skips_when_no_plan_beats():
@@ -276,6 +284,31 @@ def test_node_inlines_fragments_in_plan_order(tmp_path):
     assert on_disk.index("h-body") < on_disk.index("b-body") < on_disk.index("p-body")
     assert 'id="scene-hook"' in on_disk
     assert 'id="scene-payoff"' in on_disk
+
+
+def test_node_returns_index_html_body_in_state(tmp_path):
+    """HOM-236 (Step B5 of HOM-230): the assembled body is the primary
+    output via `compose.index_html`. The disk dual-write is retained and
+    must agree with the returned body — Step D strips the disk write."""
+    state = _plan_state(tmp_path, [("Hook", 3.0), ("Payoff", 5.0)])
+    _write_fragment(state, "hook", "h-body")
+    _write_fragment(state, "payoff", "p-body")
+
+    update = p4_assemble_index_node(state)
+    assert "errors" not in update
+
+    body = update["compose"].get("index_html")
+    assert isinstance(body, str) and body, (
+        "p4_assemble_index must return the assembled body in compose.index_html"
+    )
+    assert "h-body" in body
+    assert "p-body" in body
+    assert "p4_assemble_index: end" in body
+
+    on_disk = Path(state["compose"]["index_html_path"]).read_text(encoding="utf-8")
+    assert body == on_disk, (
+        "compose.index_html must equal the atomically dual-written disk body"
+    )
 
 
 def test_node_aggregates_missing_scenes_into_single_skip(tmp_path):
@@ -328,18 +361,21 @@ def test_node_rerun_does_not_double_shim(tmp_path):
     assert on_disk.count("p4_assemble_index: beats") == 1
 
 
-def test_node_supports_captions_path(tmp_path):
+def test_node_supports_captions_from_state(tmp_path):
+    """HOM-236: captions come from `compose.captions.html` (state), not disk."""
     state = _plan_state(tmp_path, [("Hook", 3.0)])
     _write_fragment(state, "hook")
-    captions = tmp_path / "captions.html"
-    captions.write_text('<div data-composition-id="captions">C</div>', encoding="utf-8")
-    state["compose"]["captions_block_path"] = str(captions)
+    state["compose"]["captions"] = {
+        "html": '<div data-composition-id="captions">C</div>',
+    }
 
     update = p4_assemble_index_node(state)
     assert "errors" not in update
     assert update["compose"]["assemble"]["captions_included"] is True
     on_disk = Path(state["compose"]["index_html_path"]).read_text(encoding="utf-8")
     assert 'data-composition-id="captions"' in on_disk
+    # HOM-236: assembled body returned in `compose.index_html`.
+    assert update["compose"]["index_html"] == on_disk
 
 
 # ---- HOM-142: scene `class="clip"` enforcement ----
@@ -639,18 +675,18 @@ def test_node_omits_tokens_block_when_design_missing(tmp_path):
     assert _TOKENS_END_MARKER not in on_disk
 
 
-def test_node_skips_captions_silently_when_path_missing(tmp_path):
-    """HOM-224: captions are derived via slug + disk-existence check.
+def test_node_skips_captions_silently_when_absent(tmp_path):
+    """HOM-236: captions come from `compose.captions.html` (state).
 
-    Missing captions file is silently skipped (not an error); the structural
-    absence is surfaced separately by `gate:captions_track`. This replaces
-    the pre-HOM-224 behavior where setting `compose.captions_block_path` to
-    a non-existent path was an error — that state echo is gone post-HOM-224.
+    Missing captions state is silently skipped (not an error); the
+    structural absence is surfaced separately by `gate:captions_track`.
+    This replaces the pre-HOM-224/236 behavior where setting
+    `compose.captions_block_path` to a non-existent path was an error.
     """
     state = _plan_state(tmp_path, [("Hook", 3.0)])
     _write_fragment(state, "hook")
-    # No captions file on disk at EpisodePaths(slug).captions_block_path —
-    # node should silently proceed without inlining captions.
+    # No `compose.captions` in state — node should silently proceed
+    # without inlining captions.
     update = p4_assemble_index_node(state)
     assert "errors" not in update
     assert update["compose"]["assemble"]["captions_included"] is False

@@ -1,13 +1,16 @@
 """p4_assemble_index node — assemble root composition from Pattern A scene
 fragments produced by the per-beat fan-out (HOM-133/134).
 
-Deterministic class-1 node. Source-of-truth is the **filesystem**: each
-`p4_beat` Send writes one HTML fragment to
-`<hyperframes_dir>/compositions/<scene_id>.html`. This node iterates
-`state["compose"]["plan"]["beats"]` (the canonical beat order) and inlines
-the fragments — verbatim, no `<template>` strip — into the scaffolded root
-`index.html` between dedicated injection markers. State carries no
-`compose.beats[]` echo (deprecated; see `state.py`).
+Deterministic class-1 node. Source-of-truth is **state**: each `p4_beat`
+Send writes its body string to ``state["scenes"][scene_id].html`` via the
+``_scenes_merge`` reducer (HOM-234). This node consumes those strings
+plus ``compose.captions.html`` (HOM-235), produces ``compose.index_html``
+(HOM-236), and atomically dual-writes to disk for today's downstream
+consumers (Step D of HOM-230 strips the disk write). The node iterates
+``state["compose"]["plan"]["beats"]`` (the canonical beat order) and
+inlines the fragments — verbatim, no ``<template>`` strip — into the
+scaffolded root ``index.html`` between dedicated injection markers.
+State carries no ``compose.beats[]`` echo (deprecated; see ``state.py``).
 
 Per spec (`docs/superpowers/specs/2026-05-04-hom-122-p4-beats-fan-out-design.md`
 §"`p4_assemble_index` edits"):
@@ -79,6 +82,18 @@ def _captions_block_path(state: dict) -> Path | None:
     return None
 
 # Bump on assemble_html / shim shape / marker change. Spec §8.
+# v6 (HOM-236): state-first artifacts (Step B5 of HOM-230). Read-site
+# rewired from disk (`scene_path.read_text` / `captions_path.read_text`)
+# to state — scenes via `state["scenes"][sid].html` (top-level channel
+# promoted in HOM-234 with the `_scenes_merge` reducer), captions via
+# `compose.captions.html` (HOM-235). Cache key inputs migrated from
+# scene-fragment file paths to body-string `stable_fingerprint` extras
+# (the disk fragments are no longer the source of truth, so fingerprinting
+# them would silently miss when bodies are present in state but the
+# dual-write hasn't yet landed on disk). Node output now includes
+# `compose.index_html` body string for downstream consumers; disk
+# atomic-write retained as dual-write — Step D of HOM-230 strips it.
+# Cache key semantics changed → cache invalidation.
 # v5 (HOM-224): identity-only state writes — `compose.index_html_path`
 # (v4 output mirror) and `compose.assemble.index_html_path` (legacy echo)
 # are no longer written. `assemble.assembled_at` ISO timestamp is the
@@ -118,7 +133,7 @@ def _captions_block_path(state: dict) -> Path | None:
 # this, every scene-1+ frame stays at the fromTo from-state — the
 # Phase 4 black-screen symptom HOM-164 was filed for. Repro confirmed in a
 # clean `npx hyperframes init` scaffold; fix is purely orchestrator-side.
-_CACHE_VERSION = 5
+_CACHE_VERSION = 6
 
 
 def _scene_html_paths(state: dict) -> list[str | None]:
@@ -127,7 +142,13 @@ def _scene_html_paths(state: dict) -> list[str | None]:
     Spec §6 originally listed `[b.html_path for b in beats]` referencing the
     deprecated `compose.beats[]` state echo. HOM-133/134 moved beats fan-out
     to FS-truth (`<hyperframes_dir>/compositions/<scene_id>.html`); this
-    helper rebuilds the list on the same FS basis the node body uses.
+    helper rebuilds the list on the same FS basis the node body USED to use.
+
+    HOM-236: the assemble node no longer reads fragments from disk
+    (state is now the source of truth — `state["scenes"][sid].html`),
+    and the cache key no longer fingerprints these paths. Helper retained
+    because `p4_transitions._cumulative_starts` references its arithmetic
+    in a docstring and to keep diff scope contained.
     """
     compose = state.get("compose") or {}
     plan = compose.get("plan") or {}
@@ -149,34 +170,50 @@ def _scene_html_paths(state: dict) -> list[str | None]:
 
 
 def _cache_key(state, *_args, **_kwargs):
-    """Cache key for `p4_assemble_index` (HOM-132.4).
+    """Cache key for `p4_assemble_index` (HOM-132.4 / HOM-236).
 
-    Inputs are the per-beat scene fragments and the optional captions block.
-    The node mutates `<hyperframes_dir>/index.html` (atomic write) — that
-    path is the OUTPUT and is NOT in `files=` (mirrors the
-    `p3_render_segments` / `p3_persist_session` mutated-output rule).
+    Inputs are the per-beat scene bodies (from state) and the optional
+    captions body (from state). The node mutates
+    `<hyperframes_dir>/index.html` (atomic dual-write) — that path is the
+    OUTPUT and is NOT in `files=` (mirrors the `p3_render_segments` /
+    `p3_persist_session` mutated-output rule).
 
-    Spec §6 amendment in this PR: `[b.html_path for b in beats]` was based
-    on the deprecated `compose.beats[]` echo; the live source is
-    `compose.plan.beats[]` with derived `<scene_id>.html` paths under
-    `<hyperframes_dir>/compositions/`.
+    HOM-236 amendment: previously fingerprinted scene-fragment file paths
+    + captions file path via `files=`. State-first artifacts (Step B5 of
+    HOM-230) moved the source-of-truth from disk to state, so the cache
+    key now fingerprints the body strings directly via `stable_fingerprint`
+    extras. Fingerprinting the disk paths would silently miss when bodies
+    are present in state but the dual-write hasn't yet landed on disk.
     """
     if not isinstance(state, dict):
         raise TypeError(
             f"p4_assemble_index cache key requires dict state, got {type(state).__name__}"
         )
     slug = state.get("slug") or "__unbound__"
-    files: list[str | None] = list(_scene_html_paths(state))
-    # HOM-224: derive captions path via slug (legacy `compose.captions_block_path`
-    # echo is gone). Existence-check on disk so absent captions don't poison
-    # the file fingerprint with a missing-file sentinel.
-    captions_path = _captions_block_path(state)
-    if captions_path is not None and captions_path.is_file():
-        files.append(str(captions_path))
+    compose = state.get("compose") or {}
+    plan = compose.get("plan") or {}
+    plan_beats = plan.get("beats") or []
+    scenes_state = state.get("scenes") or {}
+    # Body strings, keyed by canonical scene_id derived from the plan's
+    # beat order. Missing bodies hash as empty strings so the fingerprint
+    # is well-defined even mid-fan-out.
+    scene_bodies: dict[str, str] = {}
+    for beat in plan_beats:
+        if not isinstance(beat, dict):
+            continue
+        label = beat.get("beat") or beat.get("name") or ""
+        if not label:
+            continue
+        sid = scene_id_for(label)
+        scene_entry = scenes_state.get(sid) or {}
+        body = scene_entry.get("html") or ""
+        scene_bodies[sid] = body
+    captions_state = compose.get("captions") or {}
+    captions_body = captions_state.get("html") or ""
     # HOM-191: design palette + typography are inlined as a `:root { … }` tokens
     # block. They're in-memory state (not files), so fingerprint them as extras
     # to invalidate when the design changes without an upstream file edit.
-    design = (state.get("compose") or {}).get("design") or {}
+    design = compose.get("design") or {}
     design_tokens = {
         "palette": design.get("palette"),
         "typography": design.get("typography"),
@@ -185,8 +222,12 @@ def _cache_key(state, *_args, **_kwargs):
         node="p4_assemble_index",
         version=_CACHE_VERSION,
         slug=slug,
-        files=files,
-        extras=(stable_fingerprint(design_tokens),),
+        files=(),
+        extras=(
+            stable_fingerprint(scene_bodies),
+            stable_fingerprint(captions_body),
+            stable_fingerprint(design_tokens),
+        ),
     )
 
 
@@ -556,11 +597,14 @@ def p4_assemble_index_node(state):
     if not index_path.is_file():
         return _error(f"root index.html not found at {index_path} (p4_scaffold must run first)")
 
-    compositions_dir = index_path.parent / "compositions"
+    # HOM-236: scenes are sourced from state (`state["scenes"][sid].html`),
+    # not from disk. The top-level `scenes` channel is populated by
+    # `p4_beat` Sends via the `_scenes_merge` reducer (HOM-234).
+    scenes_state = state.get("scenes") or {}
 
-    # Single pass: derive scene_ids + cumulative starts; locate fragments;
-    # aggregate ALL missing scenes before deciding so the skip reason
-    # surfaces every gap in one notice.
+    # Single pass: derive scene_ids + cumulative starts; pull fragment
+    # bodies from state; aggregate ALL missing scenes before deciding so
+    # the skip reason surfaces every gap in one notice.
     scene_ids: list[str] = []
     scene_starts: list[float] = []
     fragments: list[tuple[str, str]] = []
@@ -576,32 +620,34 @@ def p4_assemble_index_node(state):
         if not label:
             return _error(f"plan beat at index {idx} missing 'beat' label")
         sid = scene_id_for(label)
-        scene_path = compositions_dir / f"{sid}.html"
         duration = float(beat.get("duration_s") or 0.0)
 
         scene_ids.append(sid)
         scene_starts.append(cumulative_s)
 
-        if not scene_path.is_file():
+        scene_entry = scenes_state.get(sid) or {}
+        body = scene_entry.get("html") if isinstance(scene_entry, dict) else None
+        if not isinstance(body, str) or not body:
             missing.append(sid)
         else:
-            fragments.append((sid, scene_path.read_text(encoding="utf-8")))
+            fragments.append((sid, body))
 
         cumulative_s += duration
 
     if missing:
         return _skip(f"missing scenes: {', '.join(missing)}")
 
-    # HOM-224: derive captions path via slug. Skip silently when the file
-    # is absent (captions are an optional layer; `gate:captions_track`
-    # surfaces the structural absence separately). Pre-HOM-224 behavior
-    # was to error on a non-existent path *if the state echo was set*; the
-    # new disk-existence test is structurally cleaner — no state echo
-    # means "look on disk", and absence == "no captions this run".
+    # HOM-236: captions are sourced from state (`compose.captions.html`),
+    # not from disk. `p4_captions_layer` writes the body to state (HOM-235)
+    # and dual-writes to disk; the disk-fallback read path is gone. Absent
+    # captions are still an optional layer — `gate:captions_track` surfaces
+    # the structural absence separately.
+    captions_state = compose.get("captions") or {}
     captions_html: str | None = None
-    captions_path = _captions_block_path(state)
-    if captions_path is not None and captions_path.is_file():
-        captions_html = captions_path.read_text(encoding="utf-8")
+    if isinstance(captions_state, dict):
+        body = captions_state.get("html")
+        if isinstance(body, str) and body:
+            captions_html = body
 
     shim = build_visibility_shim(scene_ids, scene_starts)
     design = compose.get("design") or {}
@@ -620,15 +666,22 @@ def p4_assemble_index_node(state):
         visibility_shim=shim,
         tokens_block=tokens_block,
     )
+    # HOM-236 dual-write: the assembled body is now the primary output via
+    # `compose.index_html` (state-first artifacts, Step B5 of HOM-230).
+    # Today's downstream consumers (HF render, gate cluster) still read
+    # `<hyperframes_dir>/index.html` from disk, so the orchestrator
+    # atomically writes the body. Step D of HOM-230 strips this once the
+    # read-switch has soaked.
     if patched != root_html:
         _atomic_write_text(index_path, patched)
 
-    # HOM-224: identity-only state — no longer echo `compose.index_html_path`
-    # or `compose.assemble.index_html_path`. `assembled_at` ISO timestamp is
-    # the success signal; downstream consumers derive the path via
-    # `EpisodePaths(slug).index_html_path` at use-site.
+    # HOM-224 / HOM-236: identity-only state for path echoes — no
+    # `compose.index_html_path` mirror. `compose.index_html` carries the
+    # body (HOM-236); `compose.assemble.assembled_at` ISO timestamp is the
+    # success signal for halt_llm_boundary and downstream cache keys.
     return {
         "compose": {
+            "index_html": patched,
             "assemble": {
                 "assembled_at": _now(),
                 "beat_names": scene_ids,
