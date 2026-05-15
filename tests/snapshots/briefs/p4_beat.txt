@@ -33,7 +33,7 @@ Canon to read BEFORE writing the fragment (use the `Read` tool on each — do no
 
 (conditional) `~/.agents/skills/hyperframes/references/techniques.md` — read only if `plan_beat_json` references a specific technique (e.g. lottie, canvas, variable-fonts).
 
-Output shape — Pattern A scene fragment, ONE `<div>` written to `/tmp/snapshot-fixture/episode/hyperframes/compositions/scene-hook.html`:
+Output — return JSON matching `BeatOutput { html: str }`. The fragment shown below is the SHAPE of the `html` field's value (a single JSON-escaped string). Do NOT call the `Write` tool. Do NOT touch the filesystem. The orchestrator writes the file to `/tmp/snapshot-fixture/episode/hyperframes/compositions/scene-hook.html` from your returned body (HOM-234 — state-first artifacts, Step B3 of the HOM-230 epic).
 
 ```html
 <div id="scene-hook" class="scene clip"
@@ -59,6 +59,12 @@ Output shape — Pattern A scene fragment, ONE `<div>` written to `/tmp/snapshot
     })();
   </script>
 </div>
+```
+
+Return ONLY JSON matching `BeatOutput { html: "<...>" }` (no prose outside the JSON). The `html` field carries the FULL scene fragment as a single JSON-escaped string — backslashes, double-quotes, newlines need standard JSON escaping. Typical body is ~5–10 KB. The orchestrator's extractor accepts the first valid fenced ```json``` code block (see `graph/src/edit_episode_graph/backends/_schema_extract.py`); take care not to truncate.
+
+```json
+{ "html": "<div id=\"scene-hook\" class=\"scene clip\" ... >...</div>" }
 ```
 
 Hard rules (orchestrator-house, derived from canon — surfaced so you don't miss them):
@@ -141,7 +147,6 @@ Process:
 1. `Read` the canon list above (mandatory; do not rely on memory for shape or hard rules).
 2. `Read` `/tmp/snapshot-fixture/episode/hyperframes/DESIGN.md` and `/tmp/snapshot-fixture/episode/hyperframes/.hyperframes/expanded-prompt.md` for direction.
 3. Compose ≥ 8 elements that honour the design system's typography + palette and the beat's energy/intent.
-4. `Write` ONE file to `/tmp/snapshot-fixture/episode/hyperframes/compositions/scene-hook.html` containing the fragment shape above.
-5. Reply on a single line: `Wrote /tmp/snapshot-fixture/episode/hyperframes/compositions/scene-hook.html (<N> elements, <M> tweens).`
+4. Return JSON `BeatOutput { html: "<your scene fragment>" }` matching the shape above.
 
 Do NOT modify the root `index.html`, do NOT touch sibling `compositions/*.html`, do NOT add `<script src=...>` tags. Stay inside your scene.
