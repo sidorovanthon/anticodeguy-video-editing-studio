@@ -95,7 +95,14 @@ def _scenes_merge(left: dict | None, right: dict | None) -> dict:
     sorted by scene_id so downstream content-hash fingerprints are
     iteration-order independent.
 
-    Used as the reducer for ``ComposeState.scenes`` (HOM-231). The
+    Used as the reducer for the top-level ``GraphState.scenes`` channel
+    (HOM-234). The HOM-231 nested annotation on ``ComposeState.scenes``
+    was rendered non-functional by LangGraph's reducer semantics — only
+    top-level ``Annotated`` channels fire their reducer, nested
+    ``Annotated`` types inside another ``Annotated`` channel are
+    ignored. The HOM-234 pre-check (``tests/test_compose_scenes_fanout``)
+    empirically pinned this; the channel was promoted from
+    ``compose.scenes`` to the top-level ``scenes`` on ``GraphState``. The
     sorted-by-key output is load-bearing for the future materializer's
     cache key (spec §6.3) — Python dict iteration is insertion-ordered,
     and parallel ``Send`` completion order is non-deterministic, so an

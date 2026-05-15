@@ -1,15 +1,20 @@
 """p4_beat — smart LLM node for per-scene Pattern A authoring (HOM-134).
 
 One Send per beat from `p4_dispatch_beats`. Each invocation reads the
-upstream design system + expanded-prompt + canon docs via the `Read` tool
-and writes a single Pattern A fragment to
-`compositions/<scene_id>.html` via the `Write` tool. The deterministic
-`p4_assemble_index` node fans in and inlines those fragments into the
-root `index.html`.
+upstream design system + expanded-prompt + canon docs via the `Read`
+tool and returns the full Pattern A fragment in ``BeatOutput.html``
+(HOM-234 — state-first artifacts, HOM-230 epic Step B3). The
+orchestrator dual-writes the body to ``compositions/<scene_id>.html``
+so today's disk-readers (`p4_assemble_index.py:588`) keep working
+until HOM-230 Step D switches the consumer-side to read from
+``state['scenes'][scene_id]['html']`` (top-level channel; see
+``state.py::_scenes_merge`` + spec §10 Step B amendment). The
+deterministic `p4_assemble_index` node fans in and inlines those
+fragments into the root `index.html`.
 
 Per spec `2026-05-04-hom-122-p4-beats-fan-out-design.md`:
   - tier=smart (creative — `feedback_creative_nodes_flagship_tier`)
-  - allowed_tools = [Read, Write]
+  - allowed_tools = [Read]
   - briefs reference canon paths, never embed canon
     (`feedback_graph_decomposition_brief_references_canon`)
 

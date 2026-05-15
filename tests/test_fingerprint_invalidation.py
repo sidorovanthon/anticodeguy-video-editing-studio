@@ -71,6 +71,30 @@ def test_upstream_artifact_change_invalidates(node_name: str, tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# Secondary-artifact coverage — files= entries beyond the registry's primary.
+# ---------------------------------------------------------------------------
+
+
+def test_p4_beat_expanded_prompt_invalidates_fingerprint(tmp_path):
+    """Editing ``expanded-prompt.md`` MUST flip p4_beat's cache key.
+
+    The registry's ``primary_artifact_pointer`` for ``p4_beat`` points at
+    ``design.md`` (covered by the parametrised
+    ``test_upstream_artifact_change_invalidates``), but ``_cache_key``
+    hashes BOTH ``design_md_path`` AND ``expanded_prompt_path`` via
+    ``files=`` (see ``nodes/p4_beat.py::_cache_key`` lines 96-105). This
+    focused test exercises the secondary input directly rather than
+    extending the registry schema (HOM-234 PR #140 review S2).
+    """
+    assert_upstream_artifact_change_invalidates(
+        "p4_beat",
+        tmp_path=tmp_path,
+        artifact_path=tmp_path / "episodes" / "fp-fixture" / "hyperframes"
+        / ".hyperframes" / "expanded-prompt.md",
+    )
+
+
+# ---------------------------------------------------------------------------
 # Helper-itself unit tests — make sure the assert function actually fails
 # when keys match, and passes when they differ.
 # ---------------------------------------------------------------------------
