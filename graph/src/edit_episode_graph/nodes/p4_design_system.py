@@ -136,10 +136,10 @@ def _edl_beats(state: dict) -> list[str]:
 
 
 def _render_ctx(state: dict) -> dict:
-    # HOM-224: `design_md_path` still rendered into the brief (sub-agent
-    # `Write`s to that absolute path), but it's now derived via
-    # `EpisodePaths(slug)` rather than read from a state echo. The state
-    # write of `compose.design_md_path` is dropped (HOM-224 §"State writes").
+    # `design_md_path` is rendered into the brief so the sub-agent can echo
+    # it back in `DesignDoc.design_md_path` for `gate:design_ok`; the
+    # orchestrator (not the sub-agent) does the file write post-HOM-232.
+    # Path derived via `EpisodePaths(slug)` (HOM-224); state echo dropped.
     return {
         "design_md_path": str(_design_md_path(state)),
         "strategy_json": json.dumps(_strategy(state), ensure_ascii=False),
