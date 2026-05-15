@@ -30,6 +30,7 @@ Test classes:
 * ``test_p4_design_system_smoke`` — replay (HOM-118). HOM-186.
 * ``test_p4_prompt_expansion_smoke`` — replay (HOM-119). HOM-186.
 * ``test_p4_beat_smoke`` — replay (HOM-165). HOM-186.
+* ``test_p4_captions_layer_smoke`` — replay (HOM-123 / HOM-235).
 """
 
 from __future__ import annotations
@@ -423,6 +424,26 @@ def test_p4_prompt_expansion_smoke():
     assert result.llm_dispatches == 0
     assert "compose" in result.final_state, (
         f"p4_prompt_expansion recording produced no `compose` channel write: "
+        f"{list(result.final_state.keys())}"
+    )
+
+
+@requires_fixture_cache
+def test_p4_captions_layer_smoke():
+    """HOM-123 / HOM-235: replay p4_captions_layer from fixture cache.
+
+    Replays a recorded p4_captions_layer run; asserts $0 spend and that
+    the recording emitted a ``compose`` channel write (where the captions
+    HTML body lives in ``GraphState`` post HOM-235 state-first dual-write).
+    """
+    result = dispatch_node("p4_captions_layer", FIXTURE_SLUG)
+    assert result.all_hits, (
+        f"p4_captions_layer replay missed cache: {result!r}; "
+        "re-record via HOMESTUDIO_TEST_MODE=record-on-miss"
+    )
+    assert result.llm_dispatches == 0
+    assert "compose" in result.final_state, (
+        f"p4_captions_layer recording produced no `compose` channel write: "
         f"{list(result.final_state.keys())}"
     )
 

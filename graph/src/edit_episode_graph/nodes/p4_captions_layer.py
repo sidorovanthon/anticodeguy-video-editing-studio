@@ -11,7 +11,7 @@ keeps reading from disk and inlining the fragment into the root
 until Step D2 of the HOM-230 epic strips the dual-write.
 
 Per spec §6.3 + HOM-123 amendment:
-  - tier=smart (creative — `feedback_creative_nodes_flagship_tier`; canon
+  - tier=expensive (creative — `feedback_creative_nodes_flagship_tier`; canon
     is explicitly tone-adaptive across 4 dimensions × 5 tone profiles, with
     per-word emphasis decisions; cheap models hollow out brand-defining
     creative work).
