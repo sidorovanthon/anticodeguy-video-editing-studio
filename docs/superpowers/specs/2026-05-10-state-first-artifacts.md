@@ -367,6 +367,8 @@ Six independent, sequential PRs; each:
 
 Order: `p4_design_system` → `p4_prompt_expansion` → `p4_beat` (the `compose.scenes` reducer landed in Step A; this PR only wires `p4_beat`'s per-`Send` writes into the existing reducer-channel) → `p4_captions_layer` → `p4_assemble_index` (rewires inputs from state, but keeps writing to disk) → `p4_persist_session`.
 
+**Amendment — HOM-234 pre-check (2026-05-15).** Step A wired the `scenes` reducer at `ComposeState.scenes` (nested inside the `compose: Annotated[..., dict_merge]` channel). The HOM-234 pre-check (`tests/test_compose_scenes_fanout.py`) empirically proved that LangGraph reducers do NOT walk nested `Annotated` channels — only the top-level reducer fires, and the outer `dict_merge` ran shallow `{**left, **right}` over whole `scenes` dicts, so the second parallel `Send` from `p4_beat` clobbered the first. The fix landed in the HOM-234 PR: `scenes` was promoted to a TOP-LEVEL channel on `GraphState` (`scenes: Annotated[dict[str, SceneState], _scenes_merge]`). The deprecated `ComposeState.scenes` slot remains on the schema for forward-compat parsing of pre-HOM-234 checkpoints, but new producers (Step B `p4_beat` onward) write to `state["scenes"][scene_id]`, not `state["compose"]["scenes"][scene_id]`. Downstream consumers in later Step-B PRs (`p4_assemble_index`, `p4_captions_layer` inputs, etc.) and the Step D1 read-switch must read from the top-level channel.
+
 After Step B all six creative nodes return body strings in state *and* still write to disk. The fixture cache.db's bodies are now populated (after one re-record per node, but each is replayable at $0 once recorded).
 
 ### Step C — Add `p4_materialize_disk_node` as no-op (1 PR, ~1 day)
