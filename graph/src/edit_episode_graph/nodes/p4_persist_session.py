@@ -30,7 +30,7 @@ from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
 from .._caching import make_llm_key
 from .._paths import EpisodePaths
-from ..schemas.p4_persist_session import PersistSessionResult
+from ..schemas.p4_persist_session import PersistSessionOutput
 from ._llm import LLMNode, _load_brief
 
 # Bump on brief / schema / tool-list change. See HOM-132 spec §8.
@@ -45,7 +45,14 @@ from ._llm import LLMNode, _load_brief
 # is now a pure function of upstream content; same-content re-runs cache-hit
 # regardless of which calendar day they happen on. Session block reflects
 # the day the composition was assembled, not the day persist ran.
-_CACHE_VERSION = 3
+# v4 (HOM-237): state-first artifacts (Step B6 of HOM-230 epic). Brief no
+# longer instructs the sub-agent to compose+Write the merged file; the new
+# Session block body now comes back in the structured
+# `PersistSessionOutput.session_block` field and the orchestrator appends
+# it (preceded by a blank line) to `<edit>/project.md` so today's
+# downstream readers keep working. `Write` dropped from `allowed_tools`.
+# Output schema and brief both changed → cache invalidation.
+_CACHE_VERSION = 4
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -204,11 +211,11 @@ def _build_node() -> LLMNode:
         name="p4_persist_session",
         requirements=NodeRequirements(tier="cheap", needs_tools=True, backends=["claude", "codex"]),
         brief_template=_load_brief("p4_persist_session"),
-        output_schema=PersistSessionResult,
+        output_schema=PersistSessionOutput,
         result_namespace="compose",
         result_key="persist",
         timeout_s=120,
-        allowed_tools=["Read", "Write"],
+        allowed_tools=["Read"],
         extra_render_ctx=_render_ctx,
     )
 
@@ -248,6 +255,26 @@ def p4_persist_session_node(state, *, router: BackendRouter | None = None):
     persist = (update.get("compose") or {}).get("persist") or {}
     update_compose = update.setdefault("compose", {})
     if "skipped" not in persist and "raw_text" not in persist:
+        # HOM-237 dual-write (Step B6 of HOM-230 state-first artifacts): the
+        # sub-agent returns the new Session block body in
+        # `compose.persist.session_block`; the orchestrator owns the disk
+        # append so today's downstream readers (Phase 4 retros, future
+        # tooling) keep working until Step D of HOM-230 strips the
+        # dual-write. We append the body to existing `<edit>/project.md`
+        # preserving every byte above it — preceded by a blank line when
+        # the existing file is non-empty and does not already end in one.
+        session_block = persist.get("session_block")
+        if isinstance(session_block, str) and session_block:
+            project_md = _project_md_path(state)
+            project_md.parent.mkdir(parents=True, exist_ok=True)
+            existing = project_md.read_text(encoding="utf-8") if project_md.is_file() else ""
+            sep = ""
+            if existing:
+                sep = "\n" if not existing.endswith("\n") else ""
+                sep += "\n"
+            with project_md.open("a", encoding="utf-8") as fh:
+                fh.write(sep + session_block)
+
         # HOM-224: `persisted_at` was previously stringified absolute path
         # to project.md, abusing the `str | None` slot. Identity-only state:
         # store an ISO timestamp instead — same `str | None` shape, but

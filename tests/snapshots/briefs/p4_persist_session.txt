@@ -15,7 +15,8 @@ expanded prompt, plan with beats, captions block, assembled root
 context on what those artifacts are; the field shape you write into
 `project.md` still comes from the video-use §Memory canon above.
 
-Target file: `/tmp/snapshot-fixture/episode/edit/project.md`
+Target file (for context — DO NOT write it yourself; the orchestrator
+appends from your returned body): `/tmp/snapshot-fixture/episode/edit/project.md`
 
 Inputs from this run (already-decided artifacts; map them into the canon
 fields per your reading of §Memory — do not re-derive):
@@ -40,7 +41,7 @@ Procedure:
    monotonic across the file's lifetime — re-runs do not overwrite or
    merge prior blocks, and Phase 3 + Phase 4 share the same numbering
    space.
-3. Append one new Session block dated `2026-05-10` per canon §Memory.
+3. Compose one new Session block dated `2026-05-10` per canon §Memory.
    Source the field contents from the Phase 4 inputs above. Mark this
    block clearly as a Phase 4 (composition) session — e.g., in the
    block's primary descriptor field per canon, mention Phase 4 / HF
@@ -49,25 +50,29 @@ Procedure:
    ranges, render iterations), substitute the Phase 4 analogues you can
    read from the inputs (beats, gates) — preserve canon's *field shape*
    while adapting the *content domain*.
-4. Compose the new file contents as `<existing project.md text, if any>`
-   + a blank line + `<your new Session block>`, then write the full
-   result back with the Write tool. (Do not use Edit-with-old_string for
-   end-of-file appends — matching trailing content is fragile;
-   Write-after-Read is the reliable pattern.) Preserve every byte of
-   pre-existing content above your appended block.
-5. Return JSON only:
+4. Return JSON only:
 
 ```json
 {
-  "persisted_at": "<ISO 8601 timestamp at the moment you finish persisting>",
+  "session_block": "## Session <N> — <date>\n\n<canonical bullet fields per §Memory>",
+  "persisted_at": "<ISO 8601 timestamp at the moment you finish composing>",
   "session_n": <N>
 }
 ```
 
-Note: the runtime overwrites `persisted_at` with its own UTC timestamp
-post-HOM-224 (identity-only state — paths are derived from slug, not
-echoed); your value is a placeholder to satisfy schema validation. The
-literal canonical path is `/tmp/snapshot-fixture/episode/edit/project.md` if you need to write
-to it via the Write tool.
+The `session_block` field carries the markdown body of the NEW block ONLY
+(starting with the `## Session N — <date>` heading) — NOT the merged file
+contents. JSON-escape newlines, backslashes, and double-quotes as standard.
+
+Notes:
+
+- The runtime appends `session_block` (preceded by a blank line) to
+  `/tmp/snapshot-fixture/episode/edit/project.md`. Do NOT call the `Write` tool — it is not in
+  your `allowed_tools` (HOM-237 — state-first artifacts, Step B6 of the
+  HOM-230 epic). Preserve every byte of pre-existing content above your
+  appended block is the orchestrator's responsibility, not yours.
+- The runtime overwrites `persisted_at` with its own UTC timestamp
+  post-HOM-224 (identity-only state — paths are derived from slug, not
+  echoed); your value is a placeholder to satisfy schema validation.
 
 Do not include prose outside the JSON block.
