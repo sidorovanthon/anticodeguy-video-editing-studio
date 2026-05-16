@@ -23,14 +23,28 @@ def _hf_with(tmp_path: Path, html: str) -> Path:
     return hf_dir
 
 
-def _state(hf_dir: Path, palette=None, typography=None, design_md_path=None) -> dict:
+def _state(
+    hf_dir: Path,
+    palette=None,
+    typography=None,
+    design_md_path=None,
+    design_md_body=None,
+) -> dict:
     design: dict = {}
     if palette is not None:
         design["palette"] = palette
     if typography is not None:
         design["typography"] = typography
     if design_md_path is not None:
-        design["design_md_path"] = str(design_md_path)
+        # HOM-270: legacy fixture kw; tests now use design_md_body for the
+        # state-first read. Kept for back-compat in case fixtures pass a
+        # path; we eagerly load it so the test still asserts what it meant.
+        try:
+            design["design_md"] = Path(design_md_path).read_text(encoding="utf-8")
+        except OSError:
+            pass
+    if design_md_body is not None:
+        design["design_md"] = design_md_body
     return {"compose": {"hyperframes_dir": str(hf_dir), "design": design}}
 
 
