@@ -285,3 +285,57 @@ def test_post_hom224_assemble_persist_use_iso_timestamps():
     # Both must parse as ISO 8601 — assertion fails on a path string.
     datetime.fromisoformat(new_shape["assemble"]["assembled_at"])
     datetime.fromisoformat(new_shape["persist"]["persisted_at"])
+
+
+# ---- HOM-282: session channel + inventory.takes_packed_at sentinel ----
+
+
+def test_old_recording_parses_without_session_channel():
+    """HOM-282 forward-compat: pre-HOM-282 checkpoints carry no top-level
+    `session` channel. `GraphState.session` is `total=False`, so loading
+    such a recording must succeed and consumers must tolerate the
+    absent channel via `state.get("session") or {}`.
+    """
+    legacy_state: GraphState = {
+        "slug": "demo",
+        "episode_dir": "/abs/episodes/demo",
+    }
+    # No `session` key.
+    assert "session" not in legacy_state
+    # Consumer-shape read pattern survives.
+    body = (legacy_state.get("session") or {}).get("project_md")
+    assert body is None
+
+
+def test_session_channel_round_trips_project_md_body():
+    from edit_episode_graph.state import SessionState
+
+    body = "# project.md\n\n## Session 1 — 2026-05-16\n- shape: tight\n"
+    new_state: GraphState = {
+        "slug": "demo",
+        "session": SessionState(project_md=body),
+    }
+    assert new_state["session"]["project_md"] == body
+
+
+def test_old_inventory_recording_parses_without_takes_packed_at():
+    """HOM-282 forward-compat: pre-HOM-282 InventoryState carries no
+    `takes_packed_at`. The field is `total=False`; absent means "no
+    sentinel" and the router falls through to p3_inventory.
+    """
+    old: InventoryState = {
+        "sources": [{"path": "/abs/x", "name": "x.mp4"}],
+        "takes_packed_path": "/abs/episodes/demo/edit/takes_packed.md",
+    }
+    assert old.get("takes_packed_at") is None
+
+
+def test_new_inventory_emits_iso_takes_packed_at():
+    from datetime import datetime
+
+    new: InventoryState = {
+        "sources": [{"path": "/abs/x", "name": "x.mp4"}],
+        "takes_packed_at": "2026-05-16T12:00:00+00:00",
+    }
+    # Must parse as ISO 8601 — guard against accidental path-string regress.
+    datetime.fromisoformat(new["takes_packed_at"])

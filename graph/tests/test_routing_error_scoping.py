@@ -98,7 +98,30 @@ def test_route_after_remap_proceeds_with_historical_llm_error(tmp_path):
         "episode_dir": str(tmp_path),
         "errors": [{"node": "p3_persist_session", "message": "old", "timestamp": "old"}],
     }
-    # No hyperframes/index.html → routes to p4_scaffold.
+    # No scaffold sentinel → routes to p4_scaffold.
+    assert route_after_remap(state) == "p4_scaffold"
+
+
+def test_route_after_remap_ends_when_scaffolded_at_sentinel_present(tmp_path):
+    """HOM-282: scaffold-sentinel state-channel replaces the
+    `(<hf>/index.html).exists()` disk probe. A populated
+    `compose.scaffold.scaffolded_at` short-circuits to END (Phase 4
+    is already past scaffold)."""
+    state = {
+        "episode_dir": str(tmp_path),
+        "compose": {"scaffold": {"scaffolded_at": "2026-05-16T12:00:00+00:00"}},
+    }
+    assert route_after_remap(state) == END
+
+
+def test_route_after_remap_ignores_index_html_on_disk_without_sentinel(tmp_path):
+    """HOM-282: a stray on-disk index.html without the state sentinel
+    routes to p4_scaffold (re-scaffold is idempotent — the subprocess
+    short-circuits when the skeleton exists)."""
+    hf = tmp_path / "hyperframes"
+    hf.mkdir()
+    (hf / "index.html").write_text("<html/>", encoding="utf-8")
+    state = {"episode_dir": str(tmp_path)}
     assert route_after_remap(state) == "p4_scaffold"
 
 

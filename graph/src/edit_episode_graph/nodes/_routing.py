@@ -127,9 +127,19 @@ def route_after_preflight(state) -> str:
     if not episode_dir:
         return END
     edit_dir = Path(episode_dir) / "edit"
+    # ``final.mp4`` remains a disk-presence probe (Class D — the canonical
+    # output of `p3_render_segments`; no state channel hoists it because
+    # the file itself is the artifact downstream Phase 4 chains against).
     if (edit_dir / "final.mp4").exists():
         return "rehydrate_skip_phase3"
-    if (edit_dir / "takes_packed.md").exists():
+    # HOM-282: state-channel sentinel replaces
+    # `(edit_dir / "takes_packed.md").exists()`. `p3_inventory` sets
+    # `takes_packed_at` after `pack_transcripts.py` confirms the file
+    # is materialized. A pre-HOM-282 checkpoint with no sentinel
+    # falls through to `p3_inventory`, which is the safe re-run path
+    # (it short-circuits cheaply when the file is already on disk).
+    inventory = (state.get("edit") or {}).get("inventory") or {}
+    if inventory.get("takes_packed_at") is not None:
         return "p3_pre_scan"
     return "p3_inventory"
 
@@ -405,7 +415,15 @@ def route_after_remap(state) -> str:
     episode_dir = state.get("episode_dir")
     if not episode_dir:
         return END
-    if (Path(episode_dir) / "hyperframes" / "index.html").exists():
+    # HOM-282: state-channel sentinel replaces
+    # `(<hf>/index.html).exists()`. `p4_scaffold` sets
+    # `compose.scaffold.scaffolded_at` after the `npx hyperframes init`
+    # subprocess + body hoist completes (HOM-280). A pre-HOM-280
+    # checkpoint with no sentinel falls through to `p4_scaffold`,
+    # which is the safe re-run path (scaffold is idempotent — it
+    # short-circuits when the disk skeleton exists).
+    scaffold = (state.get("compose") or {}).get("scaffold") or {}
+    if scaffold.get("scaffolded_at") is not None:
         return END
     return "p4_scaffold"
 

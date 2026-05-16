@@ -11,23 +11,42 @@ from edit_episode_graph.nodes._routing import (
 )
 
 
-def test_routes_to_pre_scan_when_takes_packed_exists(tmp_path):
+def test_routes_to_pre_scan_when_takes_packed_sentinel_present(tmp_path):
+    """HOM-282: routing reads `state.edit.inventory.takes_packed_at`
+    instead of probing `(<edit>/takes_packed.md).exists()`. The disk
+    file may or may not exist; the state sentinel is authoritative.
+    """
+    state = {
+        "episode_dir": str(tmp_path),
+        "edit": {"inventory": {"takes_packed_at": "2026-05-16T12:00:00+00:00"}},
+    }
+    assert route_after_preflight(state) == "p3_pre_scan"
+
+
+def test_preflight_ignores_takes_packed_on_disk_without_sentinel(tmp_path):
+    """HOM-282: a stale disk file without the state sentinel routes to
+    p3_inventory (re-run is safe — pack_transcripts.py is idempotent).
+    """
     edit = tmp_path / "edit"
     edit.mkdir()
     (edit / "takes_packed.md").write_text("# t\n", encoding="utf-8")
     state = {"episode_dir": str(tmp_path)}
-    assert route_after_preflight(state) == "p3_pre_scan"
+    assert route_after_preflight(state) == "p3_inventory"
 
 
 def test_routes_to_rehydrate_when_final_exists(tmp_path):
     """HOM-160: skip-Phase3 path now goes via rehydrate_skip_phase3 first
     so Phase 4 cache keys see strategy.json reloaded into state.edit.strategy
-    before glue_remap_transcript runs."""
+    before glue_remap_transcript runs. `final.mp4` remains a Class D disk
+    probe per HOM-282 (canonical pipeline output, not a routing sentinel).
+    """
     edit = tmp_path / "edit"
     edit.mkdir()
     (edit / "final.mp4").write_bytes(b"x")
-    (edit / "takes_packed.md").write_text("# t\n", encoding="utf-8")
-    state = {"episode_dir": str(tmp_path)}
+    state = {
+        "episode_dir": str(tmp_path),
+        "edit": {"inventory": {"takes_packed_at": "2026-05-16T12:00:00+00:00"}},
+    }
     assert route_after_preflight(state) == "rehydrate_skip_phase3"
 
 
