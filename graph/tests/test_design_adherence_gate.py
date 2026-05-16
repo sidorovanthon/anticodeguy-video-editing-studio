@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from edit_episode_graph.gates.design_adherence import (
     DesignAdherenceGate,
     _avoidance_keywords,
@@ -16,20 +14,31 @@ from edit_episode_graph.gates.design_adherence import (
 )
 
 
-def _hf_with(tmp_path: Path, html: str) -> Path:
-    hf_dir = tmp_path / "hyperframes"
-    hf_dir.mkdir()
-    (hf_dir / "index.html").write_text(html, encoding="utf-8")
-    return hf_dir
+def _hf_with(tmp_path: Path, html: str) -> str:
+    """HOM-274 (Class A): no longer writes index.html to disk — returns the
+    body string to be injected into state.compose.index_html. Signature kept
+    for source-diff minimality; tmp_path is unused but accepted so existing
+    call sites (which threaded it through) keep compiling. Returns ``html``
+    verbatim — call sites pass it on to ``_state(...)`` which injects it
+    into the state-first channel."""
+    del tmp_path  # unused under state-first reads
+    return html
 
 
 def _state(
-    hf_dir: Path,
+    html: str | None,
     palette=None,
     typography=None,
     design_md_path=None,
     design_md_body=None,
 ) -> dict:
+    """Build a state dict for the gate.
+
+    HOM-274 (Class A): ``html`` is the assembled index body string, injected
+    into ``state.compose.index_html`` (was: written to a tmp index.html file).
+    ``None`` simulates the assemble node not having populated the channel.
+    HOM-270's DESIGN.md fields are unchanged.
+    """
     design: dict = {}
     if palette is not None:
         design["palette"] = palette
@@ -45,7 +54,10 @@ def _state(
             pass
     if design_md_body is not None:
         design["design_md"] = design_md_body
-    return {"compose": {"hyperframes_dir": str(hf_dir), "design": design}}
+    compose: dict = {"design": design}
+    if html is not None:
+        compose["index_html"] = html
+    return {"compose": compose}
 
 
 def test_passes_when_only_palette_hexes_used(tmp_path: Path):
@@ -158,13 +170,17 @@ def test_passes_with_no_design_state_at_all(tmp_path: Path):
     assert update["gate_results"][0]["passed"]
 
 
-def test_missing_index_html_fails(tmp_path: Path):
-    hf_dir = tmp_path / "hyperframes"
-    hf_dir.mkdir()
-    update = design_adherence_gate_node(_state(hf_dir, palette=[{"hex": "#000"}]))
+def test_missing_index_html_body_fails():
+    """HOM-274 (Class A): when ``state.compose.index_html`` is absent — the
+    assemble producer did not populate the state channel — the gate must
+    surface that as a violation rather than silently passing."""
+    update = design_adherence_gate_node(_state(None, palette=[{"hex": "#000"}]))
     record = update["gate_results"][0]
     assert not record["passed"]
-    assert any("index.html not on disk" in v for v in record["violations"])
+    assert any(
+        "index.html body absent in state.compose.index_html" in v
+        for v in record["violations"]
+    )
 
 
 def test_short_hex_normalizes_against_palette(tmp_path: Path):
