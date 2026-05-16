@@ -10,7 +10,7 @@ from edit_episode_graph.nodes.p4_persist_session import (
     _phase4_gate_records,
     p4_persist_session_node,
 )
-from edit_episode_graph.schemas.p4_persist_session import PersistSessionResult
+from edit_episode_graph.schemas.p4_persist_session import PersistSessionOutput
 
 
 def _ok_state(tmp_path, **overrides):
@@ -57,11 +57,22 @@ def _ok_state(tmp_path, **overrides):
 
 
 def _stub_router_returning(persisted_at: str, session_n: int) -> MagicMock:
+    session_block = (
+        f"## Session {session_n} — 2026-05-10\n\n"
+        "- Phase 4 / HF composition session (stub).\n"
+    )
     router = MagicMock()
     router.invoke.return_value = (
         InvokeResult(
-            raw_text=f'{{"persisted_at":"{persisted_at}","session_n":{session_n}}}',
-            structured=PersistSessionResult(persisted_at=persisted_at, session_n=session_n),
+            raw_text=(
+                f'{{"session_block":"{session_block!r}",'
+                f'"persisted_at":"{persisted_at}","session_n":{session_n}}}'
+            ),
+            structured=PersistSessionOutput(
+                session_block=session_block,
+                persisted_at=persisted_at,
+                session_n=session_n,
+            ),
             tokens_in=180,
             tokens_out=24,
             wall_time_s=1.1,
@@ -137,7 +148,7 @@ def test_runs_with_tools_and_embeds_phase4_inputs(tmp_path, monkeypatch):
     kwargs = router.invoke.call_args.kwargs
     assert req.tier == "cheap"
     assert req.needs_tools is True
-    assert kwargs["allowed_tools"] == ["Read", "Write"]
+    assert kwargs["allowed_tools"] == ["Read"]
     # Phase 4 inputs must appear in the rendered brief.
     assert "DESIGN.md" in task
     assert "expanded-prompt.md" in task
