@@ -69,7 +69,17 @@ from .._scene_id import scene_id_for
 
 # Bump on emit-block shape / marker change / mechanism-template change.
 # Spec §8.
-_CACHE_VERSION = 1
+# v2 (HOM-259): state-first artifacts (Step B7 of HOM-230). Read-site
+# rewired from disk (`index_path.read_text`) to state — root_html sourced
+# from `state["compose"]["index_html"]` (populated by `p4_assemble_index`
+# in HOM-236), disk fallback retained for synthetic-state unit tests.
+# Output now includes the patched `compose.index_html` body for the
+# materializer (HOM-238/255); disk dual-write retained until HOM-239
+# (Step D2) strips it. Cache key gains the input index_html body as a
+# `stable_fingerprint` extra — a scene-body change in assemble must
+# invalidate transitions too, even though `plan.transitions`/`plan.beats`
+# bytes are unchanged.
+_CACHE_VERSION = 2
 
 
 _BEGIN_MARKER = "<!-- p4_transitions: begin -->"
@@ -105,12 +115,39 @@ def _error(message: str) -> dict:
     }
 
 
-def _skip(reason: str) -> dict:
-    return {
+def _skip(reason: str, *, index_html: str | None = None) -> dict:
+    """Skip update.
+
+    HOM-259: when the skip path strips a stale shim from the input
+    index_html, the cleaned body is propagated to `compose.index_html`
+    so downstream materializer (HOM-238/255) sees the state-first source
+    of truth — not the disk dual-write that lingers from a prior run.
+    """
+    update: dict = {
         "compose": {
             "transitions": {"skipped": True, "skip_reason": reason},
         },
     }
+    if index_html is not None:
+        update["compose"]["index_html"] = index_html
+    return update
+
+
+def _load_root_html(state: dict, index_path: Path | None) -> str | None:
+    """State-first read with disk fallback (HOM-259).
+
+    Source of truth is `state["compose"]["index_html"]` (populated by
+    `p4_assemble_index` per HOM-236). Disk fallback (`index_path`) is
+    retained only for synthetic-state unit tests / pre-Step-B replay
+    fixtures — production state always carries the body.
+    """
+    compose = state.get("compose") or {}
+    body = compose.get("index_html")
+    if isinstance(body, str) and body:
+        return body
+    if index_path is not None and index_path.is_file():
+        return index_path.read_text(encoding="utf-8")
+    return None
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -132,6 +169,11 @@ def _cache_key(state, *_args, **_kwargs):
     plan = compose.get("plan") or {}
     transitions = plan.get("transitions") or []
     beats = plan.get("beats") or []
+    # HOM-259: input index_html body is now in state. Fingerprint it so a
+    # scene-body change in assemble (which produces a different
+    # `compose.index_html`) invalidates transitions too — the plan extras
+    # alone would miss that.
+    input_index_html = compose.get("index_html") or ""
     return make_key(
         node="p4_transitions",
         version=_CACHE_VERSION,
@@ -149,6 +191,7 @@ def _cache_key(state, *_args, **_kwargs):
                     for b in beats if isinstance(b, dict)
                 ]
             ),
+            stable_fingerprint(input_index_html),
         ),
     )
 
@@ -445,17 +488,24 @@ def p4_transitions_node(state):
     plan_beats = plan.get("beats") or []
     transitions = plan.get("transitions") or []
 
+    index_path = _index_html_path(state)
+
     if not transitions:
         # Schema-valid for 1-beat plans without final-fade; nothing to emit.
-        # We still STRIP the old v4 shim from index.html so the canonical
+        # We still STRIP the old v4 shim from the body so the canonical
         # block-or-nothing replaces it cleanly.
-        index_path = _index_html_path(state)
-        if index_path is not None and index_path.is_file():
-            root_html = index_path.read_text(encoding="utf-8")
-            patched = assemble_html(root_html=root_html, transitions_block=None)
-            if patched != root_html:
-                _atomic_write_text(index_path, patched)
-        return _skip("no transitions in compose.plan (1-beat plan or plan missing)")
+        root_html = _load_root_html(state, index_path)
+        if root_html is None:
+            return _skip("no transitions in compose.plan (1-beat plan or plan missing)")
+        patched = assemble_html(root_html=root_html, transitions_block=None)
+        # HOM-259 dual-write: state is the primary output via
+        # `compose.index_html`; disk write retained until HOM-239 (Step D2).
+        if patched != root_html and index_path is not None:
+            _atomic_write_text(index_path, patched)
+        return _skip(
+            "no transitions in compose.plan (1-beat plan or plan missing)",
+            index_html=patched,
+        )
 
     if not plan_beats:
         return _error(
@@ -463,13 +513,11 @@ def p4_transitions_node(state):
             "cannot resolve from_beat/to_beat to scene ids"
         )
 
-    index_path = _index_html_path(state)
-    if index_path is None:
-        return _error("slug missing in state — cannot resolve index.html path")
-    if not index_path.is_file():
+    root_html = _load_root_html(state, index_path)
+    if root_html is None:
         return _error(
-            f"root index.html not found at {index_path} "
-            "(p4_assemble_index must run first)"
+            "compose.index_html missing from state and no disk fallback "
+            "available (p4_assemble_index must run first)"
         )
 
     beat_labels = {
@@ -482,13 +530,18 @@ def p4_transitions_node(state):
         return _error(err)
 
     block = build_transitions_block(transitions=transitions, beats=plan_beats)
-    root_html = index_path.read_text(encoding="utf-8")
     patched = assemble_html(root_html=root_html, transitions_block=block)
-    if patched != root_html:
+    # HOM-259 dual-write: the patched body is the primary output via
+    # `compose.index_html` (state-first artifacts, Step B7 of HOM-230).
+    # Today's downstream consumers (materializer, gate cluster) still
+    # read `<hyperframes_dir>/index.html` from disk, so dual-write
+    # remains until HOM-239 (Step D2) strips it.
+    if patched != root_html and index_path is not None:
         _atomic_write_text(index_path, patched)
 
     return {
         "compose": {
+            "index_html": patched,
             "transitions": {
                 "authored_at": _now(),
                 "n_transitions": len(transitions),

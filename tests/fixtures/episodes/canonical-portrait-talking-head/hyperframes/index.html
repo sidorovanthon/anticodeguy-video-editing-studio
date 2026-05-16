@@ -730,30 +730,47 @@
 </script>
 </div>
 <!-- p4_assemble_index: end -->
-<!-- p4_assemble_index: shim begin -->
+
+<!-- p4_transitions: begin -->
 <script>
 (function() {
   var root = window.__timelines && window.__timelines["root"];
   if (!root) return;
-  var ids = ["hook", "problem", "pivot", "payoff"];
-  var starts = [0.0, 3.1, 14.4, 18.2];
-  ids.forEach(function(id, i) {
-    // HOM-214: anchor every scene's reveal on the root timeline,
-    // including i=0 at t=0, so the position chain is observable
-    // from the shim alone. Scene-0's fragment also has opacity: 1
-    // in CSS for first-paint, so this is a no-op visually.
-    root.set('#scene-' + id, { opacity: 1 }, starts[i]);
-    var sceneTl = window.__sceneTimelines && window.__sceneTimelines[id];
-    if (sceneTl) {
-      // HOM-164: unpause child timeline before nesting — GSAP does
-      // not advance a paused child under parent.seek(), which left
-      // every scene at fromTo from-state (Phase 4 black screen).
-      sceneTl.paused(false);
-      root.add(sceneTl, starts[i]);
-    }
-  });
+  // shader transition: HOOK → PROBLEM (name="cross-warp morph")
+  if (window.HFShaderTransitions && window.HFShaderTransitions.attach) {
+    window.HFShaderTransitions.attach(root, {
+      from: '#scene-hook',
+      to: '#scene-problem',
+      name: "cross-warp morph",
+      duration: 1.2,
+      ease: "power2.inOut",
+      position: 3.1,
+    });
+  } else {
+    // Fallback: package not loaded — degrade to crossfade so the run is still viewable.
+    root.to('#scene-hook', { opacity: 0, duration: 1.2, ease: "power2.inOut" }, 3.1);
+    root.fromTo('#scene-problem', { opacity: 0 }, { opacity: 1, duration: 1.2, ease: "power2.inOut" }, 3.1);
+  }
+  // shader transition: PROBLEM → PIVOT (name="cross-warp morph")
+  if (window.HFShaderTransitions && window.HFShaderTransitions.attach) {
+    window.HFShaderTransitions.attach(root, {
+      from: '#scene-problem',
+      to: '#scene-pivot',
+      name: "cross-warp morph",
+      duration: 1.2,
+      ease: "power2.inOut",
+      position: 14.4,
+    });
+  } else {
+    // Fallback: package not loaded — degrade to crossfade so the run is still viewable.
+    root.to('#scene-problem', { opacity: 0, duration: 1.2, ease: "power2.inOut" }, 14.4);
+    root.fromTo('#scene-pivot', { opacity: 0 }, { opacity: 1, duration: 1.2, ease: "power2.inOut" }, 14.4);
+  }
+  // css transition: PIVOT → PAYOFF (name="blur crossfade", why="Mood\u2192Transition: 'premium/luxury' calls for blur crossfade as a CSS option; the blur stands in for the speaker reconsidering his phrasing \u2014 unfocusing the wrong word ('turn') and refocusing on the right one ('return to the roots'). 0.8s sits at the top of the calm 0.5-0.8s band, matching the breath-paced cadence.")
+  root.to('#scene-pivot', { opacity: 0, duration: 0.8, ease: "power3.out" }, 18.2);
+  root.fromTo('#scene-payoff', { opacity: 0 }, { opacity: 1, duration: 0.8, ease: "power3.out" }, 18.2);
 })();
 </script>
-<!-- p4_assemble_index: shim end -->
+<!-- p4_transitions: end -->
 </body>
 </html>

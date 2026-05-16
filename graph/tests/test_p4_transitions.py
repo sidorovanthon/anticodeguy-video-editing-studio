@@ -377,3 +377,71 @@ def test_cache_key_flips_when_beat_durations_change(tmp_path):
 def test_cache_key_rejects_non_dict_state():
     with pytest.raises(TypeError):
         _cache_key("not a dict")
+
+
+def test_cache_key_flips_when_index_html_body_changes(tmp_path):
+    """HOM-259: state-first means a scene-body change upstream (which
+    produces a different `compose.index_html` out of assemble) must
+    invalidate the transitions cache even when plan.transitions and
+    plan.beats are byte-identical. The third `stable_fingerprint(input_index_html)`
+    extra in `_cache_key` is the mechanism — this test guards it.
+    """
+    transitions = [{
+        "from_beat": "HOOK", "to_beat": "BUILD", "mechanism": "css",
+        "name": "crossfade", "duration_s": 0.5, "easing": "power2.inOut",
+        "why": "x",
+    }]
+    state_a = _plan_state(tmp_path, transitions=transitions)
+    state_a["compose"]["index_html"] = "<html><body>VARIANT_A</body></html>"
+    state_b = _plan_state(tmp_path / "alt", transitions=transitions)
+    state_b["compose"]["index_html"] = "<html><body>VARIANT_B</body></html>"
+    assert _cache_key(state_a) != _cache_key(state_b)
+
+
+# HOM-259: explicit state-first coverage. `_plan_state` exercises the
+# disk-fallback path through `_load_root_html`; this builder pins the
+# body in state instead so the new state-first branch is also covered
+# end-to-end through the node body.
+def _state_first_plan_state(
+    tmp_path: Path, transitions: list[dict], beats=None
+) -> dict:
+    if beats is None:
+        beats = [
+            {"beat": "HOOK", "duration_s": 3.0},
+            {"beat": "BUILD", "duration_s": 4.0},
+            {"beat": "PAYOFF", "duration_s": 5.0},
+        ]
+    return {
+        "compose": {
+            # Disk path intentionally points at a nonexistent file — the
+            # state-first read must satisfy the node without falling
+            # back to disk. _atomic_write_text would explode on a
+            # nonexistent parent dir on save, so we point at tmp_path
+            # (which exists) but use a filename that's not on disk yet.
+            "index_html_path": str(tmp_path / "ghost.html"),
+            "index_html": _scaffolded_index_with_shim(),
+            "plan": {"beats": beats, "transitions": transitions},
+        },
+    }
+
+
+def test_node_authors_css_block_from_state_index_html(tmp_path):
+    """HOM-259: state-first path produces the same compose.index_html
+    body update as the disk-fallback path. The dual-write to disk is
+    best-effort (its target may not exist); what matters for downstream
+    is the body returned in state."""
+    transitions = [{
+        "from_beat": "HOOK", "to_beat": "BUILD", "mechanism": "css",
+        "name": "crossfade", "duration_s": 0.5, "easing": "power2.inOut",
+        "why": "soft",
+    }]
+    state = _state_first_plan_state(tmp_path, transitions=transitions)
+    update = p4_transitions_node(state)
+    assert "errors" not in update
+    body = update["compose"].get("index_html")
+    assert isinstance(body, str) and body, (
+        "state-first path must return patched index_html body in compose.index_html"
+    )
+    assert _BEGIN_MARKER in body
+    assert _SHIM_BEGIN_MARKER not in body
+    assert "root.fromTo('#scene-build'" in body
