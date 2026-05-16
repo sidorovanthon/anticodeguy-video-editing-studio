@@ -170,6 +170,9 @@ while this node runs):
 4. Use the inlined prior-attempt scene fragment for your picked
    `scene_id` so you understand what the previous attempt wrote (avoid
    repeating the same mistake).
+{# TODO(HOM-266): sub-agent `Write` is dropped — `p4_assemble_index` reads
+   from `state["scenes"]` only and `p4_materialize_disk` overwrites disk
+   from stale state. Migration to BeatOutput return shape pending. #}
 5. `Write` ONE file to `{{ compositions_dir }}/<scene_id>.html` with the
    rewritten fragment.
 6. Reply on a single line:

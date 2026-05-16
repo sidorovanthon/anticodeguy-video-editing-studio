@@ -211,6 +211,8 @@ def _build_node() -> LLMNode:
         result_namespace="compose",
         result_key="redispatch",
         timeout_s=300,
+        # TODO(HOM-266): Write is dropped; downstream reads state["scenes"]
+        # only. See ticket for migration plan (switch to BeatOutput return).
         allowed_tools=["Read", "Write"],
         extra_render_ctx=_render_ctx,
     )
@@ -234,6 +236,7 @@ def p4_redispatch_beat_node(state, *, router: BackendRouter | None = None):
     else:
         legacy = compose.get("index_html_path")
         index_path = Path(legacy) if legacy else None
+    # TODO(HOM-266): check state index_html body instead of scaffold baseline file.
     if index_path is None or not index_path.is_file():
         return {
             "errors": [{
