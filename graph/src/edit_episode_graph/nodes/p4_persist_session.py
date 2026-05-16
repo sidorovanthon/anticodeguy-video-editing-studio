@@ -57,7 +57,14 @@ from ._llm import LLMNode, _load_brief
 # `compose.persist.session_block`; `p4_materialize_disk_node` is the
 # single deterministic writer (substring-skip idempotent append). Node
 # output contract changed → cache invalidation.
-_CACHE_VERSION = 5
+# v6 (HOM-265 / Step E partial of HOM-230): brief migrated from
+# "Read project.md" to embedded body — the prior file content (when
+# present from a previous materialization) is inlined directly in the
+# brief context so the sub-agent no longer calls `Read` on it. On a
+# fresh run the body is empty (no prior project.md). Cache-key inputs
+# (`files=[index_html_path]`) unchanged in this PR — full Step E
+# refactor deferred.
+_CACHE_VERSION = 6
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -189,8 +196,25 @@ def _render_ctx(state: dict) -> dict:
             or captions.get("captions_block_path")
             or ""
         )
+    # HOM-265: inline the prior project.md body when it exists on disk
+    # (e.g. from a previous materialization run); the sub-agent uses it
+    # to scan existing `## Session N` headings rather than calling
+    # `Read` on the file. On a fresh first run the body is empty —
+    # the sub-agent then knows N = 1. The disk read here happens
+    # orchestrator-side and is bounded: the file is small (typically
+    # <50 KB), and the materializer has already finalized it before
+    # this node runs IF a previous run produced it. State-body source
+    # of truth (HOM-230) does not apply for project.md because no
+    # producer keeps it in state across runs — it's an append-only
+    # artifact owned by the materializer.
+    project_md_path = _project_md_path(state)
+    try:
+        project_md_body = project_md_path.read_text(encoding="utf-8") if project_md_path.is_file() else ""
+    except OSError:
+        project_md_body = ""
     return {
-        "project_md_path": str(_project_md_path(state)),
+        "project_md_path": str(project_md_path),
+        "project_md_body": project_md_body,
         "design_md_path": design_md_path,
         "expanded_prompt_path": expanded_prompt_path,
         "plan_json": json.dumps(plan, ensure_ascii=False),

@@ -10,10 +10,19 @@ the gate `{{ failed_gate }}`; rewrite the offending scene so the gate passes.
 
 {{ prior_violations_block(prior_violations, prior_iteration) }}
 
-Identification — find the offending scene(s) yourself:
+Identification — find the offending scene(s) yourself (HOM-265: the
+assembled root composition is INLINED below; do NOT call `Read` on
+`{{ index_html_path }}` — it is not on disk while this node runs; the
+materializer writes it at chain end):
 
-1. `Read` the assembled root composition at `{{ index_html_path }}`. Each
-   inlined scene fragment is bracketed by `<!-- beat: <scene_id> -->` markers.
+Assembled root index.html body (use this — do NOT `Read` from disk):
+
+```index.html
+{{ index_html_body }}
+```
+
+1. Each inlined scene fragment in the body above is bracketed by
+   `<!-- beat: <scene_id> -->` markers.
 2. Cross-reference the violations above with the assembled HTML. Most lint /
    validate / design-adherence violations name the scene either by
    `#scene-<scene_id>` selector, by `id="scene-<scene_id>"` attribute, or
@@ -43,9 +52,36 @@ literally on the scene div):
 - output directory: `{{ compositions_dir }}` — write the rewritten fragment to
   `{{ compositions_dir }}/<scene_id>.html` for the scene you picked.
 
-Upstream artefacts (read these via `Read` for direction):
-- `{{ design_md_path }}` — visual identity (palette, typography, beat→visual mapping).
-- `{{ expanded_prompt_path }}` — per-scene atmosphere brief.
+Upstream artefacts (HOM-265: DESIGN.md and expanded-prompt.md bodies
+are INLINED below — the files are NOT on disk while this node runs;
+the materializer writes them at chain end. Do NOT call `Read` on
+`{{ design_md_path }}` or `{{ expanded_prompt_path }}`):
+
+- DESIGN.md — visual identity (palette, typography, beat→visual mapping):
+
+  ```design.md
+  {{ design_md_body }}
+  ```
+
+- expanded-prompt.md — per-scene atmosphere brief:
+
+  ```expanded-prompt.md
+  {{ expanded_prompt_body }}
+  ```
+
+Prior-attempt scene fragments (the previous iteration's output for
+EACH scene — use these to understand what was written, so you avoid
+repeating the same mistake on the rewrite. Do NOT call `Read` on
+`{{ compositions_dir }}/<scene_id>.html` — those files are not on disk
+while this node runs):
+
+{% for sid, body in scene_bodies.items() %}
+- `scene_id = "{{ sid }}"`:
+
+  ```{{ sid }}.html
+  {{ body }}
+  ```
+{% endfor %}
 
 Available registry:
 {{ catalog_summary }}
@@ -121,13 +157,19 @@ Hard rules (orchestrator-house — derived from canon, surfaced so you don't mis
   literal token `repeat:` followed by the infinite sentinel even inside
   comments — HF lint regex false-positives on the substring.
 
-Process:
-1. `Read` the violations above and the canon list.
-2. `Read` `{{ index_html_path }}` to identify which scene the violations
-   target (use the `<!-- beat: <scene_id> -->` markers for intersection).
-3. `Read` `{{ design_md_path }}` and `{{ expanded_prompt_path }}` for direction.
-4. `Read` the existing `{{ compositions_dir }}/<scene_id>.html` so you
-   understand what the previous attempt wrote (avoid repeating the same mistake).
+Process (HOM-265: all upstream bodies are inlined above — do NOT call
+`Read` on `{{ index_html_path }}`, `{{ design_md_path }}`,
+`{{ expanded_prompt_path }}`, or any
+`{{ compositions_dir }}/<scene_id>.html`; those files are NOT on disk
+while this node runs):
+1. Read the violations above and the canon list (canon files in
+   `~/.agents/skills/hyperframes/` ARE on disk — `Read` them).
+2. Use the inlined index.html body to identify which scene the violations
+   target (the `<!-- beat: <scene_id> -->` markers).
+3. Use the inlined DESIGN.md and expanded-prompt.md bodies for direction.
+4. Use the inlined prior-attempt scene fragment for your picked
+   `scene_id` so you understand what the previous attempt wrote (avoid
+   repeating the same mistake).
 5. `Write` ONE file to `{{ compositions_dir }}/<scene_id>.html` with the
    rewritten fragment.
 6. Reply on a single line:

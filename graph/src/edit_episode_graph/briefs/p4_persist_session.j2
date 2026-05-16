@@ -20,6 +20,15 @@ context on what those artifacts are; the field shape you write into
 Target file (for context — DO NOT write it yourself; the orchestrator
 appends from your returned body): `{{ project_md_path }}`
 
+Existing `project.md` body (HOM-265: inlined below — do NOT call `Read`
+on the path above; the materializer is the single writer and the body
+already on disk, if any, is supplied here. On a fresh first run the
+body is empty — that's your signal that `N = 1`):
+
+```project.md
+{{ project_md_body }}
+```
+
 Inputs from this run (already-decided artifacts; map them into the canon
 fields per your reading of §Memory — do not re-derive):
 
@@ -35,14 +44,16 @@ fields per your reading of §Memory — do not re-derive):
 
 Procedure:
 
-1. Read `{{ project_md_path }}` if it exists (use the Read tool). If it
-   does not exist, treat as empty.
+1. Use the inlined `project.md` body above (HOM-265: do NOT call `Read`
+   on `{{ project_md_path }}` — the materializer is the single writer
+   and we already supplied its current content). Empty body = no prior
+   sessions.
 2. Determine the next session number `N` by scanning existing
-   `## Session <N> — <date>` headings (per canon shape) and incrementing
-   past the highest. If no prior Session blocks exist, `N = 1`. This is
-   monotonic across the file's lifetime — re-runs do not overwrite or
-   merge prior blocks, and Phase 3 + Phase 4 share the same numbering
-   space.
+   `## Session <N> — <date>` headings (per canon shape) in the inlined
+   body and incrementing past the highest. If no prior Session blocks
+   exist, `N = 1`. This is monotonic across the file's lifetime —
+   re-runs do not overwrite or merge prior blocks, and Phase 3 + Phase 4
+   share the same numbering space.
 3. Compose one new Session block dated `{{ today }}` per canon §Memory.
    Source the field contents from the Phase 4 inputs above. Mark this
    block clearly as a Phase 4 (composition) session — e.g., in the

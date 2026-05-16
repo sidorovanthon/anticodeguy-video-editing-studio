@@ -81,7 +81,12 @@ from ._llm import LLMNode, _load_brief
 # `state["scenes"][scene_id]["html"]` (top-level channel via the
 # `_scenes_merge` reducer) and `p4_materialize_disk_node` is the single
 # deterministic writer. Node output contract changed → cache invalidation.
-_CACHE_VERSION = 9
+# v10 (HOM-265 / Step E partial of HOM-230): brief migrated from
+# "Read these paths" to embedded bodies — DESIGN.md and expanded-prompt.md
+# are inlined directly in the brief context so the sub-agent no longer
+# calls `Read` on either file. Cache-key inputs (`files=[...]`) unchanged
+# in this PR — full Step E refactor deferred.
+_CACHE_VERSION = 10
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -152,6 +157,22 @@ def _catalog_summary(state: dict) -> str:
     return "\n".join(lines)
 
 
+def _design_md_body(state: dict) -> str:
+    """HOM-265: read DESIGN.md body from state."""
+    compose = state.get("compose") or {}
+    design = compose.get("design") or {}
+    body = design.get("design_md")
+    return body if isinstance(body, str) else ""
+
+
+def _expanded_prompt_body(state: dict) -> str:
+    """HOM-265: read expanded-prompt.md body from state."""
+    compose = state.get("compose") or {}
+    expansion = compose.get("expansion") or {}
+    body = expansion.get("expanded_prompt")
+    return body if isinstance(body, str) else ""
+
+
 def _render_ctx(state: dict) -> dict:
     bd = state.get("_beat_dispatch") or {}
     compose = state.get("compose") or {}
@@ -177,6 +198,9 @@ def _render_ctx(state: dict) -> dict:
         "plan_beat_json": json.dumps(bd.get("plan_beat") or {}, ensure_ascii=False),
         "design_md_path": design_md_path,
         "expanded_prompt_path": expanded_prompt_path,
+        # HOM-265: inline body strings — sub-agent no longer Reads from disk.
+        "design_md_body": _design_md_body(state),
+        "expanded_prompt_body": _expanded_prompt_body(state),
         "catalog_summary": _catalog_summary(state),
         "scene_html_path": bd.get("scene_html_path", ""),
     }

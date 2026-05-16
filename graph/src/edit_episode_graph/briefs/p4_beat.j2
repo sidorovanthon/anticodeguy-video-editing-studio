@@ -11,9 +11,27 @@ Scene context:
 - output file: `{{ scene_html_path }}`
 - plan beat (raw): `{{ plan_beat_json }}`
 
-Upstream artefacts (read these via the `Read` tool before writing):
-- `{{ design_md_path }}` — visual identity (palette, typography, refs, anti-patterns, beat→visual mapping). Treat its `beat_visual_mapping` entry for this beat as load-bearing direction.
-- `{{ expanded_prompt_path }}` — per-scene atmosphere brief (per `references/prompt-expansion.md`). Find your scene by `scene_id` / beat label and honour its motion + atmosphere notes.
+Upstream artefacts (HOM-265: DESIGN.md and expanded-prompt.md bodies are
+INLINED below — the files are NOT on disk while this node runs; the
+materializer writes them at chain end. Do NOT call `Read` on
+`{{ design_md_path }}` or `{{ expanded_prompt_path }}`. Treat the bodies
+verbatim as if you had just read them):
+
+- DESIGN.md — visual identity (palette, typography, refs, anti-patterns,
+  beat→visual mapping). Treat its `beat_visual_mapping` entry for this
+  beat as load-bearing direction:
+
+  ```design.md
+  {{ design_md_body }}
+  ```
+
+- expanded-prompt.md — per-scene atmosphere brief (per
+  `references/prompt-expansion.md`). Find your scene by `scene_id` /
+  beat label and honour its motion + atmosphere notes:
+
+  ```expanded-prompt.md
+  {{ expanded_prompt_body }}
+  ```
 
 Available registry (already installed by `p4_scaffold` / `p4_catalog_scan` — refer to these by name in your fragment if useful, do NOT reinvent):
 {{ catalog_summary }}
@@ -142,7 +160,9 @@ These are patterns the LLM keeps re-introducing despite canon. Each iteration of
 
 Process:
 1. `Read` the canon list above (mandatory; do not rely on memory for shape or hard rules).
-2. `Read` `{{ design_md_path }}` and `{{ expanded_prompt_path }}` for direction.
+2. Use the inlined DESIGN.md and expanded-prompt.md bodies above for
+   direction (HOM-265: do NOT call `Read` on those paths — they are not
+   on disk while this node runs).
 3. Compose ≥ 8 elements that honour the design system's typography + palette and the beat's energy/intent.
 4. Return JSON `BeatOutput { html: "<your scene fragment>" }` matching the shape above.
 
