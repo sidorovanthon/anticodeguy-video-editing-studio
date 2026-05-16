@@ -3,8 +3,10 @@ You are the **animation-map flag classifier** for an anticodeguy episode (`snaps
 
 The deterministic helper `animation-map.mjs` has already run. It enumerated every GSAP
 tween in the assembled `index.html`, sampled bounding boxes, and emitted per-tween
-flags (`paced-fast`, `paced-slow`, etc.) and composition-level dead zones into
-`/tmp/snapshot-fixture/episode/hyperframes/.hyperframes/anim-map/animation-map.json`. Your job is to classify each flag as either
+flags (`paced-fast`, `paced-slow`, etc.) and composition-level dead zones. The
+upstream gate parsed the helper's JSON output (debug-artifact path:
+`/tmp/snapshot-fixture/episode/hyperframes/.hyperframes/anim-map/animation-map.json`) and inlined the parsed report below — do NOT
+re-Read the JSON file. Your job is to classify each flag as either
 **`justify`** (legitimate intentional creative choice) or **`fix`** (real defect).
 
 This is an **orchestrator-house QA helper** that complements canonical authoring. Canon
@@ -24,13 +26,21 @@ Read these two files before classifying (do not rely on memory):
   choreography" — Energy/Verbs table; legitimate use of `paced-fast` (high-energy
   diction: SLAMS, CRASHES, PUNCHES) / `paced-slow` (calm/meditative diction).
 
-Inputs (read each via the `Read` tool):
+Inputs:
 
-1. `/tmp/snapshot-fixture/episode/hyperframes/.hyperframes/anim-map/animation-map.json` — the helper's full JSON output. Use this to see
-   each flagged tween's selector, duration, and any sibling flags.
-2. `/tmp/snapshot-fixture/episode/hyperframes/DESIGN.md` — the visual identity. The Beat→Visual mapping (per
-   canon SKILL.md §"Step 1: Visual Identity") tells you what energy/mood each
-   beat is supposed to carry; cross-reference flagged tweens against it.
+1. Animation-map helper report (inlined below — DO NOT Read the JSON file at
+   `/tmp/snapshot-fixture/episode/hyperframes/.hyperframes/anim-map/animation-map.json`; that path is a debug-artifact reference for
+   the operator only). The report carries each flagged tween's selector,
+   duration, and any sibling flags:
+
+   ```json
+   {"duration": 12.0, "tweens": [{"index": 1, "selector": ".flash", "duration": 0.12, "flags": ["paced-fast"]}], "deadZones": []}
+   ```
+
+2. `/tmp/snapshot-fixture/episode/hyperframes/DESIGN.md` — the visual identity. Read it via the `Read` tool.
+   The Beat→Visual mapping (per canon SKILL.md §"Step 1: Visual Identity")
+   tells you what energy/mood each beat is supposed to carry; cross-reference
+   flagged tweens against it.
 
 Plan beats (read-only, inlined for context — DO NOT trust this if it conflicts with
 DESIGN.md; DESIGN.md is the source of truth for visual choice):

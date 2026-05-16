@@ -56,7 +56,12 @@ from ._compose_materialization import (
 # ``materialize_into_tmpdir``. No output-shape change, but the contract
 # is now jointly owned with the tmpdir helper — bump so the next replay
 # re-asserts the shape is byte-identical.
-_CACHE_VERSION = 3
+# v4 (HOM-282): output shape extended with ``state.session.project_md``
+# post-append body (hoisted from disk so the next p4_persist_session
+# re-run reads from state, not its own prior disk output). Cache-key
+# inputs unchanged — same body_set hash; bump invalidates so the next
+# replay re-emits the new top-level channel.
+_CACHE_VERSION = 4
 
 
 def _pluck(state: dict, path: tuple[str, ...]):
@@ -281,12 +286,22 @@ def p4_materialize_disk_node(state: dict) -> dict:
         files_written.append(str(paths.index_html_path))
 
     session_block = (compose.get("persist") or {}).get("session_block")
+    project_md_body: str | None = None
     if isinstance(session_block, str) and session_block:
         project_md = paths.edit_dir / "project.md"
         if _append_session_block(project_md, session_block):
             files_written.append(str(project_md))
+        # HOM-282: hoist post-append body into `state.session.project_md`
+        # so the next `p4_persist_session` re-run reads from state, not
+        # disk. Read AFTER `_append_session_block` so the snapshot
+        # reflects the current on-disk truth (including substring-skip
+        # outcomes — a skip means the body was already there).
+        try:
+            project_md_body = project_md.read_text(encoding="utf-8")
+        except OSError:
+            project_md_body = None
 
-    return {
+    update: dict = {
         "compose": {
             "materialize": {
                 "materialized_at": _now(),
@@ -294,3 +309,6 @@ def p4_materialize_disk_node(state: dict) -> dict:
             },
         },
     }
+    if project_md_body is not None:
+        update["session"] = {"project_md": project_md_body}
+    return update

@@ -482,6 +482,15 @@ class InventoryState(TypedDict, total=False):
     source_dir: str | None
     transcript_json_paths: list[str]
     takes_packed_path: str | None
+    # HOM-282: state-channel sentinel populated by `p3_inventory` on a
+    # successful pack. Replaces the disk-presence probe in
+    # `route_after_preflight` (`(<edit>/takes_packed.md).exists()` →
+    # `state.edit.inventory.takes_packed_at is not None`). ISO 8601 UTC
+    # timestamp set after `pack_transcripts.py` confirms the on-disk
+    # file is materialized. Total=False keeps pre-HOM-282 checkpoints
+    # parsing (the field is simply absent — the router falls through
+    # to `p3_inventory` on those, which is the safe re-run path).
+    takes_packed_at: str | None
 
 
 class FailureResumeState(TypedDict, total=False):
@@ -586,6 +595,32 @@ class GraphError(TypedDict):
     timestamp: str
 
 
+class SessionState(TypedDict, total=False):
+    """HOM-282 — in-state echo of the `<edit>/project.md` body.
+
+    ``p4_persist_session._render_ctx`` previously read project.md from
+    disk to inline the prior body into the persist sub-agent's brief
+    (so it could scan existing ``## Session N`` headings and pick
+    N+1). Post-HOM-282 the body lives here in state — written by
+    ``p4_materialize_disk_node`` after its substring-skip append
+    completes — and the producer reads from state.
+
+    ``project_md`` is the full file content as it exists on disk
+    after the most recent successful materialize. ``None`` (absent)
+    on a fresh thread before any persist+materialize cycle has run.
+    Last-write-wins under the default reducer: the materializer is
+    the single writer and overwrites with the post-append body each
+    time it runs. An append-only reducer would be misleading here —
+    the bytes themselves are append-only on disk, but the in-state
+    value is the *snapshot after append*, not the appended delta.
+
+    Pre-HOM-282 checkpoints carry no ``session`` field —
+    ``total=False`` on the parent ``GraphState.session`` keeps them
+    parsing under the new schema.
+    """
+    project_md: str | None
+
+
 class GraphState(TypedDict, total=False):
     slug: str
     episode_dir: str
@@ -617,3 +652,9 @@ class GraphState(TypedDict, total=False):
     # reads this list on each re-entry to refine the strategy. Top-level so
     # it survives strategy regeneration via dict_merge on `edit`.
     strategy_revisions: Annotated[list[str], add]
+    # HOM-282: in-state echo of `<edit>/project.md` body. Populated by
+    # `p4_materialize_disk_node` after its substring-skip append; read by
+    # `p4_persist_session._render_ctx` to inline the prior body into the
+    # persist sub-agent's brief. Last-write-wins under `dict_merge` —
+    # the materializer is the single writer.
+    session: Annotated[SessionState, dict_merge]

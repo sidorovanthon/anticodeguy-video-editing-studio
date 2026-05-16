@@ -60,8 +60,16 @@ def test_route_after_preflight_skips_to_rehydrate_when_final_exists(project_root
 def test_route_after_preflight_runs_phase3_when_no_final(project_root_episode):
     slug, episode_dir = project_root_episode
     _make_episode(episode_dir, with_final=False, with_strategy_json=False)
+    # HOM-282: routing reads `state.edit.inventory.takes_packed_at`
+    # rather than probing `(<edit>/takes_packed.md).exists()`. The disk
+    # write is irrelevant — what advances routing past inventory is the
+    # state sentinel set by p3_inventory after a successful pack.
     (episode_dir / "edit" / "takes_packed.md").write_text("hi", encoding="utf-8")
-    state = {"slug": slug, "episode_dir": str(episode_dir)}
+    state = {
+        "slug": slug,
+        "episode_dir": str(episode_dir),
+        "edit": {"inventory": {"takes_packed_at": "2026-05-16T12:00:00+00:00"}},
+    }
     assert route_after_preflight(state) == "p3_pre_scan"
 
 

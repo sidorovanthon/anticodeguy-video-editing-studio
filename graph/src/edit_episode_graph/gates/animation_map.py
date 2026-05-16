@@ -169,7 +169,13 @@ from ._base import Gate
 #   the advisory-notice path still surfaces the canonical hf_dir target
 #   so the operator's path expectation is unchanged. Cache-key inputs
 #   unchanged ⇒ semantic bump only.
-_CACHE_VERSION = 7
+# v8 = HOM-282: output shape changed — the gate-record `extras` now carries
+#   the parsed `animation_map_report` payload for downstream consumption by
+#   `gate_animation_map_classify` (routing-sentinel split). A pre-HOM-282
+#   cached row would replay without `animation_map_report` in extras and
+#   silently feed the classifier an empty {} — quality regression, not
+#   hard error. Bump invalidates those rows.
+_CACHE_VERSION = 8
 
 
 # Helper script paths (relative to roots; joined with appropriate root).
@@ -736,6 +742,15 @@ class AnimationMapGate(Gate):
             report = json.loads(report_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
             return ([f"could not parse {report_path}: {exc}"], empty_advisory, [], extras)
+
+        # HOM-282 (Class C fold-in): hoist the parsed helper output into
+        # the gate record's extras so downstream consumers
+        # (``gate_animation_map_classify``) read from state instead of
+        # re-opening the JSON file on disk. The disk file remains a
+        # debug artifact owned by the external helper subprocess
+        # (Class C — runtime side-channel, not an authored episode
+        # artifact); it is no longer load-bearing for control flow.
+        extras["animation_map_report"] = report
 
         # HOM-212: resolve operator-tunable carve-out config.
         cfg = _gate_config()

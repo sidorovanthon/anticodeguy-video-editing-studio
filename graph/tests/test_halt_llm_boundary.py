@@ -76,6 +76,52 @@ def test_v3_halt_marks_cached_render(tmp_path, monkeypatch):
     assert "[cached]" in msg
 
 
+def test_v4_captions_summary_reads_from_state_not_disk(tmp_path, monkeypatch):
+    """HOM-282 (Class A): the post-catalog halt notice's captions
+    summary reads `compose.captions.html` from state (HOM-235 channel),
+    NOT `<hf>/captions.html` from disk. Pin a project root with NO disk
+    captions file but with `compose.captions.html` populated; the notice
+    must report "captions written but not inlined" and choose the
+    p4_assemble_index branch.
+    """
+    monkeypatch.setenv("HOMESTUDIO_PROJECT_ROOT", str(tmp_path))
+    state = {
+        "slug": "x",
+        "compose": {
+            "catalog": {"blocks": [{}], "components": [], "fetched_at": "now"},
+            "captions": {"html": "<div class=\"captions\"></div>"},
+        },
+        "gate_results": [
+            {"gate": "gate:plan_ok", "passed": True, "iteration": 1,
+             "violations": [], "timestamp": "now"},
+        ],
+    }
+    msg = halt_llm_boundary_node(state)["notices"][0]
+    assert "captions written but not inlined" in msg
+    assert "p4_assemble_index" in msg
+
+
+def test_v4_captions_absent_when_no_state_no_disk(tmp_path, monkeypatch):
+    """HOM-282 (Class A): with no `compose.captions.html` and no disk
+    file, the summary reports "captions absent" and routes to
+    p4_captions_layer as the next reachable artifact.
+    """
+    monkeypatch.setenv("HOMESTUDIO_PROJECT_ROOT", str(tmp_path))
+    state = {
+        "slug": "x",
+        "compose": {
+            "catalog": {"blocks": [{}], "components": [], "fetched_at": "now"},
+        },
+        "gate_results": [
+            {"gate": "gate:plan_ok", "passed": True, "iteration": 1,
+             "violations": [], "timestamp": "now"},
+        ],
+    }
+    msg = halt_llm_boundary_node(state)["notices"][0]
+    assert "captions absent" in msg
+    assert "p4_captions_layer" in msg
+
+
 def test_v4_halt_after_plan_gate_pass():
     state = {
         "compose": {"plan": {"beats": [{}, {}, {}]}},

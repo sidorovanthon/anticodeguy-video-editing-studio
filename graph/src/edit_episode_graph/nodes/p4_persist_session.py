@@ -68,7 +68,15 @@ from ._llm import LLMNode, _load_brief
 # `index_html_path` dropped from `files=` (file no longer on disk
 # pre-materialize); replaced with `stable_fingerprint` of the in-state
 # `compose.index_html` body. `files=` is now empty for this node.
-_CACHE_VERSION = 7
+# v8 (HOM-282): `_render_ctx.project_md_body` now reads from
+# `state.session.project_md` instead of the disk file. The cache key
+# extras do NOT change shape (the same body content was already
+# implicit in `index_html` fingerprint via assembled-at timestamp) —
+# bump because the brief input set changed semantics: a recording made
+# against the old disk-read path may carry an out-of-band body the
+# state channel does not reproduce on replay. Bump invalidates so the
+# next replay re-asserts under the state-fed shape.
+_CACHE_VERSION = 8
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -180,8 +188,13 @@ def _render_ctx(state: dict) -> dict:
         # Captions are optional; surface the deterministic path only when the
         # file is actually on disk. The brief otherwise gets the `""` it
         # already handled pre-HOM-224.
-        cap_path = ep.captions_block_path
-        captions_block_path = str(cap_path) if cap_path.is_file() else ""
+        # HOM-282: presence check reads from state (`compose.captions.html`,
+        # HOM-235 channel) rather than `cap_path.is_file()`. The captions
+        # block lives in state pre-materialize; the file lands on disk
+        # downstream when `p4_materialize_disk_node` runs. Surface the
+        # deterministic on-disk path only when the body was authored.
+        captions_authored = bool((compose.get("captions") or {}).get("html"))
+        captions_block_path = str(ep.captions_block_path) if captions_authored else ""
     else:
         design = compose.get("design") or {}
         expansion = compose.get("expansion") or {}
@@ -193,22 +206,17 @@ def _render_ctx(state: dict) -> dict:
             or captions.get("captions_block_path")
             or ""
         )
-    # HOM-265: inline the prior project.md body when it exists on disk
-    # (e.g. from a previous materialization run); the sub-agent uses it
-    # to scan existing `## Session N` headings rather than calling
-    # `Read` on the file. On a fresh first run the body is empty —
-    # the sub-agent then knows N = 1. The disk read here happens
-    # orchestrator-side and is bounded: the file is small (typically
-    # <50 KB), and the materializer has already finalized it before
-    # this node runs IF a previous run produced it. State-body source
-    # of truth (HOM-230) does not apply for project.md because no
-    # producer keeps it in state across runs — it's an append-only
-    # artifact owned by the materializer.
+    # HOM-282: inline the prior project.md body from state, not disk.
+    # `state.session.project_md` is populated by `p4_materialize_disk_node`
+    # after its substring-skip append completes (the materializer is the
+    # single writer; this producer reads its own prior output via state).
+    # On a fresh thread with no prior materialize the channel is absent
+    # — the sub-agent then knows N = 1. Pre-HOM-282 behaviour read the
+    # file from disk; that path is gone now, completing the HOM-282
+    # cutover from "producer reads own disk output" to "state is the
+    # single channel".
     project_md_path = _project_md_path(state)
-    try:
-        project_md_body = project_md_path.read_text(encoding="utf-8") if project_md_path.is_file() else ""
-    except OSError:
-        project_md_body = ""
+    project_md_body = (state.get("session") or {}).get("project_md") or ""
     return {
         "project_md_path": str(project_md_path),
         "project_md_body": project_md_body,

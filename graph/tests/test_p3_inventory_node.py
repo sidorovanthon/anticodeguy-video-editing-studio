@@ -89,6 +89,12 @@ def test_inventory_uses_cached_transcript_and_packs(project_root_episode, monkey
     assert "transcripts" not in update or "raw_json_paths" not in (update.get("transcripts") or {})
     assert any(str(node_module.TRANSCRIBE_BATCH) in cmd for cmd in calls)
     assert any(str(node_module.PACK_TRANSCRIPTS) in cmd for cmd in calls)
+    # HOM-282: state-channel sentinel for `route_after_preflight`. ISO
+    # 8601 UTC timestamp set after `pack_transcripts.py` confirms the
+    # on-disk file is materialized.
+    from datetime import datetime
+    assert "takes_packed_at" in inv
+    datetime.fromisoformat(inv["takes_packed_at"])
 
 
 def test_inventory_prefers_edit_sources_dir(project_root_episode, monkeypatch):

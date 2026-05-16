@@ -99,13 +99,16 @@ def _stub_resolver(monkeypatch, helper_path: Path, used_fallback: bool = False):
 # ── HOM-204: cache version bump ──────────────────────────────────────────────
 
 
-def test_cache_version_is_7():
-    """HOM-281 bumps 6→7: subprocess cwd migrated from canonical hf_dir
-    to a transient tmpdir produced by ``materialize_into_tmpdir``;
-    helper-script resolution still targets the canonical hf_dir so its
-    bundled sibling deps resolve. Semantic bump only — cache-key inputs
-    unchanged.
+def test_cache_version_is_8():
+    """HOM-282 bumps 7→8: output shape changed — gate-record ``extras`` now
+    carries the parsed ``animation_map_report`` payload for downstream
+    consumption by ``gate_animation_map_classify`` (routing-sentinel split).
+    A pre-HOM-282 cached row would replay without the report in extras and
+    silently feed the classifier an empty {}; the version bump invalidates
+    those rows.
 
+    HOM-281 bumped 6→7 for the subprocess-cwd → transient-tmpdir migration
+    (cache-key inputs unchanged; semantic bump).
     HOM-225 bumped 5→6 for the EpisodePaths(slug)-only hf_dir derivation.
     HOM-212 bumped 4→5 for the per-flag blocking carve-outs verdict logic.
     HOM-204 bumped 3→4 for the original advisory output-shape change.
@@ -113,7 +116,7 @@ def test_cache_version_is_7():
     cover this deterministic gate (it uses ``make_key``, not
     ``make_llm_key``); this direct assertion is the version-bump gate.
     """
-    assert gate_mod._CACHE_VERSION == 7
+    assert gate_mod._CACHE_VERSION == 8
 
 
 def test_cache_key_includes_version(tmp_path, monkeypatch):
@@ -153,6 +156,30 @@ def test_clean_report_passes_with_empty_advisory_findings(tmp_path, monkeypatch)
     assert record["fallback_helper_used"] is False
     notice = update["notices"][0]
     assert "advisory" in notice and "no findings" in notice
+
+
+def test_record_extras_hoist_parsed_animation_map_report(tmp_path, monkeypatch):
+    """HOM-282 (Class C fold-in): the parsed `animation-map.json` body
+    is folded into the gate record's `animation_map_report` extras so
+    downstream consumers (`gate_animation_map_classify`) read from
+    state instead of re-opening the disk file.
+    """
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    report = {
+        "duration": 12.0,
+        "tweens": [
+            {"index": 1, "selector": ".title", "duration": 0.6, "flags": []},
+        ],
+        "deadZones": [],
+    }
+    _stub_helper(monkeypatch, report=report)
+    update = animation_map_gate_node(_state(hf_dir))
+    record = update["gate_results"][0]
+    assert record.get("animation_map_report") == report, (
+        "gate record must hoist parsed animation-map.json into "
+        "extras['animation_map_report'] (HOM-282 Class C fold-in)"
+    )
 
 
 def test_collision_on_decorative_is_advisory_not_blocking(tmp_path, monkeypatch):

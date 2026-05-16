@@ -40,7 +40,11 @@ HELPERS_DIR = Path.home() / ".claude" / "skills" / "video-use" / "helpers"
 # `inventory.timeline_view_samples`, `transcripts.takes_packed_path`,
 # `transcripts.raw_json_paths` no longer emitted. Consumers derive via
 # `EpisodePaths(slug)`.
-_CACHE_VERSION = 2
+# v3 (HOM-282): output shape extended with `inventory.takes_packed_at` ISO
+# timestamp sentinel for `route_after_preflight`. Cache-key inputs
+# unchanged (`raw_path` + `wav_path` still pin the deterministic helper
+# outputs); bump invalidates so the next replay re-emits the new field.
+_CACHE_VERSION = 3
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -278,6 +282,12 @@ def p3_inventory_node(state, *, runner=_run):
     takes_packed = edit_dir / "takes_packed.md"
     if not takes_packed.exists():
         return _error(f"takes_packed.md missing after pack_transcripts.py: {takes_packed}")
+    # HOM-282: state-channel sentinel captured here. `route_after_preflight`
+    # consumes `state.edit.inventory.takes_packed_at` instead of
+    # `Path(...).exists()`. The disk file still exists (pack_transcripts.py
+    # writes it; downstream `p3_strategy` reads the canonical disk path
+    # via EpisodePaths) — this timestamp is a routing signal, not a path.
+    takes_packed_at = datetime.now(timezone.utc).isoformat()
 
     sample_paths, sample_warnings = _sample_timeline_views(
         sources=sources,
@@ -296,6 +306,10 @@ def p3_inventory_node(state, *, runner=_run):
         "edit": {
             "inventory": {
                 "sources": inventory_sources,
+                # HOM-282: routing sentinel. `route_after_preflight`
+                # consumes this in lieu of probing
+                # `(<edit>/takes_packed.md).exists()`.
+                "takes_packed_at": takes_packed_at,
             },
         },
     }

@@ -155,6 +155,10 @@ def static_guard_gate_node(state: dict, *, sleep_fn=time.sleep) -> dict:
             {},
         )
     log_path = Path(log_path_str)
+    # Runtime side-channel — scans preview.log produced by studio_launch's
+    # Popen lifecycle bookkeeping, not an authored episode artifact
+    # (HOM-282 allowlist note — no project lint plugin exists today;
+    # comment-only deferral).
     if not log_path.is_file():
         return _record(False, [f"preview log not on disk: {log_path}"], {})
 
