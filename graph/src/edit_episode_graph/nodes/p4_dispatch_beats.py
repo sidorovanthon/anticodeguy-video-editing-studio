@@ -94,26 +94,28 @@ def p4_dispatch_beats_node(state: dict[str, Any]) -> Command:
             return _notice("slug missing — cannot resolve index.html path")
         index_path = Path(legacy)
 
-    # HOM-259: state-first read with disk fallback. `p4_scaffold` writes
-    # index.html only to disk today, so production first-runs always
-    # take the disk path; once `p4_assemble_index` runs, the in-state
-    # body is the post-assemble version (still carries the viewport meta
-    # the scaffold authored). Either source surfaces dimensions; both
-    # are accepted to keep dispatch_beats consistent with the rest of
-    # the Step-B7 migration without requiring a scaffold-side change.
+    # HOM-280: read root index.html from state. The scaffolded body lives
+    # in `compose.scaffold.index_html` (hoisted by `p4_scaffold`); the
+    # post-assemble body lives in `compose.index_html` (written by
+    # `p4_assemble_index`). Both carry the viewport meta the scaffold
+    # authored, so dimensions parse from either. The disk-read fallback
+    # is gone — `p4_materialize_disk_node` is the single deterministic
+    # writer downstream, and a `p4_scaffold` cache hit replays the
+    # scaffold body into state without re-running the subprocess.
     root_html: str | None = None
     state_body = compose.get("index_html")
     if isinstance(state_body, str) and state_body:
         root_html = state_body
-    elif index_path.is_file():
-        try:
-            root_html = index_path.read_text(encoding="utf-8")
-        except OSError as exc:
-            return _error(f"failed to read root index.html: {exc!r}")
     else:
+        scaffold_state = compose.get("scaffold") or {}
+        if isinstance(scaffold_state, dict):
+            scaffold_body = scaffold_state.get("index_html")
+            if isinstance(scaffold_body, str) and scaffold_body:
+                root_html = scaffold_body
+    if root_html is None:
         return _notice(
-            f"root index.html not in state and not on disk at {index_path} "
-            "(p4_scaffold must run first)"
+            "root index.html not in state — neither compose.scaffold.index_html "
+            "nor compose.index_html present (p4_scaffold must run first)"
         )
 
     dims = _parse_dimensions(root_html)
