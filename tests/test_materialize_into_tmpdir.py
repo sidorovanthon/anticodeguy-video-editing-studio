@@ -1,17 +1,24 @@
 """Smokes for :func:`tests._helpers.materialize_into_tmpdir`.
 
 HOM-255 / Step D1 of HOM-230. Proves the materializer reproduces the
-committed fixture tree byte-for-byte under an isolated tmpdir — the
-foundational invariant Step D2 (HOM-239) leans on when it ``git rm``s
-the committed hyperframes/ artifacts.
+expected Phase-4 text artifacts under an isolated tmpdir.
 
 Tests skip when the fixture cache.db is missing, matching the existing
 ``requires_fixture_cache`` pattern in ``tests/test_graph_replay.py``.
+
+Historical note (HOM-239 Step D2, 2026-05-16): a third test,
+``test_materialize_into_tmpdir_regenerates_committed_content``, used to
+compare materialized output against the committed fixture tree at
+``SOURCE_EPISODE_DIR / "hyperframes"``. After D2 ``git rm``ed those
+artifacts (cache.db is now the only ground truth), the comparison loop
+became structurally tautological — ``source.is_file()`` is always
+False, the loop early-returns, ``deltas`` stays empty, the assert
+passes vacuously. Test deleted in the D2 follow-up. The cache.db rows
+plus the other two smokes here carry the contract.
 """
 
 from __future__ import annotations
 
-import hashlib
 from pathlib import Path
 
 import pytest
@@ -48,20 +55,6 @@ _EXPECTED_HF_FILES = (
     "captions.html",
     "index.html",
 )
-
-
-def _sha256_normalized(path: Path) -> str:
-    """Hash file bytes after normalizing line endings to LF.
-
-    Git's ``core.autocrlf`` on Windows checks out text files with CRLF,
-    while the materializer always writes UTF-8 LF (deterministic
-    production output — see ``_atomic_write``'s ``newline=""`` contract).
-    Comparing raw bytes would surface that purely-cosmetic difference;
-    normalizing both sides to LF compares the actual content the
-    materializer is responsible for.
-    """
-    raw = path.read_bytes()
-    return hashlib.sha256(raw.replace(b"\r\n", b"\n")).hexdigest()
 
 
 def _scene_files(hf_dir: Path) -> list[Path]:
@@ -156,58 +149,5 @@ def test_materialize_into_tmpdir_idempotent(tmp_path):
     )
 
 
-@requires_fixture_cache
-def test_materialize_into_tmpdir_regenerates_committed_content(tmp_path):
-    """For each materialized artifact, sha256(materialized) ==
-    sha256(committed) under the source fixture tree.
-
-    Foundational invariant for HOM-239 (Step D2): when D2 ``git rm``s
-    the committed hyperframes/ files, this test path keeps green via
-    materializer regeneration. Any per-file delta surfaces here LOUDLY
-    before D2 lands — a delta means either the cache.db is stale
-    relative to the committed tree (HOM-216 territory) or the
-    materializer's write logic doesn't match the producer's.
-    """
-    materialized = materialize_into_tmpdir(
-        FIXTURE_SLUG,
-        source_episode_dir=SOURCE_EPISODE_DIR,
-        tmpdir=tmp_path,
-    )
-
-    source_hf = SOURCE_EPISODE_DIR / "hyperframes"
-
-    deltas: list[str] = []
-
-    def _compare(source: Path, target: Path, label: str) -> None:
-        if not source.is_file():
-            return
-        if not target.is_file():
-            deltas.append(f"{label}: materializer did not produce {target}")
-            return
-        s = _sha256_normalized(source)
-        t = _sha256_normalized(target)
-        if s != t:
-            deltas.append(
-                f"{label}: sha256 mismatch — source={s[:16]}…, materialized={t[:16]}…"
-            )
-
-    for relpath in _EXPECTED_HF_FILES:
-        _compare(source_hf / relpath, materialized / relpath, relpath)
-    for source_scene in _scene_files(source_hf):
-        relname = f"compositions/{source_scene.name}"
-        _compare(source_scene, materialized / "compositions" / source_scene.name, relname)
-
-    # project.md is appended; for an empty tmpdir the appended block IS
-    # the entire project.md content (no prior session), so byte equality
-    # with the source is expected.
-    _compare(
-        SOURCE_EPISODE_DIR / "edit" / "project.md",
-        tmp_path / "episodes" / FIXTURE_SLUG / "edit" / "project.md",
-        "edit/project.md",
-    )
-
-    assert not deltas, (
-        "materializer output diverges from committed fixture — D2 cannot "
-        "safely `git rm` these files until the deltas are reconciled:\n  - "
-        + "\n  - ".join(deltas)
-    )
+# NOTE: ``test_materialize_into_tmpdir_regenerates_committed_content``
+# was deleted in HOM-239 Step D2 (2026-05-16). See module docstring.
