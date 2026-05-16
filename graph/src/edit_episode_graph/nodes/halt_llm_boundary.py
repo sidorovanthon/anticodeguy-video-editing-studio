@@ -82,15 +82,20 @@ def halt_llm_boundary_node(state):
     # HOM-238: p4_materialize_disk lives between p4_persist_session and
     # studio_launch (no-op writer in Step C of HOM-230). Surface its
     # status next to persist's so the operator sees the full post-persist
-    # chain. Step D1 will give this real meaning (atomic writes); for
-    # now ``materialized_at`` ≅ "no-op confirmed the body shape".
+    # chain. HOM-255 / Step D1 activated atomic writes — ``files_written``
+    # carries the per-file count actually changed (idempotent skips
+    # excluded). Pre-D1 ``materialized_at`` ≅ "no-op confirmed the body
+    # shape"; post-D1 it ≅ "atomic writes happened at this instant".
     materialize_state = compose_state.get("materialize") or {}
 
     def _materialize_summary() -> str:
         if materialize_state.get("materialized_at"):
+            files_written = materialize_state.get("files_written") or []
+            count = len(files_written) if isinstance(files_written, list) else 0
             return (
                 "Phase 4 artifacts materialized at "
-                f"{materialize_state['materialized_at']}"
+                f"{materialize_state['materialized_at']} "
+                f"({count} file{'s' if count != 1 else ''} written)"
             )
         if materialize_state.get("skipped"):
             reason = materialize_state.get("skip_reason") or "no reason given"
