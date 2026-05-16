@@ -16,17 +16,16 @@ Hex / font sources of truth:
   * `state.compose.design.palette[*].hex` — set by p4_design_system.
   * `state.compose.design.typography[*].family` — same node.
 
-If `compose.design` is empty/skipped, the gate degrades to a path-based
-read of `state.compose.design.design_md_path` so it still has *something*
-to compare against. If that's also missing, it skips quietly (the gate
-upstream of this one — `gate:design_ok` — owns DESIGN.md presence).
+If `state.compose.design.design_md` is empty/absent, the avoidance-rule
+cross-check skips quietly (degraded enforcement). The gate upstream of
+this one — `gate:design_ok` — owns DESIGN.md body presence; HOM-270
+moved this read from disk to the state channel under the state-first
+artifact regime (HOM-239).
 """
 
 from __future__ import annotations
 
 import re
-from pathlib import Path
-from typing import Iterable
 
 from ._base import Gate, hyperframes_dir
 
@@ -164,18 +163,21 @@ def _extract_html_families(html: str) -> set[str]:
     return out
 
 
-def _design_md_text(state: dict) -> tuple[str | None, Path | None]:
+def _design_md_text(state: dict) -> str | None:
+    """Return the DESIGN.md body from state, or None if absent.
+
+    HOM-270: state-first read per HOM-239 — the producer
+    (``p4_design_system``) populates ``state.compose.design.design_md``;
+    the disk file is written later by ``p4_materialize_disk_node``.
+    Reading from disk here fires before the materializer on a fresh-tier
+    run and produces False ``None``. Silent-skip behaviour on absence
+    stays the same (degraded enforcement).
+    """
     design = (state.get("compose") or {}).get("design") or {}
-    path_str = design.get("design_md_path")
-    if not path_str:
-        return None, None
-    path = Path(path_str)
-    if not path.is_file():
-        return None, path
-    try:
-        return path.read_text(encoding="utf-8", errors="replace"), path
-    except OSError:
-        return None, path
+    body = design.get("design_md")
+    if isinstance(body, str) and body:
+        return body
+    return None
 
 
 def _avoidance_keywords(design_md: str) -> list[str]:
@@ -282,7 +284,7 @@ class DesignAdherenceGate(Gate):
                 )
 
         # 3. Avoidance rules — best-effort, soft-fail when section absent.
-        design_md, _ = _design_md_text(state)
+        design_md = _design_md_text(state)
         if design_md:
             html_lc = html.lower()
             for kw in _avoidance_keywords(design_md):
