@@ -26,7 +26,10 @@ SCRIPTS_ROOT = scripts_root()
 # v3 (HOM-224): identity-only state writes — `compose.hyperframes_dir` and
 # `compose.index_html_path` no longer echoed; consumers derive via
 # `EpisodePaths(slug)`. Brief / subprocess shape unchanged.
-_CACHE_VERSION = 3
+# v4 (HOM-216 phase 2): force re-run after HOM-239 stripped fixture index.html;
+# scaffold's subprocess writes are not state-tracked, so cache hit skipped the
+# disk-write and downstream p4_assemble_index failed to find index.html.
+_CACHE_VERSION = 4
 
 
 def _cache_key(state, *_args, **_kwargs):
