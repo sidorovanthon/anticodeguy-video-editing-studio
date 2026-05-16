@@ -450,6 +450,78 @@ def test_grade_malformed_keypoint_fails(episode: Path):
     assert any("malformed keypoint" in v for v in record["violations"])
 
 
+def test_passes_reading_transcript_body_from_state_without_disk_file(tmp_path: Path):
+    """HOM-279: the gate reads transcript JSON body from
+    ``state.transcripts.bodies.raw`` (hoisted by
+    ``glue_remap_transcript``) without opening any file on disk.
+
+    Synthesises state with the body inline AND no file at the
+    expected disk location; the gate must still validate cleanly.
+    """
+    # Note: NO transcripts dir created on disk.
+    words = [
+        {"text": "alpha", "start": 1.000, "end": 1.500, "type": "word"},
+        {"text": "beta",  "start": 2.000, "end": 2.500, "type": "word"},
+        {"text": "gamma", "start": 3.000, "end": 3.500, "type": "word"},
+    ]
+    body = json.dumps({"words": words})
+    state = {
+        "episode_dir": str(tmp_path),
+        "transcripts": {"bodies": {"raw": body, "raw_path": "/no/such/file/raw.json"}},
+        "edit": {
+            "edl": _good_edl(),
+            "inventory": {"sources": [{"stem": "raw", "duration_s": 7.0}]},
+            "strategy": {"length_estimate_s": 2.05},
+        },
+    }
+    record = edl_ok_gate_node(state)["gate_results"][0]
+    assert record["passed"], record["violations"]
+
+
+def test_state_body_supersedes_disk_for_word_intervals(tmp_path: Path):
+    """HOM-279: when both `state.transcripts.bodies.raw` and the disk
+    file exist, the gate prefers the state body — proving the
+    consumer migration is wired (not just an additive read).
+
+    Constructs a disk transcript that would PASS, then overrides the
+    state body with a word stream that would FAIL the HR 7 padding
+    check on the same EDL. If the gate consults state first (as
+    designed), it sees the failing body and emits the violation. If
+    it still reads disk, the test catches the silent regression.
+    """
+    transcripts = tmp_path / "edit" / "transcripts"
+    transcripts.mkdir(parents=True)
+    # Disk: would-pass words.
+    disk_words = [
+        {"text": "alpha", "start": 1.000, "end": 1.500, "type": "word"},
+        {"text": "beta",  "start": 2.000, "end": 2.500, "type": "word"},
+        {"text": "gamma", "start": 3.000, "end": 3.500, "type": "word"},
+    ]
+    (transcripts / "raw.json").write_text(json.dumps({"words": disk_words}), encoding="utf-8")
+    # State body: word stream pinned so the cut edges land mid-word
+    # (HR 6 violation: cuts inside word).
+    state_words = [
+        {"text": "alpha", "start": 0.5, "end": 1.7, "type": "word"},
+        {"text": "beta",  "start": 1.8, "end": 3.6, "type": "word"},
+    ]
+    body = json.dumps({"words": state_words})
+    state = {
+        "episode_dir": str(tmp_path),
+        "transcripts": {"bodies": {"raw": body}},
+        "edit": {
+            "edl": _good_edl(),
+            "inventory": {"sources": [{"stem": "raw", "duration_s": 7.0}]},
+            "strategy": {"length_estimate_s": 2.05},
+        },
+    }
+    record = edl_ok_gate_node(state)["gate_results"][0]
+    assert not record["passed"], (
+        "gate read disk-side transcript instead of state body — "
+        "HOM-279 consumer migration regression"
+    )
+    assert any("cuts inside word" in v for v in record["violations"]), record["violations"]
+
+
 def test_solvable_gap_violation_suggests_target(tmp_path: Path):
     """When the bracketing gap is wide enough (≥60ms), the violation should
     recommend a concrete target inside the valid window instead of just
