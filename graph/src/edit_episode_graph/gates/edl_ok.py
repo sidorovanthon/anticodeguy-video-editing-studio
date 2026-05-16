@@ -238,11 +238,13 @@ def _source_duration_map(state: dict) -> dict[str, float]:
 
 
 def _transcript_dir(state: dict) -> Path:
-    """DEPRECATED (HOM-279): kept for any disk-side fallback. The gate now
-    reads transcript bodies from ``state.transcripts.bodies`` (hoisted by
-    ``glue_remap_transcript``) rather than re-opening files. Removed
-    callers; left for one transition cycle in case downstream code reaches
-    for it from outside the gate.
+    """Transitional (HOM-279): in the current Phase 3 topology
+    ``gate_edl_ok`` runs upstream of ``glue_remap_transcript``, so
+    ``state.transcripts.bodies`` is not yet populated when this gate
+    fires — the disk path resolved here is the load-bearing one on the
+    live hot path. The state-read branch in ``_transcript_body_for_source``
+    becomes primary once raw-transcript hydration moves earlier in
+    Phase 3 (follow-up to HOM-279, out of scope for this PR).
     """
     episode_dir = state.get("episode_dir")
     return Path(episode_dir) / "edit" / "transcripts"
@@ -255,13 +257,15 @@ def _transcript_body_for_source(state: dict, source_key: str) -> str | None:
     (matching the EDL range edges against the source-side timeline).
     `glue_remap_transcript` hydrates the raw transcript body under
     ``state.transcripts.bodies.raw`` (and the per-source disk filename
-    stem is ``raw`` for the canonical single-source fixture). For
-    multi-source episodes (future), HOM-279 hoists only the
-    canonical-source raw body — the gate falls back to disk for the
-    rest. The fallback is bridge code for the canonical fixture →
-    multi-source migration; once multi-source ships
-    (`p3_inventory.transcript_json_paths` populated), this helper
-    will be widened to a per-source map.
+    stem is ``raw`` for the canonical single-source fixture).
+
+    Transitional note: in the current Phase 3 topology gate_edl_ok
+    runs upstream of ``glue_remap_transcript``, so on the live hot
+    path ``state.transcripts.bodies`` is not yet populated when the
+    gate fires — the disk fallback in ``_load`` is load-bearing and
+    this helper returns ``None``. Once raw-transcript hydration is
+    hoisted earlier in Phase 3 (follow-up to HOM-279), this becomes
+    the primary path and the helper widens to a per-source map.
     """
     transcripts = state.get("transcripts") or {}
     bodies = transcripts.get("bodies") or {}
@@ -377,13 +381,15 @@ class EdlOkGate(Gate):
         def _load(source_key: str) -> list[tuple[float, float]] | None:
             if source_key in word_cache:
                 return word_cache[source_key]
-            # HOM-279: prefer transcript body in state
-            # (``state.transcripts.bodies.raw`` for the canonical
-            # single-source fixture). Falls back to disk read for
-            # multi-source episodes whose per-source transcripts
-            # aren't yet hoisted into state (transitional —
-            # `glue_remap_transcript` only hoists the canonical raw
-            # body today).
+            # HOM-279: try transcript body from state first
+            # (``state.transcripts.bodies.raw``), then fall back to
+            # disk. In the current Phase 3 topology gate_edl_ok
+            # runs upstream of `glue_remap_transcript`, so the
+            # state branch is typically empty here and the disk
+            # read is load-bearing on the live hot path. The
+            # state-preferred shape lets the gate flip to
+            # state-primary once raw-transcript hydration moves
+            # earlier in Phase 3 (follow-up to HOM-279).
             body = _transcript_body_for_source(state, source_key)
             if body is not None:
                 try:
