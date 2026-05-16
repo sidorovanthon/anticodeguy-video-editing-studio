@@ -12,15 +12,29 @@ from edit_episode_graph.gates.lint import LintGate, lint_gate_node
 
 
 @pytest.fixture()
-def hf_project(tmp_path: Path) -> Path:
+def hf_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Provide an on-disk HF project dir and route the gate's
+    ``materialize_into_tmpdir`` call to return it.
+
+    Post HOM-281 the lint gate no longer reads ``compose.hyperframes_dir``
+    from state — it derives the subprocess cwd from a tmpdir produced by
+    ``materialize_into_tmpdir``. Unit tests stub that helper to return
+    the same fixture dir so the subprocess-runner patch (which keys off
+    the cwd it was handed) sees the expected directory shape.
+    """
     hf_dir = tmp_path / "hyperframes"
     hf_dir.mkdir()
     (hf_dir / "index.html").write_text("<html></html>", encoding="utf-8")
+    monkeypatch.setattr(
+        "edit_episode_graph.gates.lint.materialize_into_tmpdir",
+        lambda state, slug=None: hf_dir,
+    )
     return hf_dir
 
 
 def _state_for(hf_dir: Path) -> dict:
-    return {"compose": {"hyperframes_dir": str(hf_dir)}}
+    # ``slug`` is now load-bearing — gate short-circuits without it.
+    return {"slug": "demo", "compose": {"hyperframes_dir": str(hf_dir)}}
 
 
 def _json_result(hf_dir: Path, payload: dict, exit_code: int = 0) -> _base.CliResult:
@@ -271,20 +285,33 @@ def test_falls_back_to_text_mode_when_json_unparseable(
     assert any("exit=2" in v for v in record["violations"])
 
 
-def test_fails_when_no_hyperframes_dir_in_state():
+def test_fails_when_no_slug_in_state():
+    """HOM-281: gate short-circuits on slug-absent state — that's the
+    earliest signal a pickup step has not run yet."""
     update = lint_gate_node({})
     assert not update["gate_results"][0]["passed"]
     assert any(
-        "no hyperframes_dir" in v for v in update["gate_results"][0]["violations"]
+        "no slug" in v for v in update["gate_results"][0]["violations"]
     )
 
 
-def test_fails_when_hyperframes_dir_missing_on_disk(tmp_path: Path):
-    state = {"compose": {"hyperframes_dir": str(tmp_path / "nope")}}
-    update = lint_gate_node(state)
+def test_fails_when_materialize_into_tmpdir_raises(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    """HOM-281: the gate surfaces a materializer error as a violation
+    string rather than crashing the run."""
+
+    def boom(state, slug=None):
+        raise RuntimeError("required body field 'compose.design.design_md' missing")
+
+    monkeypatch.setattr(
+        "edit_episode_graph.gates.lint.materialize_into_tmpdir", boom
+    )
+    update = lint_gate_node({"slug": "demo"})
     assert not update["gate_results"][0]["passed"]
     assert any(
-        "not on disk" in v for v in update["gate_results"][0]["violations"]
+        "materialize_into_tmpdir failed" in v
+        for v in update["gate_results"][0]["violations"]
     )
 
 

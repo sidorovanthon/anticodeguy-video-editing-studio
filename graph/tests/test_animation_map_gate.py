@@ -38,16 +38,23 @@ def _hf_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch | None = None) -> Pa
     ``HOMESTUDIO_PROJECT_ROOT`` so EpisodePaths(slug) resolves there.
 
     HOM-225: the cache key + advisory-notice path helpers derive via
-    ``EpisodePaths(slug)``; the body's ``hyperframes_dir(state)``
-    helper still also reads ``compose.hyperframes_dir`` (shared
-    helper across gates), so the `_state` factory keeps that key for
-    body-level execution. The env var is what the cache-key /
-    notice-path helpers consume.
+    ``EpisodePaths(slug)``.
+    HOM-281: the gate now sources its subprocess cwd from
+    ``materialize_into_tmpdir``; the unit test stubs that helper to
+    return this on-disk fixture dir so the synthesized helper subprocess
+    sees the expected layout. Helper-script resolution still targets the
+    canonical hf_dir (via ``EpisodePaths``) — same fixture dir under
+    ``HOMESTUDIO_PROJECT_ROOT`` makes both look-ups land here.
     """
     if monkeypatch is not None:
         monkeypatch.setenv("HOMESTUDIO_PROJECT_ROOT", str(tmp_path))
     hf_dir = tmp_path / "episodes" / _FIXTURE_SLUG / "hyperframes"
     hf_dir.mkdir(parents=True)
+    if monkeypatch is not None:
+        monkeypatch.setattr(
+            "edit_episode_graph.gates.animation_map.materialize_into_tmpdir",
+            lambda state, slug=None: hf_dir,
+        )
     return hf_dir
 
 
@@ -92,20 +99,21 @@ def _stub_resolver(monkeypatch, helper_path: Path, used_fallback: bool = False):
 # ── HOM-204: cache version bump ──────────────────────────────────────────────
 
 
-def test_cache_version_is_6():
-    """HOM-225 bumps 5→6: cache key derives `hf_dir` via
-    `EpisodePaths(slug)` rather than reading the deprecated
-    `compose.hyperframes_dir` / `state["episode_dir"]` chain (no p4
-    node writes those keys after HOM-224).
+def test_cache_version_is_7():
+    """HOM-281 bumps 6→7: subprocess cwd migrated from canonical hf_dir
+    to a transient tmpdir produced by ``materialize_into_tmpdir``;
+    helper-script resolution still targets the canonical hf_dir so its
+    bundled sibling deps resolve. Semantic bump only — cache-key inputs
+    unchanged.
 
-    HOM-212 bumped 4→5 for the per-flag blocking carve-outs verdict
-    logic change. HOM-204 bumped 3→4 for the original advisory
-    output-shape change. The fingerprint registry's CREATIVE_NODES
-    parametrisation does not cover this deterministic gate (it uses
-    ``make_key``, not ``make_llm_key``); this direct assertion is the
-    version-bump gate.
+    HOM-225 bumped 5→6 for the EpisodePaths(slug)-only hf_dir derivation.
+    HOM-212 bumped 4→5 for the per-flag blocking carve-outs verdict logic.
+    HOM-204 bumped 3→4 for the original advisory output-shape change.
+    The fingerprint registry's CREATIVE_NODES parametrisation does not
+    cover this deterministic gate (it uses ``make_key``, not
+    ``make_llm_key``); this direct assertion is the version-bump gate.
     """
-    assert gate_mod._CACHE_VERSION == 6
+    assert gate_mod._CACHE_VERSION == 7
 
 
 def test_cache_key_includes_version(tmp_path, monkeypatch):
