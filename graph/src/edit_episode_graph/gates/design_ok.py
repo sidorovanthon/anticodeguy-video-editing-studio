@@ -2,9 +2,11 @@
 
 Per spec §6.2 / canon hyperframes SKILL.md §"Step 1: Design system":
   - DesignDoc parseable and not skipped upstream.
-  - DESIGN.md actually exists at the path the agent claimed it wrote to —
-    schema field is just a string; only the file's presence proves the
-    Write tool actually fired.
+  - DESIGN.md body present in ``state.compose.design.design_md`` — under
+    the state-first artifact regime (HOM-239) the producer returns the
+    body string in state and the materializer writes it to disk later.
+    Body presence proves the producer node actually populated the state
+    channel; on-disk presence is no longer the gate's concern.
   - Substance bounds the schema also enforces (refs≥2, alternatives≥1,
     anti_patterns≥3, beat_visual_mapping non-empty) — re-asserted at the
     gate so a schema regression never silently weakens enforcement.
@@ -19,17 +21,15 @@ Per spec §6.2 / canon hyperframes SKILL.md §"Step 1: Design system":
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from ._base import Gate
 
-# Threshold below which a DESIGN.md is treated as suspiciously small. Set so a
-# skeleton document — all canonical YAML keys at one-word values plus all the
-# canonical prose section headers with no body content — slips above 200B but
-# is still rejected here. Empirically a minimal but operationally complete
-# DESIGN.md (one sentence per section) is ~600–800B, so 500B is the smallest
-# threshold that catches the failure mode without flagging real-but-terse
-# documents.
+# Threshold below which a DESIGN.md body is treated as suspiciously small.
+# Set so a skeleton document — all canonical YAML keys at one-word values plus
+# all the canonical prose section headers with no body content — slips above
+# 200B but is still rejected here. Empirically a minimal but operationally
+# complete DESIGN.md (one sentence per section) is ~600–800B, so 500B is the
+# smallest threshold that catches the failure mode without flagging
+# real-but-terse documents.
 DESIGN_MD_MIN_BYTES = 500
 
 _VISUAL_STYLES = (
@@ -90,16 +90,22 @@ class DesignOkGate(Gate):
         if "raw_text" in design and "palette" not in design:
             return ["design unparseable (raw_text only — schema validation failed upstream)"]
 
-        path_str = design.get("design_md_path")
-        if not path_str:
-            violations.append("design_md_path missing in DesignDoc")
+        # HOM-270: state-first read. Under HOM-239 the producer no longer
+        # writes DESIGN.md to disk — the body lives in state.compose.design.design_md
+        # and `p4_materialize_disk_node` writes it later. Gating on disk
+        # presence here fires BEFORE the materializer on a fresh-tier run
+        # and halts the pipeline; read the body from state instead.
+        body = design.get("design_md")
+        if not body:
+            violations.append(
+                "DESIGN.md body absent in state.compose.design.design_md "
+                "(producer did not populate state channel)"
+            )
         else:
-            path = Path(path_str)
-            if not path.is_file():
-                violations.append(f"DESIGN.md not on disk at {path_str} (Write tool did not fire)")
-            elif path.stat().st_size < DESIGN_MD_MIN_BYTES:
+            body_bytes = len(body.encode("utf-8")) if isinstance(body, str) else 0
+            if body_bytes < DESIGN_MD_MIN_BYTES:
                 violations.append(
-                    f"DESIGN.md at {path_str} is suspiciously small ({path.stat().st_size}B "
+                    f"DESIGN.md body in state is suspiciously small ({body_bytes}B "
                     f"< {DESIGN_MD_MIN_BYTES}B); a skeleton with all canonical headers + "
                     "single-word YAML values would land in this range"
                 )
