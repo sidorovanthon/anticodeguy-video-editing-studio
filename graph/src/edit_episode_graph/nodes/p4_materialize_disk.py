@@ -43,20 +43,20 @@ from langgraph.types import CachePolicy
 
 from .._caching import make_key, stable_fingerprint
 from .._paths import EpisodePaths
+from ._compose_materialization import (
+    compose_bodies,
+    upstream_skipped,
+    validate_state,
+)
 
 # Bump on schema/contract change (HOM-132 spec §8). v1: initial no-op
 # release (Step C, HOM-238). v2 (HOM-255 / Step D1): atomic disk writes
-# activated; files_written populated.
-_CACHE_VERSION = 2
-
-
-# Mandatory body fields the materializer asserts and writes.
-# Each entry is (state-path-tuple, human-name for error messages).
-_MANDATORY: tuple[tuple[tuple[str, ...], str], ...] = (
-    (("compose", "design", "design_md"), "compose.design.design_md"),
-    (("compose", "expansion", "expanded_prompt"), "compose.expansion.expanded_prompt"),
-    (("compose", "index_html"), "compose.index_html"),
-)
+# activated; files_written populated. v3 (HOM-281): body-bytes producer
+# extracted into ``_compose_materialization`` for sharing with
+# ``materialize_into_tmpdir``. No output-shape change, but the contract
+# is now jointly owned with the tmpdir helper — bump so the next replay
+# re-asserts the shape is byte-identical.
+_CACHE_VERSION = 3
 
 
 def _pluck(state: dict, path: tuple[str, ...]):
@@ -217,23 +217,6 @@ def _append_session_block(path: Path, block: str) -> bool:
     return True
 
 
-def _upstream_skipped(compose: dict) -> tuple[bool, str | None]:
-    """Return (True, reason) when an upstream step the materializer
-    depends on has skipped. Mirrors the producers' skip-propagation
-    pattern so the materializer behaves consistently along skip paths
-    (no spurious RuntimeError from a state that legitimately has no
-    body to materialize).
-    """
-    for sub in ("assemble", "design", "expansion"):
-        section = compose.get(sub) or {}
-        if section.get("skipped"):
-            return True, (
-                f"upstream {sub} skipped: "
-                f"{section.get('skip_reason') or 'no reason given'}"
-            )
-    return False, None
-
-
 def p4_materialize_disk_node(state: dict) -> dict:
     """Atomic single-writer for Phase 4 text artifacts (Step D1).
 
@@ -244,7 +227,7 @@ def p4_materialize_disk_node(state: dict) -> dict:
     write actually changed content; idempotent skips are NOT listed).
     """
     compose = state.get("compose") or {}
-    skipped, skip_reason = _upstream_skipped(compose)
+    skipped, skip_reason = upstream_skipped(compose)
     if skipped:
         return {
             "compose": {
@@ -257,37 +240,11 @@ def p4_materialize_disk_node(state: dict) -> dict:
 
     # ----- Validation phase (no disk I/O yet — atomicity property) ---
     # Raise BEFORE any write so a malformed state can never leave a
-    # partial tree on disk.
-    for path, name in _MANDATORY:
-        value = _pluck(state, path)
-        if not isinstance(value, str) or not value:
-            raise RuntimeError(
-                f"p4_materialize_disk: required body field {name!r} missing "
-                "or empty in state — producer must populate before "
-                "materializer runs"
-            )
+    # partial tree on disk. ``validate_state`` is the shared validator
+    # used by both the canonical disk writer and ``materialize_into_tmpdir``
+    # (HOM-281) so the failure surface is identical across callers.
+    validate_state(state)
     scenes = state.get("scenes") or {}
-    if not scenes:
-        raise RuntimeError(
-            "p4_materialize_disk: required body field 'scenes' missing or "
-            "empty — p4_beat fan-out produced no scene fragments"
-        )
-    # Per-scene validation — every scene must carry a non-empty `html`
-    # body. If any scene is malformed, fail BEFORE writing any file
-    # (atomicity property).
-    for scene_id, scene in sorted(scenes.items()):
-        if not isinstance(scene, dict):
-            raise RuntimeError(
-                f"p4_materialize_disk: scene {scene_id!r} is not a dict "
-                f"(got {type(scene).__name__}) — p4_beat regressed its "
-                "fan-out output shape"
-            )
-        body = scene.get("html")
-        if not isinstance(body, str) or not body:
-            raise RuntimeError(
-                f"p4_materialize_disk: scene {scene_id!r} missing non-empty "
-                "'html' body — p4_beat fan-out produced an incomplete scene"
-            )
 
     # ----- Write phase --------------------------------------------------
     slug = state.get("slug")
