@@ -194,6 +194,34 @@ def test_materialize_disk_writes_full_tree(isolated_project_root):
     )
 
 
+def test_materialize_disk_hoists_project_md_into_state_session_channel(isolated_project_root):
+    """HOM-282: after the substring-skip append completes, the
+    post-append body is hoisted into `state.session.project_md`. The
+    next `p4_persist_session` re-run reads from state, not disk.
+    """
+    state = _happy_state()
+    update = p4_materialize_disk_node(state)
+    assert "session" in update, "materializer must emit a session channel update"
+    body = update["session"]["project_md"]
+    # First-run body == the session_block exactly (file did not exist).
+    assert body == "## Session 1 — 2026-05-16\n\n- ...\n"
+
+
+def test_materialize_disk_session_channel_omitted_when_no_persist_block(isolated_project_root):
+    """HOM-282: when persist.session_block is absent, no project.md
+    write happens — and no session channel update is emitted (the
+    channel is `total=False`, absent means "nothing to read"). The
+    next p4_persist_session sees `state.session` missing and falls
+    through to the empty-prior-body branch.
+    """
+    state = _happy_state(with_persist=False)
+    update = p4_materialize_disk_node(state)
+    assert "session" not in update, (
+        "materializer must not emit a session channel update when "
+        "persist.session_block is absent"
+    )
+
+
 def test_materialize_disk_idempotent_second_call(isolated_project_root):
     """Second call against the same state writes nothing (every file
     already matches on-disk content); session_block is a substring of

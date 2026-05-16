@@ -45,6 +45,10 @@ def _ok_state(tmp_path, **overrides):
             "beats": [
                 {"beat_id": "b1", "scene_path": "compositions/b1.html", "status": "rendered"},
             ],
+            # HOM-282: captions surfaced in the brief only when
+            # `compose.captions.html` is populated in state (state-first
+            # presence check; the disk file alone is no longer sufficient).
+            "captions": {"html": "<div>captions</div>"},
         },
         "gate_results": [
             {"gate": "gate:design_ok", "passed": True},
@@ -207,3 +211,74 @@ def test_brief_marks_phase4_distinct_from_phase3():
     apart even though the heading shape is identical."""
     brief = node_module._load_brief("p4_persist_session")
     assert "Phase 4" in brief
+
+
+def test_render_ctx_reads_project_md_body_from_state_not_disk(tmp_path, monkeypatch):
+    """HOM-282: `_render_ctx` inlines the prior project.md body from
+    `state.session.project_md` (populated by `p4_materialize_disk_node`
+    post-append), NOT from a disk read.
+
+    Pin a project root where the on-disk project.md contains DIFFERENT
+    bytes than the state channel — the brief must reflect the state
+    body, proving the disk path is no longer load-bearing.
+    """
+    from edit_episode_graph.nodes.p4_persist_session import _render_ctx
+
+    monkeypatch.setenv("HOMESTUDIO_PROJECT_ROOT", str(tmp_path))
+    state = _ok_state(tmp_path)
+    # Write a misleading body to disk to prove the function does NOT
+    # read it.
+    edit_dir = tmp_path / "episodes" / state["slug"] / "edit"
+    edit_dir.mkdir(parents=True, exist_ok=True)
+    (edit_dir / "project.md").write_text("# WRONG — disk read would pick this up\n", encoding="utf-8")
+
+    canonical_body = "# project.md\n\n## Session 1 — 2026-05-10\n- ...\n"
+    state["session"] = {"project_md": canonical_body}
+
+    ctx = _render_ctx(state)
+    assert ctx["project_md_body"] == canonical_body
+    # Path is still surfaced for the brief's debug reference, but the
+    # body is the state value, not the disk value.
+    assert "project.md" in ctx["project_md_path"]
+
+
+def test_render_ctx_empty_project_md_body_on_fresh_thread(tmp_path, monkeypatch):
+    """HOM-282: with no `state.session` channel populated, the brief
+    body is the empty string (sub-agent then knows N = 1).
+    """
+    from edit_episode_graph.nodes.p4_persist_session import _render_ctx
+
+    monkeypatch.setenv("HOMESTUDIO_PROJECT_ROOT", str(tmp_path))
+    state = _ok_state(tmp_path)
+    # Even if a stale project.md exists on disk, no state channel = empty body.
+    edit_dir = tmp_path / "episodes" / state["slug"] / "edit"
+    edit_dir.mkdir(parents=True, exist_ok=True)
+    (edit_dir / "project.md").write_text("# stale disk\n", encoding="utf-8")
+
+    ctx = _render_ctx(state)
+    assert ctx["project_md_body"] == ""
+
+
+def test_render_ctx_captions_path_reads_from_state_not_disk(tmp_path, monkeypatch):
+    """HOM-282 (Class A leftover): `captions_block_path` is surfaced
+    only when `compose.captions.html` is populated in state, NOT based
+    on a disk `is_file()` probe."""
+    from edit_episode_graph.nodes.p4_persist_session import _render_ctx
+
+    monkeypatch.setenv("HOMESTUDIO_PROJECT_ROOT", str(tmp_path))
+    state = _ok_state(tmp_path)
+    # The _ok_state fixture writes captions.html to disk; HOM-282 must
+    # ignore the disk file and read state.
+    state["compose"].pop("captions", None)
+    ctx = _render_ctx(state)
+    assert ctx["captions_block_path"] == "", (
+        "without compose.captions.html in state, captions_block_path must be empty "
+        "even though captions.html exists on disk (HOM-282 Class A)"
+    )
+
+    # Now populate state — path appears.
+    state["compose"]["captions"] = {"html": "<div/>"}
+    ctx = _render_ctx(state)
+    assert ctx["captions_block_path"].endswith("captions.html"), (
+        "with compose.captions.html populated, captions_block_path must surface"
+    )
