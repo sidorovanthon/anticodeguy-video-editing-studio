@@ -39,7 +39,16 @@ SCRIPTS_ROOT = scripts_root()
 # / `transcripts.final_json_path` no longer emitted by this node;
 # consumers derive via `EpisodePaths(slug).transcripts_raw_json_path` /
 # `transcripts_final_json_path`.
-_CACHE_VERSION = 2
+# v3 (HOM-279): node also hoists `raw.json` + `final.json` bodies into
+# `transcripts.bodies` (state-channel) so Phase-4 consumers
+# (`gate:edl_ok`, `p4_captions_layer`, `p4_prompt_expansion`) can read
+# transcript content from state instead of re-opening disk files. The
+# disk artifacts remain authoritative — they are Phase 3 ffmpeg outputs.
+# Output schema change → cache invalidation (pre-HOM-279 recordings
+# don't carry `transcripts.bodies` and would feed downstream consumers
+# nothing). Cache key inputs (`files=[edl_json, raw_json]`) unchanged —
+# both bodies are derived from those two files.
+_CACHE_VERSION = 3
 
 
 def _edl_path_for_key(state: dict) -> str | None:
@@ -139,12 +148,24 @@ def glue_remap_transcript_node(state):
         return _error(combined or f"exit code {result.returncode}, no output")
 
     edl_hash: str | None = None
+    final_body: str | None = None
     try:
-        envelope = json.loads(final_json.read_text(encoding="utf-8"))
+        final_body = final_json.read_text(encoding="utf-8")
+        envelope = json.loads(final_body)
         if isinstance(envelope, dict):
             edl_hash = envelope.get("edl_hash")
     except (OSError, json.JSONDecodeError) as exc:
         return _error(f"final.json unreadable after remap: {exc!r}")
+
+    # HOM-279: hoist transcript bodies into state so Phase-4 consumers
+    # (`gate:edl_ok`, `p4_captions_layer`, `p4_prompt_expansion`) can
+    # read from the state channel instead of re-opening disk files. The
+    # disk artifacts remain authoritative — both are Phase 3 ffmpeg
+    # outputs and `p4_materialize_disk_node` does not rewrite them.
+    try:
+        raw_body = raw_json.read_text(encoding="utf-8")
+    except OSError as exc:
+        return _error(f"raw.json unreadable for state hydration: {exc!r}")
 
     # HOM-223: identity-only state — `raw_json_path` / `final_json_path`
     # no longer echoed; consumers derive via
@@ -153,6 +174,12 @@ def glue_remap_transcript_node(state):
     return {
         "transcripts": {
             "edl_hash": edl_hash,
+            "bodies": {
+                "raw": raw_body,
+                "final": final_body,
+                "raw_path": str(raw_json),
+                "final_path": str(final_json),
+            },
         },
         "edit": {"edl": edl_payload},
     }
