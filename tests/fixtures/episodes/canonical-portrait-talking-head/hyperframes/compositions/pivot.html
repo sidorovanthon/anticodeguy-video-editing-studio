@@ -1,209 +1,231 @@
 <div id="scene-pivot" class="scene clip"
-     data-start="11.72" data-duration="1.64" data-track-index="1"
+     data-start="14.4" data-duration="3.8" data-track-index="1"
      data-width="1080" data-height="1920">
   <style>
     #scene-pivot {
       position: absolute;
       inset: 0;
       opacity: 0;
-      background-color: #0a0a0a;
-      font-family: "Inter", sans-serif;
-      color: #f0f0f0;
       overflow: hidden;
-    }
-    #scene-pivot .bg-vignette {
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(ellipse at 38% 42%, #0a0a0a 0%, #080808 55%, #050505 100%);
-      opacity: 0.92;
-      will-change: opacity, transform;
-    }
-    #scene-pivot .bg-grain {
-      position: absolute;
-      inset: 0;
-      background-image: repeating-linear-gradient(
-        0deg,
-        rgba(240, 240, 240, 0.03) 0px,
-        rgba(240, 240, 240, 0.03) 1px,
-        rgba(10, 10, 10, 0) 1px,
-        rgba(10, 10, 10, 0) 3px
-      );
-      opacity: 0.04;
-      mix-blend-mode: overlay;
-    }
-    #scene-pivot .ghost-numeral {
-      position: absolute;
-      top: 12%;
-      right: 8%;
+      background: #0c0b0a;
       font-family: "Inter", sans-serif;
-      font-weight: 300;
-      font-size: 4rem;
-      letter-spacing: 0.15em;
-      color: #f0f0f0;
-      opacity: 0.04;
+      color: #f3ece0;
+    }
+    #scene-pivot .pivot-vignette {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at top left, #1d1a13 0%, #0c0b0a 55%, #050403 100%);
+      transform-origin: top left;
       will-change: transform;
     }
-    #scene-pivot .anchor-rule {
+    #scene-pivot .pivot-grain {
       position: absolute;
-      left: 12%;
-      top: 0;
-      bottom: 0;
-      width: 1px;
-      background-color: #1a237e;
-      opacity: 0.30;
-      will-change: opacity;
+      inset: 0;
+      opacity: 0.04;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='2' seed='5'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+      mix-blend-mode: overlay;
     }
-    #scene-pivot .content {
+    #scene-pivot .pivot-ghost {
       position: absolute;
-      left: 16%;
-      top: 28%;
-      width: 65%;
+      top: 320px;
+      right: -60px;
+      font-family: "Playfair Display", serif;
+      font-style: italic;
+      font-weight: 400;
+      font-size: 16rem;
+      color: #16140f;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      pointer-events: none;
+      will-change: transform;
     }
-    #scene-pivot .overline {
+    #scene-pivot .pivot-overline {
+      position: absolute;
+      top: 230px;
+      left: 96px;
       font-family: "Inter", sans-serif;
       font-weight: 500;
-      font-size: 0.75rem;
-      letter-spacing: 0.32em;
+      font-size: 0.8125rem;
+      letter-spacing: 0.18em;
       text-transform: uppercase;
-      color: #d8d8d8;
-      margin-bottom: 16px;
+      color: #b8a982;
+      opacity: 0;
     }
-    #scene-pivot .hairline {
-      height: 1px;
-      width: 100%;
-      background-color: rgba(240, 240, 240, 0.10);
-      transform-origin: left center;
-      transform: scaleX(0);
-      margin-bottom: 32px;
-    }
-    #scene-pivot .pull-quote {
-      position: relative;
-      font-family: "Inter", sans-serif;
-      font-weight: 300;
-      font-style: italic;
-      font-size: 2rem;
-      line-height: 1.35;
-      color: #f0f0f0;
-      padding-left: 32px;
-      margin-top: 8px;
-    }
-    #scene-pivot .pull-quote-border {
+    #scene-pivot .pivot-rule {
       position: absolute;
-      left: 0;
-      top: 0;
-      width: 1px;
-      height: 100%;
-      background-color: #131a5e;
-      transform-origin: top center;
-      transform: scaleY(0);
+      top: 290px;
+      left: 96px;
+      width: 380px;
+      height: 1px;
+      background: #b8a982;
+      opacity: 0.30;
+      transform: scaleX(0);
+      transform-origin: left center;
     }
-    #scene-pivot .ellipsis {
-      display: inline-block;
+    #scene-pivot .pivot-headline {
+      position: absolute;
+      top: 560px;
+      left: 96px;
+      width: 720px;
+      font-family: "Playfair Display", serif;
       font-style: italic;
-      color: #f0f0f0;
+      font-weight: 400;
+      font-size: 4.5rem;
+      letter-spacing: -0.02em;
+      line-height: 1.05;
+      color: #f3ece0;
+      opacity: 0;
     }
-    #scene-pivot .ellipsis .dot {
+    #scene-pivot .pivot-pullquote {
+      position: absolute;
+      top: 780px;
+      left: 96px;
+      width: 880px;
+      font-family: "Playfair Display", serif;
+      font-style: italic;
+      font-weight: 400;
+      font-size: 6rem;
+      letter-spacing: -0.025em;
+      line-height: 1.0;
+      color: #fbf6ec;
+      display: flex;
+      flex-wrap: wrap;
+      column-gap: 0.32em;
+      row-gap: 0;
+      data-layout-allow-overflow: true;
+    }
+    #scene-pivot .pivot-word {
+      position: relative;
       display: inline-block;
       opacity: 0;
-      will-change: opacity, transform;
+      transform: translateY(24px);
+    }
+    #scene-pivot .pivot-ellipsis {
+      color: #fbf6ec;
+    }
+    #scene-pivot .pivot-strike {
+      position: absolute;
+      top: 56%;
+      left: -2%;
+      height: 3px;
+      width: 104%;
+      background: #988a66;
+      transform: scaleX(0);
+      transform-origin: left center;
+      pointer-events: none;
     }
   </style>
   <div class="scene-content">
-    <div class="bg-vignette"></div>
-    <div class="bg-grain"></div>
-    <div class="ghost-numeral">03</div>
-    <div class="anchor-rule"></div>
-    <div class="content">
-      <div class="overline">03 / Question</div>
-      <div class="hairline"></div>
-      <div class="pull-quote">
-        <span class="pull-quote-border"></span>
-        <span class="quote-text">Why don&rsquo;t we turn</span><span class="ellipsis"><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>
-      </div>
+    <div class="pivot-vignette"></div>
+    <div class="pivot-ghost">THOUGHT</div>
+    <div class="pivot-overline">&sect; 03 &mdash; A FALSE START</div>
+    <div class="pivot-rule"></div>
+    <div class="pivot-headline">I thought,</div>
+    <div class="pivot-pullquote">
+      <span class="pivot-word">Why</span>
+      <span class="pivot-word">don&rsquo;t</span>
+      <span class="pivot-word">we</span>
+      <span class="pivot-word pivot-word-turn">turn<span class="pivot-strike"></span></span>
+      <span class="pivot-word pivot-ellipsis">&hellip;</span>
     </div>
+    <div class="pivot-grain"></div>
   </div>
   <script>
     (function () {
       window.__sceneTimelines = window.__sceneTimelines || {};
       const tl = gsap.timeline({ paused: true });
+      const sceneDuration = 3.8;
 
-      const root = document.getElementById("scene-pivot");
-      const vignette = root.querySelector(".bg-vignette");
-      const grain = root.querySelector(".bg-grain");
-      const ghost = root.querySelector(".ghost-numeral");
-      const rule = root.querySelector(".anchor-rule");
-      const overline = root.querySelector(".overline");
-      const hairline = root.querySelector(".hairline");
-      const quote = root.querySelector(".pull-quote .quote-text");
-      const border = root.querySelector(".pull-quote-border");
-      const dots = root.querySelectorAll(".ellipsis .dot");
+      const scope = document.getElementById("scene-pivot");
+      const vignette = scope.querySelector(".pivot-vignette");
+      const ghost = scope.querySelector(".pivot-ghost");
+      const overline = scope.querySelector(".pivot-overline");
+      const rule = scope.querySelector(".pivot-rule");
+      const headline = scope.querySelector(".pivot-headline");
+      const words = scope.querySelectorAll(".pivot-word");
+      const ellipsis = scope.querySelector(".pivot-ellipsis");
+      const strike = scope.querySelector(".pivot-strike");
 
-      const sceneDuration = 1.64;
-      const fadeDur = 0.22;
-      const exitStart = sceneDuration - fadeDur - 0.02;
+      // Ambient BG-1: vignette breath, finite count fitting scene duration.
+      const breathCycle = 1.2;
+      tl.fromTo(
+        vignette,
+        { scale: 1.00 },
+        {
+          scale: 1.04,
+          duration: breathCycle,
+          ease: "sine.inOut",
+          yoyo: true,
+          repeat: Math.floor(sceneDuration / breathCycle)
+        },
+        0
+      );
 
-      tl.fromTo(overline,
+      // Ambient BG-2: ghost type slow drift (single pass over scene length).
+      tl.fromTo(
+        ghost,
+        { x: 0, y: 0 },
+        { x: -10, y: 6, duration: sceneDuration, ease: "sine.inOut" },
+        0
+      );
+
+      // FG-1: overline fades in.
+      tl.fromTo(
+        overline,
         { opacity: 0, y: 6 },
-        { opacity: 1, y: 0, duration: 0.5, ease: "sine.inOut" },
-        0.10);
+        { opacity: 1, y: 0, duration: 0.6, ease: "sine.inOut" },
+        0.1
+      );
 
-      tl.fromTo(hairline,
+      // FG-2: hairline rule DRAWS left to right.
+      tl.fromTo(
+        rule,
         { scaleX: 0 },
-        { scaleX: 1, duration: 0.6, ease: "sine.inOut" },
-        0.20);
+        { scaleX: 1, duration: 0.6, ease: "expo.out" },
+        0.2
+      );
 
-      tl.fromTo(border,
-        { scaleY: 0 },
-        { scaleY: 1, duration: 0.7, ease: "sine.inOut" },
-        0.28);
+      // MG-1: headline floats up.
+      tl.fromTo(
+        headline,
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.8, ease: "sine.inOut" },
+        0.4
+      );
 
-      tl.fromTo(quote,
-        { opacity: 0, y: 6 },
-        { opacity: 1, y: 0, duration: 0.7, ease: "sine.inOut" },
-        0.32);
+      // MG-2: pullquote settles in, word by word.
+      tl.fromTo(
+        words,
+        { opacity: 0, y: 24 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.6,
+          ease: "sine.inOut",
+          stagger: 0.18
+        },
+        1.0
+      );
 
-      tl.fromTo(rule,
-        { opacity: 0.30 },
-        { opacity: 0.55, duration: 0.30, ease: "sine.inOut" },
-        0.40);
-      tl.to(rule,
-        { opacity: 0.30, duration: 0.30, ease: "sine.inOut" },
-        0.70);
+      // FG-3: strikethrough DRAWS through the word 'turn' in the final beat.
+      tl.fromTo(
+        strike,
+        { scaleX: 0 },
+        { scaleX: 1, duration: 0.5, ease: "power2.in" },
+        2.6
+      );
 
-      dots.forEach(function (dot, i) {
-        tl.fromTo(dot,
-          { opacity: 0, y: 2 },
-          { opacity: 1, y: 0, duration: 0.20, ease: "power2.out" },
-          0.85 + i * 0.12);
-      });
+      // Accent glyph swap: the ellipsis becomes indigo the instant the strike lands.
+      tl.set(ellipsis, { color: "#5a6dd1" }, 3.1);
 
-      const ambientCycle = 0.40;
-      const ambientRepeat = Math.floor(sceneDuration / ambientCycle) - 1;
-
-      tl.to(vignette,
-        { opacity: 1.0, duration: ambientCycle, ease: "sine.inOut",
-          yoyo: true, repeat: ambientRepeat },
-        0);
-
-      tl.to(ghost,
-        { y: -2, duration: ambientCycle, ease: "sine.inOut",
-          yoyo: true, repeat: ambientRepeat },
-        0);
-
-      tl.to(overline, { opacity: 0, duration: fadeDur, ease: "power1.in" }, exitStart);
-      tl.set(overline, { visibility: "hidden" }, exitStart + fadeDur);
-
-      tl.to(hairline, { opacity: 0, duration: fadeDur, ease: "power1.in" }, exitStart);
-      tl.set(hairline, { visibility: "hidden" }, exitStart + fadeDur);
-
-      tl.to(quote, { opacity: 0, duration: fadeDur, ease: "power1.in" }, exitStart);
-      tl.set(quote, { visibility: "hidden" }, exitStart + fadeDur);
-
-      tl.to(border, { opacity: 0, duration: fadeDur, ease: "power1.in" }, exitStart);
-      tl.set(border, { visibility: "hidden" }, exitStart + fadeDur);
-
-      tl.to(dots, { opacity: 0, duration: fadeDur, ease: "power1.in" }, exitStart);
-      tl.set(dots, { visibility: "hidden" }, exitStart + fadeDur);
+      // Exit-pair on every authored element — kill before data-duration ends so
+      // nothing bleeds into the next scene's slot.
+      const fadeStart = 3.45;
+      const fadeDur = 0.3;
+      const fading = [overline, rule, headline, ...Array.from(words), strike];
+      tl.to(fading, { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.set(fading, { visibility: "hidden" }, fadeStart + fadeDur);
 
       window.__sceneTimelines["pivot"] = tl;
     })();

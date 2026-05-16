@@ -24,20 +24,16 @@ State reconstruction
 
 The materializer reads body fields from ``state`` (DESIGN.md body,
 expanded-prompt body, index.html body, scene HTML bodies, optional
-captions HTML, optional session block). The committed fixture
-``cache.db`` predates the Step-B body-in-state work (HOM-232..237):
-recorded ``compose`` channel writes carry path references but NOT the
-body strings (they were written to disk by Step-B producers' dual-writes
-and only later flowed into state). To bridge the gap until the operator
-re-records the fixture under post-Step-B code, this helper reads bodies
-from the committed on-disk artifacts (``DESIGN.md``,
-``.hyperframes/expanded-prompt.md``, ``compositions/<scene>.html``,
-``captions.html``, ``index.html``, ``edit/project.md``) and the recorded
-cache.db rows for any structured metadata. The materializer then
-regenerates the tree byte-for-byte under ``tmpdir`` — proving the
-write-logic is correct under self-consistency. Once a post-Step-B
-fixture cache.db lands, the body-from-disk fallback can be removed and
-state-reconstruction becomes pure cache.db replay.
+captions HTML, optional session block). Post HOM-241 the canonical
+fixture cache.db carries those body strings directly (Step F re-record
+under the post-Step-B+C+D1 architecture); ``_reconstruct_state`` reads
+them from the decoded cache rows and uses them verbatim.
+
+The helper also retains a per-field disk fallback — only consulted when
+state is missing or empty for a given body field — so legacy
+pre-Step-B cache.db files committed for historical diff inspection
+remain usable. State always wins over disk: if cache.db has a non-empty
+body for a field, the disk copy (if any) is ignored.
 
 Native primitive contract
 -------------------------
@@ -173,54 +169,64 @@ def _reconstruct_state(slug: str, source_episode_dir: Path) -> dict:
     # confuses nothing but adds noise to state).
     state.get("compose", {}).pop("_beat_unused", None)
 
+    # Post HOM-241: cache.db now carries body strings in state (Step B/C/D1
+    # producers dual-wrote them; Step F re-recorded under the new
+    # architecture). State is authoritative; disk fallback survives only
+    # to keep the helper usable on legacy pre-Step-B cache.db files (any
+    # historical PR that pinned an older fixture for diff inspection).
+    compose = state.setdefault("compose", {})
     hf_dir = source_episode_dir / "hyperframes"
     edit_dir = source_episode_dir / "edit"
 
-    # --- Body strings from on-disk artifacts (fallback for pre-Step-B
-    # cache.db; once the operator re-records, these reads become
-    # redundant — the cache will already carry the bodies).
-    compose = state.setdefault("compose", {})
+    def _state_first_string(current: str | None, disk_path: Path) -> str | None:
+        if isinstance(current, str) and current:
+            return current
+        if disk_path.is_file():
+            return disk_path.read_text(encoding="utf-8")
+        return None
 
-    design_md = hf_dir / "DESIGN.md"
-    if design_md.is_file():
-        compose.setdefault("design", {})["design_md"] = design_md.read_text(
-            encoding="utf-8"
-        )
+    design = compose.setdefault("design", {})
+    val = _state_first_string(design.get("design_md"), hf_dir / "DESIGN.md")
+    if val is not None:
+        design["design_md"] = val
 
-    expanded_prompt = hf_dir / ".hyperframes" / "expanded-prompt.md"
-    if expanded_prompt.is_file():
-        compose.setdefault("expansion", {})["expanded_prompt"] = (
-            expanded_prompt.read_text(encoding="utf-8")
-        )
+    expansion = compose.setdefault("expansion", {})
+    val = _state_first_string(
+        expansion.get("expanded_prompt"),
+        hf_dir / ".hyperframes" / "expanded-prompt.md",
+    )
+    if val is not None:
+        expansion["expanded_prompt"] = val
 
-    index_html = hf_dir / "index.html"
-    if index_html.is_file():
-        compose["index_html"] = index_html.read_text(encoding="utf-8")
+    val = _state_first_string(compose.get("index_html"), hf_dir / "index.html")
+    if val is not None:
+        compose["index_html"] = val
 
-    captions = hf_dir / "captions.html"
-    if captions.is_file():
-        compose.setdefault("captions", {})["html"] = captions.read_text(
-            encoding="utf-8"
-        )
+    captions = compose.setdefault("captions", {})
+    val = _state_first_string(captions.get("html"), hf_dir / "captions.html")
+    if val is not None:
+        captions["html"] = val
 
-    project_md = edit_dir / "project.md"
-    if project_md.is_file():
-        # Use the entire project.md content as the "session block" —
-        # the materializer's substring-skip means re-appending it onto a
-        # freshly-copied project.md is a no-op write. For an empty
-        # tmpdir (no copy) it produces a project.md byte-identical to
-        # the source.
-        compose.setdefault("persist", {})["session_block"] = project_md.read_text(
-            encoding="utf-8"
-        )
+    persist = compose.setdefault("persist", {})
+    # project.md substring-skip in the materializer means re-appending the
+    # full file content is idempotent on a copied project.md and produces
+    # a byte-identical file on an empty tmpdir.
+    val = _state_first_string(persist.get("session_block"), edit_dir / "project.md")
+    if val is not None:
+        persist["session_block"] = val
 
-    # Scenes: read every `compositions/*.html` and populate the
-    # top-level `scenes` channel.
+    # Scenes: state-first, with per-scene disk fallback for any scene_id
+    # the cache.db didn't record (legacy fixtures only).
     compositions_dir = hf_dir / "compositions"
     if compositions_dir.is_dir():
         for scene_html in sorted(compositions_dir.glob("*.html")):
             scene_id = scene_html.stem
-            state["scenes"][scene_id] = {"html": scene_html.read_text(encoding="utf-8")}
+            existing = state["scenes"].get(scene_id) or {}
+            if not isinstance(existing.get("html"), str) or not existing.get("html"):
+                state["scenes"][scene_id] = {
+                    **existing,
+                    "html": scene_html.read_text(encoding="utf-8"),
+                }
 
     return state
 

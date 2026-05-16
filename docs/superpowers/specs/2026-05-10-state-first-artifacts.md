@@ -411,11 +411,80 @@ Remove `compose.design_md_path`, `compose.expanded_prompt_path`, `compose.captio
 
 `p4_scaffold` and `p4_catalog_scan` are unaffected (no body inputs). Phase 3 nodes are unaffected.
 
-### Step F — Wave acceptance (one paid run, ~$8–12)
+### Step F — Wave acceptance (one paid run, ~$5–12)
 
-`HOMESTUDIO_TEST_MODE=record pytest tests/test_graph_replay.py` against the canonical fixture under the new architecture. Records a fresh `cache.db` from scratch on production tier. Eyeballs `recordings/*.json` for sanity. Commits the new cache.db + JSON dump.
+**Amendment (2026-05-16, HOM-241 PR):** the original prescription was
+`HOMESTUDIO_TEST_MODE=record pytest tests/test_graph_replay.py`. That command does
+not actually drive a paid re-record — `tests/test_graph_replay.py`'s smokes all use
+`tests/_helpers/replay_dispatch.py::dispatch_node` (raw SQL inspection of cache rows
+per CLAUDE.md §"Exception — fixture-replay test inspection"); `llm_dispatches` is
+hardcoded to 0 and the smokes never reach `compiled.invoke`. Setting
+`HOMESTUDIO_TEST_MODE=record` only flips which cache file the harness mounts; it
+cannot trigger an LLM call through that test surface.
+
+The actual mechanism is `scripts/record_fixture.py` (landed in HOM-189 for an
+unrelated re-record), which compiles the graph with the working cache pinned and
+drives `compiled.invoke` end-to-end through the runtime, handling `GraphInterrupt`
+resumes via `Command(resume="approved")`. Invocation:
+
+```
+python -m scripts.record_fixture --slug canonical-portrait-talking-head --mode record
+```
+
+**Amendment (2026-05-16, HOM-241 PR) — routing forces temporary disk-artifact
+removal during the record run:** `nodes/_routing.py::route_after_remap`
+short-circuits to `END` when `hyperframes/index.html` exists on disk. The
+canonical fixture's `hyperframes/` tree was committed at the original
+(pre-Step-B) recording, so any attempt to re-record against the existing
+fixture terminates before any Phase 4 producer runs (verified: two short-circuit
+runs at 0.1s and 0.8s, $0 spend, on 2026-05-16). The operator must remove the
+produced Phase 4 disk artifacts *locally* before recording; producers' Step-B
+dual-writes recreate them during the record, so after a successful run the
+committed disk tree is repopulated with post-Step-B bodies. **Final `git rm` of
+the committed tree remains D2's job (HOM-239); F's PR does NOT delete tracked
+files.**
+
+**Sequencing — F before D2 (deviation from spec §10):** the original sequence put
+D2 before F, but doing D2 against the pre-Step-B cache.db would leave the graph
+with no way to read Phase 4 bodies (cache has no body strings; disk artifacts
+just deleted). F-before-D2 fills cache.db with body strings first, then D2's
+remaining work (producer dual-write strip + `git rm` of committed disk +
+`.gitignore` entries) becomes safe.
+
+Procedure (operator runbook):
+
+1. From the worktree: `rm -rf tests/fixtures/episodes/<slug>/hyperframes && rm -f tests/fixtures/episodes/<slug>/edit/project.md` *(local removal only — do NOT `git rm`)*.
+2. (Optional, for fully-fresh record:) `rm tests/fixtures/episodes/<slug>/cache.db`. Otherwise `--mode record-on-miss` keeps Phase 3 cached.
+3. `python -m scripts.record_fixture --slug <slug> --mode record` (~$5–10) **or** `--mode record-on-miss` (cheaper when Phase 3 cache is preserved).
+4. Verify the resulting cache.db carries body strings in `compose.*` (`tests/_helpers/materialize_into_tmpdir.py::_reconstruct_state` reads them; flip its precedence to state-first so disk-fallback is dead code).
+5. If Phase 3 LLM cache rows were wiped (mode=record), merge them back from the prior committed cache.db: Phase 3 nodes weren't migrated by HOM-230 and their `_CACHE_VERSION` is unchanged, so old rows still hit. SQL `INSERT OR IGNORE` over `ns LIKE '%,p3_%' OR ns LIKE '%,gate_animation_map_classify'`. `VACUUM INTO` + atomic rename to canonicalize the merged file.
+6. Regenerate JSON dumps: `python -m tests.dump_recordings <slug>`.
+7. Verify `tests/test_graph_replay.py` (all replay smokes hit at $0) and `tests/test_materialize_into_tmpdir.py` (materializer regenerates committed tree byte-for-byte).
+8. Eyeball `recordings/*.json` for sanity, commit cache.db + dumps + dual-write outputs.
 
 Subsequent re-records on brief / schema bumps remain `$0 → $cost-of-bumped-node-only` via `record-on-miss`.
+
+**Amendment (2026-05-16, HOM-241 PR) — HOM-259 followup surfaced by F:**
+the wave-acceptance record proved cache.db can hold body strings for the six
+migrated producers, but discovered that two deterministic Phase-4 nodes
+omitted from Step B's producer list still write to disk without going through
+state:
+
+1. `p4_transitions` (HOM-137) reads `hyperframes/index.html` from disk, patches
+   it with the transitions block, writes back to disk. State return carries
+   only `compose.transitions` metadata — the patched body never enters state.
+   Materializer therefore overwrites the post-transitions disk with the
+   pre-transitions cache body. **HOM-259** migrates `p4_transitions` to
+   state-first read + write of `compose.index_html` and re-records the cache
+   row (`record-on-miss`, ~$0 deterministic).
+2. `p4_dispatch_beats` reads `hyperframes/index.html` from disk before fan-out
+   — same migration gap.
+
+Until HOM-259 lands, the canonical fixture's committed `index.html` carries
+the **pre-transitions** version (matches cache, materialize test green) and
+lacks the transitions block. HOM-259 **blocks HOM-239 (D2)**: stripping
+`p4_assemble_index`'s dual-write removes the only path that puts post-transitions
+HTML on disk.
 
 ### Step G — Cleanup (1 PR)
 
@@ -426,7 +495,16 @@ Subsequent re-records on brief / schema bumps remain `$0 → $cost-of-bumped-nod
 
 ### Sequencing safety
 
-Step 0 is a hard gate; on failure the migration pivots to BaseStore (§6.0). Steps A–C are independent partial PRs that always keep the tree green. Step D1 (read-switch, dual-write retained) ships behind a code-review gate verifying all six producers have shipped their state-return PRs; D1 is fully revertible. After a one-week soak with no fallback warnings, D2 (strip dual-writes, `git rm` artifacts) ships as the irreversible commit. Step E ships after D2 when the `compose.*_path` legacy-echo fields are no longer read anywhere. Step F is operator-driven; step G is opportunistic cleanup.
+Step 0 is a hard gate; on failure the migration pivots to BaseStore (§6.0). Steps A–C are independent partial PRs that always keep the tree green. Step D1 (read-switch, dual-write retained) ships behind a code-review gate verifying all six producers have shipped their state-return PRs; D1 is fully revertible. After a one-week soak with no fallback warnings, D2 (strip dual-writes + `git rm` committed disk + `.gitignore` entries) ships as the irreversible commit. **Amendment 2026-05-16 (HOM-241):** F runs *before* D2 (deviation from original §10 ordering) because re-recording against the pre-Step-B cache requires post-Step-B bodies in state first. F's PR commits the refreshed cache.db + Phase-4 disk artifacts repopulated by dual-writes, but does NOT `git rm` them — that step remains D2's. Step E ships after D2 when the `compose.*_path` legacy-echo fields are no longer read anywhere. Step G is opportunistic cleanup.
+
+**Amendment 2026-05-16 (HOM-241 → HOM-259):** F surfaced that Step B's producer
+list was incomplete. Two deterministic Phase-4 nodes (`p4_transitions`,
+`p4_dispatch_beats`) still read `index.html` from disk and write back to disk
+without updating state — so the materializer regenerates a pre-transitions
+HTML body that lacks the transitions block. HOM-259 migrates these to
+state-first reads/writes and is a hard prerequisite for D2 — stripping
+`p4_assemble_index`'s dual-write removes the only path that puts post-transitions
+HTML on disk today. New ordering: A → B1..B6 → C → D1 → F → HOM-259 → D2 → E → G.
 
 If step D1 is reverted mid-rollout, Steps A–C continue working (the dual-write fallback keeps disk populated, and the materializer's writes are content-hash-idempotent against the producers' writes). If step D2 is reverted, the deleted fixture artifacts must be restored from `cache.db` via the materializer before the tree turns green again — this is by design, the irreversibility marker.
 

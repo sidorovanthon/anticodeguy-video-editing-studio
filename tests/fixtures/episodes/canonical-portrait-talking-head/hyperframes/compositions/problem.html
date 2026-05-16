@@ -1,194 +1,106 @@
 <div id="scene-problem" class="scene clip"
-     data-start="1.22" data-duration="10.5" data-track-index="1"
+     data-start="3.1" data-duration="11.3" data-track-index="1"
      data-width="1080" data-height="1920">
   <style>
-    #scene-problem { position: absolute; inset: 0; opacity: 0; background: #0a0a0a; overflow: hidden; }
-
-    #scene-problem .bg-vignette {
-      position: absolute; inset: 0;
-      background: radial-gradient(ellipse at 38% 42%, #0a0a0a 0%, #080808 55%, #050505 100%);
-      opacity: 0.92;
-    }
-    #scene-problem .bg-grain {
-      position: absolute; inset: 0;
-      background-image: repeating-linear-gradient(
-        0deg, rgba(240,240,240,0.04) 0 1px, rgba(240,240,240,0.0) 1px 3px),
-        repeating-linear-gradient(
-        90deg, rgba(240,240,240,0.03) 0 1px, rgba(240,240,240,0.0) 1px 3px);
-      mix-blend-mode: overlay; opacity: 0.6; pointer-events: none;
-    }
-    #scene-problem .ghost-numeral {
-      position: absolute; top: 8%; right: 12%;
-      font-family: "Inter", sans-serif; font-weight: 300;
-      font-size: 4rem; letter-spacing: 0.1em;
-      color: #f0f0f0; opacity: 0.04;
-    }
-    #scene-problem .anchor-rule {
-      position: absolute; left: 12%; top: 0; bottom: 0;
-      width: 1px; background: #1a237e; opacity: 0.30;
-      transform-origin: top center;
-    }
-    #scene-problem .content {
-      position: absolute; left: 17%; right: 6%;
-      top: 22%;
-    }
-    #scene-problem .overline {
-      font-family: "Inter", sans-serif; font-weight: 500;
-      font-size: 0.75rem; letter-spacing: 0.32em;
-      text-transform: uppercase; color: #d8d8d8;
-      margin-bottom: 12px;
-    }
-    #scene-problem .hairline-divider {
-      width: 0; height: 1px; background: rgba(240,240,240,0.10);
-      margin-bottom: 32px;
-    }
-    #scene-problem .body-paragraph {
-      font-family: "Inter", sans-serif; font-weight: 300;
-      font-size: 1.125rem; line-height: 1.6;
-      color: #f0f0f0; max-width: 60ch;
-      letter-spacing: 0.005em;
-    }
-    #scene-problem .body-paragraph .word { display: inline-block; }
-    #scene-problem .body-paragraph .hl { color: #f0f0f0; }
-    #scene-problem .margin-tick {
-      position: absolute; left: -28px; top: calc(1.6em * 2 + 0.4em);
-      width: 14px; height: 1px; background: #1a237e;
-      opacity: 0;
-    }
-    #scene-problem .bottom-rule {
-      position: absolute; left: 12%; right: 6%; top: 78%;
-      height: 1px; background: rgba(240,240,240,0.06);
-      transform-origin: left center; transform: scaleX(0);
-    }
+    #scene-problem { position: absolute; inset: 0; opacity: 0; overflow: hidden;
+      background: radial-gradient(ellipse at top left, #16140f 0%, #0c0b0a 55%, #050403 100%);
+      font-family: "Inter", sans-serif; color: #f3ece0; }
+    #scene-problem .scene-content { position: absolute; inset: 0; }
+    #scene-problem .vignette-breath { position: absolute; inset: -4%;
+      background: radial-gradient(ellipse at top left, #1d1a13 0%, #0c0b0a 50%, #050403 100%);
+      transform-origin: top left; }
+    #scene-problem .grain { position: absolute; inset: 0; opacity: 0.04;
+      background-image: radial-gradient(circle, #f3ece0 1px, transparent 1px);
+      background-size: 7px 7px; pointer-events: none; mix-blend-mode: overlay; }
+    #scene-problem .ghost-type { position: absolute; left: 4%; bottom: 6%;
+      font-family: "Playfair Display", serif; font-style: italic; font-weight: 400;
+      font-size: 14rem; color: #16140f; letter-spacing: -0.02em; line-height: 0.95;
+      white-space: nowrap; will-change: transform, opacity; }
+    #scene-problem .overline { position: absolute; top: 5%; right: 8%;
+      font-family: "Inter", sans-serif; font-weight: 500; font-size: 0.8125rem;
+      text-transform: uppercase; letter-spacing: 0.18em; color: #b8a982; }
+    #scene-problem .rule-v { position: absolute; top: 8%; right: 11%; width: 1px;
+      height: 78%; background: #b8a982; opacity: 0.28; transform-origin: top; }
+    #scene-problem .tick { position: absolute; bottom: 9%; right: 10.5%;
+      font-family: "Inter", sans-serif; font-weight: 300; font-size: 1.1rem;
+      color: #b8a982; opacity: 0.45; }
+    #scene-problem .body-line { position: absolute; left: 8%; width: 62%;
+      font-family: "Inter", sans-serif; font-weight: 300; font-size: 1.6rem;
+      line-height: 1.55; color: #f3ece0; letter-spacing: 0.005em; }
+    #scene-problem .body-line .word { display: inline-block; will-change: transform, opacity; }
+    #scene-problem #body-1 { top: 26%; }
+    #scene-problem #body-2 { top: 39%; }
+    #scene-problem #body-3 { top: 52%; }
+    #scene-problem #body-4 { top: 65%; }
+    #scene-problem .accent-word { font-family: "Playfair Display", serif; font-style: italic;
+      color: #5a6dd1; font-size: 1.85rem; letter-spacing: -0.02em; }
+    #scene-problem .trail-comma { color: #b8a982; font-family: "Playfair Display", serif;
+      font-style: italic; font-size: 1.8rem; display: inline-block; will-change: transform, opacity; }
   </style>
-
   <div class="scene-content">
-    <div class="bg-vignette" aria-hidden="true"></div>
-    <div class="bg-grain" aria-hidden="true"></div>
-    <div class="ghost-numeral" aria-hidden="true">02</div>
-    <div class="anchor-rule" aria-hidden="true"></div>
-    <div class="bottom-rule" aria-hidden="true"></div>
-
-    <div class="content">
-      <div class="overline">02 / Now</div>
-      <div class="hairline-divider"></div>
-      <p class="body-paragraph">
-        <span class="margin-tick" aria-hidden="true"></span><span class="word">when</span>
-        <span class="word">I'm</span>
-        <span class="word">increasingly</span>
-        <span class="word">using</span>
-        <span class="word">free</span>
-        <span class="word">open-source</span>
-        <span class="word">tools</span>
-        <span class="word">because</span>
-        <span class="word">I</span>
-        <span class="word">can</span>
-        <span class="word">simply</span>
-        <span class="word">deploy</span>
-        <span class="word">them</span>
-        <span class="word">for</span>
-        <span class="word hl-myself-1">myself</span>
-        <span class="word">easily</span>
-        <span class="word">with</span>
-        <span class="word">the</span>
-        <span class="word">help</span>
-        <span class="word">of</span>
-        <span class="word hl-ai">AI</span>
-        <span class="word hl-agents">agents</span>
-        <span class="word">or</span>
-        <span class="word">just</span>
-        <span class="word">write</span>
-        <span class="word">the</span>
-        <span class="word">software</span>
-        <span class="word">I</span>
-        <span class="word">need</span>
-        <span class="word">for</span>
-        <span class="word">work</span>
-        <span class="word hl-myself-2">myself</span><span class="word">,</span>
-      </p>
-    </div>
+    <div class="vignette-breath"></div>
+    <div class="ghost-type">OPEN SOURCE</div>
+    <div class="grain"></div>
+    <div class="overline">§ 02 — THE DRIFT</div>
+    <div class="rule-v"></div>
+    <div class="tick">+</div>
+    <div class="body-line" id="body-1"><span class="word">when</span> <span class="word">I'm</span> <span class="word">increasingly</span> <span class="word">using</span> <span class="word">free</span> <span class="word">open-source</span> <span class="word">tools</span></div>
+    <div class="body-line" id="body-2"><span class="word">because</span> <span class="word">I</span> <span class="word">can</span> <span class="word">simply</span> <span class="word">deploy</span> <span class="word">them</span> <span class="word">for</span> <span class="word accent-word">myself</span> <span class="word">easily</span></div>
+    <div class="body-line" id="body-3"><span class="word">with</span> <span class="word">the</span> <span class="word">help</span> <span class="word">of</span> <span class="word">AI</span> <span class="word">agents</span></div>
+    <div class="body-line" id="body-4"><span class="word">or</span> <span class="word">just</span> <span class="word">write</span> <span class="word">the</span> <span class="word">software</span> <span class="word">I</span> <span class="word">need</span> <span class="word">for</span> <span class="word">work</span> <span class="word">myself</span><span class="trail-comma">,</span></div>
   </div>
-
   <script>
-    (function () {
-      window.__sceneTimelines = window.__sceneTimelines || {};
-      const root = document.getElementById("scene-problem");
-      const $ = (s) => root.querySelector(s);
-      const $$ = (s) => root.querySelectorAll(s);
+  (function() {
+    window.__sceneTimelines = window.__sceneTimelines || {};
+    const root = document.getElementById("scene-problem");
+    const tl = gsap.timeline({ paused: true });
+    const sceneDuration = 11.3;
 
-      const tl = gsap.timeline({ paused: true });
-      const sceneDuration = 10.5;
+    const vignette = root.querySelector(".vignette-breath");
+    const ghost = root.querySelector(".ghost-type");
+    const overline = root.querySelector(".overline");
+    const ruleV = root.querySelector(".rule-v");
+    const tick = root.querySelector(".tick");
+    const lines = ["#body-1", "#body-2", "#body-3", "#body-4"].map(function(s){ return root.querySelector(s); });
+    const trailComma = root.querySelector(".trail-comma");
 
-      const vignette  = $(".bg-vignette");
-      const grain     = $(".bg-grain");
-      const ghost     = $(".ghost-numeral");
-      const anchor    = $(".anchor-rule");
-      const overline  = $(".overline");
-      const divider   = $(".hairline-divider");
-      const body      = $(".body-paragraph");
-      const tick      = $(".margin-tick");
-      const bottom    = $(".bottom-rule");
-      const hlAI      = $(".hl-ai");
-      const hlAgents  = $(".hl-agents");
-      const hlMy1     = $(".hl-myself-1");
-      const hlMy2     = $(".hl-myself-2");
+    // BG ambient motion on three decoratives — finite yoyo counts derived from scene duration.
+    const breathCycle = 3.0;
+    tl.to(vignette, { scale: 1.04, duration: breathCycle, ease: "sine.inOut",
+      yoyo: true, repeat: Math.floor(sceneDuration / breathCycle), transformOrigin: "top left" }, 0);
+    const ghostCycle = 4.0;
+    tl.to(ghost, { x: 12, duration: ghostCycle, ease: "sine.inOut",
+      yoyo: true, repeat: Math.floor(sceneDuration / ghostCycle) }, 0);
+    const tickCycle = 2.0;
+    tl.to(tick, { opacity: 0.65, duration: tickCycle, ease: "sine.inOut",
+      yoyo: true, repeat: Math.floor(sceneDuration / tickCycle) }, 0);
 
-      tl.fromTo(vignette, { opacity: 0 }, { opacity: 0.92, duration: 0.8, ease: "sine.inOut" }, 0.1);
-      tl.fromTo(grain,    { opacity: 0 }, { opacity: 0.6,  duration: 0.8, ease: "sine.inOut" }, 0.15);
-      tl.fromTo(ghost,    { opacity: 0, y: -4 }, { opacity: 0.04, y: 0, duration: 1.0, ease: "sine.inOut" }, 0.2);
-      tl.fromTo(anchor,   { scaleY: 0, opacity: 0.15 }, { scaleY: 1, opacity: 0.30, duration: 1.0, ease: "sine.inOut" }, 0.2);
+    // Entrances — every entrance via tl.fromTo(); first offset within 0.1-0.3s.
+    tl.fromTo(ruleV, { scaleY: 0, opacity: 0.28 }, { scaleY: 1, duration: 1.0, ease: "sine.inOut" }, 0.2);
+    tl.fromTo(overline, { opacity: 0, y: -6 }, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 0.5);
+    tl.fromTo(ghost, { opacity: 0 }, { opacity: 1, duration: 1.2, ease: "power2.inOut" }, 0.4);
 
-      tl.fromTo(overline, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.5, ease: "sine.inOut" }, 0.25);
-      tl.fromTo(divider,  { width: 0 }, { width: "100%", duration: 1.0, ease: "sine.inOut" }, 0.7);
-      tl.fromTo(body,     { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 1.2, ease: "power2.out" }, 1.1);
+    // Four body lines cascade word-by-word, timed to spoken phrases.
+    const lineStarts = [1.4, 3.0, 5.0, 6.6];
+    const lineStaggers = [0.09, 0.10, 0.09, 0.08];
+    lines.forEach(function(line, i){
+      const words = line.querySelectorAll(".word");
+      tl.fromTo(words, { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "sine.inOut", stagger: lineStaggers[i] }, lineStarts[i]);
+    });
+    tl.fromTo(trailComma, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.5, ease: "power1.out" }, 8.0);
 
-      tl.fromTo(bottom,   { scaleX: 0 }, { scaleX: 1, duration: 1.4, ease: "sine.inOut" }, 1.6);
-      tl.fromTo(tick,     { opacity: 0 }, { opacity: 0.20, duration: 0.6, ease: "sine.inOut" }, 2.6);
+    // Exit pairs (fade + visibility:hidden) for every authored element — prevents bleed past scene end.
+    const fadeDur = 0.4;
+    const fadeStart = sceneDuration - 0.55;
+    const fadeEnd = fadeStart + fadeDur;
+    const exits = [overline, ruleV, ghost, tick, trailComma].concat(lines);
+    exits.forEach(function(el){
+      tl.to(el, { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.set(el, { visibility: "hidden" }, fadeEnd);
+    });
 
-      tl.fromTo(hlMy1,    { color: "#f0f0f0" }, { color: "#ffffff", duration: 0.3, ease: "sine.inOut" }, 3.6);
-      tl.to(hlMy1,        { color: "#f0f0f0", duration: 0.4, ease: "sine.inOut" }, 4.0);
-
-      tl.fromTo(hlAI,     { color: "#f0f0f0" }, { color: "#ffffff", duration: 0.3, ease: "sine.inOut" }, 5.4);
-      tl.fromTo(hlAgents, { color: "#f0f0f0" }, { color: "#ffffff", duration: 0.3, ease: "sine.inOut" }, 5.55);
-      tl.to(hlAI,         { color: "#f0f0f0", duration: 0.4, ease: "sine.inOut" }, 5.9);
-      tl.to(hlAgents,     { color: "#f0f0f0", duration: 0.4, ease: "sine.inOut" }, 6.05);
-
-      tl.fromTo(hlMy2,    { color: "#f0f0f0" }, { color: "#ffffff", duration: 0.3, ease: "sine.inOut" }, 8.6);
-      tl.to(hlMy2,        { color: "#f0f0f0", duration: 0.4, ease: "sine.inOut" }, 9.0);
-
-      const breathCycle = 3.0;
-      const breathReps  = Math.floor(sceneDuration / breathCycle);
-      tl.to(anchor, {
-        opacity: 0.45, duration: breathCycle, ease: "sine.inOut",
-        yoyo: true, repeat: breathReps
-      }, 1.5);
-
-      const vigCycle = 4.0;
-      const vigReps  = Math.floor(sceneDuration / vigCycle);
-      tl.to(vignette, {
-        opacity: 1.0, duration: vigCycle, ease: "sine.inOut",
-        yoyo: true, repeat: vigReps
-      }, 1.0);
-
-      const ghostCycle = 5.0;
-      const ghostReps  = Math.floor(sceneDuration / ghostCycle);
-      tl.to(ghost, {
-        y: 2, duration: ghostCycle, ease: "sine.inOut",
-        yoyo: true, repeat: ghostReps
-      }, 1.2);
-
-      const fadeStart = sceneDuration - 0.5;
-      const fadeDur   = 0.4;
-      tl.to(overline, { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
-      tl.to(body,     { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
-      tl.to(divider,  { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
-      tl.to(tick,     { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
-      tl.set(overline, { visibility: "hidden" }, fadeStart + fadeDur);
-      tl.set(body,     { visibility: "hidden" }, fadeStart + fadeDur);
-      tl.set(divider,  { visibility: "hidden" }, fadeStart + fadeDur);
-      tl.set(tick,     { visibility: "hidden" }, fadeStart + fadeDur);
-
-      window.__sceneTimelines["problem"] = tl;
-    })();
+    window.__sceneTimelines["problem"] = tl;
+  })();
   </script>
 </div>

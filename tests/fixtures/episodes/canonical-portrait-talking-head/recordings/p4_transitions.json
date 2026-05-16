@@ -1,0 +1,11 @@
+{
+  "channel_writes": "deque([['compose', {'transitions': {'authored_at': '2026-05-16T03:57:44.625324+00:00', 'n_transitions': 3, 'mechanisms': ['shader', 'shader', 'css']}}], ['branch:to:gate_lint', None]])",
+  "fingerprint": "1047095b7c02770afb1beb1ecdf4b5e8",
+  "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_transitions.p4_transitions_node,p4_transitions",
+  "node": "p4_transitions",
+  "recorded_at": null,
+  "recording_meta": {
+    "encoding": "msgpack",
+    "value_bytes": 159
+  }
+}
