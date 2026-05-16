@@ -46,7 +46,12 @@ from ._llm import LLMNode, _load_brief
 # disk-readers (e.g. `p4_assemble_index.py:588`) keep working. `Write`
 # dropped from `allowed_tools`. Output schema and brief both changed →
 # cache invalidation.
-_CACHE_VERSION = 4
+# v5 (HOM-239 / Step D2 of HOM-230): dual-write stripped. The DESIGN.md
+# body remains in `compose.design.design_md`; `p4_materialize_disk_node`
+# is now the single deterministic writer and regenerates the file from
+# state on demand. Node output contract changed (no more disk side-effect)
+# → cache invalidation.
+_CACHE_VERSION = 5
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -176,27 +181,11 @@ def p4_design_system_node(state, *, router: BackendRouter | None = None):
             },
         }
 
-    # Ensure the destination directory exists so the orchestrator's
-    # dual-write below lands in a real folder. The hyperframes scaffold
-    # (p4_scaffold) also creates this dir, but design_system runs upstream
-    # of scaffold in the v4 topology — scaffold then consumes DESIGN.md.
-    design_md_path = _design_md_path(state)
-    design_md_path.parent.mkdir(parents=True, exist_ok=True)
-
     # HOM-224: no longer mirror `compose.design_md_path` from the structured
     # output. Identity-only state — downstream nodes derive the path via
     # `EpisodePaths(slug).design_md_path` at use-site.
-    result = _build_node()(state, router=router)
-
-    # HOM-232 dual-write: the sub-agent returns the DESIGN.md body in
-    # `compose.design.design_md` (state-first artifacts, Step B of HOM-230).
-    # Today's downstream readers still expect the file on disk (e.g.
-    # `p4_assemble_index.py:588` reads DESIGN.md via `read_text`), so the
-    # orchestrator writes from the returned body. Step D2 strips this
-    # dual-write once the read-switch has soaked.
-    compose = result.get("compose") or {}
-    design = compose.get("design") or {}
-    body = design.get("design_md")
-    if isinstance(body, str) and body:
-        design_md_path.write_text(body, encoding="utf-8")
-    return result
+    # HOM-239 (Step D2 of HOM-230 state-first artifacts): dual-write to
+    # `design_md_path` stripped. The DESIGN.md body lives in
+    # `compose.design.design_md` and `p4_materialize_disk_node` is the
+    # single deterministic writer downstream.
+    return _build_node()(state, router=router)

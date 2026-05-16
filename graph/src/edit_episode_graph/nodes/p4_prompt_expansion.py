@@ -41,7 +41,11 @@ from ._llm import LLMNode, _load_brief
 # so today's disk-readers (`p4_plan`, `p4_beats`) keep working. `Write`
 # dropped from `allowed_tools`. Output schema and brief both changed →
 # cache invalidation.
-_CACHE_VERSION = 3
+# v4 (HOM-239 / Step D2 of HOM-230): dual-write stripped. The expanded-
+# prompt body remains in `compose.expansion.expanded_prompt`;
+# `p4_materialize_disk_node` is the single deterministic writer. Node
+# output contract changed (no more disk side-effect) → cache invalidation.
+_CACHE_VERSION = 4
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -187,25 +191,9 @@ def p4_prompt_expansion_node(state, *, router: BackendRouter | None = None):
             },
         }
 
-    # Ensure the destination dir exists so the orchestrator's dual-write
-    # below lands in a real folder. `.hyperframes/` is the canonical HF
-    # dotdir per memory `feedback_hf_step2_prompt_expansion`.
-    expanded_prompt_path = _expanded_prompt_path(state)
-    expanded_prompt_path.parent.mkdir(parents=True, exist_ok=True)
-
     # HOM-224: no longer mirror `compose.expanded_prompt_path` — identity-only
     # state. Downstream nodes derive via `EpisodePaths(slug).expanded_prompt_path`.
-    result = _build_node()(state, router=router)
-
-    # HOM-233 dual-write: the sub-agent returns the expanded-prompt body
-    # in `compose.expansion.expanded_prompt` (state-first artifacts, Step B
-    # of HOM-230). Today's downstream readers still expect the file on disk
-    # (`p4_plan`, `p4_beats` read `.hyperframes/expanded-prompt.md`), so the
-    # orchestrator writes from the returned body. Step D2 strips this
-    # dual-write once the read-switch has soaked.
-    compose = result.get("compose") or {}
-    expansion = compose.get("expansion") or {}
-    body = expansion.get("expanded_prompt")
-    if isinstance(body, str) and body:
-        expanded_prompt_path.write_text(body, encoding="utf-8")
-    return result
+    # HOM-239 (Step D2 of HOM-230): dual-write to `expanded_prompt_path`
+    # stripped. The body lives in `compose.expansion.expanded_prompt` and
+    # `p4_materialize_disk_node` is the single deterministic writer.
+    return _build_node()(state, router=router)

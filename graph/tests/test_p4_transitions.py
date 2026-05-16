@@ -45,20 +45,23 @@ def _scaffolded_index_with_shim() -> str:
 
 
 def _plan_state(tmp_path: Path, transitions: list[dict], beats=None) -> dict:
-    """Build minimal state with index.html on disk + plan transitions."""
+    """Build minimal state with index.html body in state + plan transitions.
+
+    HOM-239 (Step D2 of HOM-230 state-first artifacts): the disk-read
+    fallback in `_load_root_html` is gone. State must carry the
+    assembled body via `compose.index_html`. `tmp_path` is retained for
+    test-isolation parity with other p4_* unit tests but no longer
+    seeds disk.
+    """
     if beats is None:
         beats = [
             {"beat": "HOOK", "duration_s": 3.0},
             {"beat": "BUILD", "duration_s": 4.0},
             {"beat": "PAYOFF", "duration_s": 5.0},
         ]
-    hf_dir = tmp_path / "hyperframes"
-    hf_dir.mkdir(parents=True)
-    index = hf_dir / "index.html"
-    index.write_text(_scaffolded_index_with_shim(), encoding="utf-8")
     return {
         "compose": {
-            "index_html_path": str(index),
+            "index_html": _scaffolded_index_with_shim(),
             "plan": {"beats": beats, "transitions": transitions},
         },
     }
@@ -229,9 +232,9 @@ def test_node_skips_when_no_transitions(tmp_path):
     assert update["compose"]["transitions"]["skipped"] is True
     reason = update["compose"]["transitions"]["skip_reason"].lower()
     assert "transitions" in reason or "plan" in reason
-    # And the v4 shim was stripped from the index.html, even on skip.
-    on_disk = Path(state["compose"]["index_html_path"]).read_text(encoding="utf-8")
-    assert _SHIM_BEGIN_MARKER not in on_disk
+    # And the v4 shim was stripped from the body returned in state, even on skip.
+    patched = update["compose"]["index_html"]
+    assert _SHIM_BEGIN_MARKER not in patched
 
 
 def test_node_authors_css_block_into_index_html(tmp_path):
@@ -245,10 +248,10 @@ def test_node_authors_css_block_into_index_html(tmp_path):
     assert "errors" not in update
     assert update["compose"]["transitions"]["n_transitions"] == 1
     assert update["compose"]["transitions"]["mechanisms"] == ["css"]
-    on_disk = Path(state["compose"]["index_html_path"]).read_text(encoding="utf-8")
-    assert _BEGIN_MARKER in on_disk
-    assert _SHIM_BEGIN_MARKER not in on_disk
-    assert "root.fromTo('#scene-build'" in on_disk
+    patched = update["compose"]["index_html"]
+    assert _BEGIN_MARKER in patched
+    assert _SHIM_BEGIN_MARKER not in patched
+    assert "root.fromTo('#scene-build'" in patched
 
 
 def test_node_errors_when_from_beat_dangles(tmp_path):
@@ -284,8 +287,8 @@ def test_node_accepts_final_fade_to_synthetic_END(tmp_path):
     state = _plan_state(tmp_path, transitions=transitions)
     update = p4_transitions_node(state)
     assert "errors" not in update
-    on_disk = Path(state["compose"]["index_html_path"]).read_text(encoding="utf-8")
-    assert "root.to('#scene-payoff'" in on_disk
+    patched = update["compose"]["index_html"]
+    assert "root.to('#scene-payoff'" in patched
 
 
 def test_node_errors_when_index_html_missing(tmp_path):
@@ -296,7 +299,7 @@ def test_node_errors_when_index_html_missing(tmp_path):
     }]
     state = {
         "compose": {
-            "index_html_path": str(tmp_path / "missing.html"),
+            # HOM-239: no `compose.index_html` and no disk fallback — must error.
             "plan": {
                 "beats": [
                     {"beat": "HOOK", "duration_s": 3.0},
@@ -317,11 +320,14 @@ def test_node_rerun_does_not_double_block(tmp_path):
         "why": "x",
     }]
     state = _plan_state(tmp_path, transitions=transitions)
-    p4_transitions_node(state)
-    p4_transitions_node(state)
-    on_disk = Path(state["compose"]["index_html_path"]).read_text(encoding="utf-8")
-    assert on_disk.count(_BEGIN_MARKER) == 1
-    assert on_disk.count(_END_MARKER) == 1
+    # Feed the first run's output body back as the second run's input
+    # (mirrors production: assemble→transitions→materialize on a re-run).
+    update1 = p4_transitions_node(state)
+    state["compose"]["index_html"] = update1["compose"]["index_html"]
+    update2 = p4_transitions_node(state)
+    patched = update2["compose"]["index_html"]
+    assert patched.count(_BEGIN_MARKER) == 1
+    assert patched.count(_END_MARKER) == 1
 
 
 # ---- cache key ----
