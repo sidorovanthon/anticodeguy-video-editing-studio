@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import re
 
-from ._base import Gate, hyperframes_dir
+from ._base import Gate
 
 
 # Primary marker: the canonical wrapper div emitted by p4_captions_layer.
@@ -57,16 +57,18 @@ class CaptionsTrackGate(Gate):
         super().__init__(name="gate:captions_track")
 
     def checks(self, state: dict) -> list[str]:
-        hf_dir = hyperframes_dir(state)
-        if hf_dir is None:
-            return ["no hyperframes_dir / episode_dir in state — cannot read index.html"]
-        index_path = hf_dir / "index.html"
-        if not index_path.is_file():
-            return [f"index.html not on disk at {index_path}"]
-        try:
-            html = index_path.read_text(encoding="utf-8", errors="replace")
-        except OSError as exc:
-            return [f"could not read index.html: {exc}"]
+        # HOM-274 (Class A): state-first read. Under HOM-239 the assembled
+        # index.html body lives in state.compose.index_html and is written
+        # to disk later by p4_materialize_disk_node. Reading from disk here
+        # fires BEFORE the materializer on a fresh-tier run and halts the
+        # pipeline at halt_llm_boundary; read the body from state instead.
+        compose = state.get("compose") or {}
+        html = compose.get("index_html")
+        if not isinstance(html, str) or not html:
+            return [
+                "index.html body absent in state.compose.index_html — "
+                "p4_assemble_index did not populate state channel"
+            ]
 
         has_div = bool(_CAPTIONS_LAYER_DIV.search(html))
         has_timeline = bool(_CAPTION_TIMELINE_REG.search(html))

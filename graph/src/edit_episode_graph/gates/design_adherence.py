@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import re
 
-from ._base import Gate, hyperframes_dir
+from ._base import Gate
 
 
 _HEX_RE = re.compile(r"#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b")
@@ -237,16 +237,20 @@ class DesignAdherenceGate(Gate):
         super().__init__(name="gate:design_adherence")
 
     def checks(self, state: dict) -> list[str]:
-        hf_dir = hyperframes_dir(state)
-        if hf_dir is None:
-            return ["no hyperframes_dir / episode_dir in state — cannot read index.html"]
-        index_path = hf_dir / "index.html"
-        if not index_path.is_file():
-            return [f"index.html not on disk at {index_path}"]
-        try:
-            html = index_path.read_text(encoding="utf-8", errors="replace")
-        except OSError as exc:
-            return [f"could not read index.html: {exc}"]
+        # HOM-274 (Class A): state-first read. Under HOM-239 the assembled
+        # index.html body lives in state.compose.index_html and is written
+        # to disk later by p4_materialize_disk_node. Reading from disk here
+        # fires BEFORE the materializer on a fresh-tier run and halts the
+        # pipeline at halt_llm_boundary; read the body from state instead.
+        # HOM-270 fixed the FIRST disk read in this gate (DESIGN.md body);
+        # HOM-274 finishes the migration for the SECOND read (index.html).
+        compose = state.get("compose") or {}
+        html = compose.get("index_html")
+        if not isinstance(html, str) or not html:
+            return [
+                "index.html body absent in state.compose.index_html — "
+                "p4_assemble_index did not populate state channel"
+            ]
 
         violations: list[str] = []
 
