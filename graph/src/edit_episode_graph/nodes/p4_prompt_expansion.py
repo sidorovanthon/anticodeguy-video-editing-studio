@@ -52,7 +52,12 @@ from ._llm import LLMNode, _load_brief
 # the brief context so the sub-agent no longer calls `Read` on disk.
 # Cache-key inputs (`files=[design_md_path, ...]`) intentionally
 # unchanged in this PR — full Step E refactor deferred.
-_CACHE_VERSION = 5
+# v6 (HOM-240 / Step E of HOM-230): cache-key migration — `design_md_path`
+# dropped from `files=` (the file is no longer on disk while this node
+# runs post-HOM-239); replaced with `stable_fingerprint` of the in-state
+# DESIGN.md body. `transcripts/final.json` stays in `files=` (Phase 3
+# disk artifact, legitimate file-fingerprint).
+_CACHE_VERSION = 6
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -66,22 +71,26 @@ def _cache_key(state, *_args, **_kwargs):
     compose = state.get("compose") or {}
     style_request = compose.get("style_request") or ""
     # HOM-224: derive paths via EpisodePaths(slug) — identity-only state.
+    # HOM-240: design_md body fingerprint replaces design_md_path
+    # file_fingerprint in extras (file no longer on disk pre-materialize).
     if slug and slug != "__unbound__":
         paths = EpisodePaths(slug)
-        design_md_path: str | None = str(paths.design_md_path)
         final_json_path: str | None = str(paths.transcripts_final_json_path)
     else:
-        design_md_path = None
         final_json_path = None
+    design = compose.get("design") or {}
+    design_md_body = design.get("design_md") or ""
     return make_llm_key(
         node="p4_prompt_expansion",
         version=_CACHE_VERSION,
         slug=slug,
         files=[
-            design_md_path,
             final_json_path,
         ],
-        extras=(stable_fingerprint(style_request),),
+        extras=(
+            stable_fingerprint(style_request),
+            stable_fingerprint(design_md_body),
+        ),
     )
 
 
