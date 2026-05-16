@@ -739,7 +739,7 @@ route_after_captions_track = route_after_gate_with_retry(
 
 
 def route_after_p4_persist_session(state) -> str:
-    """p4_persist_session → END on hard error | studio_launch otherwise.
+    """p4_persist_session → p4_materialize_disk (always).
 
     A persist skip or sub-agent failure is non-fatal — the Session block is
     a memory aid for the next run, not load-bearing for the preview.
@@ -748,8 +748,12 @@ def route_after_p4_persist_session(state) -> str:
     (RetryPolicy applies, then pregel surfaces the exception). Errors check
     removed; if the node returns at all, persist either succeeded or skipped
     cleanly.
+
+    HOM-238: now routes to ``p4_materialize_disk`` (no-op single writer,
+    Step C of HOM-230). The materializer in turn static-edges to
+    ``studio_launch``.
     """
-    return "studio_launch"
+    return "p4_materialize_disk"
 
 
 def route_after_studio_launch(state) -> str:

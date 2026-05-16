@@ -24,25 +24,30 @@ def test_assemble_error_routes_to_end():
     assert _routing.route_after_assemble_index(state) == END
 
 
-def test_persist_session_routes_to_studio_on_clean_run():
+def test_persist_session_routes_to_materialize_on_clean_run():
+    """HOM-238: persist now routes to ``p4_materialize_disk`` (no-op
+    single writer in Step C of HOM-230); materializer in turn
+    static-edges to studio_launch."""
     state = {
         "compose": {
             "persist": {"persisted_at": "/tmp/project.md", "session_n": 1},
             "session_persisted": True,
         }
     }
-    assert _routing.route_after_p4_persist_session(state) == "studio_launch"
+    assert _routing.route_after_p4_persist_session(state) == "p4_materialize_disk"
 
 
-def test_persist_session_routes_to_studio_on_skip():
-    """A persist skip is non-fatal — preview still happens."""
+def test_persist_session_routes_to_materialize_on_skip():
+    """A persist skip is non-fatal — preview still happens via the
+    materializer's static edge to studio_launch."""
     state = {"compose": {"persist": {"skipped": True, "skip_reason": "no episode_dir"}}}
-    assert _routing.route_after_p4_persist_session(state) == "studio_launch"
+    assert _routing.route_after_p4_persist_session(state) == "p4_materialize_disk"
 
 
 def test_persist_session_router_ignores_historical_errors():
     """HOM-158: p4_persist_session is an LLM node — raises on terminal failure;
-    routing proceeds to studio_launch regardless of historical errors.
+    routing proceeds (now to p4_materialize_disk, HOM-238) regardless of
+    historical errors.
     """
     state = {"errors": [{"node": "p4_persist_session", "message": "boom", "timestamp": "old"}]}
-    assert _routing.route_after_p4_persist_session(state) == "studio_launch"
+    assert _routing.route_after_p4_persist_session(state) == "p4_materialize_disk"

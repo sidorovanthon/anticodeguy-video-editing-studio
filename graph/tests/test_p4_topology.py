@@ -49,6 +49,9 @@ def test_phase4_nodes_present_in_compiled_graph():
         "gate_snapshot",
         "gate_captions_track",
         "p4_persist_session",
+        # HOM-238 (Step C of HOM-230): single deterministic writer wired
+        # between p4_persist_session and studio_launch. No-op in Step C.
+        "p4_materialize_disk",
         "studio_launch",
         "gate_static_guard",
         # HOM-146: Phase 3 → Phase 4 bridge interrupt
@@ -141,7 +144,11 @@ def test_phase4_chain_edges_wired():
         ("gate_snapshot", "halt_llm_boundary"),
         ("gate_captions_track", "p4_persist_session"),
         ("gate_captions_track", "halt_llm_boundary"),
-        ("p4_persist_session", "studio_launch"),
+        # HOM-238: persist → materialize → studio_launch. Materializer
+        # is a no-op single writer (Step C of HOM-230). Step D1
+        # activates atomic disk writes inside it.
+        ("p4_persist_session", "p4_materialize_disk"),
+        ("p4_materialize_disk", "studio_launch"),
         ("studio_launch", "gate_static_guard"),
         ("gate_static_guard", "halt_llm_boundary"),
         # HOM-130: failure interrupts are resumable. After resume, routing
