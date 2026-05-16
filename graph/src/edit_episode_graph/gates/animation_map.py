@@ -169,7 +169,13 @@ from ._base import Gate
 #   the advisory-notice path still surfaces the canonical hf_dir target
 #   so the operator's path expectation is unchanged. Cache-key inputs
 #   unchanged ⇒ semantic bump only.
-_CACHE_VERSION = 7
+# v8 = HOM-282: output shape changed — the gate-record `extras` now carries
+#   the parsed `animation_map_report` payload for downstream consumption by
+#   `gate_animation_map_classify` (routing-sentinel split). A pre-HOM-282
+#   cached row would replay without `animation_map_report` in extras and
+#   silently feed the classifier an empty {} — quality regression, not
+#   hard error. Bump invalidates those rows.
+_CACHE_VERSION = 8
 
 
 # Helper script paths (relative to roots; joined with appropriate root).

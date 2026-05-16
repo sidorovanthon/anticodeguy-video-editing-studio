@@ -99,13 +99,16 @@ def _stub_resolver(monkeypatch, helper_path: Path, used_fallback: bool = False):
 # ── HOM-204: cache version bump ──────────────────────────────────────────────
 
 
-def test_cache_version_is_7():
-    """HOM-281 bumps 6→7: subprocess cwd migrated from canonical hf_dir
-    to a transient tmpdir produced by ``materialize_into_tmpdir``;
-    helper-script resolution still targets the canonical hf_dir so its
-    bundled sibling deps resolve. Semantic bump only — cache-key inputs
-    unchanged.
+def test_cache_version_is_8():
+    """HOM-282 bumps 7→8: output shape changed — gate-record ``extras`` now
+    carries the parsed ``animation_map_report`` payload for downstream
+    consumption by ``gate_animation_map_classify`` (routing-sentinel split).
+    A pre-HOM-282 cached row would replay without the report in extras and
+    silently feed the classifier an empty {}; the version bump invalidates
+    those rows.
 
+    HOM-281 bumped 6→7 for the subprocess-cwd → transient-tmpdir migration
+    (cache-key inputs unchanged; semantic bump).
     HOM-225 bumped 5→6 for the EpisodePaths(slug)-only hf_dir derivation.
     HOM-212 bumped 4→5 for the per-flag blocking carve-outs verdict logic.
     HOM-204 bumped 3→4 for the original advisory output-shape change.
@@ -113,7 +116,7 @@ def test_cache_version_is_7():
     cover this deterministic gate (it uses ``make_key``, not
     ``make_llm_key``); this direct assertion is the version-bump gate.
     """
-    assert gate_mod._CACHE_VERSION == 7
+    assert gate_mod._CACHE_VERSION == 8
 
 
 def test_cache_key_includes_version(tmp_path, monkeypatch):
