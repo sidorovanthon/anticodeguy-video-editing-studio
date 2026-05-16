@@ -338,6 +338,41 @@ class MaterializeState(TypedDict, total=False):
     skip_reason: str | None
 
 
+class ScaffoldState(TypedDict, total=False):
+    """HOM-280 — scaffolded root ``index.html`` body hoisted into state.
+
+    ``p4_scaffold`` runs ``npx hyperframes init`` (via
+    ``scripts/scaffold_hyperframes.py``), which writes a skeleton
+    ``<hf>/index.html`` to disk as a subprocess side-effect. Pre-HOM-280
+    the node returned notices only — ``compose.scaffold.index_html`` was
+    NOT captured into state, so a cache hit on this node skipped the
+    subprocess (and therefore the disk write), and downstream consumers
+    that re-opened ``<hf>/index.html`` (``p4_assemble_index``,
+    ``p4_dispatch_beats``) failed on a worktree where the file had been
+    deleted between runs.
+
+    Post-HOM-280 the node hoists the post-subprocess body into
+    ``compose.scaffold.index_html`` and consumers read from state. The
+    disk write becomes a transient subprocess side-effect; the
+    materializer (``p4_materialize_disk_node``) overwrites the same path
+    idempotently downstream.
+
+    Fields:
+    * ``index_html`` — full body of ``<hf>/index.html`` as written by
+      ``npx hyperframes init`` + orchestrator patches
+      (``patch_index_html``). Always present after a successful
+      ``p4_scaffold`` run.
+    * ``scaffolded_at`` — ISO 8601 timestamp captured after the
+      subprocess returns. Operator signal for halt notices /
+      debuggability; not consumed by downstream cache keys.
+
+    Pre-HOM-280 checkpoints carry no ``compose.scaffold`` field —
+    ``total=False`` keeps them parsing under the new schema.
+    """
+    index_html: str | None
+    scaffolded_at: str | None
+
+
 class AssembleState(TypedDict, total=False):
     assembled_at: str
     beat_names: list[str]
@@ -363,6 +398,10 @@ class PersistState(TypedDict, total=False):
 
 class ComposeState(TypedDict, total=False):
     hyperframes_dir: str | None
+    # HOM-280: scaffolded root index.html body + timestamp captured by
+    # p4_scaffold from the subprocess's disk output. See ScaffoldState
+    # for the full rationale.
+    scaffold: ScaffoldState
     # HOM-231 (Step A): assembled top-level index.html body returned by
     # p4_assemble_index. Top-level under compose (NOT nested under
     # `compose.assemble`) per the Linear ticket — flatness is fine because
