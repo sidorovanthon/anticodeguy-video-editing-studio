@@ -52,7 +52,12 @@ from ._llm import LLMNode, _load_brief
 # it (preceded by a blank line) to `<edit>/project.md` so today's
 # downstream readers keep working. `Write` dropped from `allowed_tools`.
 # Output schema and brief both changed → cache invalidation.
-_CACHE_VERSION = 4
+# v5 (HOM-239 / Step D2 of HOM-230): dual-write append to
+# `<edit>/project.md` stripped. The session-block body lives in
+# `compose.persist.session_block`; `p4_materialize_disk_node` is the
+# single deterministic writer (substring-skip idempotent append). Node
+# output contract changed → cache invalidation.
+_CACHE_VERSION = 5
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -255,25 +260,11 @@ def p4_persist_session_node(state, *, router: BackendRouter | None = None):
     persist = (update.get("compose") or {}).get("persist") or {}
     update_compose = update.setdefault("compose", {})
     if "skipped" not in persist and "raw_text" not in persist:
-        # HOM-237 dual-write (Step B6 of HOM-230 state-first artifacts): the
-        # sub-agent returns the new Session block body in
-        # `compose.persist.session_block`; the orchestrator owns the disk
-        # append so today's downstream readers (Phase 4 retros, future
-        # tooling) keep working until Step D of HOM-230 strips the
-        # dual-write. We append the body to existing `<edit>/project.md`
-        # preserving every byte above it — preceded by a blank line when
-        # the existing file is non-empty and does not already end in one.
-        session_block = persist.get("session_block")
-        if isinstance(session_block, str) and session_block:
-            project_md = _project_md_path(state)
-            project_md.parent.mkdir(parents=True, exist_ok=True)
-            existing = project_md.read_text(encoding="utf-8") if project_md.is_file() else ""
-            sep = ""
-            if existing:
-                sep = "\n" if not existing.endswith("\n") else ""
-                sep += "\n"
-            with project_md.open("a", encoding="utf-8") as fh:
-                fh.write(sep + session_block)
+        # HOM-239 (Step D2 of HOM-230 state-first artifacts): dual-write
+        # append to `<edit>/project.md` stripped. The new Session block
+        # body lives in `compose.persist.session_block`;
+        # `p4_materialize_disk_node` performs the substring-skip
+        # idempotent append downstream.
 
         # HOM-224: `persisted_at` was previously stringified absolute path
         # to project.md, abusing the `str | None` slot. Identity-only state:

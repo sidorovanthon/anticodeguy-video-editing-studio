@@ -54,21 +54,23 @@ broken `tl.to('#scene-undefined', …)` selector.
 from __future__ import annotations
 
 import json
-import os
 import re
-import tempfile
 from datetime import datetime, timezone
-from pathlib import Path
 
 from langgraph.types import CachePolicy
 
 from .._caching import make_key, stable_fingerprint
-from .._paths import EpisodePaths
 from .._scene_id import scene_id_for
 
 
 # Bump on emit-block shape / marker change / mechanism-template change.
 # Spec §8.
+# v3 (HOM-239 / Step D2 of HOM-230): disk dual-write of patched
+# `index.html` stripped. The patched body lives in
+# `state["compose"]["index_html"]`; `p4_materialize_disk_node` is the
+# single deterministic writer. The disk-read fallback in
+# `_load_root_html` is also dropped — production state always carries
+# the body via HOM-236. Node output contract changed → cache invalidation.
 # v2 (HOM-259): state-first artifacts (Step B7 of HOM-230). Read-site
 # rewired from disk (`index_path.read_text`) to state — root_html sourced
 # from `state["compose"]["index_html"]` (populated by `p4_assemble_index`
@@ -79,7 +81,7 @@ from .._scene_id import scene_id_for
 # `stable_fingerprint` extra — a scene-body change in assemble must
 # invalidate transitions too, even though `plan.transitions`/`plan.beats`
 # bytes are unchanged.
-_CACHE_VERSION = 2
+_CACHE_VERSION = 3
 
 
 _BEGIN_MARKER = "<!-- p4_transitions: begin -->"
@@ -89,18 +91,6 @@ _END_MARKER = "<!-- p4_transitions: end -->"
 # `p4_assemble_index._SHIM_BEGIN_MARKER` / `_SHIM_END_MARKER`.
 _SHIM_BEGIN_MARKER = "<!-- p4_assemble_index: shim begin -->"
 _SHIM_END_MARKER = "<!-- p4_assemble_index: shim end -->"
-
-
-def _index_html_path(state: dict) -> Path | None:
-    """HOM-224 pattern: derive index.html via slug; fall back to legacy echo."""
-    slug = state.get("slug")
-    if slug:
-        return EpisodePaths(slug).index_html_path
-    compose = state.get("compose") or {}
-    legacy = compose.get("index_html_path")
-    if legacy:
-        return Path(legacy)
-    return None
 
 
 def _now() -> str:
@@ -133,20 +123,19 @@ def _skip(reason: str, *, index_html: str | None = None) -> dict:
     return update
 
 
-def _load_root_html(state: dict, index_path: Path | None) -> str | None:
-    """State-first read with disk fallback (HOM-259).
+def _load_root_html(state: dict) -> str | None:
+    """State-first read of the assembled root index.html.
 
-    Source of truth is `state["compose"]["index_html"]` (populated by
-    `p4_assemble_index` per HOM-236). Disk fallback (`index_path`) is
-    retained only for synthetic-state unit tests / pre-Step-B replay
-    fixtures — production state always carries the body.
+    HOM-239 (Step D2 of HOM-230): the disk-read fallback is gone —
+    production state always carries the body via
+    `state["compose"]["index_html"]` (populated by `p4_assemble_index`
+    per HOM-236). Synthetic-state unit tests must seed the body in state
+    rather than on disk.
     """
     compose = state.get("compose") or {}
     body = compose.get("index_html")
     if isinstance(body, str) and body:
         return body
-    if index_path is not None and index_path.is_file():
-        return index_path.read_text(encoding="utf-8")
     return None
 
 
@@ -215,23 +204,6 @@ def _strip_existing(html: str) -> str:
     html = _strip_block(html, _SHIM_BEGIN_MARKER, _SHIM_END_MARKER)
     html = _strip_block(html, _BEGIN_MARKER, _END_MARKER)
     return html
-
-
-def _atomic_write_text(path: Path, content: str) -> None:
-    """Write `content` to `path` atomically via tmp + os.replace."""
-    fd, tmp_name = tempfile.mkstemp(
-        prefix=path.name + ".", suffix=".tmp", dir=str(path.parent)
-    )
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(content)
-        os.replace(tmp_name, path)
-    except Exception:
-        try:
-            os.unlink(tmp_name)
-        except OSError:
-            pass
-        raise
 
 
 def _cumulative_starts(beats: list[dict]) -> dict[str, float]:
@@ -488,20 +460,17 @@ def p4_transitions_node(state):
     plan_beats = plan.get("beats") or []
     transitions = plan.get("transitions") or []
 
-    index_path = _index_html_path(state)
-
     if not transitions:
         # Schema-valid for 1-beat plans without final-fade; nothing to emit.
         # We still STRIP the old v4 shim from the body so the canonical
         # block-or-nothing replaces it cleanly.
-        root_html = _load_root_html(state, index_path)
+        root_html = _load_root_html(state)
         if root_html is None:
             return _skip("no transitions in compose.plan (1-beat plan or plan missing)")
         patched = assemble_html(root_html=root_html, transitions_block=None)
-        # HOM-259 dual-write: state is the primary output via
-        # `compose.index_html`; disk write retained until HOM-239 (Step D2).
-        if patched != root_html and index_path is not None:
-            _atomic_write_text(index_path, patched)
+        # HOM-239 (Step D2 of HOM-230): disk dual-write stripped. The
+        # patched body lives in state via `compose.index_html` and the
+        # materializer regenerates the file from state.
         return _skip(
             "no transitions in compose.plan (1-beat plan or plan missing)",
             index_html=patched,
@@ -513,11 +482,11 @@ def p4_transitions_node(state):
             "cannot resolve from_beat/to_beat to scene ids"
         )
 
-    root_html = _load_root_html(state, index_path)
+    root_html = _load_root_html(state)
     if root_html is None:
         return _error(
-            "compose.index_html missing from state and no disk fallback "
-            "available (p4_assemble_index must run first)"
+            "compose.index_html missing from state — p4_assemble_index must "
+            "run first (HOM-239 stripped the disk fallback)"
         )
 
     beat_labels = {
@@ -531,13 +500,9 @@ def p4_transitions_node(state):
 
     block = build_transitions_block(transitions=transitions, beats=plan_beats)
     patched = assemble_html(root_html=root_html, transitions_block=block)
-    # HOM-259 dual-write: the patched body is the primary output via
-    # `compose.index_html` (state-first artifacts, Step B7 of HOM-230).
-    # Today's downstream consumers (materializer, gate cluster) still
-    # read `<hyperframes_dir>/index.html` from disk, so dual-write
-    # remains until HOM-239 (Step D2) strips it.
-    if patched != root_html and index_path is not None:
-        _atomic_write_text(index_path, patched)
+    # HOM-239 (Step D2 of HOM-230 state-first artifacts): disk dual-write
+    # stripped. The patched body lives in `compose.index_html`;
+    # `p4_materialize_disk_node` is the single deterministic writer.
 
     return {
         "compose": {

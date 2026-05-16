@@ -30,7 +30,6 @@ per-node `model:` override; the dataclass below sets only the tier ceiling.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from langgraph.types import CachePolicy
 
@@ -77,7 +76,12 @@ from ._llm import LLMNode, _load_brief
 # file to `scene_html_path` so today's disk-readers (`p4_assemble_index.py:588`)
 # keep working. `Write` dropped from `allowed_tools`. Output schema and
 # brief both changed → cache invalidation.
-_CACHE_VERSION = 8
+# v9 (HOM-239 / Step D2 of HOM-230): per-beat dual-write to
+# `compositions/<scene_id>.html` stripped. The fragment body lives in
+# `state["scenes"][scene_id]["html"]` (top-level channel via the
+# `_scenes_merge` reducer) and `p4_materialize_disk_node` is the single
+# deterministic writer. Node output contract changed → cache invalidation.
+_CACHE_VERSION = 9
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -195,31 +199,22 @@ def _build_node() -> LLMNode:
 def p4_beat_node(state, *, router: BackendRouter | None = None):
     bd = state.get("_beat_dispatch") or {}
     scene_id = bd.get("scene_id")
-    scene_html_path = bd.get("scene_html_path")
-
-    # Ensure the destination directory exists so the orchestrator's
-    # dual-write below lands in a real folder.
-    if scene_html_path:
-        Path(scene_html_path).parent.mkdir(parents=True, exist_ok=True)
 
     result = _build_node()(state, router=router)
 
-    # HOM-234 dual-write + state shape correction. LLMNode returns the
-    # structured `BeatOutput` under `result["compose"]["_beat_raw"]`; we
+    # HOM-234 state-shape correction (kept post-HOM-239). LLMNode returns
+    # the structured `BeatOutput` under `result["compose"]["_beat_raw"]`;
     # re-route it into the top-level `scenes[scene_id].html` channel
     # (promoted from `compose.scenes` by the HOM-234 pre-check — see
-    # tests/test_compose_scenes_fanout.py for the rationale: LangGraph
-    # reducers do NOT walk nested Annotated channels, so the
-    # `_scenes_merge` reducer only fires when `scenes` lives at the top
-    # level). We also write the body to disk so today's downstream
-    # reader (`p4_assemble_index.py:588`) keeps working until Step D2
-    # of HOM-230 strips this dual-write.
+    # `tests/test_compose_scenes_fanout.py`: LangGraph reducers do NOT
+    # walk nested Annotated channels, so `_scenes_merge` only fires when
+    # `scenes` lives at the top level).
+    # HOM-239 (Step D2 of HOM-230): per-beat dual-write to
+    # `compositions/<scene_id>.html` stripped. The body lives in state
+    # only; `p4_materialize_disk_node` writes the file from state.
     compose = result.get("compose") or {}
     raw = compose.pop("_beat_raw", None) or {}
     body = raw.get("html") if isinstance(raw, dict) else None
-
-    if isinstance(body, str) and body and scene_html_path:
-        Path(scene_html_path).write_text(body, encoding="utf-8")
 
     out: dict = {"llm_runs": result.get("llm_runs", [])}
     if isinstance(body, str) and body and scene_id:

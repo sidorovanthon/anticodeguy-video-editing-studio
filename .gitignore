@@ -47,3 +47,16 @@ tests/fixtures/episodes/*/cache.db.tmp
 tests/fixtures/episodes/*/cache.db-wal
 tests/fixtures/episodes/*/cache.db-shm
 tests/fixtures/episodes/*/cache.db-journal
+
+# HOM-239 (Step D2 of HOM-230 state-first artifacts): fixture-side text
+# artifacts under `hyperframes/` and `edit/project.md` are no longer
+# committed — `p4_materialize_disk_node` regenerates them from cache.db
+# on demand. cache.db is the only source of truth. Keeping these
+# gitignored stops a stray `git add` from re-introducing the dual-write
+# coupling D2 just removed.
+tests/fixtures/episodes/*/hyperframes/index.html
+tests/fixtures/episodes/*/hyperframes/captions.html
+tests/fixtures/episodes/*/hyperframes/DESIGN.md
+tests/fixtures/episodes/*/hyperframes/compositions/
+tests/fixtures/episodes/*/hyperframes/.hyperframes/
+tests/fixtures/episodes/*/edit/project.md

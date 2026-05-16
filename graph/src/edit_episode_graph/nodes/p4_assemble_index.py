@@ -45,9 +45,7 @@ directly into the root composition body — Pattern A per
 from __future__ import annotations
 
 import json
-import os
 import re
-import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -82,6 +80,12 @@ def _captions_block_path(state: dict) -> Path | None:
     return None
 
 # Bump on assemble_html / shim shape / marker change. Spec §8.
+# v7 (HOM-239 / Step D2 of HOM-230): dual-write of patched `index.html`
+# stripped. The assembled body lives in `compose.index_html`;
+# `p4_materialize_disk_node` is the single deterministic writer. The
+# scaffolded root index.html is still read from disk (it's `p4_scaffold`'s
+# untracked subprocess output, not a committed artifact). Node output
+# contract changed (no more disk side-effect) → cache invalidation.
 # v6 (HOM-236): state-first artifacts (Step B5 of HOM-230). Read-site
 # rewired from disk (`scene_path.read_text` / `captions_path.read_text`)
 # to state — scenes via `state["scenes"][sid].html` (top-level channel
@@ -133,7 +137,7 @@ def _captions_block_path(state: dict) -> Path | None:
 # this, every scene-1+ frame stays at the fromTo from-state — the
 # Phase 4 black-screen symptom HOM-164 was filed for. Repro confirmed in a
 # clean `npx hyperframes init` scaffold; fix is purely orchestrator-side.
-_CACHE_VERSION = 6
+_CACHE_VERSION = 7
 
 
 def _scene_html_paths(state: dict) -> list[str | None]:
@@ -455,28 +459,6 @@ def _ensure_inlined_script_iife(fragment: str) -> str:
     return _SCRIPT_BLOCK_RE.sub(_wrap, fragment)
 
 
-def _atomic_write_text(path: Path, content: str) -> None:
-    """Write `content` to `path` atomically via tmp + os.replace.
-
-    Prevents the partial-injection state described in `_strip_block`: on
-    crash mid-write, the original file is preserved untouched rather than
-    left half-written.
-    """
-    fd, tmp_name = tempfile.mkstemp(
-        prefix=path.name + ".", suffix=".tmp", dir=str(path.parent)
-    )
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(content)
-        os.replace(tmp_name, path)
-    except Exception:
-        try:
-            os.unlink(tmp_name)
-        except OSError:
-            pass
-        raise
-
-
 def build_visibility_shim(
     scene_ids: list[str], scene_starts: list[float]
 ) -> str | None:
@@ -666,14 +648,10 @@ def p4_assemble_index_node(state):
         visibility_shim=shim,
         tokens_block=tokens_block,
     )
-    # HOM-236 dual-write: the assembled body is now the primary output via
-    # `compose.index_html` (state-first artifacts, Step B5 of HOM-230).
-    # Today's downstream consumers (HF render, gate cluster) still read
-    # `<hyperframes_dir>/index.html` from disk, so the orchestrator
-    # atomically writes the body. Step D of HOM-230 strips this once the
-    # read-switch has soaked.
-    if patched != root_html:
-        _atomic_write_text(index_path, patched)
+    # HOM-239 (Step D2 of HOM-230 state-first artifacts): dual-write to
+    # `index_path` stripped. The assembled body lives in
+    # `compose.index_html`; `p4_materialize_disk_node` is the single
+    # deterministic writer downstream.
 
     # HOM-224 / HOM-236: identity-only state for path echoes — no
     # `compose.index_html_path` mirror. `compose.index_html` carries the

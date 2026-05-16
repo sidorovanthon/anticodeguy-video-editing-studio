@@ -61,7 +61,11 @@ from ._llm import LLMNode, _load_brief
 # today's `p4_assemble_index` disk-reader keeps working. `Write` dropped
 # from `allowed_tools`. Output schema and brief both changed → cache
 # invalidation.
-_CACHE_VERSION = 4
+# v5 (HOM-239 / Step D2 of HOM-230): dual-write to `captions_block_path`
+# stripped. The body remains in `compose.captions.html`;
+# `p4_materialize_disk_node` is the single deterministic writer. Node
+# output contract changed → cache invalidation.
+_CACHE_VERSION = 5
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -243,27 +247,11 @@ def p4_captions_layer_node(state, *, router: BackendRouter | None = None):
             },
         }
 
-    captions_path.parent.mkdir(parents=True, exist_ok=True)
-
     node = _build_node()
     update = node(state, router=router)
 
-    # HOM-235 dual-write: the sub-agent returns the captions HTML body in
-    # `compose.captions.html` (state-first artifacts, Step B of HOM-230).
-    # Today's downstream reader still expects the file on disk
-    # (`p4_assemble_index` reads `<hyperframes_dir>/captions.html`), so the
-    # orchestrator writes from the returned body. Step D2 strips this
-    # dual-write once the read-switch has soaked.
-    compose_namespace = update.get("compose") or {}
-    captions_ns = compose_namespace.get("captions") or {}
-    body = captions_ns.get("html")
-    if isinstance(body, str) and body:
-        captions_path.write_text(body, encoding="utf-8")
-
-    # HOM-224 / HOM-235: identity-only state — `compose.captions` now
-    # carries the body via `html`; no separate success-marker block
-    # required. Downstream consumers (`p4_assemble_index`,
-    # `halt_llm_boundary`) still derive the disk path via
-    # `EpisodePaths(slug).captions_block_path` and check existence there
-    # until the Step D1 read-switch.
+    # HOM-239 (Step D2 of HOM-230 state-first artifacts): dual-write to
+    # `captions_block_path` stripped. The captions HTML body lives in
+    # `compose.captions.html` (HOM-235); `p4_materialize_disk_node` is
+    # the single deterministic writer downstream.
     return update

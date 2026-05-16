@@ -317,7 +317,7 @@ def halt_llm_boundary_node(state):
                 trans_part = "transitions not yet authored (p4_transitions pending)"
             msg = (
                 f"v4 halt: scenes assembled from state scene bodies into root index.html "
-                f"(compose.index_html, HOM-236 state-first; dual-written to disk) "
+                f"(compose.index_html, HOM-236 state-first; HOM-239 materializer-only writer) "
                 f"({n} scene(s), {_captions_summary()}, {trans_part}); "
                 "next is gate cluster (lint → validate → inspect → "
                 "design_adherence → animation_map → snapshot → captions_track) "

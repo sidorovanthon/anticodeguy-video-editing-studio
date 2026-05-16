@@ -280,16 +280,19 @@ def test_node_inlines_fragments_in_plan_order(tmp_path):
     assemble = update["compose"]["assemble"]
     assert assemble["beat_names"] == ["hook", "build", "payoff"]
 
-    on_disk = Path(state["compose"]["index_html_path"]).read_text(encoding="utf-8")
-    assert on_disk.index("h-body") < on_disk.index("b-body") < on_disk.index("p-body")
-    assert 'id="scene-hook"' in on_disk
-    assert 'id="scene-payoff"' in on_disk
+    # HOM-239 (Step D2): assemble no longer dual-writes to disk; the
+    # returned body in `compose.index_html` is the sole source of truth.
+    body = update["compose"]["index_html"]
+    assert body.index("h-body") < body.index("b-body") < body.index("p-body")
+    assert 'id="scene-hook"' in body
+    assert 'id="scene-payoff"' in body
 
 
 def test_node_returns_index_html_body_in_state(tmp_path):
     """HOM-236 (Step B5 of HOM-230): the assembled body is the primary
-    output via `compose.index_html`. The disk dual-write is retained and
-    must agree with the returned body — Step D strips the disk write."""
+    output via `compose.index_html`. HOM-239 (Step D2) stripped the disk
+    dual-write — state is now the sole writer and `p4_materialize_disk`
+    is the single deterministic disk writer downstream."""
     state = _plan_state(tmp_path, [("Hook", 3.0), ("Payoff", 5.0)])
     _write_fragment(state, "hook", "h-body")
     _write_fragment(state, "payoff", "p-body")
@@ -305,9 +308,12 @@ def test_node_returns_index_html_body_in_state(tmp_path):
     assert "p-body" in body
     assert "p4_assemble_index: end" in body
 
+    # HOM-239 (Step D2): the on-disk index.html is the scaffolded
+    # untouched input — the patched body lives in state only.
     on_disk = Path(state["compose"]["index_html_path"]).read_text(encoding="utf-8")
-    assert body == on_disk, (
-        "compose.index_html must equal the atomically dual-written disk body"
+    assert "p4_assemble_index: end" not in on_disk, (
+        "HOM-239: assemble must NOT dual-write to disk (materializer is "
+        "the single writer)"
     )
 
 
@@ -335,16 +341,17 @@ def test_node_emits_v4_shim_with_cumulative_starts(tmp_path):
 
     update = p4_assemble_index_node(state)
     assert "errors" not in update
-    on_disk = Path(state["compose"]["index_html_path"]).read_text(encoding="utf-8")
+    # HOM-239 (Step D2): read assembled body from state, not disk.
+    body = update["compose"]["index_html"]
 
-    assert _SHIM_BEGIN_MARKER in on_disk
-    assert _SHIM_END_MARKER in on_disk
+    assert _SHIM_BEGIN_MARKER in body
+    assert _SHIM_END_MARKER in body
     # Cumulative starts: 0.0, 3.0, 7.5
-    assert "3.0" in on_disk
-    assert "7.5" in on_disk
-    assert '"hook"' in on_disk
-    assert '"build"' in on_disk
-    assert '"payoff"' in on_disk
+    assert "3.0" in body
+    assert "7.5" in body
+    assert '"hook"' in body
+    assert '"build"' in body
+    assert '"payoff"' in body
 
 
 def test_node_rerun_does_not_double_shim(tmp_path):
@@ -352,13 +359,19 @@ def test_node_rerun_does_not_double_shim(tmp_path):
     _write_fragment(state, "hook")
     _write_fragment(state, "payoff")
 
-    p4_assemble_index_node(state)
-    p4_assemble_index_node(state)
+    # HOM-239 (Step D2): the node no longer mutates disk, so a re-run
+    # against the same state input is byte-identical in output. The
+    # idempotency property previously verified via disk-rewrite is now
+    # observable through the returned body alone.
+    update1 = p4_assemble_index_node(state)
+    update2 = p4_assemble_index_node(state)
 
-    on_disk = Path(state["compose"]["index_html_path"]).read_text(encoding="utf-8")
-    assert on_disk.count(_SHIM_BEGIN_MARKER) == 1
-    assert on_disk.count(_SHIM_END_MARKER) == 1
-    assert on_disk.count("p4_assemble_index: beats") == 1
+    body1 = update1["compose"]["index_html"]
+    body2 = update2["compose"]["index_html"]
+    assert body1 == body2
+    assert body2.count(_SHIM_BEGIN_MARKER) == 1
+    assert body2.count(_SHIM_END_MARKER) == 1
+    assert body2.count("p4_assemble_index: beats") == 1
 
 
 def test_node_supports_captions_from_state(tmp_path):
@@ -372,10 +385,9 @@ def test_node_supports_captions_from_state(tmp_path):
     update = p4_assemble_index_node(state)
     assert "errors" not in update
     assert update["compose"]["assemble"]["captions_included"] is True
-    on_disk = Path(state["compose"]["index_html_path"]).read_text(encoding="utf-8")
-    assert 'data-composition-id="captions"' in on_disk
-    # HOM-236: assembled body returned in `compose.index_html`.
-    assert update["compose"]["index_html"] == on_disk
+    # HOM-239 (Step D2): assembled body is the sole output via state.
+    body = update["compose"]["index_html"]
+    assert 'data-composition-id="captions"' in body
 
 
 # ---- HOM-142: scene `class="clip"` enforcement ----
@@ -657,11 +669,12 @@ def test_node_writes_tokens_block_from_compose_design(tmp_path):
     update = p4_assemble_index_node(state)
     assert "errors" not in update
 
-    on_disk = Path(state["compose"]["index_html_path"]).read_text(encoding="utf-8")
-    assert _TOKENS_BEGIN_MARKER in on_disk
-    assert "--bg: #1a1614;" in on_disk
-    assert "--fg: #f4ebdc;" in on_disk
-    assert "--font-body: Inter, sans-serif;" in on_disk
+    # HOM-239 (Step D2): assembled body in state.
+    body = update["compose"]["index_html"]
+    assert _TOKENS_BEGIN_MARKER in body
+    assert "--bg: #1a1614;" in body
+    assert "--fg: #f4ebdc;" in body
+    assert "--font-body: Inter, sans-serif;" in body
 
 
 def test_node_omits_tokens_block_when_design_missing(tmp_path):
@@ -670,9 +683,9 @@ def test_node_omits_tokens_block_when_design_missing(tmp_path):
     _write_fragment(state, "hook")
     update = p4_assemble_index_node(state)
     assert "errors" not in update
-    on_disk = Path(state["compose"]["index_html_path"]).read_text(encoding="utf-8")
-    assert _TOKENS_BEGIN_MARKER not in on_disk
-    assert _TOKENS_END_MARKER not in on_disk
+    body = update["compose"]["index_html"]
+    assert _TOKENS_BEGIN_MARKER not in body
+    assert _TOKENS_END_MARKER not in body
 
 
 def test_node_skips_captions_silently_when_absent(tmp_path):
@@ -804,7 +817,8 @@ def test_node_root_position_chain_in_assembled_index(tmp_path):
     update = p4_assemble_index_node(state)
     assert "errors" not in update
 
-    on_disk = Path(state["compose"]["index_html_path"]).read_text(encoding="utf-8")
+    # HOM-239 (Step D2): read assembled body from state, not disk.
+    on_disk = update["compose"]["index_html"]
 
     # Path 1: extract from JS source — what `root.add` will see at runtime.
     js_positions = _extract_root_positions_from_js(on_disk)

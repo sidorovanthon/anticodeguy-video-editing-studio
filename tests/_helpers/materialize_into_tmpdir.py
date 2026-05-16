@@ -29,11 +29,11 @@ fixture cache.db carries those body strings directly (Step F re-record
 under the post-Step-B+C+D1 architecture); ``_reconstruct_state`` reads
 them from the decoded cache rows and uses them verbatim.
 
-The helper also retains a per-field disk fallback — only consulted when
-state is missing or empty for a given body field — so legacy
-pre-Step-B cache.db files committed for historical diff inspection
-remain usable. State always wins over disk: if cache.db has a non-empty
-body for a field, the disk copy (if any) is ignored.
+HOM-239 (Step D2) stripped the producers' disk dual-writes and ``git
+rm``ed the committed ``hyperframes/`` text artifacts plus
+``edit/project.md`` — the prior per-field disk fallback against those
+paths is now dead code by construction and has been removed. State
+(cache.db) is the only source of truth.
 
 Native primitive contract
 -------------------------
@@ -169,65 +169,13 @@ def _reconstruct_state(slug: str, source_episode_dir: Path) -> dict:
     # confuses nothing but adds noise to state).
     state.get("compose", {}).pop("_beat_unused", None)
 
-    # Post HOM-241: cache.db now carries body strings in state (Step B/C/D1
-    # producers dual-wrote them; Step F re-recorded under the new
-    # architecture). State is authoritative; disk fallback survives only
-    # to keep the helper usable on legacy pre-Step-B cache.db files (any
-    # historical PR that pinned an older fixture for diff inspection).
-    compose = state.setdefault("compose", {})
-    hf_dir = source_episode_dir / "hyperframes"
-    edit_dir = source_episode_dir / "edit"
-
-    def _state_first_string(current: str | None, disk_path: Path) -> str | None:
-        if isinstance(current, str) and current:
-            return current
-        if disk_path.is_file():
-            return disk_path.read_text(encoding="utf-8")
-        return None
-
-    design = compose.setdefault("design", {})
-    val = _state_first_string(design.get("design_md"), hf_dir / "DESIGN.md")
-    if val is not None:
-        design["design_md"] = val
-
-    expansion = compose.setdefault("expansion", {})
-    val = _state_first_string(
-        expansion.get("expanded_prompt"),
-        hf_dir / ".hyperframes" / "expanded-prompt.md",
-    )
-    if val is not None:
-        expansion["expanded_prompt"] = val
-
-    val = _state_first_string(compose.get("index_html"), hf_dir / "index.html")
-    if val is not None:
-        compose["index_html"] = val
-
-    captions = compose.setdefault("captions", {})
-    val = _state_first_string(captions.get("html"), hf_dir / "captions.html")
-    if val is not None:
-        captions["html"] = val
-
-    persist = compose.setdefault("persist", {})
-    # project.md substring-skip in the materializer means re-appending the
-    # full file content is idempotent on a copied project.md and produces
-    # a byte-identical file on an empty tmpdir.
-    val = _state_first_string(persist.get("session_block"), edit_dir / "project.md")
-    if val is not None:
-        persist["session_block"] = val
-
-    # Scenes: state-first, with per-scene disk fallback for any scene_id
-    # the cache.db didn't record (legacy fixtures only).
-    compositions_dir = hf_dir / "compositions"
-    if compositions_dir.is_dir():
-        for scene_html in sorted(compositions_dir.glob("*.html")):
-            scene_id = scene_html.stem
-            existing = state["scenes"].get(scene_id) or {}
-            if not isinstance(existing.get("html"), str) or not existing.get("html"):
-                state["scenes"][scene_id] = {
-                    **existing,
-                    "html": scene_html.read_text(encoding="utf-8"),
-                }
-
+    # HOM-239 (Step D2): cache.db is the only source of truth for body
+    # strings. The producers' disk dual-writes have been stripped and the
+    # committed hyperframes/ text artifacts plus edit/project.md are
+    # ``git rm``ed — the prior per-field disk fallback is dead code by
+    # construction and has been removed. State (cache.db) wins; if a
+    # body field is missing here, the cache.db is stale and must be
+    # re-recorded (see CLAUDE.md §"Fixture prewarm").
     return state
 
 
