@@ -28,7 +28,6 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
-from pathlib import Path
 
 from .._paths import EpisodePaths
 from .._scene_id import scene_id_for
@@ -156,12 +155,8 @@ def _render_ctx(state: dict) -> dict:
     if slug:
         ep = EpisodePaths(slug)
         index_html_path = str(ep.index_html_path)
-        compositions_dir = str(ep.compositions_dir)
     else:
         index_html_path = compose.get("index_html_path") or ""
-        compositions_dir = (
-            str(Path(index_html_path).parent / "compositions") if index_html_path else ""
-        )
 
     scene_ids, scene_starts, scene_durations = _scene_metadata(state)
     # Viewport dimensions: `p4_assemble_index` always runs upstream of any
@@ -180,7 +175,6 @@ def _render_ctx(state: dict) -> dict:
         "prior_violations": list(failure.get("violations") or []),
         "prior_iteration": int(failure.get("iteration") or 0),
         "index_html_path": index_html_path,
-        "compositions_dir": compositions_dir,
         # HOM-224: derive via slug; compose echo dropped.
         "design_md_path": str(EpisodePaths(slug).design_md_path) if slug else (compose.get("design_md_path") or ""),
         "expanded_prompt_path": str(EpisodePaths(slug).expanded_prompt_path) if slug else (compose.get("expanded_prompt_path") or ""),
@@ -280,9 +274,13 @@ def p4_redispatch_beat_node(state, *, router: BackendRouter | None = None):
     # Now the sub-agent picks one scene_id internally (per the brief) and
     # returns only the body — we can't unambiguously identify which scene
     # was rewritten from the body alone. Match by scanning the returned
-    # body for the `id="scene-<sid>"` attribute; fall back to the first
-    # scene_id in plan order with a notice if the body has no recognisable
-    # marker.
+    # body for the `id="scene-<sid>"` attribute. If zero markers match we
+    # emit a hard error rather than silently overwriting the first scene
+    # (HOM-266 review BLOCKER: silent misattribution is the same bug class
+    # this PR was opened to fix; the gate retry-loop cannot detect a wrong
+    # overwrite). The follow-up refactor — pre-resolving the failing
+    # scene_id Python-side from gate `violations[]` — is tracked as a
+    # separate ticket (see PR #150 review thread).
     result = _build_node()(state, router=router)
     raw = (result.get("compose") or {}).pop("redispatch", None) or {}
     body = raw.get("html") if isinstance(raw, dict) else None
@@ -297,24 +295,67 @@ def p4_redispatch_beat_node(state, *, router: BackendRouter | None = None):
             out[key] = passthrough
 
     if not (isinstance(body, str) and body):
+        # HOM-266 review: align empty-body with marker-miss — both are
+        # un-attributable failure modes that the gate-retry loop must see
+        # as a failed attempt (not a silent no-op).
+        out.setdefault("errors", []).append({
+            "node": "p4_redispatch_beat",
+            "message": (
+                "sub-agent returned empty BeatOutput.html — "
+                "no scene merged into state['scenes']"
+            ),
+            "timestamp": _now(),
+        })
         out.setdefault("notices", []).append(
-            "p4_redispatch_beat: sub-agent returned empty BeatOutput.html — "
-            "no scene merged into state['scenes']; routing back to p4_assemble_index"
+            "p4_redispatch_beat: sub-agent returned empty BeatOutput.html — see errors[]"
         )
         return out
 
-    picked_sid: str | None = None
+    matched: list[str] = []
     for sid in scene_ids:
         if f'id="scene-{sid}"' in body or f"id='scene-{sid}'" in body:
-            picked_sid = sid
-            break
-    if picked_sid is None:
-        picked_sid = scene_ids[0]
+            matched.append(sid)
+
+    if not matched:
+        # HOM-266 review BLOCKER: do NOT silently default to scene_ids[0].
+        # An un-attributable body is a failed attempt — push to errors[]
+        # so the gate retry-loop counts it and `halt_llm_boundary` carries
+        # the explicit notice after `max_attempts`.
+        out.setdefault("errors", []).append({
+            "node": "p4_redispatch_beat",
+            "message": (
+                "sub-agent returned un-attributable body — no recognisable "
+                "id=\"scene-<sid>\" marker matching plan-order scene_ids "
+                f"{scene_ids!r}"
+            ),
+            "timestamp": _now(),
+        })
         out.setdefault("notices", []).append(
-            f"p4_redispatch_beat: returned body has no recognisable "
-            f"id=\"scene-<sid>\" marker; defaulting to first plan-order "
-            f"scene_id={picked_sid!r}"
+            "p4_redispatch_beat: un-attributable body — see errors[]; "
+            "no scene merged into state['scenes']"
+        )
+        return out
+
+    # Attribute to the first plan-order match. Multiple markers in one
+    # body is suspicious (sub-agent should target exactly one scene) but
+    # not necessarily wrong — the rewritten fragment may legitimately
+    # reference other scenes in HTML comments or transition refs. Surface
+    # a notice and proceed with the first match.
+    picked_sid = matched[0]
+    if len(matched) > 1:
+        out.setdefault("notices", []).append(
+            f"p4_redispatch_beat: returned body matches multiple plan-order "
+            f"scene_ids {matched!r}; attributing to first match "
+            f"scene_id={picked_sid!r} (sub-agent should target exactly one "
+            f"scene — extra matches may be comments / transition refs)"
         )
 
-    out["scenes"] = {picked_sid: {"html": body}}
+    # Concern 2: `_scenes_merge` is a shallow reducer that REPLACES the
+    # whole per-scene dict on a key collision. Today the per-scene entry
+    # is single-field (`{"html": ...}`) so no regression, but preserve
+    # siblings explicitly to defend against future per-scene metadata
+    # (attempt count, model, beat_id) being wiped on a redispatch.
+    # shallow reducer replaces whole per-scene dict — preserve siblings explicitly
+    prev = (state.get("scenes") or {}).get(picked_sid) or {}
+    out["scenes"] = {picked_sid: {**prev, "html": body}}
     return out

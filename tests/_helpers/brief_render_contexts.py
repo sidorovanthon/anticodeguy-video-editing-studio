@@ -202,7 +202,6 @@ def p4_redispatch_beat_ctx() -> dict:
         "prior_violations": prior_violations,
         "prior_iteration": 1,
         "index_html_path": INDEX_HTML_PATH,
-        "compositions_dir": f"{EPISODE_DIR}/hyperframes/compositions",
         "design_md_path": DESIGN_MD_PATH,
         "expanded_prompt_path": EXPANDED_PROMPT_PATH,
         "design_md_body": _FIXED_DESIGN_MD_BODY,
