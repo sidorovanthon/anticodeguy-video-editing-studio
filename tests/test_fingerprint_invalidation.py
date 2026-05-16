@@ -80,21 +80,32 @@ def test_upstream_artifact_change_invalidates(node_name: str, tmp_path):
 
 
 def test_p4_beat_expanded_prompt_invalidates_fingerprint(tmp_path):
-    """Editing ``expanded-prompt.md`` MUST flip p4_beat's cache key.
+    """Mutating the in-state expanded-prompt body MUST flip p4_beat's key.
 
-    The registry's ``primary_artifact_pointer`` for ``p4_beat`` points at
-    ``design.md`` (covered by the parametrised
+    The registry's primary mutator for ``p4_beat`` mutates
+    ``compose.design.design_md`` (covered by the parametrised
     ``test_upstream_artifact_change_invalidates``), but ``_cache_key``
-    hashes BOTH ``design_md_path`` AND ``expanded_prompt_path`` via
-    ``files=`` (see ``nodes/p4_beat.py::_cache_key`` lines 96-105). This
-    focused test exercises the secondary input directly rather than
-    extending the registry schema (HOM-234 PR #140 review S2).
+    fingerprints BOTH ``compose.design.design_md`` AND
+    ``compose.expansion.expanded_prompt`` via ``extras=`` (post-HOM-240,
+    Step E of HOM-230). This focused test exercises the secondary input
+    directly. Pre-HOM-240 it edited the disk file at
+    ``EpisodePaths(slug).expanded_prompt_path``; post-migration the
+    cache key is body-fingerprint-based and the file is no longer on
+    disk pre-materialize.
     """
-    assert_upstream_artifact_change_invalidates(
-        "p4_beat",
-        tmp_path=tmp_path,
-        artifact_path=tmp_path / "episodes" / "fp-fixture" / "hyperframes"
-        / ".hyperframes" / "expanded-prompt.md",
+    from tests._helpers.fingerprint_assertions import (
+        _compute_key, _node_base_state,
+    )
+
+    state = _node_base_state("p4_beat", tmp_path)
+    before = _compute_key("p4_beat", state)
+    state.setdefault("compose", {}).setdefault("expansion", {})[
+        "expanded_prompt"
+    ] = "# expanded mutated\n"
+    after = _compute_key("p4_beat", state)
+    assert before != after, (
+        "p4_beat: cache key did not change when "
+        "compose.expansion.expanded_prompt body was edited"
     )
 
 

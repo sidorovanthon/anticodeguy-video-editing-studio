@@ -86,7 +86,11 @@ from ._llm import LLMNode, _load_brief
 # are inlined directly in the brief context so the sub-agent no longer
 # calls `Read` on either file. Cache-key inputs (`files=[...]`) unchanged
 # in this PR — full Step E refactor deferred.
-_CACHE_VERSION = 10
+# v11 (HOM-240 / Step E of HOM-230): cache-key migration —
+# `design_md_path` and `expanded_prompt_path` dropped from `files=` (no
+# longer on disk pre-materialize); replaced with `stable_fingerprint`
+# extras over the in-state bodies. `files=` is now empty for this node.
+_CACHE_VERSION = 11
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -106,23 +110,20 @@ def _cache_key(state, *_args, **_kwargs):
     # plan-only change for the same beat_id (e.g. p4_plan re-runs and
     # produces different concept/mood for the same scene).
     plan_beat = bd.get("plan_beat") or {}
-    # HOM-224: derive paths via EpisodePaths(slug) — identity-only state.
-    if slug and slug != "__unbound__":
-        paths = EpisodePaths(slug)
-        design_md_path: str | None = str(paths.design_md_path)
-        expanded_prompt_path: str | None = str(paths.expanded_prompt_path)
-    else:
-        design_md_path = None
-        expanded_prompt_path = None
+    # HOM-240: in-state body fingerprints replace file fingerprints.
+    design_md_body = _design_md_body(state)
+    expanded_prompt_body = _expanded_prompt_body(state)
     return make_llm_key(
         node="p4_beat",
         version=_CACHE_VERSION,
         slug=slug,
-        files=[
-            design_md_path,
-            expanded_prompt_path,
-        ],
-        extras=(beat_id, stable_fingerprint(plan_beat)),
+        files=[],
+        extras=(
+            beat_id,
+            stable_fingerprint(plan_beat),
+            stable_fingerprint(design_md_body),
+            stable_fingerprint(expanded_prompt_body),
+        ),
     )
 
 

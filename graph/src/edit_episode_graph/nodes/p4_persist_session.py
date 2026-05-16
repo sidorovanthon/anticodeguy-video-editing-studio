@@ -28,7 +28,7 @@ from langgraph.types import CachePolicy
 
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
-from .._caching import make_llm_key
+from .._caching import make_llm_key, stable_fingerprint
 from .._paths import EpisodePaths
 from ..schemas.p4_persist_session import PersistSessionOutput
 from ._llm import LLMNode, _load_brief
@@ -64,7 +64,11 @@ from ._llm import LLMNode, _load_brief
 # fresh run the body is empty (no prior project.md). Cache-key inputs
 # (`files=[index_html_path]`) unchanged in this PR — full Step E
 # refactor deferred.
-_CACHE_VERSION = 6
+# v7 (HOM-240 / Step E of HOM-230): cache-key migration —
+# `index_html_path` dropped from `files=` (file no longer on disk
+# pre-materialize); replaced with `stable_fingerprint` of the in-state
+# `compose.index_html` body. `files=` is now empty for this node.
+_CACHE_VERSION = 7
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -76,31 +80,24 @@ def _cache_key(state, *_args, **_kwargs):
     slug = state.get("slug") or "__unbound__"
     compose = state.get("compose") or {}
     assemble = compose.get("assemble") or {}
-    # HOM-224: index.html path derived via slug; legacy
-    # `compose.assemble.index_html_path` write removed. `assembled_at` ISO
-    # timestamp is the upstream success signal — fingerprint includes it
-    # via `extras` so cache invalidates when a new assembly run happens
-    # (different timestamp = different upstream content). The file itself
-    # is still in `files=[]` for content-fingerprint coverage.
-    index_html_path: str | None
-    if slug and slug != "__unbound__":
-        index_html_path = str(EpisodePaths(slug).index_html_path)
-    else:
-        index_html_path = assemble.get("index_html_path")  # legacy fallback
+    # HOM-240: index_html body fingerprint replaces index_html_path file
+    # fingerprint. The assembled root composition body lives in
+    # `compose.index_html` (HOM-236); the materializer writes the file at
+    # chain end, NOT while this node runs. `assembled_at` ISO timestamp
+    # stays in extras as a redundant upstream signal (any body change
+    # implies a different timestamp, but keeping both is cheap and makes
+    # the fingerprint robust to a body-identical re-assembly).
     assembled_at = assemble.get("assembled_at") or ""
-    # HOM-229: `today` is derived from `assembled_at[:10]` inside
-    # `_render_ctx`, so it's a pure function of `assembled_at` (already in
-    # extras). Including the wall-clock `datetime.now()` in the key was
-    # unsound — it made cross-day replays of identical content miss for no
-    # semantic reason. The Session block now reflects the assembly day, not
-    # the persist execution day; same-content re-runs cache-hit regardless
-    # of calendar.
+    index_html_body = compose.get("index_html") or ""
     return make_llm_key(
         node="p4_persist_session",
         version=_CACHE_VERSION,
         slug=slug,
-        files=[index_html_path],
-        extras=(assembled_at,),
+        files=[],
+        extras=(
+            assembled_at,
+            stable_fingerprint(index_html_body),
+        ),
     )
 
 

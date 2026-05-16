@@ -75,6 +75,25 @@ assemble-body fields). Body fields on existing sub-namespaces:
 Step C. All new fields are ``total=False`` and additive — no existing
 ``*_path`` field is removed; coexistence is intentional and Step E removes
 the path keys.
+
+HOM-240 (Step E of HOM-230) — top-level `ComposeState.*_path` echo fields
+DROPPED from the schema. Removed (writer in parens, all pre-HOM-224 dead
+fields): ``index_html_path``, ``design_md_path``, ``expanded_prompt_path``,
+``captions_block_path``. The Phase-4 creative-node cache keys now
+fingerprint the in-state body strings via ``stable_fingerprint`` rather
+than file_fingerprint of these paths — the files are no longer on disk
+while these nodes run (p4_materialize_disk is the single deterministic
+writer at chain end). Already-recorded checkpoints carrying these keys
+still parse cleanly (TypedDict ignores extras on read).
+
+The NESTED echoes — ``DesignState.design_md_path``,
+``ExpansionState.expanded_prompt_path``, ``CaptionsState.captions_block_path``
+— are intentionally RETAINED. They are Pydantic-schema echoes populated
+by the LLM via structured output (e.g. ``DesignDoc.design_md_path``) and
+consumed by ``gate:design_ok`` / ``gate:design_adherence`` for disk-side
+validation post-materialization. Dropping them here would require a
+coordinated schema + gate + brief refactor that's out of scope for this
+cache-key migration.
 """
 
 from operator import add
@@ -297,7 +316,6 @@ class PersistState(TypedDict, total=False):
 
 class ComposeState(TypedDict, total=False):
     hyperframes_dir: str | None
-    index_html_path: str | None
     # HOM-231 (Step A): assembled top-level index.html body returned by
     # p4_assemble_index. Top-level under compose (NOT nested under
     # `compose.assemble`) per the Linear ticket — flatness is fine because
@@ -306,10 +324,8 @@ class ComposeState(TypedDict, total=False):
     # `compose.assemble.index_html`; ticket simplified to flat.
     index_html: str | None
     design: DesignState
-    design_md_path: str | None
     style_request: str | None
     expansion: ExpansionState
-    expanded_prompt_path: str | None
     catalog: CatalogReport
     # HOM-231 (Step A): per-scene fragment bodies, keyed by scene_id.
     # DEPRECATED location — HOM-234 pre-check (2026-05-15) proved
@@ -337,7 +353,6 @@ class ComposeState(TypedDict, total=False):
     # `2026-05-04-hom-122-p4-beats-fan-out-design.md` §"State changes".
     beats: list[BeatArtifact]
     captions: CaptionsState
-    captions_block_path: str | None
     assemble: AssembleState
     # p4_persist_session (HOM-126): Phase 4 Session block appended to
     # <edit>/project.md. Shape mirrors EditState.persist; same PersistState

@@ -37,7 +37,7 @@ from langgraph.types import CachePolicy
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
 from ..schemas.p4_captions_layer import CaptionsOutput
-from .._caching import make_llm_key
+from .._caching import make_llm_key, stable_fingerprint
 from .._paths import EpisodePaths
 from ._llm import LLMNode, _load_brief
 
@@ -72,7 +72,12 @@ from ._llm import LLMNode, _load_brief
 # Transcript JSON gate stays disk-side (Phase 3 ffmpeg artifact). Cache-
 # key inputs (`files=[design_md_path, ...]`) unchanged in this PR —
 # full Step E refactor deferred.
-_CACHE_VERSION = 6
+# v7 (HOM-240 / Step E of HOM-230): cache-key migration —
+# `design_md_path` dropped from `files=` (file no longer on disk
+# pre-materialize); replaced with `stable_fingerprint` of the in-state
+# DESIGN.md body. `transcripts/final.json` stays in `files=` (Phase 3
+# disk artifact, legitimate file-fingerprint).
+_CACHE_VERSION = 7
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -83,21 +88,22 @@ def _cache_key(state, *_args, **_kwargs):
     # See p4_design_system._cache_key for the empty-slug rationale.
     slug = state.get("slug") or "__unbound__"
     # HOM-224: derive paths via EpisodePaths(slug) — identity-only state.
+    # HOM-240: design_md body fingerprint replaces design_md_path file
+    # fingerprint (file no longer on disk pre-materialize).
     if slug and slug != "__unbound__":
         paths = EpisodePaths(slug)
-        design_md_path: str | None = str(paths.design_md_path)
         final_json_path: str | None = str(paths.transcripts_final_json_path)
     else:
-        design_md_path = None
         final_json_path = None
+    design_md_body = _design_md_body(state)
     return make_llm_key(
         node="p4_captions_layer",
         version=_CACHE_VERSION,
         slug=slug,
         files=[
-            design_md_path,
             final_json_path,
         ],
+        extras=(stable_fingerprint(design_md_body),),
     )
 
 
