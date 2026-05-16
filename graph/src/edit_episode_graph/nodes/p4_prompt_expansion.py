@@ -45,7 +45,14 @@ from ._llm import LLMNode, _load_brief
 # prompt body remains in `compose.expansion.expanded_prompt`;
 # `p4_materialize_disk_node` is the single deterministic writer. Node
 # output contract changed (no more disk side-effect) → cache invalidation.
-_CACHE_VERSION = 4
+# v5 (HOM-265 / Step E partial of HOM-230): consumer-side gate switched
+# from disk-presence (`Path(design_md_path).is_file()`) to state-body
+# presence (`compose.design.design_md`). Brief migrated from
+# "Read this path" to embedded body — DESIGN.md is inlined directly in
+# the brief context so the sub-agent no longer calls `Read` on disk.
+# Cache-key inputs (`files=[design_md_path, ...]`) intentionally
+# unchanged in this PR — full Step E refactor deferred.
+_CACHE_VERSION = 5
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -121,6 +128,20 @@ def _design_md_path(state: dict) -> str:
     return str(design.get("design_md_path") or "")
 
 
+def _design_md_body(state: dict) -> str:
+    """HOM-265: read DESIGN.md body from state (post Step-D2 source of truth).
+
+    The body lives at `compose.design.design_md` (set by `p4_design_system`
+    in HOM-232 / Step B of HOM-230). Returns empty string when missing —
+    the node body uses that as the skip gate, replacing the prior
+    `Path(design_md_path).is_file()` disk-presence check.
+    """
+    compose = state.get("compose") or {}
+    design = compose.get("design") or {}
+    body = design.get("design_md")
+    return body if isinstance(body, str) else ""
+
+
 def _transcript_path(state: dict) -> str:
     """Resolve transcript JSON path via EpisodePaths(slug). Final wins over raw."""
     slug = state.get("slug")
@@ -139,6 +160,9 @@ def _render_ctx(state: dict) -> dict:
     return {
         "expanded_prompt_path": str(_expanded_prompt_path(state)),
         "design_md_path": _design_md_path(state),
+        # HOM-265: inline the DESIGN.md body into the brief (sub-agent no
+        # longer calls `Read` on the file). Step Step-E partial migration.
+        "design_md_body": _design_md_body(state),
         "strategy_json": json.dumps(_strategy(state), ensure_ascii=False),
         "edl_beats_json": json.dumps(_edl_beats(state), ensure_ascii=False),
         "transcript_json_path": _transcript_path(state),
@@ -165,17 +189,19 @@ def p4_prompt_expansion_node(state, *, router: BackendRouter | None = None):
     if not slug:
         return {"compose": {"expansion": {"skipped": True, "skip_reason": "no slug in state"}}}
 
-    design_md_path = _design_md_path(state)
-    # HOM-224: derived path is always non-empty when slug is present; gate
-    # on disk existence (the meaningful precondition — "DESIGN.md must be
-    # on disk before expansion runs"). Pre-HOM-224 the same outcome was
-    # achieved by the absence of the state echo.
-    if not design_md_path or not Path(design_md_path).is_file():
+    # HOM-265 (Step E partial of HOM-230): gate on STATE-BODY presence, not
+    # disk-file presence. The post-D2 source of truth for DESIGN.md is
+    # `state.compose.design.design_md` — `p4_materialize_disk_node` writes
+    # the file at chain end, but it is NOT on disk while this node runs.
+    if not _design_md_body(state):
         return {
             "compose": {
                 "expansion": {
                     "skipped": True,
-                    "skip_reason": "no DESIGN.md available — upstream p4_design_system must run first",
+                    "skip_reason": (
+                        "no DESIGN.md body in state — upstream p4_design_system "
+                        "must run first"
+                    ),
                 },
             },
         }

@@ -19,7 +19,6 @@ originally marked `cheap`; HOM-120 amends to `smart` (memory
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from langgraph.types import CachePolicy
 
@@ -35,7 +34,13 @@ from ._llm import LLMNode, _load_brief
 # min_length 1→0 (schemas encode invariants, not creative-direction targets).
 # v3 (HOM-224): identity-only state writes — paths derived via
 # `EpisodePaths(slug)` at use-sites; brief no longer renders `episode_dir`.
-_CACHE_VERSION = 3
+# v4 (HOM-265 / Step E partial of HOM-230): consumer-side gates switched
+# from disk-presence to state-body presence. Brief migrated from
+# "Read these paths" to embedded bodies — DESIGN.md and expanded-prompt.md
+# are inlined directly in the brief context so the sub-agent no longer
+# calls `Read` on either file. Cache-key inputs (`files=[...]`) unchanged
+# in this PR — full Step E refactor deferred.
+_CACHE_VERSION = 4
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -124,10 +129,29 @@ def _expanded_prompt_path(state: dict) -> str:
     return str(expansion.get("expanded_prompt_path") or "")
 
 
+def _design_md_body(state: dict) -> str:
+    """HOM-265: read DESIGN.md body from state (post Step-D2 source of truth)."""
+    compose = state.get("compose") or {}
+    design = compose.get("design") or {}
+    body = design.get("design_md")
+    return body if isinstance(body, str) else ""
+
+
+def _expanded_prompt_body(state: dict) -> str:
+    """HOM-265: read expanded-prompt.md body from state."""
+    compose = state.get("compose") or {}
+    expansion = compose.get("expansion") or {}
+    body = expansion.get("expanded_prompt")
+    return body if isinstance(body, str) else ""
+
+
 def _render_ctx(state: dict) -> dict:
     return {
         "design_md_path": _design_md_path(state),
         "expanded_prompt_path": _expanded_prompt_path(state),
+        # HOM-265: inline body strings — sub-agent no longer Reads from disk.
+        "design_md_body": _design_md_body(state),
+        "expanded_prompt_body": _expanded_prompt_body(state),
         "strategy_json": json.dumps(_strategy(state), ensure_ascii=False),
         "edl_beats_json": json.dumps(_edl_beats(state), ensure_ascii=False),
     }
@@ -152,29 +176,32 @@ def p4_plan_node(state, *, router: BackendRouter | None = None):
     if not slug:
         return {"compose": {"plan": {"skipped": True, "skip_reason": "no slug in state"}}}
 
-    # HOM-224: paths now always resolve via EpisodePaths(slug); skip when
-    # the upstream artifact does not exist on disk (the meaningful gate —
-    # "DESIGN.md is on disk" — replaces the previous "state echo present").
-    design_md = _design_md_path(state)
-    if not design_md or not Path(design_md).is_file():
-        return {
-            "compose": {
-                "plan": {
-                    "skipped": True,
-                    "skip_reason": "no DESIGN.md available — upstream p4_design_system must run first",
-                },
-            },
-        }
-
-    expanded_prompt = _expanded_prompt_path(state)
-    if not expanded_prompt or not Path(expanded_prompt).is_file():
+    # HOM-265 (Step E partial of HOM-230): gate on STATE-BODY presence, not
+    # disk-file presence. The post-D2 source of truth for these artifacts
+    # is `state.compose.design.design_md` / `state.compose.expansion.expanded_prompt`
+    # respectively — `p4_materialize_disk_node` writes the files at chain
+    # end, but they are NOT on disk while this node runs.
+    if not _design_md_body(state):
         return {
             "compose": {
                 "plan": {
                     "skipped": True,
                     "skip_reason": (
-                        "no expanded-prompt.md available — upstream p4_prompt_expansion must "
-                        "run first"
+                        "no DESIGN.md body in state — upstream p4_design_system "
+                        "must run first"
+                    ),
+                },
+            },
+        }
+
+    if not _expanded_prompt_body(state):
+        return {
+            "compose": {
+                "plan": {
+                    "skipped": True,
+                    "skip_reason": (
+                        "no expanded-prompt.md body in state — upstream "
+                        "p4_prompt_expansion must run first"
                     ),
                 },
             },

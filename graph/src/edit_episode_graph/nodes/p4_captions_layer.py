@@ -65,7 +65,14 @@ from ._llm import LLMNode, _load_brief
 # stripped. The body remains in `compose.captions.html`;
 # `p4_materialize_disk_node` is the single deterministic writer. Node
 # output contract changed → cache invalidation.
-_CACHE_VERSION = 5
+# v6 (HOM-265 / Step E partial of HOM-230): consumer-side DESIGN.md gate
+# switched from disk-presence to state-body presence. Brief migrated
+# from "Read DESIGN.md" to embedded body — DESIGN.md is inlined directly
+# in the brief context so the sub-agent no longer calls `Read` on it.
+# Transcript JSON gate stays disk-side (Phase 3 ffmpeg artifact). Cache-
+# key inputs (`files=[design_md_path, ...]`) unchanged in this PR —
+# full Step E refactor deferred.
+_CACHE_VERSION = 6
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -119,6 +126,14 @@ def _design_md_path(state: dict) -> str:
         return str(path)
     design = compose.get("design") or {}
     return str(design.get("design_md_path") or "")
+
+
+def _design_md_body(state: dict) -> str:
+    """HOM-265: read DESIGN.md body from state (post Step-D2 source of truth)."""
+    compose = state.get("compose") or {}
+    design = compose.get("design") or {}
+    body = design.get("design_md")
+    return body if isinstance(body, str) else ""
 
 
 def _transcript_path(state: dict) -> str:
@@ -176,6 +191,8 @@ def _render_ctx(state: dict) -> dict:
     return {
         "captions_block_path": str(captions_path) if captions_path else "",
         "design_md_path": _design_md_path(state),
+        # HOM-265: inline DESIGN.md body — sub-agent no longer Reads from disk.
+        "design_md_body": _design_md_body(state),
         "transcript_json_path": transcript_path,
         "transcript_json_filename": Path(transcript_path).name if transcript_path else "",
         "data_width": width,
@@ -234,14 +251,18 @@ def p4_captions_layer_node(state, *, router: BackendRouter | None = None):
             },
         }
 
-    design_md = _design_md_path(state)
-    if not design_md or not Path(design_md).is_file():
+    # HOM-265 (Step E partial of HOM-230): gate on STATE-BODY presence,
+    # not disk-file presence. DESIGN.md body lives in
+    # `state.compose.design.design_md`; `p4_materialize_disk_node` writes
+    # the file at chain end, NOT while this node runs.
+    if not _design_md_body(state):
         return {
             "compose": {
                 "captions": {
                     "skipped": True,
                     "skip_reason": (
-                        "no DESIGN.md available — upstream p4_design_system must run first"
+                        "no DESIGN.md body in state — upstream p4_design_system "
+                        "must run first"
                     ),
                 },
             },
