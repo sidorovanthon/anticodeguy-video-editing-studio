@@ -19,13 +19,34 @@ load-bearing and we do not paraphrase them here):
   boundary needs ONE explicit transition; the final scene MAY have a
   final-fade exit (and only the final scene).
 
-Inputs:
-- DESIGN.md path (read it; concept and mood for each beat must align with
-  the visual identity and beat_visual_mapping it defines): `/tmp/snapshot-fixture/episode/hyperframes/DESIGN.md`
-- expanded-prompt.md path (read it; the per-scene specs already produced by
+Inputs (HOM-265: DESIGN.md and expanded-prompt.md bodies are INLINED
+below — the files are NOT on disk while this node runs; the materializer
+writes them at chain end. Do NOT call `Read` on
+`/tmp/snapshot-fixture/episode/hyperframes/DESIGN.md` or `/tmp/snapshot-fixture/episode/hyperframes/.hyperframes/expanded-prompt.md`. Treat the bodies
+verbatim as if you had just read them):
+
+- DESIGN.md body — concept and mood for each beat must align with the
+  visual identity and beat_visual_mapping it defines:
+
+  ```design.md
+  # DESIGN.md — snapshot fixture
+
+(palette + typography body)
+
+  ```
+
+- expanded-prompt.md body — the per-scene specs already produced by
   Step 2 — your beats[] MUST cover the same scene set, with the same
   ordering, and your transitions[] MUST honor the same energy bands the
-  expansion declared): `/tmp/snapshot-fixture/episode/hyperframes/.hyperframes/expanded-prompt.md`
+  expansion declared:
+
+  ```expanded-prompt.md
+  # expanded-prompt.md — snapshot fixture
+
+(per-scene specs body)
+
+  ```
+
 - Strategy from Phase 3 (shape / takes / grade / pacing / length): `{"shape": "hook-problem-payoff", "takes": ["take-1"], "grade": "neutral, mild contrast lift", "pacing": "fast-SLOW-fast", "length_estimate_s": 30.0}`
 - EDL beats already chosen for the cut (these are the beat labels you MUST
   use verbatim in `beats[].beat` and the boundary list): `["HOOK", "PROBLEM", "PAYOFF"]`

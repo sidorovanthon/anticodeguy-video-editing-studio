@@ -11,9 +11,33 @@ Scene context:
 - output file: `/tmp/snapshot-fixture/episode/hyperframes/compositions/scene-hook.html`
 - plan beat (raw): `{"beat": "HOOK", "concept": "Tight typographic close-up; an oversized stat slams into existence.", "mood": "Editorial restraint, Stripe Press energy.", "energy": "medium", "duration_s": 6.9, "catalog_or_custom": "custom", "justification": "Off-axis layout carries the surprise; catalog hero blocks all centered."}`
 
-Upstream artefacts (read these via the `Read` tool before writing):
-- `/tmp/snapshot-fixture/episode/hyperframes/DESIGN.md` — visual identity (palette, typography, refs, anti-patterns, beat→visual mapping). Treat its `beat_visual_mapping` entry for this beat as load-bearing direction.
-- `/tmp/snapshot-fixture/episode/hyperframes/.hyperframes/expanded-prompt.md` — per-scene atmosphere brief (per `references/prompt-expansion.md`). Find your scene by `scene_id` / beat label and honour its motion + atmosphere notes.
+Upstream artefacts (HOM-265: DESIGN.md and expanded-prompt.md bodies are
+INLINED below — the files are NOT on disk while this node runs; the
+materializer writes them at chain end. Do NOT call `Read` on
+`/tmp/snapshot-fixture/episode/hyperframes/DESIGN.md` or `/tmp/snapshot-fixture/episode/hyperframes/.hyperframes/expanded-prompt.md`. Treat the bodies
+verbatim as if you had just read them):
+
+- DESIGN.md — visual identity (palette, typography, refs, anti-patterns,
+  beat→visual mapping). Treat its `beat_visual_mapping` entry for this
+  beat as load-bearing direction:
+
+  ```design.md
+  # DESIGN.md — snapshot fixture
+
+(palette + typography body)
+
+  ```
+
+- expanded-prompt.md — per-scene atmosphere brief (per
+  `references/prompt-expansion.md`). Find your scene by `scene_id` /
+  beat label and honour its motion + atmosphere notes:
+
+  ```expanded-prompt.md
+  # expanded-prompt.md — snapshot fixture
+
+(per-scene specs body)
+
+  ```
 
 Available registry (already installed by `p4_scaffold` / `p4_catalog_scan` — refer to these by name in your fragment if useful, do NOT reinvent):
 blocks:
@@ -145,7 +169,9 @@ These are patterns the LLM keeps re-introducing despite canon. Each iteration of
 
 Process:
 1. `Read` the canon list above (mandatory; do not rely on memory for shape or hard rules).
-2. `Read` `/tmp/snapshot-fixture/episode/hyperframes/DESIGN.md` and `/tmp/snapshot-fixture/episode/hyperframes/.hyperframes/expanded-prompt.md` for direction.
+2. Use the inlined DESIGN.md and expanded-prompt.md bodies above for
+   direction (HOM-265: do NOT call `Read` on those paths — they are not
+   on disk while this node runs).
 3. Compose ≥ 8 elements that honour the design system's typography + palette and the beat's energy/intent.
 4. Return JSON `BeatOutput { html: "<your scene fragment>" }` matching the shape above.
 
