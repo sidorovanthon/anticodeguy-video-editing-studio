@@ -99,6 +99,12 @@ class SnapshotGate(Gate):
         else:
             expected_frames = 5  # CLI default for --frames
 
+        # Runtime side-channel — `<hf>/snapshots/*.png` are output PNGs of
+        # the `hyperframes snapshot` subprocess, not authored episode
+        # artifacts (HOM-282 allowlist note — no project lint plugin
+        # exists today; comment-only deferral). The deterministic gate
+        # consumes them transiently to score blank-render risk and
+        # discards.
         # snapshot writes into <hf_dir>/snapshots/. Clear stale frames so
         # blank-render detection isn't masked by a previous good run.
         snapshots_dir = hf_dir / "snapshots"

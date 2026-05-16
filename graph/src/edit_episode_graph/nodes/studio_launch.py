@@ -120,6 +120,9 @@ def studio_launch_node(state: dict) -> dict:
 
     state_dir = hf_dir / ".hyperframes"
     state_dir.mkdir(parents=True, exist_ok=True)
+    # Runtime side-channel — Popen lifecycle bookkeeping, not an authored
+    # episode artifact (HOM-282 allowlist note — no project lint plugin
+    # exists today; comment-only deferral).
     log_path = state_dir / "preview.log"
     pid_path = state_dir / "preview.pid"
     port = _resolved_port(state)
