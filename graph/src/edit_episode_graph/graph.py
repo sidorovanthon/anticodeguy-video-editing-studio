@@ -210,6 +210,10 @@ from .nodes.p4_plan import (
     CACHE_POLICY as p4_plan_cache_policy,
     p4_plan_node,
 )
+from .nodes.p4_materialize_disk import (
+    CACHE_POLICY as p4_materialize_disk_cache_policy,
+    p4_materialize_disk_node,
+)
 from .nodes.p4_persist_session import (
     CACHE_POLICY as p4_persist_session_cache_policy,
     p4_persist_session_node,
@@ -373,6 +377,15 @@ def build_graph_uncompiled() -> StateGraph:
         p4_persist_session_node,
         cache_policy=p4_persist_session_cache_policy,
         retry_policy=_LLM_RETRY_POLICY,
+    )
+    # HOM-238 (Step C of HOM-230): single deterministic writer between
+    # p4_persist_session and studio_launch. Ships as a no-op — reads
+    # body fields from state, asserts presence, returns materialize
+    # timestamp. Step D1 activates atomic disk writes.
+    g.add_node(
+        "p4_materialize_disk",
+        p4_materialize_disk_node,
+        cache_policy=p4_materialize_disk_cache_policy,
     )
     g.add_node("studio_launch", studio_launch_node)
     g.add_node("gate_static_guard", static_guard_gate_node)
@@ -795,13 +808,18 @@ def build_graph_uncompiled() -> StateGraph:
     # the graph.
     # HOM-158: route_after_p4_persist_session no longer returns END — LLM
     # raises don't commit writes; persist_session always advances to studio.
+    # HOM-238: persist → materialize → studio_launch. The materializer
+    # is a no-op in Step C (asserts state body shape, returns timestamp).
+    # Step D1 activates atomic disk writes inside it and strips the
+    # dual-writes from producers.
     g.add_conditional_edges(
         "p4_persist_session",
         route_after_p4_persist_session,
         {
-            "studio_launch": "studio_launch",
+            "p4_materialize_disk": "p4_materialize_disk",
         },
     )
+    g.add_edge("p4_materialize_disk", "studio_launch")
     # HOM-125: studio_launch spawns `hyperframes preview --port 3002` in the
     # background, then gate:static_guard sleeps 5s and scans the preview log.
     g.add_conditional_edges(

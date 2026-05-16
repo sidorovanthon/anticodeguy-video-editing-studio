@@ -79,6 +79,24 @@ def halt_llm_boundary_node(state):
             return f"Phase 4 Session block skipped ({reason})"
         return "Phase 4 Session block: not yet persisted"
 
+    # HOM-238: p4_materialize_disk lives between p4_persist_session and
+    # studio_launch (no-op writer in Step C of HOM-230). Surface its
+    # status next to persist's so the operator sees the full post-persist
+    # chain. Step D1 will give this real meaning (atomic writes); for
+    # now ``materialized_at`` ≅ "no-op confirmed the body shape".
+    materialize_state = compose_state.get("materialize") or {}
+
+    def _materialize_summary() -> str:
+        if materialize_state.get("materialized_at"):
+            return (
+                "Phase 4 artifacts materialized at "
+                f"{materialize_state['materialized_at']}"
+            )
+        if materialize_state.get("skipped"):
+            reason = materialize_state.get("skip_reason") or "no reason given"
+            return f"Phase 4 materializer skipped ({reason})"
+        return "Phase 4 artifacts not yet materialized"
+
     # HOM-127: post-assemble gate cluster (lint → validate → inspect →
     # design_adherence → animation_map → snapshot → captions_track) sits
     # between p4_assemble_index and p4_persist_session. A failure on any
@@ -228,7 +246,7 @@ def halt_llm_boundary_node(state):
                     f"({n_v} violation(s)){advisory_part} — "
                     f"{worst_part}structural — adjust scene durations on "
                     "root timeline (p4_assemble_index concern); "
-                    f"{_persist_summary()}; "
+                    f"{_persist_summary()}; {_materialize_summary()}; "
                     "dead zones are not beat-actionable so "
                     "p4_redispatch_beat is not invoked"
                 )
@@ -236,7 +254,7 @@ def halt_llm_boundary_node(state):
         msg = (
             f"v4 halt: {gate_name} FAILED at iter {iter_n} ({n_v} violation(s)){advisory_part} — "
             "see gate_results; "
-            f"{_persist_summary()}; "
+            f"{_persist_summary()}; {_materialize_summary()}; "
             "p4_redispatch_beat retry-with-feedback exhausted (HOM-148, max 3 "
             "attempts); HITL user_review for cluster-gate failures is HOM-78/v6"
         )
@@ -250,14 +268,14 @@ def halt_llm_boundary_node(state):
                 extra = " (canon Video/Audio artifact — apply data-has-audio=\"false\")"
             msg = (
                 f"v4 halt: studio launched{port_part}, gate:static_guard PASSED{extra}; "
-                f"{_persist_summary()}; "
+                f"{_persist_summary()}; {_materialize_summary()}; "
                 "next is HITL user_review (HOM-78/v6) → p4_final_render"
             )
         else:
             n_v = len(static_guard_record.get("violations") or [])
             msg = (
                 f"v4 halt: gate:static_guard FAILED ({n_v} violation(s)) — see gate_results; "
-                f"{_persist_summary()}; "
+                f"{_persist_summary()}; {_materialize_summary()}; "
                 "v4-sans-HITL routes failures here, retry-with-feedback is HOM-78/v6"
             )
         return {"notices": [msg]}
@@ -298,7 +316,7 @@ def halt_llm_boundary_node(state):
                 f"({n} scene(s), {_captions_summary()}, {trans_part}); "
                 "next is gate cluster (lint → validate → inspect → "
                 "design_adherence → animation_map → snapshot → captions_track) "
-                "→ p4_persist_session → studio_launch; "
+                "→ p4_persist_session → p4_materialize_disk → studio_launch; "
                 "studio_launch did not record a static_guard result — see errors[]"
             )
         return {"notices": [msg]}

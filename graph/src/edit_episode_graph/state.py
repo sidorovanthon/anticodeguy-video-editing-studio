@@ -256,15 +256,20 @@ class SceneState(TypedDict, total=False):
 
 
 class MaterializeState(TypedDict, total=False):
-    """Placeholder for HOM-230 Step C ``p4_materialize_disk_node`` outputs.
+    """Outputs of HOM-230 Step C ``p4_materialize_disk_node``.
 
-    No fields required at Step A — the materializer's output shape is
-    finalized in its own PR. Schema slot reserved here so the topology
-    test for the future node has somewhere to land state without a
-    second schema-migration round.
+    ``materialized_at`` ISO 8601 timestamp set on success.
+    ``files_written`` empty in Step C (no-op); Step D1 populates it
+    once atomic disk writes activate. ``skipped`` / ``skip_reason``
+    mirror the upstream-skip propagation pattern used by every other
+    Phase 4 producer (design / expansion / captions / assemble /
+    persist) so the materializer behaves consistently when one of
+    those legitimately skipped on the way in.
     """
     materialized_at: str | None
     files_written: list[str]
+    skipped: bool
+    skip_reason: str | None
 
 
 class AssembleState(TypedDict, total=False):

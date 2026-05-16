@@ -165,6 +165,9 @@ PHASE3_EXPECTED_NODES = {
     "gate_snapshot",
     "gate_captions_track",
     "p4_persist_session",
+    # HOM-238 (Step C of HOM-230): no-op single deterministic writer
+    # between p4_persist_session and studio_launch.
+    "p4_materialize_disk",
     "studio_launch",
     "gate_static_guard",
 }
