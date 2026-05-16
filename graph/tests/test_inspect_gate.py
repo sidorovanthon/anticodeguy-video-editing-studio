@@ -17,15 +17,31 @@ from edit_episode_graph.gates.inspect import (
 )
 
 
-def _hf_with_index(tmp_path: Path, html: str = "<html></html>") -> Path:
+def _hf_with_index(tmp_path: Path, html: str = "<html></html>") -> tuple[Path, str]:
+    """Make an hf_dir on disk AND return the body string for state injection.
+
+    HOM-278: the gate now reads index.html from ``state.compose.index_html``,
+    not from disk. The on-disk file is still created because the gate also
+    needs ``hf_dir`` to exist for the CLI subprocess (Class B preflight at
+    ``inspect.py:209``, scope of HOM-281).
+    """
     hf_dir = tmp_path / "hyperframes"
     hf_dir.mkdir()
+    # On-disk file kept so hf_dir.is_dir() preflight succeeds; the gate no
+    # longer reads it for overflow-target opt-out resolution.
     (hf_dir / "index.html").write_text(html, encoding="utf-8")
-    return hf_dir
+    return hf_dir, html
 
 
-def _state_with_plan(hf_dir: Path, beats: list[dict] | None = None) -> dict:
+def _state_with_plan(
+    hf_dir: Path,
+    *,
+    index_html: str | None = None,
+    beats: list[dict] | None = None,
+) -> dict:
     state: dict = {"compose": {"hyperframes_dir": str(hf_dir)}}
+    if index_html is not None:
+        state["compose"]["index_html"] = index_html
     if beats is not None:
         state["compose"]["plan"] = {"beats": beats}
     return state
@@ -51,10 +67,10 @@ def _patch_run(monkeypatch: pytest.MonkeyPatch, exit_code: int, payload):
 
 
 def test_passes_when_no_overflows(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
-    hf_dir = _hf_with_index(tmp_path)
+    hf_dir, html = _hf_with_index(tmp_path)
     _patch_run(monkeypatch, 0, {"issues": []})
 
-    update = inspect_gate_node(_state_with_plan(hf_dir))
+    update = inspect_gate_node(_state_with_plan(hf_dir, index_html=html))
     record = update["gate_results"][0]
     assert record["passed"], record["violations"]
     assert record["gate"] == "gate:inspect"
@@ -63,7 +79,7 @@ def test_passes_when_no_overflows(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
 def test_fails_when_overflow_target_unmarked(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ):
-    hf_dir = _hf_with_index(
+    hf_dir, html = _hf_with_index(
         tmp_path,
         '<html><body><h1 class="hero">Long headline that overflows</h1></body></html>',
     )
@@ -79,7 +95,7 @@ def test_fails_when_overflow_target_unmarked(
     }
     _patch_run(monkeypatch, 1, payload)
 
-    update = inspect_gate_node(_state_with_plan(hf_dir))
+    update = inspect_gate_node(_state_with_plan(hf_dir, index_html=html))
     record = update["gate_results"][0]
     assert not record["passed"]
     assert any(".hero" in v for v in record["violations"])
@@ -89,7 +105,7 @@ def test_fails_when_overflow_target_unmarked(
 def test_passes_when_overflow_target_has_marker_directly(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ):
-    hf_dir = _hf_with_index(
+    hf_dir, html = _hf_with_index(
         tmp_path,
         '<html><body>'
         '<h1 class="hero" data-layout-allow-overflow>Headline</h1>'
@@ -102,7 +118,7 @@ def test_passes_when_overflow_target_has_marker_directly(
     }
     _patch_run(monkeypatch, 1, payload)
 
-    update = inspect_gate_node(_state_with_plan(hf_dir))
+    update = inspect_gate_node(_state_with_plan(hf_dir, index_html=html))
     record = update["gate_results"][0]
     assert record["passed"], record
 
@@ -111,7 +127,7 @@ def test_passes_when_ancestor_has_marker(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ):
     """Canon: marker on element OR ancestor opts out the subtree."""
-    hf_dir = _hf_with_index(
+    hf_dir, html = _hf_with_index(
         tmp_path,
         '<html><body>'
         '<section class="scene" data-layout-ignore>'
@@ -122,7 +138,7 @@ def test_passes_when_ancestor_has_marker(
     payload = {"issues": [{"type": "overflow", "selector": ".hero"}]}
     _patch_run(monkeypatch, 1, payload)
 
-    update = inspect_gate_node(_state_with_plan(hf_dir))
+    update = inspect_gate_node(_state_with_plan(hf_dir, index_html=html))
     record = update["gate_results"][0]
     assert record["passed"], record
 
@@ -132,7 +148,7 @@ def test_marker_on_unrelated_element_does_not_opt_out_target(
 ):
     """A marker on an element that isn't an ancestor of the overflow target
     must not silently opt the target out."""
-    hf_dir = _hf_with_index(
+    hf_dir, html = _hf_with_index(
         tmp_path,
         '<html><body>'
         '<aside class="decor" data-layout-allow-overflow>side</aside>'
@@ -142,19 +158,44 @@ def test_marker_on_unrelated_element_does_not_opt_out_target(
     payload = {"issues": [{"type": "overflow", "selector": ".hero"}]}
     _patch_run(monkeypatch, 1, payload)
 
-    update = inspect_gate_node(_state_with_plan(hf_dir))
+    update = inspect_gate_node(_state_with_plan(hf_dir, index_html=html))
     record = update["gate_results"][0]
     assert not record["passed"], record
+
+
+def test_fails_when_index_html_body_absent_in_state(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    """HOM-278 Class A: body absent in state.compose.index_html ⇒ infra fault.
+
+    Per the migration pattern (HOM-274 / HOM-270), a missing state channel
+    is treated as a violation with an informative message, not a silent
+    pass. Only fires when the CLI reported overflows requiring opt-out
+    resolution (the only code path that consults the body).
+    """
+    hf_dir, _ = _hf_with_index(tmp_path)
+    payload = {"issues": [{"type": "overflow", "selector": ".hero"}]}
+    _patch_run(monkeypatch, 1, payload)
+
+    # No index_html injected — body absent.
+    update = inspect_gate_node(_state_with_plan(hf_dir))
+    record = update["gate_results"][0]
+    assert not record["passed"]
+    assert any(
+        "index.html body absent in state.compose.index_html" in v
+        for v in record["violations"]
+    )
 
 
 def test_passes_args_at_beat_offsets(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ):
-    hf_dir = _hf_with_index(tmp_path)
+    hf_dir, html = _hf_with_index(tmp_path)
     captured = _patch_run(monkeypatch, 0, {"issues": []})
 
     state = _state_with_plan(
         hf_dir,
+        index_html=html,
         beats=[
             {"beat": "HOOK", "duration_s": 2.5},
             {"beat": "PROBLEM", "duration_s": 3.0},
@@ -171,17 +212,17 @@ def test_passes_args_at_beat_offsets(
 
 
 def test_omits_at_when_no_beats(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
-    hf_dir = _hf_with_index(tmp_path)
+    hf_dir, html = _hf_with_index(tmp_path)
     captured = _patch_run(monkeypatch, 0, {"issues": []})
 
-    inspect_gate_node({"compose": {"hyperframes_dir": str(hf_dir)}})
+    inspect_gate_node({"compose": {"hyperframes_dir": str(hf_dir), "index_html": html}})
     assert "--at" not in captured["args"]
 
 
 def test_fails_when_cli_errors_with_no_parseable_payload(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ):
-    hf_dir = _hf_with_index(tmp_path)
+    hf_dir, html = _hf_with_index(tmp_path)
 
     def fake_run(args, hf_dir, **kw):
         return _base.CliResult(
@@ -194,7 +235,7 @@ def test_fails_when_cli_errors_with_no_parseable_payload(
 
     monkeypatch.setattr("edit_episode_graph.gates.inspect.run_hf_cli", fake_run)
 
-    update = inspect_gate_node(_state_with_plan(hf_dir))
+    update = inspect_gate_node(_state_with_plan(hf_dir, index_html=html))
     record = update["gate_results"][0]
     assert not record["passed"]
     assert any("exit=2" in v for v in record["violations"])
@@ -206,10 +247,10 @@ def test_fails_when_cli_errors_with_parseable_payload_but_no_overflows(
     """Non-zero exit + valid JSON without an overflow list usually means a
     launch failure (e.g. `{"error": "puppeteer launch failed"}`). The gate
     must not pass silently in that shape."""
-    hf_dir = _hf_with_index(tmp_path)
+    hf_dir, html = _hf_with_index(tmp_path)
     _patch_run(monkeypatch, 1, {"error": "puppeteer launch failed"})
 
-    update = inspect_gate_node(_state_with_plan(hf_dir))
+    update = inspect_gate_node(_state_with_plan(hf_dir, index_html=html))
     record = update["gate_results"][0]
     assert not record["passed"]
     assert any("launch failure" in v for v in record["violations"])
@@ -231,12 +272,12 @@ def test_extract_overflows_from_root_list(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ):
     """CLI may emit a bare list as the JSON root; we still find overflows."""
-    hf_dir = _hf_with_index(
+    hf_dir, html = _hf_with_index(
         tmp_path, '<html><body><div class="x">x</div></body></html>'
     )
     _patch_run(monkeypatch, 1, [{"type": "overflow", "selector": ".x"}])
 
-    update = inspect_gate_node(_state_with_plan(hf_dir))
+    update = inspect_gate_node(_state_with_plan(hf_dir, index_html=html))
     record = update["gate_results"][0]
     assert not record["passed"]
 
@@ -246,7 +287,7 @@ def test_non_overflow_issues_are_ignored(
 ):
     """`inspect` may return non-overflow advisory entries; only overflow-class
     issues block the gate."""
-    hf_dir = _hf_with_index(tmp_path, "<html></html>")
+    hf_dir, html = _hf_with_index(tmp_path, "<html></html>")
     payload = {
         "issues": [
             {"type": "advisory", "selector": ".whatever", "message": "fyi"}
@@ -254,7 +295,7 @@ def test_non_overflow_issues_are_ignored(
     }
     _patch_run(monkeypatch, 0, payload)
 
-    update = inspect_gate_node(_state_with_plan(hf_dir))
+    update = inspect_gate_node(_state_with_plan(hf_dir, index_html=html))
     assert update["gate_results"][0]["passed"]
 
 

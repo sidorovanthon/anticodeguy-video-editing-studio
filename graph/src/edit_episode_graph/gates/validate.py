@@ -31,7 +31,6 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timezone
-from pathlib import Path
 
 from ._base import Gate, CliResult, hyperframes_dir, run_hf_cli
 
@@ -56,20 +55,22 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _has_opacity_zero_entrance(hf_dir: Path) -> bool:
-    """True if `index.html` contains the opacity-0 entrance pattern.
+def _has_opacity_zero_entrance(state: dict) -> bool:
+    """True if `index.html` body in state contains the opacity-0 entrance pattern.
 
     Deliberately conservative: presence of *any* `opacity: 0` is enough
     to suspect headless artifact. The downside of a false positive here
     is at most one missed real WCAG fail; the upside is we never
     accidentally trigger palette iteration on the documented artifact.
+
+    HOM-278 (Class A): state-first read. Under HOM-239 the assembled
+    index.html body lives in ``state.compose.index_html`` and is
+    written to disk later by ``p4_materialize_disk_node``. Reading
+    from disk here would race the materializer; read from state.
     """
-    index_path = hf_dir / "index.html"
-    if not index_path.is_file():
-        return False
-    try:
-        html = index_path.read_text(encoding="utf-8", errors="replace")
-    except OSError:
+    compose = state.get("compose") or {}
+    html = compose.get("index_html")
+    if not isinstance(html, str) or not html:
         return False
     return bool(_OPACITY_ZERO_ENTRANCE.search(html))
 
@@ -111,7 +112,7 @@ class ValidateGate(Gate):
         if result.ok:
             return [], {}
 
-        if _looks_like_wcag_failure(result) and _has_opacity_zero_entrance(hf_dir):
+        if _looks_like_wcag_failure(result) and _has_opacity_zero_entrance(state):
             return [], {
                 "headless_artifact_suspected": True,
                 "annotation": (

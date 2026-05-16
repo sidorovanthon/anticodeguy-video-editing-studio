@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import re
 from html.parser import HTMLParser
-from pathlib import Path
 from typing import Iterable, Sequence
 
 from ._base import Gate, hyperframes_dir, parse_cli_json, run_hf_cli
@@ -242,13 +241,19 @@ class InspectGate(Gate):
                 ]
             return []
 
-        index_path = hf_dir / "index.html"
-        html = ""
-        if index_path.is_file():
-            try:
-                html = index_path.read_text(encoding="utf-8", errors="replace")
-            except OSError:
-                html = ""
+        # HOM-278 (Class A): state-first read. Under HOM-239 the assembled
+        # index.html body lives in state.compose.index_html and is written
+        # to disk later by p4_materialize_disk_node. Reading from disk here
+        # would race the materializer; read the body from state instead.
+        # The CLI subprocess above still operates on the materialized
+        # hf_dir on disk (Class B preflight at line ~209, scope of HOM-281).
+        compose = state.get("compose") or {}
+        html = compose.get("index_html")
+        if not isinstance(html, str) or not html:
+            return [
+                "index.html body absent in state.compose.index_html — "
+                "p4_assemble_index did not populate state channel"
+            ]
 
         leaf_by_overflow: list[tuple[dict, str | None]] = []
         leaves: list[str] = []
@@ -259,7 +264,7 @@ class InspectGate(Gate):
             if leaf:
                 leaves.append(leaf)
 
-        opted_out = _opted_out_tokens(html, leaves) if leaves and html else set()
+        opted_out = _opted_out_tokens(html, leaves) if leaves else set()
 
         violations: list[str] = []
         for entry, leaf in leaf_by_overflow:
