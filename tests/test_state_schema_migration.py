@@ -18,6 +18,8 @@ from __future__ import annotations
 from edit_episode_graph.state import (
     ComposeState,
     GraphState,
+    TranscriptBodies,
+    TranscriptsState,
     _scenes_merge,
 )
 
@@ -130,6 +132,61 @@ def test_old_shape_roundtrips_through_jsonplus_serializer() -> None:
     assert "scenes" not in restored  # HOM-234: top-level scenes channel.
     assert "html" not in restored["compose"]["captions"]
     assert "design_md" not in restored["compose"]["design"]
+
+
+def test_old_transcripts_shape_parses_without_bodies_field() -> None:
+    """HOM-279 forward-compat: a pre-HOM-279 ``transcripts`` dict
+    (no ``bodies`` field) is still a valid ``TranscriptsState``.
+
+    Pre-HOM-279 ``glue_remap_transcript`` emitted only ``edl_hash`` on
+    success. Already-recorded fixture cache.db rows + in-flight
+    checkpoints carry that shape and MUST keep parsing under the new
+    schema — ``bodies`` is ``total=False``, so absence is a no-op.
+    """
+    old: TranscriptsState = {"edl_hash": "abc123"}  # type: ignore[assignment]
+    assert old["edl_hash"] == "abc123"
+    assert "bodies" not in old
+
+
+def test_new_transcripts_bodies_field_is_total_false() -> None:
+    """HOM-279: the four ``TranscriptBodies`` fields (raw, final,
+    raw_path, final_path) are all optional. A partial body dict
+    (e.g. ``raw`` only, ``final`` still ``None``) is valid — that's
+    the in-flight shape between Phase-3 raw transcription and the
+    EDL remap step.
+    """
+    partial: TranscriptBodies = {"raw": "{}", "raw_path": "/x/raw.json"}  # type: ignore[assignment]
+    assert partial["raw"] == "{}"
+    assert "final" not in partial
+    full: TranscriptBodies = {
+        "raw": "{}",
+        "final": '{"edl_hash":"x"}',
+        "raw_path": "/x/raw.json",
+        "final_path": "/x/final.json",
+    }  # type: ignore[assignment]
+    transcripts: TranscriptsState = {
+        "edl_hash": "x",
+        "bodies": full,
+    }  # type: ignore[assignment]
+    assert transcripts["bodies"]["final"].startswith("{")
+
+
+def test_old_transcripts_shape_roundtrips_through_jsonplus_serializer() -> None:
+    """HOM-279: pre-HOM-279 ``transcripts`` (no ``bodies``) roundtrips
+    through the LangGraph checkpoint serializer cleanly. Guards the
+    same in-flight-checkpoint contract as the compose-shape roundtrip.
+    """
+    from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+
+    serde = JsonPlusSerializer()
+    state = {
+        **_old_shape_state(),
+        "transcripts": {"edl_hash": "abc123"},
+    }
+    type_tag, blob = serde.dumps_typed(state)
+    restored = serde.loads_typed((type_tag, blob))
+    assert restored == state
+    assert "bodies" not in restored["transcripts"]
 
 
 def test_new_scenes_field_merges_via_reducer_when_added() -> None:
