@@ -221,6 +221,12 @@ def _plan_state(tmp_path: Path, beats: list[tuple[str, float]]) -> dict:
     HOM-236: scene bodies live in the top-level `scenes` channel (populated
     by `_write_fragment` below); the node no longer reads fragments from
     `<hyperframes_dir>/compositions/<scene_id>.html`.
+
+    HOM-280: the scaffolded root index.html body is sourced from
+    `compose.scaffold.index_html` (populated here) instead of disk. The
+    `index_html_path` echo is kept for legacy helpers (`_index_html_path`
+    fallback) and so the on-disk file exists for tests that assert the
+    materializer-equivalent disk side-effect.
     """
     hf_dir = tmp_path / "hyperframes"
     hf_dir.mkdir()
@@ -229,6 +235,10 @@ def _plan_state(tmp_path: Path, beats: list[tuple[str, float]]) -> dict:
     return {
         "compose": {
             "index_html_path": str(index),
+            "scaffold": {
+                "index_html": SCAFFOLDED_INDEX,
+                "scaffolded_at": "2026-05-16T12:00:00+00:00",
+            },
             "plan": {
                 "beats": [
                     {"beat": label, "duration_s": dur} for label, dur in beats
@@ -259,6 +269,8 @@ def test_node_skips_when_no_plan_beats():
 
 
 def test_node_errors_when_index_html_missing(tmp_path):
+    """HOM-280: error surfaces when `compose.scaffold.index_html` is
+    absent from state (was previously a disk-file existence check)."""
     state = {
         "compose": {
             "index_html_path": str(tmp_path / "missing.html"),
@@ -267,6 +279,7 @@ def test_node_errors_when_index_html_missing(tmp_path):
     }
     update = p4_assemble_index_node(state)
     assert update["errors"][0]["node"] == "p4_assemble_index"
+    assert "scaffold" in update["errors"][0]["message"].lower()
 
 
 def test_node_inlines_fragments_in_plan_order(tmp_path):
@@ -315,6 +328,30 @@ def test_node_returns_index_html_body_in_state(tmp_path):
         "HOM-239: assemble must NOT dual-write to disk (materializer is "
         "the single writer)"
     )
+
+
+def test_node_succeeds_when_disk_index_html_absent(tmp_path):
+    """HOM-280 acceptance: a `p4_scaffold` cache hit replays
+    `compose.scaffold.index_html` into state without re-running the
+    subprocess, so the on-disk `<hf>/index.html` may not exist when
+    `p4_assemble_index` runs. The node must read from state and
+    succeed regardless of disk presence.
+    """
+    state = _plan_state(tmp_path, [("Hook", 3.0), ("Payoff", 5.0)])
+    _write_fragment(state, "hook", "h-body")
+    _write_fragment(state, "payoff", "p-body")
+
+    # Simulate the cache-hit scenario: delete the disk file that
+    # `_plan_state` seeded for back-compat helpers.
+    Path(state["compose"]["index_html_path"]).unlink()
+    assert not Path(state["compose"]["index_html_path"]).is_file()
+
+    update = p4_assemble_index_node(state)
+    assert "errors" not in update, update.get("errors")
+    body = update["compose"]["index_html"]
+    assert "h-body" in body
+    assert "p-body" in body
+    assert "p4_assemble_index: end" in body
 
 
 def test_node_aggregates_missing_scenes_into_single_skip(tmp_path):
@@ -842,3 +879,11 @@ def test_node_root_position_chain_in_assembled_index(tmp_path):
         "every scene id from the JS chain must also appear as a "
         "`<div id=\"scene-...\" data-start=\"...\">` in the HTML"
     )
+
+
+# HOM-280 fingerprint invariants live under `tests/test_fingerprint_invalidation.py`
+# (root tests/ tree, alongside the `tests/_helpers/fingerprint_assertions.py`
+# registry they consume). Deterministic-node entries (`p4_scaffold`,
+# `p4_assemble_index`) are exempt from the CREATIVE_NODES parametrisation
+# because they use `make_key`, not `make_llm_key` — see the registry comments
+# and the focused tests in `tests/test_fingerprint_invalidation.py`.

@@ -18,6 +18,7 @@ from __future__ import annotations
 from edit_episode_graph.state import (
     ComposeState,
     GraphState,
+    ScaffoldState,
     TranscriptBodies,
     TranscriptsState,
     _scenes_merge,
@@ -187,6 +188,54 @@ def test_old_transcripts_shape_roundtrips_through_jsonplus_serializer() -> None:
     restored = serde.loads_typed((type_tag, blob))
     assert restored == state
     assert "bodies" not in restored["transcripts"]
+
+
+def test_old_compose_shape_parses_without_scaffold_field() -> None:
+    """HOM-280 forward-compat: a pre-HOM-280 ``compose`` dict (no
+    ``scaffold`` sub-state) is still a valid ``ComposeState``.
+
+    Pre-HOM-280 ``p4_scaffold`` emitted only notices — the scaffolded
+    ``index.html`` lived on disk, not in state. Already-recorded fixture
+    cache.db rows + in-flight checkpoints carry no ``compose.scaffold``
+    field and MUST keep parsing under the new schema. ``scaffold`` is
+    ``total=False`` on ``ComposeState`` and ``ScaffoldState`` fields are
+    ``total=False`` too, so absence is a no-op.
+    """
+    compose: ComposeState = _old_shape_compose()  # type: ignore[assignment]
+    assert "scaffold" not in compose
+
+
+def test_new_scaffold_field_is_total_false() -> None:
+    """HOM-280: the two ``ScaffoldState`` fields (``index_html``,
+    ``scaffolded_at``) are all optional. Partial dicts and fully-populated
+    dicts are both valid.
+    """
+    empty: ScaffoldState = {}  # type: ignore[assignment]
+    assert "index_html" not in empty
+    partial: ScaffoldState = {"index_html": "<html/>"}  # type: ignore[assignment]
+    assert partial["index_html"] == "<html/>"
+    assert "scaffolded_at" not in partial
+    full: ScaffoldState = {
+        "index_html": "<html/>",
+        "scaffolded_at": "2026-05-16T12:00:00+00:00",
+    }  # type: ignore[assignment]
+    compose: ComposeState = {"scaffold": full}  # type: ignore[assignment]
+    assert compose["scaffold"]["index_html"] == "<html/>"
+
+
+def test_old_compose_shape_roundtrips_through_jsonplus_serializer() -> None:
+    """HOM-280: pre-HOM-280 ``compose`` (no ``scaffold``) roundtrips
+    through the LangGraph checkpoint serializer cleanly. Guards the
+    same in-flight-checkpoint contract as the prior compose-shape
+    roundtrip — but specifically pins the HOM-280 schema bump."""
+    from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+
+    serde = JsonPlusSerializer()
+    state = _old_shape_state()
+    type_tag, blob = serde.dumps_typed(state)
+    restored = serde.loads_typed((type_tag, blob))
+    assert restored == state
+    assert "scaffold" not in restored["compose"]
 
 
 def test_new_scenes_field_merges_via_reducer_when_added() -> None:
