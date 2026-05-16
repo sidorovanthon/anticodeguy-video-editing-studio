@@ -15,6 +15,8 @@ shape of the Command object the node returns.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from langgraph.constants import END
 from langgraph.types import Command, Send
 
@@ -79,15 +81,25 @@ def _root_html(width: int = 1920, height: int = 1080) -> str:
 
 
 def _state_with_index(tmp_path, *, html: str | None = None) -> dict:
+    """HOM-280: root index.html body is sourced from
+    `compose.scaffold.index_html` (hoisted by `p4_scaffold`). The on-disk
+    file is kept for legacy back-compat callers (`_index_html_path`
+    derivation) but the dispatcher no longer reads it.
+    """
     hf = tmp_path / "hyperframes"
     hf.mkdir()
     index = hf / "index.html"
-    index.write_text(html if html is not None else _root_html(), encoding="utf-8")
+    body = html if html is not None else _root_html()
+    index.write_text(body, encoding="utf-8")
     return {
         "episode_dir": str(tmp_path),
         "compose": {
             "hyperframes_dir": str(hf),
             "index_html_path": str(index),
+            "scaffold": {
+                "index_html": body,
+                "scaffolded_at": "2026-05-16T12:00:00+00:00",
+            },
             "catalog": {"blocks": [], "components": [], "fetched_at": "2026-05-04T00:00:00Z"},
             "plan": {
                 "narrative_arc": "x",
@@ -125,12 +137,46 @@ def test_skip_when_catalog_missing(tmp_path):
 
 
 def test_skip_when_index_html_missing(tmp_path):
+    """HOM-280: skip when neither `compose.scaffold.index_html` nor
+    `compose.index_html` is in state (was previously a disk-existence
+    check)."""
     state = _state_with_index(tmp_path)
-    state["compose"]["index_html_path"] = str(tmp_path / "nope.html")
+    state["compose"].pop("scaffold", None)
+    state["compose"].pop("index_html", None)
     out = p4_dispatch_beats_node(state)
     assert isinstance(out, Command)
     assert out.goto == "p4_assemble_index"
     assert any("index" in n.lower() for n in (out.update or {}).get("notices", []))
+
+
+def test_dispatch_succeeds_when_disk_index_html_absent(tmp_path):
+    """HOM-280 acceptance: on a `p4_scaffold` cache hit the on-disk
+    `<hf>/index.html` may be absent, but `compose.scaffold.index_html`
+    is replayed into state. The dispatcher must read from state and
+    fan out regardless of disk presence.
+    """
+    state = _state_with_index(tmp_path)
+    # Delete the disk file seeded by the helper.
+    Path(state["compose"]["index_html_path"]).unlink()
+    out = p4_dispatch_beats_node(state)
+    assert isinstance(out, Command)
+    assert isinstance(out.goto, list)
+    assert all(isinstance(s, Send) for s in out.goto)
+    payloads = [s.arg["_beat_dispatch"] for s in out.goto]
+    assert [p["data_width"] for p in payloads] == [1920, 1920, 1920]
+
+
+def test_dispatch_prefers_post_assemble_index_html_when_present(tmp_path):
+    """HOM-280: once `p4_assemble_index` has run, `compose.index_html`
+    holds the post-assemble body (still carries the viewport meta). The
+    dispatcher prefers it over `compose.scaffold.index_html` — both
+    parse the same viewport, but using the freshest body keeps the
+    Send payload consistent with the rest of the chain."""
+    state = _state_with_index(tmp_path)
+    state["compose"]["index_html"] = _root_html(width=1080, height=1920)
+    out = p4_dispatch_beats_node(state)
+    payloads = [s.arg["_beat_dispatch"] for s in out.goto]
+    assert all(p["data_width"] == 1080 and p["data_height"] == 1920 for p in payloads)
 
 
 def test_skip_when_dimensions_unparseable(tmp_path):

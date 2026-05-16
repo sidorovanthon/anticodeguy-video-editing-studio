@@ -80,12 +80,19 @@ def _captions_block_path(state: dict) -> Path | None:
     return None
 
 # Bump on assemble_html / shim shape / marker change. Spec §8.
+# v8 (HOM-280): the scaffolded root index.html is now read from state
+# (`compose.scaffold.index_html`, hoisted by `p4_scaffold`) instead of
+# disk. Removes the last `read_text` on a Phase-4 disk artifact in
+# `nodes/` and closes the cache-hit-vs-disk-write race that previously
+# required `p4_scaffold._CACHE_VERSION` bumps to force re-runs. The
+# cache key now fingerprints the scaffold body in extras alongside the
+# scene + captions + design tokens; the scaffold body and the patched
+# output are 1:1, so re-running on the same scaffold body is a no-op.
 # v7 (HOM-239 / Step D2 of HOM-230): dual-write of patched `index.html`
 # stripped. The assembled body lives in `compose.index_html`;
 # `p4_materialize_disk_node` is the single deterministic writer. The
-# scaffolded root index.html is still read from disk (it's `p4_scaffold`'s
-# untracked subprocess output, not a committed artifact). Node output
-# contract changed (no more disk side-effect) → cache invalidation.
+# scaffolded root index.html WAS still read from disk under v7 — HOM-280
+# closes that exception.
 # v6 (HOM-236): state-first artifacts (Step B5 of HOM-230). Read-site
 # rewired from disk (`scene_path.read_text` / `captions_path.read_text`)
 # to state — scenes via `state["scenes"][sid].html` (top-level channel
@@ -137,7 +144,7 @@ def _captions_block_path(state: dict) -> Path | None:
 # this, every scene-1+ frame stays at the fromTo from-state — the
 # Phase 4 black-screen symptom HOM-164 was filed for. Repro confirmed in a
 # clean `npx hyperframes init` scaffold; fix is purely orchestrator-side.
-_CACHE_VERSION = 7
+_CACHE_VERSION = 8
 
 
 def _scene_html_paths(state: dict) -> list[str | None]:
@@ -222,6 +229,13 @@ def _cache_key(state, *_args, **_kwargs):
         "palette": design.get("palette"),
         "typography": design.get("typography"),
     }
+    # HOM-280: the scaffolded root index.html body is now an in-state
+    # input (`compose.scaffold.index_html`, hoisted by p4_scaffold).
+    # Fingerprint it via extras — re-scaffolding (which produces a
+    # byte-identical body for the same slug today, but may not under
+    # future scaffold tweaks) flips the key correctly.
+    scaffold_state = compose.get("scaffold") or {}
+    scaffold_body = scaffold_state.get("index_html") or ""
     return make_key(
         node="p4_assemble_index",
         version=_CACHE_VERSION,
@@ -231,6 +245,7 @@ def _cache_key(state, *_args, **_kwargs):
             stable_fingerprint(scene_bodies),
             stable_fingerprint(captions_body),
             stable_fingerprint(design_tokens),
+            stable_fingerprint(scaffold_body),
         ),
     )
 
@@ -573,11 +588,19 @@ def p4_assemble_index_node(state):
     if not plan_beats:
         return _skip("no beats in compose.plan (p4_plan must run first)")
 
-    index_path = _index_html_path(state)
-    if index_path is None:
-        return _error("slug missing in state — cannot resolve index.html path")
-    if not index_path.is_file():
-        return _error(f"root index.html not found at {index_path} (p4_scaffold must run first)")
+    # HOM-280: scaffolded root index.html body is sourced from state
+    # (`compose.scaffold.index_html`, hoisted by p4_scaffold). The disk
+    # read is gone — `p4_materialize_disk_node` is the single
+    # deterministic writer downstream, and on a `p4_scaffold` cache hit
+    # the body is replayed into state without re-running the subprocess
+    # (and therefore without re-writing the file).
+    scaffold_state = compose.get("scaffold") or {}
+    root_html = scaffold_state.get("index_html") if isinstance(scaffold_state, dict) else None
+    if not isinstance(root_html, str) or not root_html:
+        return _error(
+            "compose.scaffold.index_html missing from state "
+            "(p4_scaffold must run first)"
+        )
 
     # HOM-236: scenes are sourced from state (`state["scenes"][sid].html`),
     # not from disk. The top-level `scenes` channel is populated by
@@ -636,7 +659,7 @@ def p4_assemble_index_node(state):
     tokens_block = build_root_tokens_block(
         design.get("palette"), design.get("typography")
     )
-    root_html = index_path.read_text(encoding="utf-8")
+    # HOM-280: `root_html` sourced from state above (no disk read).
     # NOTE: cumulative_s computed for `scene_starts` passed to
     # `build_visibility_shim`. Root `data-duration` reconciliation deliberately
     # NOT done here — see HOM-220 (follow-up) for refitting `p4_plan` beat

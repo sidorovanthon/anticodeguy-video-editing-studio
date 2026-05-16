@@ -115,6 +115,54 @@ def test_p4_beat_expanded_prompt_invalidates_fingerprint(tmp_path):
 # ---------------------------------------------------------------------------
 
 
+def test_p4_scaffold_cache_version_bump_invalidates_key(tmp_path):
+    """HOM-280: `p4_scaffold` is deterministic (make_key). The
+    CREATIVE_NODES parametrisation exercises `make_llm_key`
+    invariants (cfg fingerprint), which don't apply. Pin the version
+    bump + slug invariants here as focused tests.
+    """
+    from tests._helpers.fingerprint_assertions import (
+        assert_brief_change_invalidates,
+    )
+
+    assert_brief_change_invalidates("p4_scaffold", tmp_path=tmp_path)
+
+
+def test_p4_scaffold_slug_change_invalidates_key(tmp_path):
+    """HOM-280: `_cache_key` reads slug only (files=[]). The registry
+    mutator flips the slug, which MUST flip the key."""
+    from tests._helpers.fingerprint_assertions import (
+        assert_upstream_artifact_change_invalidates,
+    )
+
+    assert_upstream_artifact_change_invalidates(
+        "p4_scaffold", tmp_path=tmp_path
+    )
+
+
+def test_p4_assemble_index_cache_version_bump_invalidates_key(tmp_path):
+    """HOM-280: `p4_assemble_index` is deterministic (make_key). Same
+    exemption from CREATIVE_NODES — focused test for the version bump."""
+    from tests._helpers.fingerprint_assertions import (
+        assert_brief_change_invalidates,
+    )
+
+    assert_brief_change_invalidates("p4_assemble_index", tmp_path=tmp_path)
+
+
+def test_p4_assemble_index_scaffold_body_change_invalidates_key(tmp_path):
+    """HOM-280: editing `compose.scaffold.index_html` MUST flip the
+    cache key. The scaffold body is the HOM-280-specific input added
+    to the existing scene/captions/design extras."""
+    from tests._helpers.fingerprint_assertions import (
+        assert_upstream_artifact_change_invalidates,
+    )
+
+    assert_upstream_artifact_change_invalidates(
+        "p4_assemble_index", tmp_path=tmp_path
+    )
+
+
 def test_helper_raises_when_keys_match(tmp_path):
     """A no-op mutation must trigger AssertionError — proves the helper checks."""
     from tests._helpers.fingerprint_assertions import _node_base_state

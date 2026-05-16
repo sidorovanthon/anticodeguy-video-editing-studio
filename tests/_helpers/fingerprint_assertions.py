@@ -255,6 +255,53 @@ def _p4_captions_layer_base(tmp_dir: Path) -> dict:
     }
 
 
+def _p4_scaffold_base(tmp_dir: Path) -> dict:
+    """Base state for p4_scaffold cache key (HOM-280).
+
+    The node's `_cache_key` reads slug only (`files=[]`) — the subprocess
+    is deterministic given slug+episode_dir, and the post-HOM-280 output
+    (`compose.scaffold.index_html`) is fully derived from the subprocess.
+    The registry mutator therefore flips the SLUG (not a file or state
+    body) — that's the only `_cache_key` input besides `_CACHE_VERSION`.
+    """
+    _pin_project_root_to(tmp_dir)
+    return {
+        "slug": _FP_SLUG,
+        "compose": {},
+    }
+
+
+def _p4_assemble_index_base(tmp_dir: Path) -> dict:
+    """Base state for p4_assemble_index cache key (HOM-280).
+
+    Post-HOM-280 the cache key fingerprints (in extras):
+      - scene bodies from `state.scenes[<sid>].html`
+      - captions body from `compose.captions.html`
+      - design tokens (palette + typography) from `compose.design`
+      - scaffold body from `compose.scaffold.index_html` (HOM-280 add)
+
+    The registry mutator flips `compose.scaffold.index_html` — that's
+    the HOM-280-specific fingerprint input. Pre-existing inputs are
+    covered by their own producer-node fingerprint tests.
+    """
+    _pin_project_root_to(tmp_dir)
+    return {
+        "slug": _FP_SLUG,
+        "compose": {
+            "scaffold": {
+                "index_html": "<html><body>scaffolded</body></html>",
+            },
+            "plan": {"beats": [{"beat": "Hook", "duration_s": 3.0}]},
+            "design": {
+                "palette": [{"role": "background", "hex": "#000"}],
+                "typography": [{"role": "body", "family": "Inter"}],
+            },
+            "captions": {"html": "<div/>"},
+        },
+        "scenes": {"hook": {"html": "<div id='scene-hook'/>"}},
+    }
+
+
 def _p4_beat_base(tmp_dir: Path) -> dict:
     """HOM-224 → HOM-240: paths derived via EpisodePaths(slug). Post-HOM-240
     `_cache_key` fingerprints in-state body strings only (files=[]).
@@ -397,6 +444,29 @@ _NODE_REGISTRY: dict[
         "edit_episode_graph.nodes.p4_persist_session",
         _p4_persist_session_base,
         _mutate_state_at("compose", "index_html"),
+    ),
+    # HOM-280: p4_scaffold is a deterministic node (make_key, not
+    # make_llm_key). The CREATIVE_NODES parametrised invariants don't
+    # apply (no `cfg:<sha>` extra to flip), so this entry is consumed
+    # by focused tests in `graph/tests/test_p4_scaffold_node.py`
+    # (HOM-204 pattern — gate_animation_map carries the same exemption).
+    # The mutator flips the slug because `files=[]` and the cache key
+    # depends on slug + _CACHE_VERSION only.
+    "p4_scaffold": (
+        "edit_episode_graph.nodes.p4_scaffold",
+        _p4_scaffold_base,
+        lambda s: s.update(slug=s["slug"] + "-v2"),
+    ),
+    # HOM-280: p4_assemble_index is deterministic (make_key). Same
+    # exemption from CREATIVE_NODES — focused tests in
+    # `graph/tests/test_p4_assemble_index_node.py`. The mutator flips
+    # the new HOM-280 input (scaffold body); pre-existing inputs
+    # (scenes / captions / design) are covered by their producer
+    # nodes' fingerprint tests.
+    "p4_assemble_index": (
+        "edit_episode_graph.nodes.p4_assemble_index",
+        _p4_assemble_index_base,
+        _mutate_state_at("compose", "scaffold", "index_html"),
     ),
     # HOM-156 (review S1): cheap-tier LLM classifier extracted into its own
     # graph node so cache_policy= actually fires.
