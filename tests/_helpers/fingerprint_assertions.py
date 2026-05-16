@@ -110,6 +110,51 @@ def _p4_design_system_base(tmp_dir: Path) -> dict:
     }
 
 
+def _p4_prompt_expansion_base(tmp_dir: Path) -> dict:
+    """Base state for p4_prompt_expansion cache key (HOM-240).
+
+    Post-HOM-240 the node's `_cache_key`:
+      - files=[transcripts_final_json_path] — Phase 3 disk artifact.
+      - extras += stable_fingerprint(design_md body in state).
+
+    Seed both the disk transcript (file-edit invariant) and the in-state
+    DESIGN.md body (state-mutation invariant).
+    """
+    episode_dir = _pin_project_root_to(tmp_dir)
+    transcript = episode_dir / "edit" / "transcripts" / "final.json"
+    transcript.parent.mkdir(parents=True, exist_ok=True)
+    transcript.write_text('{"segments":[]}', encoding="utf-8")
+    return {
+        "slug": _FP_SLUG,
+        "episode_dir": str(episode_dir),
+        "compose": {"design": {"design_md": "# DESIGN.md fixture\n"}},
+        "edit": {"edl": {"ranges": []}, "strategy": {"shape": "hpp"}},
+    }
+
+
+def _p4_plan_base(tmp_dir: Path) -> dict:
+    """Base state for p4_plan cache key (HOM-240).
+
+    Post-HOM-240 the node's `_cache_key`:
+      - files=[transcripts_final_json_path] — Phase 3 disk artifact.
+      - extras += stable_fingerprint(design_md body),
+                  stable_fingerprint(expanded_prompt body).
+    """
+    episode_dir = _pin_project_root_to(tmp_dir)
+    transcript = episode_dir / "edit" / "transcripts" / "final.json"
+    transcript.parent.mkdir(parents=True, exist_ok=True)
+    transcript.write_text('{"segments":[]}', encoding="utf-8")
+    return {
+        "slug": _FP_SLUG,
+        "episode_dir": str(episode_dir),
+        "compose": {
+            "design": {"design_md": "# DESIGN.md fixture\n"},
+            "expansion": {"expanded_prompt": "# expanded-prompt fixture\n"},
+        },
+        "edit": {"edl": {"ranges": []}, "strategy": {"shape": "hpp"}},
+    }
+
+
 def _gate_animation_map_classify_base(tmp_dir: Path) -> dict:
     """Base state for the gate_animation_map_classify LLM node.
 
@@ -166,20 +211,19 @@ def _gate_animation_map_classify_base(tmp_dir: Path) -> dict:
 
 
 def _p4_persist_session_base(tmp_dir: Path) -> dict:
-    """HOM-229: cache key fingerprints `EpisodePaths(slug).index_html_path`
-    + extras=(assembled_at,). Seed the index.html on disk so the file
-    fingerprint flips on edit; provide a stable assembled_at so the key
-    is reproducible across calls.
+    """HOM-229 → HOM-240: cache key fingerprints `compose.index_html` body
+    + extras=(assembled_at,). Pre-HOM-240 it file_fingerprinted
+    `EpisodePaths(slug).index_html_path`; post-HOM-240 the file is no
+    longer on disk while this node runs, so the body in state is the
+    source of truth.
     """
     episode_dir = _pin_project_root_to(tmp_dir)
-    hf_dir = episode_dir / "hyperframes"
-    hf_dir.mkdir(parents=True, exist_ok=True)
-    (hf_dir / "index.html").write_text("<html></html>", encoding="utf-8")
     return {
         "slug": _FP_SLUG,
         "episode_dir": str(episode_dir),
         "compose": {
             "assemble": {"assembled_at": "2026-05-10T12:00:00+00:00"},
+            "index_html": "<html><body>fp fixture</body></html>",
         },
     }
 
@@ -187,38 +231,34 @@ def _p4_persist_session_base(tmp_dir: Path) -> dict:
 def _p4_captions_layer_base(tmp_dir: Path) -> dict:
     """Base state for p4_captions_layer cache key.
 
-    HOM-224: paths derive via EpisodePaths(slug). The node fingerprints
-    `design_md_path` (DESIGN.md) and `transcripts_final_json_path` —
-    both must exist on disk so file_fingerprint can sha256 them.
+    HOM-224: paths derive via EpisodePaths(slug).
+    HOM-240: `design_md_path` dropped from files=; DESIGN.md body lives
+    in `compose.design.design_md`. `transcripts_final_json_path` stays
+    in files= (Phase 3 disk artifact).
     """
     episode_dir = _pin_project_root_to(tmp_dir)
-    hf_dir = episode_dir / "hyperframes"
-    hf_dir.mkdir(parents=True, exist_ok=True)
-    design_md = hf_dir / "DESIGN.md"
-    design_md.write_text("# DESIGN.md fixture\n", encoding="utf-8")
     transcript = episode_dir / "edit" / "transcripts" / "final.json"
     transcript.parent.mkdir(parents=True, exist_ok=True)
     transcript.write_text('{"words":[]}', encoding="utf-8")
     return {
         "slug": _FP_SLUG,
         "episode_dir": str(episode_dir),
-        "compose": {},
+        "compose": {"design": {"design_md": "# DESIGN.md fixture\n"}},
     }
 
 
 def _p4_beat_base(tmp_dir: Path) -> dict:
+    """HOM-224 → HOM-240: paths derived via EpisodePaths(slug). Post-HOM-240
+    `_cache_key` fingerprints in-state body strings only (files=[]).
+    """
     episode_dir = _pin_project_root_to(tmp_dir)
-    # HOM-224: paths derive via EpisodePaths(slug); seed at slug-derived layout.
-    design_md = episode_dir / "hyperframes" / "DESIGN.md"
-    design_md.parent.mkdir(parents=True, exist_ok=True)
-    design_md.write_text("# DESIGN.md fixture\n", encoding="utf-8")
-    expanded = episode_dir / "hyperframes" / ".hyperframes" / "expanded-prompt.md"
-    expanded.parent.mkdir(parents=True, exist_ok=True)
-    expanded.write_text("# expanded\n", encoding="utf-8")
     return {
         "slug": _FP_SLUG,
         "episode_dir": str(episode_dir),
-        "compose": {},
+        "compose": {
+            "design": {"design_md": "# DESIGN.md fixture\n"},
+            "expansion": {"expanded_prompt": "# expanded-prompt fixture\n"},
+        },
         "_beat_dispatch": {
             "scene_id": "scene-hook",
             "plan_beat": {"beat": "HOOK", "concept": "fixture", "duration_s": 5.0},
@@ -226,19 +266,43 @@ def _p4_beat_base(tmp_dir: Path) -> dict:
     }
 
 
-# Map node_name → (module_path, base_state_factory, primary_artifact_pointer).
+# Map node_name → (module_path, base_state_factory, upstream_mutator).
 #
-# ``primary_artifact_pointer`` is a callable ``(state) -> Path`` returning
-# the upstream file the node's ``_cache_key`` content-hashes via
-# ``files=`` — used by :func:`assert_upstream_artifact_change_invalidates`.
-def _slug_path(prop_name: str) -> Callable[[dict], Path]:
-    """HOM-224: primary_artifact_pointer that derives via EpisodePaths(slug).
+# ``upstream_mutator`` is a callable ``(state: dict) -> None`` that
+# mutates a load-bearing upstream input — either by editing a file in
+# ``files=`` or by overwriting a state body in ``extras=`` —
+# such that the node's ``_cache_key`` MUST flip. Used by
+# :func:`assert_upstream_artifact_change_invalidates`.
+#
+# HOM-240 (Step E of HOM-230): mutator semantics changed from
+# path-pointer to free-form callable. Pre-HOM-240 the third slot was a
+# ``Callable[[dict], Path]`` returning the file whose content the
+# helper would sha-edit. Post-HOM-240, Phase-4 creative nodes
+# fingerprint in-state body strings (the canonical disk files are no
+# longer present while the node runs — `p4_materialize_disk` is the
+# single deterministic writer at chain end). The mutator now does
+# whatever is needed to flip the key: write to a file that's still in
+# ``files=``, or mutate a state body in ``extras=``.
+from edit_episode_graph._paths import EpisodePaths
 
-    Returns a callable suitable for the registry's third tuple slot.
-    Resolves at call time so HOMESTUDIO_PROJECT_ROOT (set by the per-node
-    base factory) is in effect.
-    """
-    from edit_episode_graph._paths import EpisodePaths
+
+def _mutate_file(get_path: Callable[[dict], Path]) -> Callable[[dict], None]:
+    """Return a mutator that appends bytes to a slug-derived file."""
+
+    def _mut(state: dict) -> None:
+        target = get_path(state)
+        if not target.exists():
+            raise FileNotFoundError(
+                f"upstream_mutator: expected file at {target} but it was not "
+                "seeded by base-state factory"
+            )
+        target.write_bytes(target.read_bytes() + b"\n# fp-mutated\n")
+
+    return _mut
+
+
+def _slug_path(prop_name: str) -> Callable[[dict], Path]:
+    """Slug-derived path resolver — uses EpisodePaths(slug).<prop_name>."""
 
     def _resolve(state: dict) -> Path:
         slug = state["slug"]
@@ -248,62 +312,85 @@ def _slug_path(prop_name: str) -> Callable[[dict], Path]:
     return _resolve
 
 
-def _p3_strategy_takes_packed(state: dict) -> Path:
-    """p3_strategy fingerprints `<edit>/takes_packed.md` (slug-derived)."""
-    from edit_episode_graph._paths import EpisodePaths
-    return EpisodePaths(state["slug"]).edit_dir / "takes_packed.md"
+def _mutate_state_at(*path: str) -> Callable[[dict], None]:
+    """Return a mutator that overwrites a state body string at `path`.
+
+    Each segment is a dict key; intermediate dicts are auto-created.
+    Used post-HOM-240 for nodes whose `_cache_key` fingerprints in-state
+    bodies rather than disk files.
+    """
+
+    def _mut(state: dict) -> None:
+        cur: dict = state
+        for key in path[:-1]:
+            nxt = cur.get(key)
+            if not isinstance(nxt, dict):
+                nxt = {}
+                cur[key] = nxt
+            cur = nxt
+        prior = cur.get(path[-1]) or ""
+        cur[path[-1]] = str(prior) + "\n# fp-mutated\n"
+
+    return _mut
 
 
-_NODE_REGISTRY: dict[str, tuple[str, Callable[[Path], dict], Callable[[dict], Path]]] = {
+_p3_strategy_mutator = _mutate_file(
+    lambda s: EpisodePaths(s["slug"]).edit_dir / "takes_packed.md"
+)
+
+
+_NODE_REGISTRY: dict[
+    str, tuple[str, Callable[[Path], dict], Callable[[dict], None]]
+] = {
     "p3_strategy": (
         "edit_episode_graph.nodes.p3_strategy",
         _p3_strategy_base,
-        _p3_strategy_takes_packed,
+        _p3_strategy_mutator,
     ),
+    # p4_design_system: files=[final_json_path, edl_path] (Phase 3 disk),
+    # extras=(strategy_fingerprint,). The Phase 3 transcript file edit
+    # still flips the key — no HOM-240 migration needed for this node
+    # (it produces DESIGN.md, doesn't consume it).
     "p4_design_system": (
         "edit_episode_graph.nodes.p4_design_system",
         _p4_design_system_base,
-        _slug_path("transcripts_final_json_path"),
+        _mutate_file(_slug_path("transcripts_final_json_path")),
     ),
-    # NOTE(HOM-234 PR #140 review S2): primary_artifact is `design_md_path`,
-    # but `_cache_key` hashes BOTH `design_md_path` AND `expanded_prompt_path`
-    # via `files=`. The parametrised invariant only exercises the primary;
-    # the secondary (expanded-prompt.md) is covered by the focused
-    # `test_p4_beat_expanded_prompt_invalidates_fingerprint` in
-    # tests/test_fingerprint_invalidation.py.
+    # HOM-240: p4_beat files=[]; cache_key fingerprints
+    # `compose.design.design_md` + `compose.expansion.expanded_prompt`
+    # in state. Mutator overwrites the design body to flip the key.
     "p4_beat": (
         "edit_episode_graph.nodes.p4_beat",
         _p4_beat_base,
-        _slug_path("design_md_path"),
+        _mutate_state_at("compose", "design", "design_md"),
     ),
-    # HOM-235: cache key fingerprints `design_md_path` (primary) AND
-    # `transcripts_final_json_path` via `files=`. The parametrised
-    # invariant only exercises the primary; the secondary is the only
-    # other `files=` entry and is exercised implicitly via _CACHE_VERSION
-    # bump + cfg fingerprint coverage.
+    # HOM-240: p4_captions_layer files=[final_json_path];
+    # `compose.design.design_md` moved to extras. Use the state-body
+    # mutator — the file_fingerprint path also flips it, but the body
+    # mutator catches a Step-E regression (e.g. someone reintroducing
+    # `design_md_path` to files= without removing the extras entry).
     "p4_captions_layer": (
         "edit_episode_graph.nodes.p4_captions_layer",
         _p4_captions_layer_base,
-        _slug_path("design_md_path"),
+        _mutate_state_at("compose", "design", "design_md"),
     ),
-    # HOM-229: cache key now deterministic — extras=(assembled_at,) and
-    # `today` derived from it. The three parametrised invariants apply:
-    # _CACHE_VERSION bump, cfg fingerprint, upstream artifact (index.html) edit.
+    # HOM-240: p4_persist_session files=[];
+    # cache_key fingerprints `compose.index_html` body.
     "p4_persist_session": (
         "edit_episode_graph.nodes.p4_persist_session",
         _p4_persist_session_base,
-        _slug_path("index_html_path"),
+        _mutate_state_at("compose", "index_html"),
     ),
     # HOM-156 (review S1): cheap-tier LLM classifier extracted into its own
-    # graph node so cache_policy= actually fires. Registry entry now points
-    # at the node module, not the gate module.
-    # HOM-225: primary_artifact derives via EpisodePaths(slug) — cache key
-    # no longer reads `compose.hyperframes_dir`.
+    # graph node so cache_policy= actually fires.
+    # HOM-225: primary_artifact derives via EpisodePaths(slug).
     "gate_animation_map_classify": (
         "edit_episode_graph.nodes.gate_animation_map_classify",
         _gate_animation_map_classify_base,
-        lambda s: _slug_path("hyperframes_dir")(s)
-        / ".hyperframes" / "anim-map" / "animation-map.json",
+        _mutate_file(
+            lambda s: _slug_path("hyperframes_dir")(s)
+            / ".hyperframes" / "anim-map" / "animation-map.json"
+        ),
     ),
 }
 
@@ -326,8 +413,8 @@ def _node_base_state(node_name: str, tmp_dir: Path) -> dict:
     return _NODE_REGISTRY[node_name][1](tmp_dir)
 
 
-def _primary_artifact_path(node_name: str, state: dict) -> Path:
-    return _NODE_REGISTRY[node_name][2](state)
+def _upstream_mutator(node_name: str) -> Callable[[dict], None]:
+    return _NODE_REGISTRY[node_name][2]
 
 
 def _compute_key(node_name: str, state: dict) -> str:
@@ -440,28 +527,36 @@ def assert_upstream_artifact_change_invalidates(
     tmp_path: Path,
     artifact_path: Path | None = None,
 ) -> None:
-    """Editing a file in ``files=`` MUST change the key.
+    """Mutating a load-bearing upstream input MUST change the cache key.
 
-    Default: uses the per-node ``primary_artifact_pointer`` from the
-    registry. Pass ``artifact_path`` to override (e.g. when checking a
-    secondary artifact in the node's ``files=`` list).
+    The upstream input may be either a file in ``files=`` (pre-HOM-240
+    shape — Phase 3 disk artifacts) or a state body in ``extras=``
+    (post-HOM-240 shape — Phase 4 creative nodes after the state-first
+    cutover). The per-node registry mutator decides which.
+
+    Pass ``artifact_path`` to override and force a file edit at a custom
+    path (used by the secondary-artifact focused test for p4_beat
+    ``expanded-prompt.md``).
     """
     state = _node_base_state(node_name, tmp_path)
-    target = artifact_path if artifact_path is not None else _primary_artifact_path(node_name, state)
-    target = Path(target)
-    if not target.exists():
-        raise FileNotFoundError(
-            f"{node_name}: primary artifact {target} not seeded by base-state factory"
-        )
-
     before = _compute_key(node_name, state)
-    # Append distinct content so sha256 differs deterministically.
-    target.write_bytes(target.read_bytes() + b"\n# fp-mutated\n")
+    if artifact_path is not None:
+        target = Path(artifact_path)
+        if not target.exists():
+            raise FileNotFoundError(
+                f"{node_name}: artifact override {target} not seeded by "
+                "base-state factory"
+            )
+        target.write_bytes(target.read_bytes() + b"\n# fp-mutated\n")
+        diagnostic = f"file {target} edited"
+    else:
+        mutator = _upstream_mutator(node_name)
+        mutator(state)
+        diagnostic = f"upstream_mutator for {node_name} ran"
     after = _compute_key(node_name, state)
     assert before != after, (
-        f"{node_name}: cache key did not change when {target} content was edited "
-        f"— files= list may not include this artifact (or file_fingerprint "
-        f"is no longer content-hashing)"
+        f"{node_name}: cache key did not change when {diagnostic} "
+        f"— files=/extras= may not cover this input"
     )
 
 
