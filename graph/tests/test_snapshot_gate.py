@@ -20,15 +20,20 @@ _GOOD_PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * (50 * 1024)
 _BLANK_PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 1024
 
 
-def _hf(tmp_path: Path) -> Path:
+def _hf(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """HOM-281: also route the gate's ``materialize_into_tmpdir`` to this dir."""
     hf_dir = tmp_path / "hyperframes"
     hf_dir.mkdir()
     (hf_dir / "index.html").write_text("<html></html>", encoding="utf-8")
+    monkeypatch.setattr(
+        "edit_episode_graph.gates.snapshot.materialize_into_tmpdir",
+        lambda state, slug=None: hf_dir,
+    )
     return hf_dir
 
 
 def _state(hf_dir: Path, beats: list[dict] | None = None) -> dict:
-    state: dict = {"compose": {"hyperframes_dir": str(hf_dir)}}
+    state: dict = {"slug": "demo", "compose": {"hyperframes_dir": str(hf_dir)}}
     if beats is not None:
         state["compose"]["plan"] = {"beats": beats}
     return state
@@ -88,7 +93,7 @@ def _patch_run_writing_frames(
 def test_passes_when_all_frames_above_threshold(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ):
-    hf_dir = _hf(tmp_path)
+    hf_dir = _hf(tmp_path, monkeypatch)
     _patch_run_writing_frames(monkeypatch, exit_code=0)
 
     update = snapshot_gate_node(
@@ -102,7 +107,7 @@ def test_passes_when_all_frames_above_threshold(
 def test_fails_when_any_frame_below_threshold(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ):
-    hf_dir = _hf(tmp_path)
+    hf_dir = _hf(tmp_path, monkeypatch)
     # Two frames; second is tiny (simulated black/blank render).
     _patch_run_writing_frames(
         monkeypatch,
@@ -121,7 +126,7 @@ def test_fails_when_any_frame_below_threshold(
 def test_fails_when_cli_exits_nonzero(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ):
-    hf_dir = _hf(tmp_path)
+    hf_dir = _hf(tmp_path, monkeypatch)
 
     def fake_run(args, hf_dir, **kw):
         return _base.CliResult(
@@ -144,7 +149,7 @@ def test_fails_when_fewer_frames_than_expected(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ):
     """CLI succeeds but only writes some of the expected PNGs."""
-    hf_dir = _hf(tmp_path)
+    hf_dir = _hf(tmp_path, monkeypatch)
     captured: dict = {}
 
     def fake_run(args, hf_dir, **kw):
@@ -177,7 +182,7 @@ def test_fails_when_fewer_frames_than_expected(
 def test_passes_at_arg_at_beat_offsets(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ):
-    hf_dir = _hf(tmp_path)
+    hf_dir = _hf(tmp_path, monkeypatch)
     captured = _patch_run_writing_frames(monkeypatch, exit_code=0)
 
     snapshot_gate_node(
@@ -198,7 +203,7 @@ def test_passes_at_arg_at_beat_offsets(
 def test_omits_at_when_no_beats(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ):
-    hf_dir = _hf(tmp_path)
+    hf_dir = _hf(tmp_path, monkeypatch)
     captured = _patch_run_writing_frames(monkeypatch, exit_code=0)
 
     snapshot_gate_node(_state(hf_dir))
@@ -210,7 +215,7 @@ def test_clears_stale_frames_before_run(
 ):
     """Stale frames from a prior good run must not mask a new blank-render
     failure when fewer fresh frames are produced."""
-    hf_dir = _hf(tmp_path)
+    hf_dir = _hf(tmp_path, monkeypatch)
     snapshots_dir = hf_dir / "snapshots"
     snapshots_dir.mkdir()
     # Pre-populate with an old good frame that should NOT survive.
@@ -238,16 +243,27 @@ def test_clears_stale_frames_before_run(
     assert any("blank/black render" in v for v in record["violations"])
 
 
-def test_fails_when_no_hyperframes_dir_in_state():
+def test_fails_when_no_slug_in_state():
     update = snapshot_gate_node({})
     assert not update["gate_results"][0]["passed"]
+    assert any("no slug" in v for v in update["gate_results"][0]["violations"])
 
 
-def test_fails_when_hyperframes_dir_missing_on_disk(tmp_path: Path):
-    update = snapshot_gate_node(
-        {"compose": {"hyperframes_dir": str(tmp_path / "nope")}}
+def test_fails_when_materialize_into_tmpdir_raises(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    def boom(state, slug=None):
+        raise RuntimeError("required body field missing")
+
+    monkeypatch.setattr(
+        "edit_episode_graph.gates.snapshot.materialize_into_tmpdir", boom
     )
+    update = snapshot_gate_node({"slug": "demo"})
     assert not update["gate_results"][0]["passed"]
+    assert any(
+        "materialize_into_tmpdir failed" in v
+        for v in update["gate_results"][0]["violations"]
+    )
 
 
 def test_beat_start_offsets_cumulative():

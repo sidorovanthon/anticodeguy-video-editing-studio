@@ -141,7 +141,8 @@ from pathlib import Path
 
 from .._caching import make_key
 from .._paths import EpisodePaths
-from ._base import Gate, hyperframes_dir
+from ..nodes._materialize_tmpdir import materialize_into_tmpdir
+from ._base import Gate
 
 
 # Bump on brief / schema / pass-criteria change. See HOM-132 spec §8.
@@ -160,7 +161,15 @@ from ._base import Gate, hyperframes_dir
 #   `state["episode_dir"]` chain. Mirrors the HOM-224 p4 migration —
 #   identity-only state. Same migration applied to `_animation_map_json_path`
 #   (used in advisory notice surface) for consistency.
-_CACHE_VERSION = 6
+# v7 = HOM-281: subprocess cwd migrated from canonical hf_dir to a
+#   transient tmpdir produced by ``materialize_into_tmpdir``. Helper-script
+#   resolution still targets the canonical hf_dir so its bundled sibling
+#   deps (`@hyperframes/producer`) resolve. The `animation-map.json`
+#   output now lands under the tmpdir rather than `<hf_dir>/.hyperframes/`;
+#   the advisory-notice path still surfaces the canonical hf_dir target
+#   so the operator's path expectation is unchanged. Cache-key inputs
+#   unchanged ⇒ semantic bump only.
+_CACHE_VERSION = 7
 
 
 # Helper script paths (relative to roots; joined with appropriate root).
@@ -660,23 +669,32 @@ class AnimationMapGate(Gate):
         """
         empty_advisory: dict = {"always_fix": [], "dead_zones": [], "pending_classify": []}
 
-        hf_dir = hyperframes_dir(state)
-        if hf_dir is None:
+        slug = state.get("slug")
+        if not slug:
             return (
-                ["no hyperframes_dir / episode_dir in state — cannot run animation-map"],
+                ["no slug in state — cannot materialize HF tmpdir for animation-map"],
                 empty_advisory,
                 [],
                 {},
             )
-        if not hf_dir.is_dir():
-            return ([f"hyperframes dir not on disk: {hf_dir}"], empty_advisory, [], {})
+        try:
+            hf_dir = materialize_into_tmpdir(state, slug=slug)
+        except RuntimeError as exc:
+            return ([f"materialize_into_tmpdir failed: {exc}"], empty_advisory, [], {})
 
-        helper, used_fallback = _resolve_helper(hf_dir)
+        # Helper-script resolution prefers the bundled copy under
+        # ``<canonical hf_dir>/node_modules/...`` so its sibling-deps
+        # ancestor-walk (`@hyperframes/producer`) succeeds — the tmpdir
+        # never carries ``node_modules/``. The script's input project
+        # and output dir still point at the tmpdir so the analyzer reads
+        # the materialized index.html and writes its JSON next to it.
+        canonical_hf_dir = EpisodePaths(slug).hyperframes_dir
+        helper, used_fallback = _resolve_helper(canonical_hf_dir)
         if helper is None:
             return (
                 [
                     "animation-map.mjs not found at bundled path "
-                    f"{hf_dir / _BUNDLED_REL} or global fallback {_GLOBAL_FALLBACK}"
+                    f"{canonical_hf_dir / _BUNDLED_REL} or global fallback {_GLOBAL_FALLBACK}"
                 ],
                 empty_advisory,
                 [],

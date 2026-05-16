@@ -30,7 +30,8 @@ from __future__ import annotations
 
 import json
 
-from ._base import Gate, hyperframes_dir, run_hf_cli
+from ..nodes._materialize_tmpdir import materialize_into_tmpdir
+from ._base import Gate, run_hf_cli
 
 
 # Findings we suppress because the canonical remedy (split into
@@ -112,11 +113,13 @@ class LintGate(Gate):
         super().__init__(name="gate:lint")
 
     def checks(self, state: dict) -> list[str]:
-        hf_dir = hyperframes_dir(state)
-        if hf_dir is None:
-            return ["no hyperframes_dir / episode_dir in state — cannot run lint"]
-        if not hf_dir.is_dir():
-            return [f"hyperframes dir not on disk: {hf_dir}"]
+        slug = state.get("slug")
+        if not slug:
+            return ["no slug in state — cannot materialize HF tmpdir for lint"]
+        try:
+            hf_dir = materialize_into_tmpdir(state, slug=slug)
+        except RuntimeError as exc:
+            return [f"materialize_into_tmpdir failed: {exc}"]
 
         json_result = run_hf_cli(["lint", "--json"], hf_dir)
         stdout = (json_result.stdout or "").strip()

@@ -44,13 +44,27 @@ def test_parse_rejects_non_array():
         parse_catalog_stdout('{"blocks": []}')
 
 
-def test_node_errors_when_episode_dir_missing():
+def test_node_errors_when_slug_missing():
+    """HOM-281: slug is now load-bearing — the node derives the
+    subprocess cwd via ``materialize_scaffold_tmpdir(state, slug=...)``,
+    which requires the slug. Previously the node looked up
+    ``state['episode_dir']`` directly."""
     update = p4_catalog_scan_node({})
     assert update["errors"][0]["node"] == "p4_catalog_scan"
-    assert "episode_dir" in update["errors"][0]["message"]
+    assert "slug" in update["errors"][0]["message"]
 
 
-def test_node_errors_when_hyperframes_dir_missing(tmp_path):
-    update = p4_catalog_scan_node({"episode_dir": str(tmp_path)})
+def test_node_errors_when_materializer_raises(monkeypatch):
+    """HOM-281: a materializer failure (e.g. scaffold ancillary read
+    error) surfaces as a node error rather than crashing the run."""
+
+    def boom(state, slug=None):
+        raise RuntimeError("scaffold dir missing under episodes/demo")
+
+    monkeypatch.setattr(
+        "edit_episode_graph.nodes.p4_catalog_scan.materialize_scaffold_tmpdir",
+        boom,
+    )
+    update = p4_catalog_scan_node({"slug": "demo"})
     assert update["errors"][0]["node"] == "p4_catalog_scan"
-    assert "hyperframes/" in update["errors"][0]["message"]
+    assert "materialize_scaffold_tmpdir failed" in update["errors"][0]["message"]
