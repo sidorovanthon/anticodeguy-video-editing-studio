@@ -737,6 +737,15 @@ class AnimationMapGate(Gate):
         except (OSError, json.JSONDecodeError) as exc:
             return ([f"could not parse {report_path}: {exc}"], empty_advisory, [], extras)
 
+        # HOM-282 (Class C fold-in): hoist the parsed helper output into
+        # the gate record's extras so downstream consumers
+        # (``gate_animation_map_classify``) read from state instead of
+        # re-opening the JSON file on disk. The disk file remains a
+        # debug artifact owned by the external helper subprocess
+        # (Class C — runtime side-channel, not an authored episode
+        # artifact); it is no longer load-bearing for control flow.
+        extras["animation_map_report"] = report
+
         # HOM-212: resolve operator-tunable carve-out config.
         cfg = _gate_config()
         # Distinguish "absent" (use defaults) from "explicit empty list"

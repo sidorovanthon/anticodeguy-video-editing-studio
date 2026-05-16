@@ -74,7 +74,16 @@ from ._llm import LLMNode, _load_brief
 #      no p4 node writes after HOM-224). Without this bump, DESIGN.md
 #      edits silently fail to invalidate the classifier cache on fresh
 #      runs because the legacy slot is `None`.
-_CACHE_VERSION = 4
+# v5 = HOM-282 — brief input set migrated: `animation-map.json` is no
+#      longer Read from disk by the sub-agent; the parsed report is
+#      inlined via the upstream gate record's
+#      `animation_map_report` extras (Class C fold-in). The cache key
+#      still fingerprints `animation_map_json_path` via `files=` so
+#      content changes invalidate as before — but the brief no longer
+#      depends on the file being present at dispatch time. Bump
+#      invalidates so recordings made under v4 (which assumed `Read`
+#      tool calls on the file) are not replayed under the new brief.
+_CACHE_VERSION = 5
 
 
 # ---------------------------------------------------------------------------
@@ -184,11 +193,35 @@ def _pending_classify(state: dict) -> list[dict]:
     return list(advisory.get("pending_classify") or [])
 
 
+def _animation_map_report(state: dict) -> dict | None:
+    """HOM-282 (Class C fold-in): prefer the parsed report hoisted into
+    the upstream gate record's ``extras`` over the on-disk JSON file.
+
+    The deterministic gate (``gates/animation_map.py``) parses
+    ``animation-map.json`` once and stashes the result under
+    ``gate_results[-1].animation_map_report``. Reading it from state
+    here keeps the classifier's brief input fully state-fed — the disk
+    file becomes a debug artifact, not control flow.
+    """
+    record = _latest_animation_map_record(state)
+    if not record:
+        return None
+    report = record.get("animation_map_report")
+    return report if isinstance(report, dict) else None
+
+
 def _render_ctx(state: dict) -> dict:
     anim_path = _animation_map_path(state)
     flagged = _pending_classify(state)
+    report = _animation_map_report(state)
     return {
+        # Path retained for brief context only (operator-facing debug
+        # reference — the agent must NOT re-Read it; the body is
+        # inlined via ``animation_map_json``).
         "animation_map_json_path": str(anim_path) if anim_path else "",
+        # HOM-282 (Class C fold-in): inline the parsed helper output
+        # in the brief so the sub-agent does not Read the JSON file.
+        "animation_map_json": json.dumps(report or {}, ensure_ascii=False),
         "design_md_path": _design_md_path(state),
         "plan_beats_json": json.dumps(_plan_beats(state), ensure_ascii=False),
         "flagged_tweens_json": json.dumps(flagged, ensure_ascii=False),

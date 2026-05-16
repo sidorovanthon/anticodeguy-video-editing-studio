@@ -155,6 +155,30 @@ def test_clean_report_passes_with_empty_advisory_findings(tmp_path, monkeypatch)
     assert "advisory" in notice and "no findings" in notice
 
 
+def test_record_extras_hoist_parsed_animation_map_report(tmp_path, monkeypatch):
+    """HOM-282 (Class C fold-in): the parsed `animation-map.json` body
+    is folded into the gate record's `animation_map_report` extras so
+    downstream consumers (`gate_animation_map_classify`) read from
+    state instead of re-opening the disk file.
+    """
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    report = {
+        "duration": 12.0,
+        "tweens": [
+            {"index": 1, "selector": ".title", "duration": 0.6, "flags": []},
+        ],
+        "deadZones": [],
+    }
+    _stub_helper(monkeypatch, report=report)
+    update = animation_map_gate_node(_state(hf_dir))
+    record = update["gate_results"][0]
+    assert record.get("animation_map_report") == report, (
+        "gate record must hoist parsed animation-map.json into "
+        "extras['animation_map_report'] (HOM-282 Class C fold-in)"
+    )
+
+
 def test_collision_on_decorative_is_advisory_not_blocking(tmp_path, monkeypatch):
     """HOM-212: collision flag on chrome decoratives (caption-strip, glow,
     grain, hairline, etc.) is by-construction FP — entrance + ambient yoyo

@@ -255,11 +255,23 @@ def gate_animation_map_classify_ctx() -> dict:
         {"beat": "HOLD", "concept": "Sustained ambient.", "mood": "Meditative.",
          "energy": "calm", "duration_s": 5.0},
     ]
+    # HOM-282: parsed animation-map report is inlined in the brief
+    # (Class C fold-in); the path becomes an operator-facing debug
+    # reference. Synth a minimal report so the snapshot exercises the
+    # inlined-body code path realistically.
+    animation_map_report = {
+        "duration": 12.0,
+        "tweens": [
+            {"index": 1, "selector": ".flash", "duration": 0.12, "flags": ["paced-fast"]},
+        ],
+        "deadZones": [],
+    }
     return {
         **_base(),
         "animation_map_json_path": (
             f"{EPISODE_DIR}/hyperframes/.hyperframes/anim-map/animation-map.json"
         ),
+        "animation_map_json": json.dumps(animation_map_report, ensure_ascii=False),
         "design_md_path": DESIGN_MD_PATH,
         "plan_beats_json": json.dumps(plan_beats, ensure_ascii=False),
         "flagged_tweens_json": json.dumps(flagged, ensure_ascii=False),

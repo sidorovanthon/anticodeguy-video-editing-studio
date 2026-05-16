@@ -74,6 +74,42 @@ def _stub_node(monkeypatch, *, decisions: dict[str, str] | None = None,
     monkeypatch.setattr(node_mod, "_build_node", lambda: _Stub())
 
 
+def test_render_ctx_inlines_animation_map_report_from_state():
+    """HOM-282 (Class C fold-in): `_render_ctx` reads the parsed
+    `animation-map.json` from the upstream gate record's
+    `animation_map_report` extras, NOT from disk. The brief inlines
+    this via `animation_map_json` so the sub-agent never `Read`s the
+    file.
+    """
+    from edit_episode_graph.nodes.gate_animation_map_classify import _render_ctx
+    import json as _json
+
+    report = {
+        "duration": 12.0,
+        "tweens": [{"index": 1, "selector": ".flash", "duration": 0.12, "flags": ["paced-fast"]}],
+        "deadZones": [],
+    }
+    state = _state_with_pending({"flag_id": "x", "selector": ".flash", "flag": "paced-fast"})
+    state["gate_results"][-1]["animation_map_report"] = report
+
+    ctx = _render_ctx(state)
+    assert "animation_map_json" in ctx, "render ctx must inline the parsed report body"
+    parsed = _json.loads(ctx["animation_map_json"])
+    assert parsed == report
+
+
+def test_render_ctx_emits_empty_json_when_report_extras_missing():
+    """HOM-282: defensive — when no `animation_map_report` extras are
+    present (legacy / mis-injected state), the brief inlines `{}` so
+    the sub-agent still has a valid JSON literal to handle gracefully.
+    """
+    from edit_episode_graph.nodes.gate_animation_map_classify import _render_ctx
+
+    state = _state_with_pending({"flag_id": "x"})
+    ctx = _render_ctx(state)
+    assert ctx["animation_map_json"] == "{}"
+
+
 def test_classifier_justify_decision_annotates_pending(monkeypatch):
     """Decision='justify' annotates the pending entry; passed preserved."""
     flagged = {"flag_id": ".flash::1::paced-fast", "selector": ".flash",
@@ -197,9 +233,12 @@ def test_classifier_preserves_upstream_advisory_findings(monkeypatch):
     assert "dead zone" in advisory["dead_zones"][0]
 
 
-def test_classifier_cache_version_is_4():
+def test_classifier_cache_version_is_5():
     """HOM-204 bumped 1→2 (shape change); HOM-206 bumped 2→3 (brief
     rewrite — advisory framing); HOM-225 bumped 3→4 (cache key + render
     ctx derive paths via `EpisodePaths(slug)` rather than legacy
-    `compose.hyperframes_dir` / `compose.design_md_path` echoes)."""
-    assert node_mod._CACHE_VERSION == 4
+    `compose.hyperframes_dir` / `compose.design_md_path` echoes);
+    HOM-282 bumped 4→5 (Class C fold-in — brief inlines parsed
+    animation-map report from upstream gate record's extras, no
+    longer asks the sub-agent to Read the JSON file)."""
+    assert node_mod._CACHE_VERSION == 5
