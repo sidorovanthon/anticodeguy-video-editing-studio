@@ -207,7 +207,10 @@ GATE_CLUSTER = (
 )
 
 EXPECTED_CLUSTER_EDGES = {
-    ("p4_assemble_index", "gate_lint"),
+    # HOM-137 inserted p4_transitions between p4_assemble_index and gate_lint
+    # so transitions runs against the assembled root before gate_lint sees it.
+    ("p4_assemble_index", "p4_transitions"),
+    ("p4_transitions", "gate_lint"),
     ("gate_lint", "gate_validate"),
     ("gate_lint", "halt_llm_boundary"),
     ("gate_validate", "gate_inspect"),
@@ -516,7 +519,15 @@ def test_p4_beat_smoke():
     assert len(result.fingerprints) >= 1, (
         f"p4_beat fan-out produced no recordings: {result!r}"
     )
-    assert "compose" in result.final_state, (
-        f"p4_beat recording produced no `compose` channel write: "
+    # HOM-234 promoted `scenes` from a nested `compose.scenes` reducer
+    # (which never fired) to a top-level `GraphState.scenes` channel —
+    # p4_beat now writes scene HTML bodies there, not under `compose`.
+    assert "scenes" in result.final_state, (
+        f"p4_beat recording produced no `scenes` channel write: "
         f"{list(result.final_state.keys())}"
     )
+    scenes = result.final_state.get("scenes") or {}
+    assert any(
+        isinstance(s, dict) and isinstance(s.get("html"), str) and s["html"]
+        for s in scenes.values()
+    ), f"p4_beat recording carries no scene html bodies: {list(scenes)}"

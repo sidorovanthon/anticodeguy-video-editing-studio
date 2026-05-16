@@ -1,35 +1,11 @@
-[
-  {
-    "channel_writes": "deque([['llm_runs', [{'node': 'p4_captions_layer', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 148.21800000000076, 'tokens_in': 51, 'tokens_out': 15862, 'timestamp': '2026-05-08T13:50:09.275018+00:00'}]], ['compose', {'captions_block_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\captions.html', 'captions': {'captions_block_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\captions.html'}}], ['branch:to:p4_dispatch_beats', None]])",
-    "fingerprint": "0461683fe87837353cddd191ed7811e3",
-    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_captions_layer.p4_captions_layer_node,p4_captions_layer",
-    "node": "p4_captions_layer",
-    "recorded_at": null,
-    "recording_meta": {
-      "encoding": "msgpack",
-      "value_bytes": 592
-    }
-  },
-  {
-    "channel_writes": "deque([['llm_runs', [{'node': 'p4_captions_layer', 'backend': 'claude', 'model': 'claude-opus-4-7', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 135.15599999999904, 'tokens_in': 11, 'tokens_out': 9575, 'timestamp': '2026-05-09T07:16:43.332451+00:00'}]], ['compose', {'captions_block_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\captions.html', 'captions': {'captions_block_path': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\hyperframes\\\\captions.html'}}], ['branch:to:p4_dispatch_beats', None]])",
-    "fingerprint": "a3364ccc1d56070e19cb6ab01bc053d3",
-    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_captions_layer.p4_captions_layer_node,p4_captions_layer",
-    "node": "p4_captions_layer",
-    "recorded_at": null,
-    "recording_meta": {
-      "encoding": "msgpack",
-      "value_bytes": 582
-    }
-  },
-  {
-    "channel_writes": "deque([['compose', {'captions': {'skipped': True, 'skip_reason': 'no transcript JSON available (transcripts.final_json_path / raw_json_path missing) — Phase 3 must run first'}}], ['branch:to:p4_dispatch_beats', None]])",
-    "fingerprint": "da1c566394c80bab1c9526089f34cec6",
-    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_captions_layer.p4_captions_layer_node,p4_captions_layer",
-    "node": "p4_captions_layer",
-    "recorded_at": null,
-    "recording_meta": {
-      "encoding": "msgpack",
-      "value_bytes": 205
-    }
+{
+  "channel_writes": "deque([['llm_runs', [{'node': 'p4_captions_layer', 'backend': 'claude', 'model': 'claude-opus-4-7', 'tier': 'expensive', 'success': True, 'reason': None, 'wall_time_s': 159.71800000000076, 'tokens_in': 6, 'tokens_out': 13628, 'timestamp': '2026-05-16T03:52:29.273600+00:00'}]], ['compose', {'captions': {'html': '<div id=\"captions-layer\" class=\"captions-layer\">\\n<style>\\n#captions-layer{position:absolute;inset:0;pointer-events:none;overflow:visible;z-index:50;}\\n#captions-layer .cg{position:absolute;left:0;right:0;bottom:104px;padding:0 96px;text-align:center;font-family:\"Playfair Display\",serif;font-style:italic;font-weight:400;font-size:54px;line-height:1.15;letter-spacing:-0.02em;color:#f3ece0;will-change:opacity,transform;}\\n#captions-layer .cg .row{display:inline-block;max-width:1600px;}\\n#captions-layer .cg .emph{color:#5a6dd1;}\\n</style>\\n<!-- Captions track sourced from edit/transcripts/final.json (HOM-235); measured/calm grouping per canon. -->\\n<div class=\"cg\" id=\"cg-0\" style=\"opacity:0;visibility:hidden\"><span class=\"row\">Age of artificial <span class=\"emph\">intelligence</span>.</span></div>\\n<div class=\"cg\" id=\"cg-1\" style=\"opacity:0;visibility:hidden\"><span class=\"row\">when I&#39;m increasingly using</span></div>\\n<div class=\"cg\" id=\"cg-2\" style=\"opacity:0;visibility:hidden\"><span class=\"row\">free <span class=\"emph\">open-source</span> tools</span></div>\\n<div class=\"cg\" id=\"cg-3\" style=\"opacity:0;visibility:hidden\"><span class=\"row\">because I can simply</span></div>\\n<div class=\"cg\" id=\"cg-4\" style=\"opacity:0;visibility:hidden\"><span class=\"row\">deploy them for <span class=\"emph\">myself</span></span></div>\\n<div class=\"cg\" id=\"cg-5\" style=\"opacity:0;visibility:hidden\"><span class=\"row\">easily with the help of</span></div>\\n<div class=\"cg\" id=\"cg-6\" style=\"opacity:0;visibility:hidden\"><span class=\"row\"><span class=\"emph\">AI</span> agents</span></div>\\n<div class=\"cg\" id=\"cg-7\" style=\"opacity:0;visibility:hidden\"><span class=\"row\">or just write the software</span></div>\\n<div class=\"cg\" id=\"cg-8\" style=\"opacity:0;visibility:hidden\"><span class=\"row\">I need for work myself,</span></div>\\n<div class=\"cg\" id=\"cg-9\" style=\"opacity:0;visibility:hidden\"><span class=\"row\">I thought, &ldquo;Why don&#39;t we turn&hellip;&rdquo;</span></div>\\n<div class=\"cg\" id=\"cg-10\" style=\"opacity:0;visibility:hidden\"><span class=\"row\">I thought, &ldquo;Why don&#39;t we return</span></div>\\n<div class=\"cg\" id=\"cg-11\" style=\"opacity:0;visibility:hidden\"><span class=\"row\">to the <span class=\"emph\">roots</span>,</span></div>\\n<div class=\"cg\" id=\"cg-12\" style=\"opacity:0;visibility:hidden\"><span class=\"row\">to good old software</span></div>\\n<div class=\"cg\" id=\"cg-13\" style=\"opacity:0;visibility:hidden\"><span class=\"row\">that you pay for once</span></div>\\n<div class=\"cg\" id=\"cg-14\" style=\"opacity:0;visibility:hidden\"><span class=\"row\">and use for <span class=\"emph\">life</span>?&rdquo;</span></div>\\n<div class=\"cg\" id=\"cg-15\" style=\"opacity:0;visibility:hidden\"><span class=\"row\">Yes, maybe it&#39;s not</span></div>\\n<div class=\"cg\" id=\"cg-16\" style=\"opacity:0;visibility:hidden\"><span class=\"row\">as interesting from a business point-of-view,</span></div>\\n<div class=\"cg\" id=\"cg-17\" style=\"opacity:0;visibility:hidden\"><span class=\"row\">but how <span class=\"emph\">cool</span> is it to&hellip;</span></div>\\n<script>\\n(function(){\\n  // Caption groups derived from edit/transcripts/final.json. Storytelling tone: 4-6 words per group, slow fade.\\n  var GROUPS = [\\n    {id:\"cg-0\",start:0.05,end:1.27},\\n    {id:\"cg-1\",start:1.47,end:2.791},\\n    {id:\"cg-2\",start:2.91,end:4.05},\\n    {id:\"cg-3\",start:4.13,end:5.03},\\n    {id:\"cg-4\",start:5.15,end:6.671},\\n    {id:\"cg-5\",start:6.791,end:7.711},\\n    {id:\"cg-6\",start:7.791,end:8.47},\\n    {id:\"cg-7\",start:8.85,end:10.051},\\n    {id:\"cg-8\",start:10.11,end:11.97},\\n    {id:\"cg-9\",start:12.17,end:13.81},\\n    {id:\"cg-10\",start:14.01,end:15.391},\\n    {id:\"cg-11\",start:15.43,end:16.15},\\n    {id:\"cg-12\",start:16.31,end:17.59},\\n    {id:\"cg-13\",start:17.65,end:19.17},\\n    {id:\"cg-14\",start:19.23,end:20.35},\\n    {id:\"cg-15\",start:20.77,end:21.871},\\n    {id:\"cg-16\",start:21.951,end:24.111},\\n    {id:\"cg-17\",start:24.29,end:25.99}\\n  ];\\n  if (typeof gsap === \"undefined\") return;\\n  var tl = gsap.timeline({paused:true});\\n  GROUPS.forEach(function(g){\\n    var el = document.getElementById(g.id);\\n    if (!el) return;\\n    var span = g.end - g.start;\\n    var exitDur = Math.min(0.3, Math.max(0.15, span * 0.25));\\n    tl.fromTo(el, {opacity:0, visibility:\"visible\"}, {opacity:1, duration:0.5, ease:\"sine.out\"}, g.start);\\n    tl.fromTo(el, {y:24}, {y:0, duration:0.55, ease:\"power2.out\"}, g.start);\\n    tl.to(el, {opacity:0, duration:exitDur, ease:\"power1.in\"}, g.end - exitDur);\\n    tl.set(el, {opacity:0, visibility:\"hidden\"}, g.end);\\n  });\\n  GROUPS.forEach(function(g, gi){\\n    var el = document.getElementById(g.id);\\n    if (!el) return;\\n    tl.seek(g.end + 0.01);\\n    var c = window.getComputedStyle(el);\\n    if (c.opacity !== \"0\" && c.visibility !== \"hidden\") {\\n      console.warn(\"[caption-lint] group \" + gi + \" still visible at t=\" + (g.end + 0.01).toFixed(2) + \"s\");\\n    }\\n  });\\n  tl.seek(0);\\n  window.__captionTimelines = window.__captionTimelines || {};\\n  window.__captionTimelines[\"captions\"] = tl;\\n  window.__timelines = window.__timelines || {};\\n  var keys = Object.keys(window.__timelines);\\n  var root = window.__timelines[\"root\"] || (keys.length ? window.__timelines[keys[0]] : null);\\n  if (root && typeof root.add === \"function\") {\\n    tl.paused(false);\\n    root.add(tl, 0);\\n  }\\n})();\\n</script>\\n</div>'}}], ['branch:to:p4_dispatch_beats', None]])",
+  "fingerprint": "0fcfee2b9818e9a8a20e54f68b5ec7ae",
+  "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_captions_layer.p4_captions_layer_node,p4_captions_layer",
+  "node": "p4_captions_layer",
+  "recorded_at": null,
+  "recording_meta": {
+    "encoding": "msgpack",
+    "value_bytes": 5519
   }
-]
+}

@@ -1,223 +1,158 @@
 <div id="scene-payoff" class="scene clip"
-     data-start="13.360000000000001" data-duration="11.98" data-track-index="1"
+     data-start="18.2" data-duration="8.3" data-track-index="1"
      data-width="1080" data-height="1920">
   <style>
-    #scene-payoff {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      background-color: #0a0a0a;
-      overflow: hidden;
-      font-family: "Inter", sans-serif;
-      color: #f0f0f0;
+    #scene-payoff { position: absolute; inset: 0; opacity: 0; overflow: hidden; background: #0c0b0a; }
+    #scene-payoff .vignette {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at top left, #16140f 0%, #0c0b0a 55%, #050403 100%);
+      transform-origin: top left;
+      will-change: transform;
     }
-    #scene-payoff .pf-vignette {
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(ellipse at 38% 42%, #0a0a0a 0%, #080808 55%, #050505 100%);
-      opacity: 1;
+    #scene-payoff .grain {
+      position: absolute; inset: 0; pointer-events: none; opacity: 0.04;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+      background-size: 80px 80px;
+    }
+    #scene-payoff .ghost-roots {
+      position: absolute; left: -40px; top: 1160px;
+      width: 1180px;
+      font-family: "Playfair Display", serif;
+      font-style: italic; font-weight: 400;
+      font-size: 22rem; line-height: 1.0;
+      letter-spacing: -0.03em;
+      color: #1d1a13;
       pointer-events: none;
+      white-space: nowrap;
     }
-    #scene-payoff .pf-grain {
-      position: absolute;
-      inset: 0;
-      background-color: #141414;
-      opacity: 0.04;
-      mix-blend-mode: overlay;
-      pointer-events: none;
-    }
-    #scene-payoff .pf-ghost-numeral {
-      position: absolute;
-      top: 8%;
-      right: 10%;
+    #scene-payoff .overline {
+      position: absolute; left: 96px; top: 220px;
       font-family: "Inter", sans-serif;
-      font-weight: 300;
-      font-size: 4rem;
-      letter-spacing: 0.15em;
-      color: rgba(240, 240, 240, 0.04);
-      line-height: 1;
-      user-select: none;
+      font-weight: 500; font-size: 0.8125rem;
+      text-transform: uppercase; letter-spacing: 0.18em;
+      color: #b8a982;
     }
-    #scene-payoff .pf-page-rule {
-      position: absolute;
-      top: 78%;
-      left: 0;
-      width: 0;
-      height: 1px;
-      background-color: rgba(240, 240, 240, 0.06);
+    #scene-payoff .hairline {
+      position: absolute; height: 1px;
+      background: #b8a982; opacity: 0.30;
       transform-origin: left center;
     }
-    #scene-payoff .pf-anchor-rule {
+    #scene-payoff .hairline-upper { left: 96px; top: 280px; width: 380px; }
+    #scene-payoff .hairline-lower { left: 96px; top: 1140px; width: 820px; }
+    #scene-payoff .headline {
+      position: absolute; left: 96px; top: 360px;
+      width: 720px;
+      font-family: "Playfair Display", serif;
+      font-style: italic; font-weight: 400;
+      font-size: 4.5rem; line-height: 1.05;
+      letter-spacing: -0.02em;
+      color: #d9d2c5;
+    }
+    #scene-payoff .pullquote {
+      position: absolute; left: 96px; top: 500px;
+      width: 920px;
+      font-family: "Playfair Display", serif;
+      font-style: italic; font-weight: 400;
+      font-size: 6rem; line-height: 1.0;
+      letter-spacing: -0.025em;
+      color: #fbf6ec;
+    }
+    #scene-payoff .pullquote .keystone {
+      color: #fbf6ec; display: inline-block;
+    }
+    #scene-payoff .underscore-roots {
       position: absolute;
-      left: 12%;
-      top: 14%;
-      width: 1px;
-      height: 72%;
-      background-color: #1a237e;
-      opacity: 0.30;
-    }
-    #scene-payoff .pf-content {
-      position: absolute;
-      left: 16%;
-      top: 22%;
-      width: 70%;
-      display: flex;
-      flex-direction: column;
-      gap: 32px;
-    }
-    #scene-payoff .pf-overline {
-      font-family: "Inter", sans-serif;
-      font-weight: 500;
-      font-size: 0.75rem;
-      letter-spacing: 0.32em;
-      text-transform: uppercase;
-      color: #d8d8d8;
-      opacity: 0;
-    }
-    #scene-payoff .pf-divider {
-      width: 0;
-      height: 1px;
-      background-color: rgba(240, 240, 240, 0.10);
+      left: 96px; top: 710px; width: 296px; height: 2px;
+      background: #988a66;
       transform-origin: left center;
     }
-    #scene-payoff .pf-headline {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      margin-top: 24px;
-    }
-    #scene-payoff .pf-line {
-      font-family: "Inter", sans-serif;
-      font-weight: 300;
-      font-size: 3rem;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: #f0f0f0;
-      line-height: 1.05;
-      opacity: 0;
-      display: flex;
-      align-items: baseline;
-      gap: 24px;
-    }
-    #scene-payoff .pf-once-wrap {
-      position: relative;
-      display: inline-block;
-      color: #f0f0f0;
-    }
-    #scene-payoff .pf-once-underline {
+    #scene-payoff .body-line {
       position: absolute;
-      left: 0;
-      bottom: -6px;
-      width: 0;
-      height: 1px;
-      background-color: #1a237e;
-      max-width: 70%;
+      width: 760px; left: 96px;
+      font-family: "Inter", sans-serif;
+      font-weight: 300; font-size: 1.15rem; line-height: 1.6;
+      max-width: 56ch;
     }
-    #scene-payoff .pf-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 4px;
-      background-color: #1a237e;
-      opacity: 0;
-      transform: scale(0);
-      align-self: center;
+    #scene-payoff .body-line-1 { top: 1200px; color: #f3ece0; }
+    #scene-payoff .body-line-2 { top: 1330px; color: #bfb8ab; }
+    #scene-payoff .body-line .w { display: inline-block; }
+    #scene-payoff .tick {
+      position: absolute; right: 96px; top: 1720px;
+      font-family: "Inter", sans-serif;
+      font-weight: 300; font-size: 1rem;
+      color: #b8a982; opacity: 0.45;
     }
   </style>
   <div class="scene-content">
-    <div class="pf-vignette"></div>
-    <div class="pf-grain"></div>
-    <div class="pf-ghost-numeral">04</div>
-    <div class="pf-page-rule"></div>
-    <div class="pf-anchor-rule"></div>
-    <div class="pf-content">
-      <div class="pf-overline">04 / Aspiration</div>
-      <div class="pf-divider"></div>
-      <div class="pf-headline">
-        <div class="pf-line pf-line-1">GOOD OLD SOFTWARE</div>
-        <div class="pf-line pf-line-2">
-          <span>YOU PAY FOR&nbsp;</span>
-          <span class="pf-once-wrap">
-            ONCE
-            <span class="pf-once-underline"></span>
-          </span>
-          <span class="pf-dot"></span>
-        </div>
-      </div>
-    </div>
+    <div class="vignette"></div>
+    <div class="ghost-roots">roots</div>
+    <div class="grain"></div>
+    <div class="overline">&sect; 04 &mdash; A MEMO TO MYSELF</div>
+    <div class="hairline hairline-upper"></div>
+    <div class="hairline hairline-lower"></div>
+    <div class="headline">I thought,</div>
+    <div class="pullquote">Why don&rsquo;t we return to the <span class="keystone">roots</span></div>
+    <div class="underscore-roots"></div>
+    <div class="body-line body-line-1"><span class="w">good</span> <span class="w">old</span> <span class="w">software</span> <span class="w">that</span> <span class="w">you</span> <span class="w">pay</span> <span class="w">for</span> <span class="w">once</span> <span class="w">and</span> <span class="w">use</span> <span class="w">for</span> <span class="w">life.</span></div>
+    <div class="body-line body-line-2"><span class="w">Yes,</span> <span class="w">maybe</span> <span class="w">it&rsquo;s</span> <span class="w">not</span> <span class="w">as</span> <span class="w">interesting</span> <span class="w">from</span> <span class="w">a</span> <span class="w">business</span> <span class="w">point-of-view,</span> <span class="w">but</span> <span class="w">how</span> <span class="w">cool</span> <span class="w">is</span> <span class="w">it</span> <span class="w">to</span></div>
+    <div class="tick">+</div>
   </div>
   <script>
     (function() {
       window.__sceneTimelines = window.__sceneTimelines || {};
-      const root = document.querySelector("#scene-payoff");
-      const vignette = root.querySelector(".pf-vignette");
-      const ghost = root.querySelector(".pf-ghost-numeral");
-      const pageRule = root.querySelector(".pf-page-rule");
-      const anchor = root.querySelector(".pf-anchor-rule");
-      const overline = root.querySelector(".pf-overline");
-      const divider = root.querySelector(".pf-divider");
-      const line1 = root.querySelector(".pf-line-1");
-      const line2 = root.querySelector(".pf-line-2");
-      const onceWrap = root.querySelector(".pf-once-wrap");
-      const onceUnderline = root.querySelector(".pf-once-underline");
-      const dot = root.querySelector(".pf-dot");
+      const root = document.getElementById("scene-payoff");
+      const sel = (s) => root.querySelector(s);
+      const all = (s) => Array.from(root.querySelectorAll(s));
+      const sceneDuration = 8.3;
 
-      const sceneDuration = 11.98;
+      const vignette  = sel(".vignette");
+      const ghost     = sel(".ghost-roots");
+      const overline  = sel(".overline");
+      const hairlineU = sel(".hairline-upper");
+      const hairlineL = sel(".hairline-lower");
+      const headline  = sel(".headline");
+      const pullquote = sel(".pullquote");
+      const keystone  = sel(".pullquote .keystone");
+      const underscore = sel(".underscore-roots");
+      const body1Words = all(".body-line-1 .w");
+      const body2Words = all(".body-line-2 .w");
+      const tick      = sel(".tick");
+
       const tl = gsap.timeline({ paused: true });
 
-      tl.fromTo(overline, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.6, ease: "sine.inOut" }, 0.20);
-      tl.fromTo(divider, { width: "0%" }, { width: "100%", duration: 1.0, ease: "sine.inOut" }, 0.60);
-      tl.fromTo(pageRule, { width: "0%" }, { width: "100%", duration: 1.4, ease: "sine.inOut" }, 0.80);
-      tl.fromTo(line1, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 1.0, ease: "sine.inOut" }, 1.10);
-      tl.fromTo(line2, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 1.0, ease: "sine.inOut" }, 1.50);
-      tl.fromTo(onceWrap, { color: "#f0f0f0" }, { color: "#ffffff", duration: 0.6, ease: "sine.inOut" }, 2.10);
-      tl.fromTo(onceUnderline, { width: "0%" }, { width: "70%", duration: 0.7, ease: "power2.out" }, 2.30);
-      tl.fromTo(dot, { opacity: 0, scale: 0 }, { opacity: 1, scale: 1, duration: 0.5, ease: "sine.inOut" }, 3.50);
+      tl.fromTo(overline,  { opacity: 0, y: -6 }, { opacity: 1, y: 0, duration: 0.6, ease: "sine.inOut" }, 0.2);
+      tl.fromTo(hairlineU, { scaleX: 0 },         { scaleX: 1,        duration: 0.8, ease: "expo.out"  }, 0.4);
+      tl.fromTo(headline,  { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.8, ease: "sine.inOut" }, 0.6);
+      tl.fromTo(pullquote, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 1.2, ease: "sine.inOut" }, 1.0);
+      tl.to(keystone,      { color: "#5a6dd1",                       duration: 0.5, ease: "power1.inOut" }, 1.9);
+      tl.fromTo(underscore,{ scaleX: 0 },         { scaleX: 1,        duration: 0.6, ease: "expo.out"  }, 2.2);
+      tl.fromTo(hairlineL, { scaleX: 0 },         { scaleX: 1,        duration: 1.0, ease: "expo.out"  }, 2.6);
+      tl.fromTo(body1Words,{ opacity: 0, y: 8 },  { opacity: 1, y: 0, duration: 0.5, ease: "sine.inOut", stagger: 0.06 }, 3.0);
+      tl.fromTo(body2Words,{ opacity: 0, y: 8 },  { opacity: 1, y: 0, duration: 0.55, ease: "sine.out",  stagger: 0.08 }, 4.4);
 
-      const anchorCycle = 6.0;
-      tl.to(anchor, {
-        opacity: 0.45,
-        duration: anchorCycle / 2,
-        yoyo: true,
-        repeat: Math.floor(sceneDuration / anchorCycle),
-        ease: "sine.inOut"
-      }, 0);
+      const breathCycle = 3.0;
+      tl.to(vignette,  { scale: 1.04, transformOrigin: "top left", ease: "sine.inOut", duration: breathCycle, yoyo: true, repeat: Math.floor(sceneDuration / breathCycle) }, 0);
+      const driftCycle = 4.0;
+      tl.to(ghost,     { x: 8,                                       ease: "sine.inOut", duration: driftCycle,  yoyo: true, repeat: Math.floor(sceneDuration / driftCycle) }, 0);
+      const ghostOpCycle = 4.0;
+      tl.to(ghost,     { opacity: 0.7,                               ease: "sine.inOut", duration: ghostOpCycle, yoyo: true, repeat: Math.floor(sceneDuration / ghostOpCycle) }, 0);
+      const pulseCycle = 2.6;
+      tl.to([hairlineU, hairlineL], { opacity: 0.35,                 ease: "sine.inOut", duration: pulseCycle,  yoyo: true, repeat: Math.floor(sceneDuration / pulseCycle) }, 0);
+      const tickCycle = 2.0;
+      tl.to(tick,      { opacity: 0.65,                              ease: "sine.inOut", duration: tickCycle,   yoyo: true, repeat: Math.floor(sceneDuration / tickCycle) }, 0);
 
-      const vigCycle = 8.0;
-      tl.to(vignette, {
-        opacity: 0.92,
-        duration: vigCycle / 2,
-        yoyo: true,
-        repeat: Math.floor(sceneDuration / vigCycle),
-        ease: "sine.inOut"
-      }, 0);
-
-      const ghostCycle = 10.0;
-      tl.to(ghost, {
-        y: -2,
-        duration: ghostCycle / 2,
-        yoyo: true,
-        repeat: Math.floor(sceneDuration / ghostCycle),
-        ease: "sine.inOut"
-      }, 0);
-
-      const dotCycle = 4.0;
-      tl.to(dot, {
-        backgroundColor: "#2e3aa3",
-        duration: dotCycle / 2,
-        yoyo: true,
-        repeat: Math.floor(sceneDuration / dotCycle),
-        ease: "sine.inOut"
-      }, 4.10);
-
-      const fadeStart = sceneDuration - 1.2;
-      const fadeDur = 1.0;
-      tl.to(line1, { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
-      tl.set(line1, { visibility: "hidden" }, fadeStart + fadeDur);
-      tl.to(line2, { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
-      tl.set(line2, { visibility: "hidden" }, fadeStart + fadeDur);
-      tl.to(overline, { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
-      tl.set(overline, { visibility: "hidden" }, fadeStart + fadeDur);
-      tl.to(root, { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      const fadeStart = sceneDuration - 0.7;
+      const fadeDur   = 0.6;
+      const fadeEnd   = fadeStart + fadeDur;
+      const exits = [overline, hairlineU, hairlineL, headline, pullquote, underscore, tick, ghost];
+      exits.forEach((el) => {
+        tl.to(el,  { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+        tl.set(el, { visibility: "hidden" }, fadeEnd);
+      });
+      tl.to(body1Words,  { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.set(body1Words, { visibility: "hidden" }, fadeEnd);
+      tl.to(body2Words,  { opacity: 0, duration: fadeDur, ease: "power1.in" }, fadeStart);
+      tl.set(body2Words, { visibility: "hidden" }, fadeEnd);
 
       window.__sceneTimelines["payoff"] = tl;
     })();

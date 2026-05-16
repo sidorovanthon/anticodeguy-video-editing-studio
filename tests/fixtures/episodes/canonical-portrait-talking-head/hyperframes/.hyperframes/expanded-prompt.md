@@ -1,375 +1,216 @@
-# Expanded Production Prompt — canonical-portrait-talking-head
+# Expanded Prompt — canonical-portrait-talking-head
+
+Four-beat editorial talking-head monologue, 26.5s portrait (1080×1920), shape: single continuous take with phrase-boundary cuts. Visual register: Stripe Press / Kinfolk — italic serif on warm-tinted near-black, generous negative space, one muted-indigo accent reserved for the loaded word per scene. Cadence is breath-paced, not kinetic. The viewer should feel they are reading a memo.
+
+Canon read for this expansion: `house-style.md`, `references/video-composition.md`, `references/beat-direction.md`, `references/prompt-expansion.md`, plus `hyperframes/DESIGN.md` (Long-Form Memo system).
+
+---
 
 ## 1. Title + Style Block
 
-**Title:** Velvet Standard — Quiet Editorial (AI-Era / Pay-Once Monologue)
+**Title:** _Age of Artificial Intelligence — A Memo to the Pay-Once Era_
 
-**Palette (cited from DESIGN.md, do not invent intermediates):**
+**Palette (verbatim from DESIGN.md):**
 
-- background: `#0a0a0a` (stops `#080808`, `#050505`; highlight `#141414`)
-- surface: `#1a1a1a` (stop `#121212`, highlight `#262626`)
-- foreground: `#f0f0f0` (stop `#d8d8d8`, highlight `#ffffff`)
-- accent: `#1a237e` (stops `#131a5e`, `#0d1240`; highlight `#2e3aa3`)
+- Background: `#0c0b0a` (warm-tinted near-black; never #000)
+- Background stops: `#080706`, `#050403`
+- Background highlights (vignette upper-left): `#16140f`, `#1d1a13`
+- Foreground: `#f3ece0` (parchment)
+- Foreground stops: `#d9d2c5`, `#bfb8ab`
+- Foreground highlight: `#fbf6ec`
+- Midtone (rules, overlines, decorative underscores): `#b8a982`
+- Midtone stops: `#988a66`, highlight `#cdbf99`
+- Accent (editorial indigo — ONE word/glyph per scene): `#3a4cb8`
+- Accent stops: `#2b3a93`, `#1d296e`
+- Accent highlight (used when accent lands on text, for AA): `#5a6dd1`, `#8294e3`
 
-**Typography (cited from DESIGN.md):**
+**Typography (verbatim):**
 
-- Headline — Inter 300, `3rem`, letter-spacing `0.15em`, ALL CAPS.
-- Overline — Inter 500, `0.75rem`, letter-spacing `0.32em`, ALL CAPS.
-- Body — Inter 300, `1.125rem`, line-height `1.6`.
-- Pull-quote — Inter 300 italic, `2rem`, line-height `1.35`.
-- Single display family. No serif companion.
+- Headline — Playfair Display, italic, 400, 4.5rem, letter-spacing -0.02em, line-height 1.05
+- Pullquote — Playfair Display, italic, 400, 6rem, letter-spacing -0.025em, line-height 1.0
+- Overline — Inter, 500, 0.8125rem, uppercase, letter-spacing 0.18em
+- Body — Inter, 300, 1.15rem, line-height 1.6, measure capped at 56ch
 
-**Mood:** Architectural restraint over spectacle. Hardcover-book endpaper navy
-on tinted near-black canvas. Massimo Vignelli lineage tuned to long-form
-editorial. The frame breathes; hairline rules organize attention; one deep
-indigo accent carries the through-line. Never neon, never hype.
+**Mood:** Editorial calm. Stripe Press book cover meets a quiet Kinfolk spread. Italic serif IS the voice — reflective, not announcing. The composition argues against the visual idiom of AI hype (neon, gradients, particles); using that idiom would undermine the message.
 
-**Format:** 1080×1920 portrait, ~26.5s, locked talking-head video plate
-muted as MG; HF beat layer composites overlays + accent rule + typographic
-chrome. Grade per strategy: neutral natural-light, gentle shadow lift, mild
-contrast, slightly warm midtones — no LUT.
+**Energy:** Calm. Easings — entry `sine.inOut`, exit `power1.in`, ambient `sine.inOut`. Entrance 1.0s, hold 2.0s, transition 1.2s.
+
+**Atmosphere bank (from DESIGN.md):** hairline-rules, warm-grain, parchment-vignette.
+
+---
 
 ## 2. Rhythm Declaration
 
-**Pattern:** `hook-HOLD-breathe-PIVOT-hold-resolve`
+`hold-BUILD-pivot-hold` — four beats over 26.5s:
 
-Mapped to EDL beats:
+- **HOOK** (00.00 → 03.10, ~3.1s) — single phrase + a long held breath. The frame announces the register, then waits.
+- **PROBLEM** (03.10 → 14.40, ~11.3s) — the longest scene; the spoken thought unspools. Type cascades phrase by phrase as the speaker accrues the argument.
+- **PIVOT** (14.40 → 18.20, ~3.8s) — false-start hesitation "I thought, 'Why don't we turn...'". A typographic stutter; one glyph swap on accent.
+- **PAYOFF** (18.20 → 26.50, ~8.3s) — the resolved thought; pullquote scale; the only fully-set headline in the piece; trails off mid-sentence with no exit tween.
 
-- HOOK (`Age of artificial intelligence.`) — long hold, anchor rule fades in.
-- PROBLEM — body-paragraph dominance, sustained anchor, calm.
-- PIVOT — italic pull-quote, single ambient brightness lift on the rule
-  (the only moment the accent gets brighter than its sustained 30%).
-- PAYOFF — two-line headline, longest hold, no exit tween — cross-warp-morph
-  carries to black on the unfinished thought.
+Shaders land on HOOK→PROBLEM (cross-warp-morph, 1.2s) and on PAYOFF (no transition out — the piece ends mid-thought; the cross-warp shader handles HOOK→PROBLEM and PROBLEM→PIVOT; PIVOT→PAYOFF is a CSS blur-through to model the rhetorical self-correction). Per beat-direction.md: 1–2 shader moments + the rest CSS keeps shader impact intact.
 
-Energy stays calm throughout. No PUNCH, no SLAM. The rhythm is in *holds*,
-not *hits*. Pacing per strategy: tight phrase-boundary cuts, breath beats
-preserved between the two "I thought" clauses for rhetorical weight.
+---
 
 ## 3. Global Rules
 
-**Parallax / depth layers (every beat):** BG (vignette + grain + slow
-breath) — MG (talking-head video plate, dimmed to ~92% luminance, plus
-content typography column) — FG (overline label, anchor rule, accent
-underline / dot, hairline divider).
+- **Parallax layers:** three depths per scene — BG (vignette + grain + ghost type), MG (headline / pullquote / body), FG (overline + hairline rule + one accent glyph). MG drifts ±4px on a 10s sine; FG holds still. BG vignette breathes scale 1.00 ↔ 1.04 on a 6s sine.
+- **Micro-motion:** every decorative animates. Vignette breathes. Hairline rules pulse opacity 0.25 ↔ 0.35 on an 8s sine. Ghost type drifts 8–12px over 12s sine. Grain is static (per DESIGN.md — does not animate).
+- **Primary transition:** cross-warp-morph (DESIGN.md `motion.transition`), 1.2s, power2.inOut — used between HOOK↔PROBLEM and PROBLEM↔PIVOT.
+- **Accent transition:** blur-through (`blur:20px→0, 0.8s power3.out`) for PIVOT↔PAYOFF — slower than the catalog default (0.25s) because cadence is calm; the blur stands in for the speaker's reconsidered phrasing.
+- **No exit on final beat** — PAYOFF ends with the speaker trailing off; the frame must also trail off (visible at hold) rather than tween out.
+- **Accent discipline:** ONE word or ONE glyph per scene in `#3a4cb8` (or `#5a6dd1` if on text, for AA). Never as a gradient stop. Never as a fill.
+- **No #000 / #fff anywhere.** Tint every neutral warm. Dead grey forbidden.
+- **Asymmetric columns only.** Headlines live in cols 1–8 of an implicit 12-col grid; overlines and decorative rules float cols 9–12 OR vice versa, never both.
+- **No cards, no rounded containers, no shadows.** Editorial register; not product UI.
 
-**Element count per beat:** 8–10 (per video-composition.md). Counted as:
-1 video plate · 1 vignette · 1 grain · 1 anchor rule · 1 overline · 1
-hairline divider · 1 headline / body / pull-quote · 1 accent mark
-(underline or dot) · 1 ghost numeral (background atmosphere) · 1
-slow-vignette-breath layer.
-
-**Micro-motion (mandatory on every decorative):**
-
-- Anchor rule — opacity breath 0.25 ↔ 0.45, 6s sine.inOut, infinite.
-- Vignette — radial-gradient luminance breath 0.92 ↔ 1.0, 8s sine.inOut.
-- Grain — frame-locked 0.04 opacity static (no animation; deterministic
-  pre-rendered tile to avoid `Math.random()`).
-- Hairline divider — width 0 → 100% on beat entry, 1.0s sine.inOut.
-- Ghost numeral (the "01" / "02" / "03" / "04") — y drift ±2px,
-  10s sine.inOut, opacity sustained at 0.04.
-
-**Transitions:**
-
-- Primary: `cross-warp-morph` (per DESIGN.md) — 0.8s, power2.inOut.
-- Used between every beat, including PAYOFF → black.
-- No CSS exit tweens on text — DESIGN.md "Don't" #7 explicitly forbids
-  exit tweens; the shader morph carries the hand-off.
-- Entry tweens on text are allowed: `opacity 0 → 1, y 8 → 0`, 1.0s
-  sine.inOut (matches DESIGN.md `motion.easing.entry`).
-
-**Easing (cited from DESIGN.md):**
-
-- Entry: `sine.inOut`
-- Exit: `power1.in` (used only on the cross-warp-morph wrapper, not on text)
-- Ambient: `sine.inOut`
-
-**Durations (cited from DESIGN.md):**
-
-- Entrance: 1.0s · Hold: 2.6s · Transition: 1.2s
+---
 
 ## 4. Per-Scene Beats
 
----
+### Scene 1 — HOOK (00.00 → 03.10, ~3.1s)
 
-### Beat 1 — HOOK · `[00:00.12 – 00:01.34]` · 1.22s
-> "Age of artificial intelligence."
+**Spoken:** "Age of artificial intelligence."
 
-**Concept.** A library at midnight, lit by a single reading lamp. The
-viewer is asked to *settle in*. Not "the future is here" excitement —
-"a thought is forming". The phrase lands like the first sentence of a
-hardcover essay; the page is dark, the indigo rule on the spine just
-visible. The viewer should feel they have been invited to *think*, not
-to *react*.
+**Concept.** A title page in a serious book. The camera is already settled, not arriving — we open mid-thought, into a warm-tinted near-black canvas where a single overline and a single italic phrase carry the entire frame. The phrase "artificial intelligence" is the register-setter: this is a reflective monologue, not a launch reel. The viewer should feel they have opened a memo.
 
-**Mood direction.** IBM-era trade paperback opening. Hardcover endpaper
-indigo. Vignelli editorial poster typography. Adjacent references: a
-Penguin Modern Classics title page; the first frame of a Criterion
-Collection title sequence held longer than expected.
+**Mood direction.** Stripe Press cover. The quiet first page of a Kinfolk essay. The opening title of a 1970s public-broadcasting essay film — calm, certain of itself, unhurried.
 
-**Depth layers (≈9 elements).**
+**Depth layers (8 elements):**
 
-- BG: `#0a0a0a` canvas; radial vignette `background → background-stop-2`
-  centered at 38% / 42% (off-axis, asymmetric); subtle-grain tile at 4%
-  opacity; ghost numeral "01" at 8% / 12% from top-right, `4rem` Inter 300,
-  color `foreground` × 4% opacity.
-- MG: talking-head video plate at 92% luminance, anchored full-frame;
-  content column at 12% from left through 77% width.
-- FG: overline `01 / PREMISE` at top-of-column; 1px hairline divider;
-  headline `AGE OF ARTIFICIAL INTELLIGENCE` with emphasized word
-  `INTELLIGENCE` in `foreground-highlight-1` (`#ffffff`) plus 1px
-  `accent` (`#1a237e`) underline at 70% character width; vertical
-  anchor rule at 12% from left, full beat height,
-  `accent` × 30% opacity.
+- BG-1 — Vignette: `radial-gradient(ellipse at top left, #16140f 0%, #0c0b0a 55%, #050403 100%)`, full-frame. Ambient: scale 1.00 ↔ 1.04 on 6s sine loop. _breath_
+- BG-2 — Ghost type: the word `MEMO` set in Playfair Display italic 18rem, color `#1d1a13` (background-highlight-2), positioned cols 7–12 rows 2–5, opacity 0.55 in its own color (still very low against bg). Drift 10px on 12s sine. _drift_
+- BG-3 — Grain overlay: 7px noise PNG at opacity 0.04, full-frame. Static.
+- FG-1 — Overline: `EPISODE 01 · A MEMO`, Inter 500 uppercase 0.8125rem letter-spacing 0.18em, color `#b8a982`, anchored top-left at col 2 row 3. Types on character by character, 0.05s stagger, sine.inOut. _types on_
+- FG-2 — Hairline rule: 1px solid `#b8a982` at opacity 0.30, horizontal, cols 2–6, sitting 32px below the overline. Draws left→right `scaleX: 0 → 1`, 0.8s expo.out, transform-origin left. _DRAWS_
+- MG-1 — Headline: _Age of_ in Playfair Display italic 4.5rem, color `#f3ece0`, cols 2–8 row 7. Fades and rises `y:24, opacity:0 → y:0, opacity:1`, 1.0s sine.inOut, delayed 0.4s after the hairline. _floats up_
+- MG-2 — Pullquote: _artificial intelligence_ in Playfair Display italic 6rem, color `#fbf6ec`, cols 2–10 rows 9–11. The opening glyph `a` is set in `#5a6dd1` (the scene's accent moment — italic lowercase a in indigo). Fades in 1.2s after the headline, 1.2s sine.inOut. _settles in_
+- FG-3 — Decorative underscore: 2px solid `#988a66`, beneath the pullquote, cols 2–7. Animates left→right `scaleX: 0 → 1`, 0.6s expo.out, beginning the moment the pullquote settles. _DRAWS_
 
-**Animation choreography.**
+**Animation choreography summary.** Overline _types on_ → hairline _DRAWS_ left→right → headline _floats up_ from y:24 → pullquote _settles in_ with its accent glyph → underscore _DRAWS_ beneath. Hold for ~1.0s of dead air (the speaker's pause after "intelligence"). Five staggered entrances inside the first 1.6s, then breath.
 
-- Video plate — fades in to 92% luminance over 0.6s sine.inOut, holds.
-- Anchor rule — *draws down* from top, 1.0s sine.inOut, then enters
-  ambient breath (0.25 ↔ 0.45, 6s sine).
-- Overline — types on character-by-character at 35ms/char, 0.42s total,
-  sine.inOut.
-- Hairline divider — width 0 → 100%, 1.0s sine.inOut, lagged 0.2s
-  after overline finishes.
-- Headline — `opacity 0 → 1, y 8 → 0`, 1.0s sine.inOut, lagged 0.4s
-  after divider.
-- Emphasized word `INTELLIGENCE` — color crossfades from `foreground`
-  to `foreground-highlight-1` over 0.6s sine.inOut, 0.3s after the
-  headline lands.
-- Accent underline — width 0 → 70%-of-word, 0.7s sine.inOut,
-  immediately following the color shift.
-- Vignette — slow-vignette-breath ambient (0.92 ↔ 1.0, 8s sine).
-- Ghost numeral "01" — y drift ±2px ambient.
+**Transition out.** cross-warp-morph (`packages/shader-transitions/README.md`), 1.2s, power2.inOut, into PROBLEM. The shader carries the typographic shift from large pullquote to body-set paragraph — the morph reads as the speaker's thought continuing on the next page.
 
-**Transition out.** `cross-warp-morph`, 0.8s, `power2.inOut`. The rule
-and overline persist *through* the morph to read as continuous spine.
+**SFX cue.** A single soft cloth-paper turn at t=0.0 (very low; just enough to ground the register). Silence underneath.
 
 ---
 
-### Beat 2 — PROBLEM · `[00:03.10 – 00:13.60]` · 10.5s
-> "when I'm increasingly using free open-source tools because I can simply
-> deploy them for myself easily with the help of AI agents or just write
-> the software I need for work myself,"
+### Scene 2 — PROBLEM (03.10 → 14.40, ~11.3s)
 
-**Concept.** The page turns. We are inside the body of the essay. The
-reader's eye moves across long lines of measured prose; nothing flashes,
-nothing demands, the design is *getting out of the way* of the speaker's
-sentence. This is the longest hold — calm, sustained, the visual
-equivalent of someone explaining their workflow over a second coffee.
+**Spoken:** "when I'm increasingly using free open-source tools because I can simply deploy them for myself easily with the help of AI agents or just write the software I need for work myself,"
 
-**Mood direction.** Editorial calm. Magazine long-read. The kind of
-column where the only ornament is the drop-cap and the rule. Reference:
-*The New Yorker* main feature interior page; *Wired* long-form column
-when it still ran 1.6 line-height body.
+**Concept.** The thought unspools. We are now reading the paragraph that follows the title. The text builds line by line as the speaker accrues the argument — open-source, deploy-for-myself, AI-agents, write-it-myself. The frame holds an asymmetric editorial reading column; the eye travels top-to-bottom as new phrases settle in. ONE word — `myself` — carries the scene's accent indigo: it is the rhetorical fulcrum (the speaker is no longer a consumer of software; he is the maker).
 
-**Depth layers (≈9 elements).**
+**Mood direction.** A long paragraph in a New Yorker profile. Editorial calm. The quiet middle section of a documentary chapter, where the narration is the work and the visual stays out of its way.
 
-- BG: `#0a0a0a`; radial vignette unchanged; subtle-grain at 4%; ghost
-  numeral "02" replaces "01" with cross-warp-morph carry.
-- MG: video plate sustained; content column hosts a body paragraph
-  set at `1.125rem / 1.6`, color `foreground`, max 60ch.
-- FG: overline `02 / NOW`; hairline divider; anchor rule sustained;
-  no headline (per DESIGN.md beat mapping); a single 1px `accent` ×
-  20% opacity tick at the line start of the body's third line —
-  reads as a margin-mark, the editorial cue that this is the *idea*.
+**Depth layers (9 elements):**
 
-**Animation choreography.**
+- BG-1 — Vignette: same upper-left radial as Scene 1, ambient breath continued (the breath does NOT reset on cuts — it's a continuous loop across the whole composition).
+- BG-2 — Ghost type: `OPEN SOURCE` set in Playfair Display italic 14rem, color `#16140f`, cols 1–7 rows 12–17 (lower-left this time, balancing Scene 1's upper-right ghost). Drift 12px on 12s sine.
+- BG-3 — Grain overlay: continued (static).
+- FG-1 — Overline: `§ 02 — THE DRIFT`, Inter 500 uppercase color `#b8a982`, anchored top-right cols 9–11 row 3. Fades in opacity:0 → 1, 0.6s sine.inOut. _fades in_
+- FG-2 — Hairline rule: vertical 1px solid `#b8a982` at opacity 0.28, cols 8 rows 3–18 — a thin reading-margin rule down the right side. Draws top→bottom `scaleY: 0 → 1`, 1.0s sine.inOut, transform-origin top. _DRAWS down_
+- MG-1 — Body paragraph (line 1): _"when I'm increasingly using free open-source tools"_, Inter 300 1.15rem line-height 1.6 color `#f3ece0`, cols 2–7 row 6. _CASCADE in_ word-by-word, 0.08s per word stagger, each word `y:8, opacity:0 → y:0, opacity:1` 0.5s sine.inOut. Timed to roughly track the spoken phrase.
+- MG-2 — Body paragraph (line 2): _"because I can simply deploy them for myself easily"_, same style, cols 2–7 row 9. _CASCADE_ on the spoken cue. The word `myself` is set in `#5a6dd1` italic (Playfair Display italic 1.15rem inline, NOT Inter — a single-word typographic shift to mark the accent). This is the scene's one accent moment.
+- MG-3 — Body paragraph (line 3): _"with the help of AI agents"_, cols 2–7 row 12. _CASCADE_ on cue.
+- MG-4 — Body paragraph (line 4): _"or just write the software I need for work myself,"_ cols 2–7 row 15. _CASCADE_ on cue. The trailing comma sits in `#b8a982` to mark the unresolved clause.
+- FG-3 — Tick indicator: a tiny `+` mark in `#b8a982` opacity 0.45 at the bottom of the right-side hairline rule (cols 8 row 18), Inter 300 1rem. Pulses opacity 0.45 ↔ 0.65 on a 4s sine — a reading-progress marker. _pulse_
 
-- Overline `02 / NOW` — types on 0.42s sine.inOut at beat start.
-- Hairline divider — width 0 → 100%, 1.0s sine.inOut, lagged 0.2s.
-- Body paragraph — paragraph-level `opacity 0 → 1`, 1.2s sine.inOut,
-  lagged 0.4s after the divider. Word-level highlight: as the speaker
-  hits "AI agents" and "myself," those tokens crossfade their color
-  from `foreground` to `foreground-highlight-1` for 0.4s sine.inOut
-  then back, synced to per-word transcript timing.
-- Margin tick — fades in `opacity 0 → 0.2` over 0.6s as the third
-  line lands.
-- Anchor rule — sustained ambient breath (no re-trigger).
-- Ghost numeral "02" — y drift ±2px ambient.
-- Vignette — sustained breath.
+**Animation choreography summary.** Vertical hairline _DRAWS down_ first, framing the reading column. Overline _fades in_. Then four body lines _CASCADE_ in sequence, word-by-word, timed to the spoken phrases. The accent on `myself` (line 2) is a typographic substitution that lands the moment the speaker says it — italic Playfair Display in indigo, against three lines of Inter 300 parchment. Tick `+` pulses throughout. The frame holds heavy on the trailing comma — the sentence is unfinished; the visual must wait.
 
-**Transition out.** `cross-warp-morph`, 0.8s, `power2.inOut`.
-A breath beat (per strategy: "preserve natural breath beats between
-the two 'I thought' clauses") sits *across* the morph — the morph's
-mid-point coincides with the silence.
+**Transition out.** cross-warp-morph, 1.2s, power2.inOut, into PIVOT. The shader carries the four-line paragraph into the next beat's hesitation. The morph models the speaker drawing breath before a corrected thought.
+
+**SFX cue.** Very faint typewriter-key tap on the entrance of each body line (mixed −18 dB; almost subliminal — texture, not Foley).
 
 ---
 
-### Beat 3 — PIVOT · `[00:15.72 – 00:17.36]` · 1.64s
-> "I thought, 'Why don't we turn...'"
+### Scene 3 — PIVOT (14.40 → 18.20, ~3.8s)
 
-**Concept.** A held breath. The sentence breaks off mid-thought — and
-we honor that. The frame becomes more *quiet*, not more loud. The
-italic pull-quote is the visual equivalent of a writer sliding their
-glasses up and starting again. This is the only beat where the accent
-brightens — a single 0.6s lift on the rule, like a thought flickering.
+**Spoken:** "I thought, 'Why don't we turn...'" (false start — the speaker corrects himself)
 
-**Mood direction.** A page margin where someone has written in pencil.
-Cinematic title-sequence pause. Reference: a Saul Bass title card held
-two beats longer than expected; the silence in a Nicolas Jaar bridge.
+**Concept.** A typographic stutter. The speaker says "turn" and stops; on the next breath he will correct it to "return." The frame must SHOW the false start. The headline appears, then the final glyph dissolves — leaving the phrase visibly unfinished. The frame is asking the same question the speaker is.
 
-**Depth layers (≈9 elements).**
+**Mood direction.** The moment in a documentary where the subject's first take is left in. A typesetter's correction mark in the margin. A poem with a word crossed out and rewritten — the original still visible underneath.
 
-- BG: `#0a0a0a`; vignette + grain unchanged; ghost numeral "03".
-- MG: video plate sustained at 92%; content column hosts the
-  pull-quote — italic `pull-quote` cut, with a 1px `accent-stop-1`
-  (`#131a5e`) left border, padding-left `md` (32px), no fill.
-- FG: overline `03 / QUESTION`; hairline divider; anchor rule, but
-  this beat the rule briefly lifts opacity 0.30 → 0.55 → 0.30 over
-  0.6s sine.inOut on quote entry; ellipsis `...` is a separate
-  inline span animated independently.
+**Depth layers (8 elements):**
 
-**Animation choreography.**
+- BG-1 — Vignette: continued breath.
+- BG-2 — Ghost type: the word `THOUGHT` in Playfair Display italic 16rem, color `#16140f`, cols 6–12 rows 4–8 (mid-right). Drift 10px on 12s sine.
+- BG-3 — Grain overlay: continued.
+- FG-1 — Overline: `§ 03 — A FALSE START`, Inter 500 uppercase color `#b8a982`, anchored top-left cols 2–5 row 3. Fades in. _fades in_
+- FG-2 — Hairline rule: horizontal 1px solid `#b8a982` at opacity 0.30, cols 2–6 row 4. _DRAWS_ left→right 0.6s expo.out.
+- MG-1 — Headline: _"I thought,"_, Playfair Display italic 4.5rem color `#f3ece0`, cols 2–8 row 7. _floats up_ from y:20, 0.8s sine.inOut.
+- MG-2 — Pullquote: _"Why don't we turn..."_, Playfair Display italic 6rem color `#fbf6ec`, cols 2–10 rows 9–12. _settles in_ word-by-word, 0.18s stagger. The final word `turn` and the ellipsis `...` are tracked separately so they can be unset.
+- FG-3 — Strikethrough rule: 2px solid `#988a66`, drawn horizontally THROUGH the word `turn` only — appearing in the last 0.6s of the beat, _DRAWS_ left→right 0.5s power2.in, transform-origin left. The accent moment of this scene: the strikethrough itself is in midtone, but the ellipsis glyph `...` is set in `#5a6dd1` (the indigo accent) the instant the strikethrough completes — marking the correction. _DRAWS_ + _glyph swap_
 
-- Overline `03 / QUESTION` — types on 0.42s sine.inOut.
-- Hairline divider — width 0 → 100%, 1.0s sine.inOut.
-- Pull-quote body — `opacity 0 → 1, y 6 → 0`, 1.0s sine.inOut,
-  lagged 0.3s after the divider.
-- Left border (1px `accent-stop-1`) — height 0 → 100%, 0.8s sine.inOut,
-  drawing downward in sync with the quote text appearing.
-- Anchor rule — opacity lift 0.30 → 0.55 → 0.30 over 0.6s sine.inOut,
-  triggered on quote entry. This is the only intentional non-ambient
-  motion the accent rule performs across the whole video.
-- Ellipsis `...` — three dots fade in sequentially, 120ms stagger,
-  sine.inOut, after the quote completes — the visual breath-hold.
-- Ghost numeral "03" — y drift ±2px ambient.
-- Vignette + grain — sustained.
+**Animation choreography summary.** Overline _fades in_ → hairline _DRAWS_ → headline `"I thought,"` _floats up_ → pullquote `"Why don't we turn..."` _settles in_ → strikethrough _DRAWS_ through `turn` → ellipsis glyph _swaps_ to indigo. The whole beat is 3.8s; the last 1.0s is the visible correction. The hold is short by design — we cut on the speaker's intake of breath.
 
-**Transition out.** `cross-warp-morph`, 0.8s, `power2.inOut`. The
-ellipsis carries through the morph and dissolves into the PAYOFF
-overline's first character — a typographic hand-off.
+**Transition out.** CSS blur-through, exit `blur:20px, opacity:0, 0.8s power3.in` on the pullquote only (overline + hairline cross-fade with the next beat under the shader), into PAYOFF. The blur stands in for the speaker reconsidering his phrasing — visually we are unfocusing the wrong word and refocusing on the right one. Slower than the catalog default (0.25s) because cadence is calm.
+
+**SFX cue.** A single soft pencil-line scratch (the strikethrough), then silence. No music shift.
 
 ---
 
-### Beat 4 — PAYOFF · `[00:18.82 – 00:30.80]` · 11.98s
-> "I thought, 'Why don't we return to the roots, to good old software
-> that you pay for once and use for life?' Yes, maybe it's not as
-> interesting from a business point-of-view, but how cool is it to..."
+### Scene 4 — PAYOFF (18.20 → 26.50, ~8.3s)
 
-**Concept.** A library at dawn. The thought completes, and then —
-deliberately — does not. The headline carries the *offer* ("good old
-software / you pay for once"); the trailing accent dot is the
-*invitation* — the unfinished sentence, the next reader's turn. The
-longest hold of the video. Calm, certain, never triumphant. This is
-the closing page, not the curtain call.
+**Spoken:** "I thought, 'Why don't we return to the roots, to good old software that you pay for once and use for life?' Yes, maybe it's not as interesting from a business point-of-view, but how cool is it to..."
 
-**Mood direction.** A printed quotation on the inside back cover of a
-hardcover book. Editorial restraint at its most confident. Reference:
-the closing frame of a *Field Notes* almanac entry; the credit page
-of a slim Penguin essay edition.
+**Concept.** The resolved thought. The largest typographic moment of the piece — the only fully-set pullquote, framed in the center of the reading column, holding the rhetorical question that is the monologue's thesis. The word `roots` carries the accent indigo. The final phrase trails off mid-sentence ("...how cool is it to...") — the visual must trail off with it. No exit tween. The piece ends visibly unfinished, as a memo with the pen still moving.
 
-**Depth layers (≈10 elements).**
+**Mood direction.** The last page of a Stripe Press essay. The pullquote on a New Yorker spread. The single image that closes a documentary chapter — held, unhurried, not punctuated.
 
-- BG: `#0a0a0a`; vignette + grain unchanged; ghost numeral "04";
-  a second ghost layer — a faint horizontal hairline at 78% from
-  top, `foreground` × 6% opacity, full-width — reads as the
-  bottom-of-page rule of a printed book.
-- MG: video plate sustained; content column hosts a two-line
-  headline: line 1 `GOOD OLD SOFTWARE` / line 2 `YOU PAY FOR ONCE`,
-  Inter 300, `3rem`, letter-spacing `0.15em`, ALL CAPS.
-- FG: overline `04 / ASPIRATION`; hairline divider; anchor rule;
-  emphasized word `ONCE` (`foreground-highlight-1` + 1px `accent`
-  underline at 70% character width); a single accent dot
-  (8px × 8px filled circle in `accent`) at the trailing position
-  after `ONCE`, separated by 24px — the "unfinished, continuing
-  thought" mark from DESIGN.md.
+**Depth layers (10 elements):**
 
-**Animation choreography.**
+- BG-1 — Vignette: continued breath.
+- BG-2 — Ghost type: the word `ROOTS` in Playfair Display italic 22rem, color `#1d1a13` (slightly brighter than prior scenes — this is the climax; the ghost is allowed to assert), cols 1–9 rows 14–18. Drift 8px on 12s sine. Ambient opacity pulse 0.55 ↔ 0.70 on 8s sine (very subtle).
+- BG-3 — Grain overlay: continued.
+- FG-1 — Overline: `§ 04 — A MEMO TO MYSELF`, Inter 500 uppercase color `#b8a982`, anchored top-left cols 2–6 row 3. Fades in. _fades in_
+- FG-2 — Hairline rule (upper): 1px solid `#b8a982` at opacity 0.30, horizontal cols 2–6 row 4. _DRAWS_ 0.8s expo.out.
+- FG-3 — Hairline rule (lower): 1px solid `#b8a982` at opacity 0.30, horizontal cols 2–10 row 13 — a closing rule beneath the pullquote. _DRAWS_ 1.0s expo.out, beginning after the pullquote settles.
+- MG-1 — Headline: _"I thought,"_, Playfair Display italic 4.5rem color `#d9d2c5` (foreground-stop-1, slightly demoted — we want the pullquote to dominate), cols 2–8 row 6. _floats up_ from y:18, 0.8s sine.inOut.
+- MG-2 — Pullquote: _"Why don't we return to the roots"_, Playfair Display italic 6rem color `#fbf6ec`, cols 2–11 rows 8–12. _settles in_ word-by-word, 0.22s stagger. The word `roots` is set in `#5a6dd1` italic — the scene's accent moment, and the keystone word of the entire monologue. A 2px solid `#988a66` decorative underscore _DRAWS_ left→right beneath `roots` only (0.6s expo.out), arriving the instant the word lands.
+- MG-3 — Body paragraph (line 1): _"good old software that you pay for once and use for life."_, Inter 300 1.15rem line-height 1.6 color `#f3ece0`, cols 2–7 row 14 (below the lower hairline). _CASCADE_ word-by-word, 0.06s stagger.
+- MG-4 — Body paragraph (line 2, trailing): _"Yes, maybe it's not as interesting from a business point-of-view, but how cool is it to"_, Inter 300 1.15rem color `#bfb8ab` (foreground-stop-2 — visibly demoted, marking it as continuing-thought), cols 2–7 rows 16–18. _CASCADE_ word-by-word, 0.06s stagger. The trailing `to` is followed by NO ellipsis — the sentence simply ends; the absence of punctuation IS the unfinished gesture. Final word `to` is held at its entrance state, then nothing.
 
-- Overline `04 / ASPIRATION` — types on 0.42s sine.inOut.
-- Hairline divider — width 0 → 100%, 1.0s sine.inOut.
-- Bottom-of-page hairline — width 0 → 100%, 1.4s sine.inOut, lagged
-  0.6s, inward from both edges (left edge anchored, right edge meets
-  it — slow, asymmetric).
-- Headline line 1 (`GOOD OLD SOFTWARE`) — `opacity 0 → 1, y 8 → 0`,
-  1.0s sine.inOut.
-- Headline line 2 (`YOU PAY FOR ONCE`) — same tween, lagged 0.4s.
-- Emphasized word `ONCE` — color crossfade `foreground` →
-  `foreground-highlight-1` over 0.6s sine.inOut, 0.4s after line 2.
-- Accent underline beneath `ONCE` — width 0 → 70%-of-word, 0.7s
-  sine.inOut, immediately after the color shift.
-- Accent dot — `opacity 0 → 1, scale 0 → 1`, 0.5s sine.inOut, lagged
-  1.2s after the underline. Then enters a *very* slow ambient
-  brightness breath: `accent` ↔ `accent-highlight-1`, 4s sine.inOut,
-  infinite — the only element still moving at the end. This is the
-  unfinished thought.
-- Anchor rule — sustained ambient breath; no re-trigger.
-- Ghost numeral "04" — y drift ±2px ambient.
-- Vignette + grain — sustained.
+**Animation choreography summary.** Overline _fades in_ → upper hairline _DRAWS_ → headline `"I thought,"` _floats up_ → pullquote `"Why don't we return to the roots"` _settles in_ with the keystone `roots` in indigo + decorative underscore _DRAWS_ beneath it → lower hairline _DRAWS_ → body line 1 _CASCADES_ → body line 2 _CASCADES_, slower and demoted in tone → the final word `to` lands and the composition holds, motion-still except for the continuous vignette breath, hairline opacity pulse, and ghost-type drift. No exit. The shader does NOT run on the final cut. The frame trails off the way the voice does.
 
-**Transition out.** `cross-warp-morph` to black, 1.2s (matches
-DESIGN.md `motion.duration.transition`), `power2.inOut`. No exit
-tweens on text — the morph alone carries the dissolve. The accent
-dot is the last visible element.
+**Transition out.** NONE. Per DESIGN.md: "Don't animate exits on the final beat — the speaker's last line trails off mid-thought; the visual must trail off too." The composition holds at its final pose. The cross-warp-morph shader does NOT fire. The audio fades; the frame does not.
+
+**SFX cue.** None. Silence at the close. The continuous ambient (vignette breath, grain texture) is the only audio underneath the dialogue.
+
+---
 
 ## 5. Recurring Motifs
 
-- **The vertical anchor rule at 12% from left.** Persists through every
-  beat at `accent` × 30% opacity, ambient breath. It is the spine of
-  the book — the through-line from "Age of artificial intelligence"
-  to the trailing dot. Never re-triggered, never reset. The rule
-  *survives* every cross-warp-morph as continuous geometry.
-- **Ghost numerals (`01`, `02`, `03`, `04`).** Top-right of frame at
-  `foreground` × 4% opacity, Inter 300 `4rem`. They cross-warp from
-  one to the next on each beat boundary — the page numbers of the
-  essay.
-- **Accent indigo (`#1a237e`) used at most once per beat besides the
-  anchor rule.** HOOK: underline beneath `INTELLIGENCE`. PROBLEM:
-  margin tick. PIVOT: pull-quote left border + the single brightness
-  lift. PAYOFF: underline beneath `ONCE` + the trailing dot. The
-  accent is never two foreground objects in the same beat.
-- **Type-on overlines.** Every beat opens with the overline typing on
-  at 35ms/char. The cadence is the audible click of editorial pacing.
-- **The hairline divider.** Drawn fresh every beat, 1.0s sine.inOut.
-  The unit of "this is a new section" without ever using a hard cut.
-- **Subtle-grain + slow-vignette-breath + hairline-rules** — the three
-  atmosphere primitives from DESIGN.md, present in every beat.
+A small set of visual threads runs across all four scenes — these are how the composition reads as a single memo, not four slides:
 
-## 6. Negative Prompt — What to Avoid
-
-Cited from DESIGN.md "Don'ts" plus video-medium constraints:
-
-- **No gradient text.** No `background-clip: text`, no
-  purple→blue display-type tells. The editorial restraint depends on
-  weight + tracking, not color tricks.
-- **No neon, no cyan-on-dark, no purple→blue gradients.** Those are
-  the AI-product visual vocabulary this video is *critiquing*. Using
-  them would be the joke landing on the wrong side.
-- **No centered or symmetric compositions.** Asymmetry is the brand.
-  Justify-left against the anchor rule.
-- **No drop shadows beyond 1px hairlines, no glow, no rim-light, no
-  soft blur shadows.** Elevation is luminance shift, not depth-of-field.
-- **No second display family.** Inter is the only typeface. No serif
-  companion, even for the pull-quote — italic Inter is the contrast.
-- **No emoji, no decorative icons, no abstract "tech" geometry**
-  (orbits, particles, mesh gradients, audio-reactive waveforms,
-  rotating cubes). Those pull the frame toward the AI-landing-page
-  archetype the video is rejecting.
-- **No exit tweens on text.** The cross-warp-morph alone hands off.
-  Do not animate text out — that's two transitions stacked on the
-  same cut and reads as nervous.
-- **No PUNCH / SLAM / CRASH animation verbs.** Energy is `calm` per
-  DESIGN.md `motion.energy`. Verbs are *fades*, *types on*,
-  *floats*, *crossfades*, *draws*, *breathes* — never percussive.
-- **No `Math.random()`, no `Date.now()`, no network fetches** (HF Key
-  Rule #6). Grain is a deterministic pre-rendered tile; ambient
-  motion is GSAP `repeat: -1` with `yoyo: true`.
-- **No more than one accent-colored foreground element per beat
-  besides the anchor rule** (DESIGN.md "Do" #3).
-- **No invented intermediate hexes.** Use only the named tokens from
-  the DESIGN.md frontmatter — `background-stop-2`, `accent-stop-1`,
-  etc. Pre-baked palette is closed.
-- **No captions burned over the speaker's face.** Content typography
-  lives in the right-of-rule column, not floating across the video
-  plate. The talking head and the typography are *adjacent*, not
-  *stacked*.
-- **No audio-reactive visualization.** The voice is the content; the
-  design refuses to translate it into shapes.
+- **The upper-left vignette breath** — `radial-gradient(ellipse at top left, #16140f 0%, #0c0b0a 55%, #050403 100%)` on a 6s sine scale 1.00 ↔ 1.04. Continuous across the entire 26.5s; does NOT reset on cuts. This is the "reading lamp" that grounds every scene in the same warm-tinted room.
+- **Hairline rules in `#b8a982` at opacity 0.25–0.35** — every scene anchors at least one hairline (horizontal in HOOK / PIVOT / PAYOFF; vertical reading-margin in PROBLEM). The rules pulse opacity 0.25 ↔ 0.35 on an 8s sine — the heartbeat of the memo.
+- **Ghost type in `#16140f` to `#1d1a13`** — a single oversize italic word per scene drifting in a lower opacity background register: `MEMO` (HOOK upper-right) → `OPEN SOURCE` (PROBLEM lower-left) → `THOUGHT` (PIVOT mid-right) → `ROOTS` (PAYOFF lower-left, larger and slightly brighter as climax). The position rotates around the frame as the eye does.
+- **Overline numbering** — `EPISODE 01 · A MEMO` → `§ 02 — THE DRIFT` → `§ 03 — A FALSE START` → `§ 04 — A MEMO TO MYSELF`. The numbering treats the piece as the chapters of a printed essay.
+- **One accent indigo moment per scene** — lowercase italic `a` in HOOK (`#5a6dd1`); the word `myself` in PROBLEM (`#5a6dd1`); the ellipsis glyph `...` in PIVOT (`#5a6dd1`); the word `roots` in PAYOFF (`#5a6dd1`). The accent never appears on more than one element per scene, and never as a fill or gradient stop.
+- **Decorative underscore in `#988a66`** — drawn left→right under the loaded word/phrase in HOOK and PAYOFF (0.6s expo.out). Acts as a typesetter's emphasis mark.
+- **Static 7px grain at opacity 0.04** — full-frame, every scene, never animated. Keeps the printed-page feel; prevents the dark canvas from reading as digital flat fill.
+- **Asymmetric reading column** — every scene reserves 25–40% of the frame as deliberate negative space. The column lives in cols 1–8 OR cols 5–12, never centered. The unfilled cols always carry exactly one decorative anchor (overline, hairline, or ghost type), never two.
 
 ---
 
-*Total beats: 4 · Approximate length: 26.5s · Energy: calm sustained ·
-Transitions: 3× cross-warp-morph (between beats) + 1× cross-warp-morph
-to black (after PAYOFF). Per-beat element count holds 9–10. All hex,
-type, easing, and duration values are cited from
-`hyperframes/DESIGN.md` and not invented at this layer.*
+## 6. Negative Prompt
+
+Do NOT:
+
+- Use neon, cyan-on-dark, purple-to-blue gradients, or any "AI-product" visual idiom. The monologue rejects that aesthetic; rendering in it would undermine the argument. (DESIGN.md hard constraint.)
+- Use particle fields, scan-lines, radial neon glows, Data-Drift / Deconstructed atmospheres. (DESIGN.md hard constraint.)
+- Use pure `#000` or pure `#fff` anywhere. Every neutral pulls toward `#b8a982` warm midtone.
+- Use gradient text (`background-clip: text` + gradient). Lazy-default per house-style.md.
+- Use left-edge accent stripes on callouts. Lazy-default per house-style.md.
+- Use cards, rounded buttons, drop shadows, or any shadow-elevated container. Editorial register; not product UI.
+- Introduce a third typeface. Playfair Display + Inter only. No Space Grotesk, Roboto, Open Sans, Lato, Montserrat, or any geometric display sans that would echo Silicon Valley deck aesthetics.
+- Swap fonts mid-scene.
+- Center text blocks with equal weight. Every scene leads with overline OR ghost-type anchor, never balanced bilaterally.
+- Render numeric stats large. The script has no data; faking stat-card scaffolding would be dishonest. (DESIGN.md hard constraint.)
+- Apply the accent indigo to more than ONE word/glyph per scene, or as a fill/gradient stop on text. The accent is a typographic mark, not a decoration.
+- Animate an exit on the final beat. PAYOFF holds; the cross-warp-morph shader does NOT fire on the closing cut.
+- Reset the vignette breath, hairline pulse, or ghost-type drift on scene cuts. These are continuous ambient loops; cutting them re-attacks each beat and breaks the single-memo reading.
+- Use animation verbs from the high-energy register (SLAMS, CRASHES, PUNCHES, SHATTERS). Cadence is calm — `floats up`, `settles in`, `CASCADE`, `types on`, `DRAWS`, `fades in`, `pulse`, `breath`, `drift` only.
+- Add box-shadows on text or content. The ONLY elevation cue is the upper-left vignette. (DESIGN.md hard constraint.)
