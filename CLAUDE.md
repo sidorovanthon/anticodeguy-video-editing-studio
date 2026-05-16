@@ -18,6 +18,8 @@ episodes/               # processed archive (gitignored). One folder per episode
 
 **Supported raw extensions:** `.mp4`, `.mov`, `.mkv`, `.webm`.
 
+**State-first artifacts (HOM-239 / spec §"Step D2", landed 2026-05-16, breaking).** Under the canonical fixture (`tests/fixtures/episodes/canonical-portrait-talking-head/`) the Phase 4 text artifacts — `hyperframes/index.html`, `hyperframes/captions.html`, `hyperframes/DESIGN.md`, `hyperframes/compositions/*.html`, `hyperframes/.hyperframes/expanded-prompt.md`, and `edit/project.md` — are NO LONGER committed. They are regenerated from `cache.db` on demand by `p4_materialize_disk_node`, the single deterministic disk writer. The producer nodes (`p4_design_system`, `p4_prompt_expansion`, `p4_beat`, `p4_captions_layer`, `p4_assemble_index`, `p4_transitions`, `p4_persist_session`) return body strings in state only — their pre-D2 dual-writes are stripped. Spec ref: `docs/superpowers/specs/2026-05-10-state-first-artifacts.md` §"Step D2".
+
 ## Entry point
 
 The pipeline is invoked exclusively via the slash command `/edit-episode` (defined in
