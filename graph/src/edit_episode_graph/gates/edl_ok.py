@@ -237,35 +237,22 @@ def _source_duration_map(state: dict) -> dict[str, float]:
     return out
 
 
-def _transcript_dir(state: dict) -> Path:
-    """Transitional (HOM-279): in the current Phase 3 topology
-    ``gate_edl_ok`` runs upstream of ``glue_remap_transcript``, so
-    ``state.transcripts.bodies`` is not yet populated when this gate
-    fires — the disk path resolved here is the load-bearing one on the
-    live hot path. The state-read branch in ``_transcript_body_for_source``
-    becomes primary once raw-transcript hydration moves earlier in
-    Phase 3 (follow-up to HOM-279, out of scope for this PR).
-    """
-    episode_dir = state.get("episode_dir")
-    return Path(episode_dir) / "edit" / "transcripts"
-
-
 def _transcript_body_for_source(state: dict, source_key: str) -> str | None:
-    """Resolve transcript JSON body string for an EDL source key (HOM-279).
+    """Resolve transcript JSON body string for an EDL source key.
 
     The gate's word-interval check is over the PRE-CUT word timings
     (matching the EDL range edges against the source-side timeline).
-    `glue_remap_transcript` hydrates the raw transcript body under
-    ``state.transcripts.bodies.raw`` (and the per-source disk filename
-    stem is ``raw`` for the canonical single-source fixture).
+    ``p3_inventory`` (HOM-285 — the Scribe producer) hydrates the raw
+    transcript body under ``state.transcripts.bodies.raw`` (and the
+    per-source disk filename stem is ``raw`` for the canonical
+    single-source fixture).
 
-    Transitional note: in the current Phase 3 topology gate_edl_ok
-    runs upstream of ``glue_remap_transcript``, so on the live hot
-    path ``state.transcripts.bodies`` is not yet populated when the
-    gate fires — the disk fallback in ``_load`` is load-bearing and
-    this helper returns ``None``. Once raw-transcript hydration is
-    hoisted earlier in Phase 3 (follow-up to HOM-279), this becomes
-    the primary path and the helper widens to a per-source map.
+    Class A — state is the single source of truth (HOM-274 / HOM-278
+    pattern). No disk fallback: body-absent from state ⇒ informative
+    violation emitted by the gate's `_load`, not a silent disk read.
+    Multi-source widening (per-source body map keyed by stem) is a
+    downstream follow-up; today we cover the canonical single-source
+    case only.
     """
     transcripts = state.get("transcripts") or {}
     bodies = transcripts.get("bodies") or {}
@@ -375,41 +362,31 @@ class EdlOkGate(Gate):
             return violations
 
         sources = edl.get("sources") or {}
-        transcripts_dir = _transcript_dir(state)
         word_cache: dict[str, list[tuple[float, float]]] = {}
 
         def _load(source_key: str) -> list[tuple[float, float]] | None:
             if source_key in word_cache:
                 return word_cache[source_key]
-            # HOM-279: try transcript body from state first
-            # (``state.transcripts.bodies.raw``), then fall back to
-            # disk. In the current Phase 3 topology gate_edl_ok
-            # runs upstream of `glue_remap_transcript`, so the
-            # state branch is typically empty here and the disk
-            # read is load-bearing on the live hot path. The
-            # state-preferred shape lets the gate flip to
-            # state-primary once raw-transcript hydration moves
-            # earlier in Phase 3 (follow-up to HOM-279).
+            # HOM-285: Class A state-read only — no disk fallback. The
+            # transcript body lives at ``state.transcripts.bodies.raw``,
+            # hoisted by ``p3_inventory`` (the Scribe producer)
+            # upstream of this gate. Body-absent ⇒ violation, surfacing
+            # the upstream-contract gap loudly instead of silently
+            # re-opening the disk file.
             body = _transcript_body_for_source(state, source_key)
-            if body is not None:
-                try:
-                    words = _word_intervals_from_body(body)
-                except (ValueError, KeyError) as exc:
-                    violations.append(
-                        f"transcript body unreadable for source `{source_key}`: {exc}"
-                    )
-                    return None
-                word_cache[source_key] = words
-                return words
-            tpath = transcripts_dir / f"{source_key}.json"
-            if not tpath.is_file():
+            if body is None:
+                violations.append(
+                    f"transcript body missing from state for source `{source_key}` "
+                    f"(state.transcripts.bodies.{source_key}) — `p3_inventory` "
+                    f"must hoist it before `gate:edl_ok` runs"
+                )
                 return None
             try:
-                words = _word_intervals_from_body(
-                    tpath.read_text(encoding="utf-8")
+                words = _word_intervals_from_body(body)
+            except (ValueError, KeyError) as exc:
+                violations.append(
+                    f"transcript body unreadable for source `{source_key}`: {exc}"
                 )
-            except (OSError, ValueError, KeyError) as exc:
-                violations.append(f"transcript unreadable for source `{source_key}`: {exc}")
                 return None
             word_cache[source_key] = words
             return words

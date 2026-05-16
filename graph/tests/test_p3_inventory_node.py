@@ -97,6 +97,75 @@ def test_inventory_uses_cached_transcript_and_packs(project_root_episode, monkey
     datetime.fromisoformat(inv["takes_packed_at"])
 
 
+def test_inventory_hoists_raw_transcript_body_into_state(project_root_episode, monkeypatch):
+    """HOM-285: after `transcribe_batch.py` + `pack_transcripts.py` land
+    `raw.json` on disk, `p3_inventory` reads it back into
+    `state.transcripts.bodies.raw` (+ `raw_path`). This is what closes
+    the gap that made `gate:edl_ok` fall back to disk pre-HOM-285.
+    """
+    slug, episode = project_root_episode
+    source = episode / "raw.mp4"
+    source.write_bytes(b"x")
+    edit = episode / "edit"
+    transcripts = edit / "transcripts"
+    transcripts.mkdir(parents=True)
+    raw_payload = {"words": [
+        {"text": "hello", "start": 0.0, "end": 0.5, "type": "word"},
+    ]}
+    raw_path = transcripts / "raw.json"
+    raw_path.write_text(json.dumps(raw_payload), encoding="utf-8")
+
+    monkeypatch.setattr(node_module, "_ensure_tools", lambda: None)
+
+    def runner(cmd: list[str], *, cwd: Path) -> CompletedProcess[str]:
+        if cmd[0] == "ffprobe":
+            return _ok(json.dumps({
+                "format": {"duration": "10.0"},
+                "streams": [{"codec_type": "video", "duration": "10.0"}],
+            }))
+        if cmd[0] == sys.executable and str(node_module.PACK_TRANSCRIPTS) in cmd:
+            (edit / "takes_packed.md").write_text("# t\n", encoding="utf-8")
+        return _ok()
+
+    update = p3_inventory_node({"slug": slug}, runner=runner)
+
+    assert "errors" not in update, update
+    bodies = update["transcripts"]["bodies"]
+    assert json.loads(bodies["raw"]) == raw_payload
+    assert bodies["raw_path"] == str(raw_path)
+
+
+def test_inventory_skips_body_hoist_when_raw_json_absent(project_root_episode, monkeypatch):
+    """HOM-285: multi-source episodes (stem != 'raw') do not produce a
+    canonical `raw.json` — `p3_inventory` skips the hoist cleanly
+    instead of erroring. Future work widens the body channel to a
+    per-source map; today we cover the single-source canonical fixture.
+    """
+    slug, episode = project_root_episode
+    source = episode / "take1.mov"
+    source.write_bytes(b"x")
+    transcripts = episode / "edit" / "transcripts"
+    transcripts.mkdir(parents=True)
+    # take1.json exists but no canonical raw.json.
+    (transcripts / "take1.json").write_text(
+        json.dumps({"words": []}), encoding="utf-8"
+    )
+    (episode / "edit" / "takes_packed.md").write_text("# t\n", encoding="utf-8")
+
+    monkeypatch.setattr(node_module, "_ensure_tools", lambda: None)
+
+    def runner(cmd: list[str], *, cwd: Path) -> CompletedProcess[str]:
+        if cmd[0] == "ffprobe":
+            return _ok(json.dumps({"format": {"duration": "1.0"}, "streams": []}))
+        return _ok()
+
+    update = p3_inventory_node({"slug": slug}, runner=runner)
+
+    assert "errors" not in update, update
+    # No transcripts namespace emitted when raw.json absent on disk.
+    assert "transcripts" not in update or "bodies" not in (update.get("transcripts") or {})
+
+
 def test_inventory_prefers_edit_sources_dir(project_root_episode, monkeypatch):
     slug, episode = project_root_episode
     source_dir = episode / "edit" / "sources"

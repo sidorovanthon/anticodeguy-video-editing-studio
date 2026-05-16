@@ -77,27 +77,61 @@ def _patch_subprocess_ok(final_json_envelope: dict | None = None):
 def test_hydrates_edl_from_disk(project_root_episode):
     """HOM-144 contract: state.edit.edl is populated from edit/edl.json.
 
-    HOM-279 contract: transcripts.bodies.{raw,final} are populated with
-    the JSON body strings so downstream Phase-4 consumers
-    (`p4_captions_layer`, `p4_prompt_expansion`, `gate:edl_ok`) can
-    read transcript content from state instead of disk.
+    HOM-279 contract: transcripts.bodies.final is populated with the
+    JSON body string so downstream Phase-4 consumers (`p4_captions_layer`,
+    `p4_prompt_expansion`) can read final transcript content from state.
+
+    HOM-285 contract: raw body is NOT written here — it's the
+    responsibility of `p3_inventory` (Scribe producer) upstream. If
+    inbound state already carries `transcripts.bodies.raw`, the
+    glue node preserves it via merge.
     """
     slug, episode_dir = project_root_episode
     _scaffold(episode_dir)
+    inbound = {
+        "slug": slug,
+        # Simulate `p3_inventory` having already hoisted raw upstream.
+        "transcripts": {
+            "bodies": {
+                "raw": json.dumps({"words": []}),
+                "raw_path": str(
+                    episode_dir / "edit" / "transcripts" / "raw.json"
+                ),
+            },
+        },
+    }
     with _patch_subprocess_ok():
-        out = glue_remap_transcript_node({"slug": slug})
+        out = glue_remap_transcript_node(inbound)
     assert "errors" not in out, out
     assert out["edit"]["edl"] == _VALID_EDL
     # HOM-223: identity-only state — `raw_json_path`, `final_json_path` no
     # longer echoed; only content fingerprint (`edl_hash`) remains.
     transcripts = out["transcripts"]
     assert transcripts["edl_hash"] == "abc123"
-    # HOM-279: bodies hoisted into state.
+    # HOM-285: final added; raw/raw_path preserved from inbound state.
     bodies = transcripts["bodies"]
     assert json.loads(bodies["raw"]) == {"words": []}
     assert json.loads(bodies["final"]) == {"edl_hash": "abc123", "words": []}
     assert bodies["raw_path"].endswith("raw.json")
     assert bodies["final_path"].endswith("final.json")
+
+
+def test_only_emits_final_when_raw_absent(project_root_episode):
+    """HOM-285: glue is no longer the raw producer. When inbound state
+    has no raw body (defensive — should always be present in production,
+    p3_inventory hoists it), glue still produces final cleanly and does
+    NOT re-introduce a raw read on its own.
+    """
+    slug, episode_dir = project_root_episode
+    _scaffold(episode_dir)
+    with _patch_subprocess_ok():
+        out = glue_remap_transcript_node({"slug": slug})
+    assert "errors" not in out, out
+    bodies = out["transcripts"]["bodies"]
+    assert "final" in bodies and bodies["final_path"].endswith("final.json")
+    # Raw is not introduced by glue.
+    assert "raw" not in bodies
+    assert "raw_path" not in bodies
 
 
 def test_missing_slug_errors():

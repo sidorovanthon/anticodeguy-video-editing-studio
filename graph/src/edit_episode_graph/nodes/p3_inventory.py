@@ -44,7 +44,16 @@ HELPERS_DIR = Path.home() / ".claude" / "skills" / "video-use" / "helpers"
 # timestamp sentinel for `route_after_preflight`. Cache-key inputs
 # unchanged (`raw_path` + `wav_path` still pin the deterministic helper
 # outputs); bump invalidates so the next replay re-emits the new field.
-_CACHE_VERSION = 3
+# v4 (HOM-285): hoist raw transcript body into `state.transcripts.bodies.raw`
+# (and `.raw_path`) at the Scribe producer. Pre-HOM-285 this lived in
+# `glue_remap_transcript` (HOM-279), which runs AFTER `gate_edl_ok` on the
+# hot path — so the gate's state-read branch was dead code and the disk
+# fallback was load-bearing. Producing the body here lets `gate_edl_ok`
+# (and any future upstream consumer) read it from state without depending
+# on disk presence. Output schema change → cache invalidation. Cache-key
+# inputs unchanged (still slug-derived via `raw_path` + `wav_path`); the
+# body is fully derived from the on-disk transcript the subprocess wrote.
+_CACHE_VERSION = 4
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -314,6 +323,31 @@ def p3_inventory_node(state, *, runner=_run):
         },
     }
     notices: list[str] = list(sample_warnings)
+
+    # HOM-285: hoist raw transcript body into state at the Scribe producer.
+    # `gate_edl_ok` (which runs BEFORE `glue_remap_transcript` on the hot
+    # path) reads `state.transcripts.bodies.raw` for word-interval
+    # extraction — pre-HOM-285 the body wasn't populated yet at that point
+    # and the gate fell back to disk. By hoisting here, the state-read is
+    # the only path. Single-source canonical-fixture shape: the body is
+    # keyed only when the slug-derived `raw.json` is present (canon
+    # `transcribe_batch.py` produces `<stem>.json` per source — for the
+    # single-source `raw.mp4` fixture that's `raw.json`). Multi-source
+    # episodes use other stems and don't populate this slot today; the
+    # gate's disk-fallback removal is tracked as a multi-source widening
+    # follow-up. Note: `transcripts.bodies.final` and `.final_path` remain
+    # the responsibility of `glue_remap_transcript` (it produces
+    # `final.json`).
+    raw_json_path = paths.transcripts_raw_json_path
+    if raw_json_path.is_file():
+        try:
+            raw_body = raw_json_path.read_text(encoding="utf-8")
+        except OSError as exc:
+            return _error(f"raw.json unreadable for state hydration: {exc!r}")
+        update.setdefault("transcripts", {})["bodies"] = {
+            "raw": raw_body,
+            "raw_path": str(raw_json_path),
+        }
     if not notices:
         notices = []
     if notices:

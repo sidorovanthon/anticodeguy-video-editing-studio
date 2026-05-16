@@ -48,7 +48,12 @@ SCRIPTS_ROOT = scripts_root()
 # don't carry `transcripts.bodies` and would feed downstream consumers
 # nothing). Cache key inputs (`files=[edl_json, raw_json]`) unchanged —
 # both bodies are derived from those two files.
-_CACHE_VERSION = 3
+# v4 (HOM-285): raw body responsibility hoisted upstream to `p3_inventory`
+# (the Scribe producer). This node now only writes `final` + `final_path`
+# to `transcripts.bodies` — raw is already populated when we arrive.
+# Pre-HOM-285 dual-write removed so future readers can't accidentally
+# depend on the in-glue raw write. Output shape change → cache bump.
+_CACHE_VERSION = 4
 
 
 def _edl_path_for_key(state: dict) -> str | None:
@@ -157,15 +162,20 @@ def glue_remap_transcript_node(state):
     except (OSError, json.JSONDecodeError) as exc:
         return _error(f"final.json unreadable after remap: {exc!r}")
 
-    # HOM-279: hoist transcript bodies into state so Phase-4 consumers
-    # (`gate:edl_ok`, `p4_captions_layer`, `p4_prompt_expansion`) can
-    # read from the state channel instead of re-opening disk files. The
-    # disk artifacts remain authoritative — both are Phase 3 ffmpeg
-    # outputs and `p4_materialize_disk_node` does not rewrite them.
-    try:
-        raw_body = raw_json.read_text(encoding="utf-8")
-    except OSError as exc:
-        return _error(f"raw.json unreadable for state hydration: {exc!r}")
+    # HOM-285: only `final` + `final_path` are this node's responsibility.
+    # The raw body was hoisted upstream to `p3_inventory` (the Scribe
+    # producer) so `gate_edl_ok` (which runs BEFORE this node) can read
+    # it from state without a disk fallback. Because the `transcripts`
+    # state reducer (`dict_merge`) is shallow, we must preserve any
+    # pre-existing `bodies` entries — otherwise our emitted `bodies` dict
+    # would overwrite p3_inventory's `raw`/`raw_path` keys and silently
+    # break the gate read. Re-emitting the prior `raw`/`raw_path` slots
+    # is idempotent (identical content) and keeps this node's surface
+    # narrowed to "produce final".
+    prior_bodies = ((state.get("transcripts") or {}).get("bodies") or {})
+    new_bodies = dict(prior_bodies)
+    new_bodies["final"] = final_body
+    new_bodies["final_path"] = str(final_json)
 
     # HOM-223: identity-only state — `raw_json_path` / `final_json_path`
     # no longer echoed; consumers derive via
@@ -174,12 +184,7 @@ def glue_remap_transcript_node(state):
     return {
         "transcripts": {
             "edl_hash": edl_hash,
-            "bodies": {
-                "raw": raw_body,
-                "final": final_body,
-                "raw_path": str(raw_json),
-                "final_path": str(final_json),
-            },
+            "bodies": new_bodies,
         },
         "edit": {"edl": edl_payload},
     }
