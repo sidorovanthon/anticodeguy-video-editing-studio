@@ -78,9 +78,19 @@ class ClaudeCodeBackend:
         model_override: str | None = None,
     ) -> InvokeResult:
         model = model_override or _MODEL_BY_TIER[tier]
+        # HOM-275: Pipe the brief via stdin instead of passing it as a positional
+        # argv. Windows `CreateProcessW` caps the full command line at ~32k chars
+        # and rejects oversize argv with `[WinError 206] The filename or extension
+        # is too long`. State-first Phase 4 briefs (p4_plan, p4_dispatch_beats)
+        # inline DESIGN.md + EDL + transcript and routinely exceed this. The
+        # claude CLI accepts the prompt on stdin when `-p`/`--print` is used
+        # without a positional prompt (verified via `claude --help`:
+        # `-p, --print` is a flag, prompt is a separate positional arg; default
+        # `--input-format text` reads stdin). Linux/macOS argv limit is ~2 MB so
+        # the bug only surfaces on Windows, but the stdin path is portable.
         cmd = [
             self._executable,
-            "-p", task,
+            "-p",
             "--output-format", "stream-json",
             "--verbose",
             "--model", model,
@@ -93,7 +103,13 @@ class ClaudeCodeBackend:
         t0 = time.monotonic()
         try:
             result = subprocess.run(
-                cmd, capture_output=True, text=True, cwd=str(cwd), timeout=timeout_s,
+                cmd,
+                input=task,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                cwd=str(cwd),
+                timeout=timeout_s,
             )
         except subprocess.TimeoutExpired as e:
             raise BackendTimeout(f"claude exceeded {timeout_s}s") from e
