@@ -31,9 +31,17 @@ from pathlib import Path
 from langgraph.types import CachePolicy
 
 from .._caching import make_key
+from ._materialize_tmpdir import materialize_scaffold_tmpdir
 
 # Bump on `npx hyperframes catalog --json` shape / parser change. Spec §8.
-_CACHE_VERSION = 1
+# v2 (HOM-281): subprocess cwd moved from `<episode>/hyperframes/` (which
+# required `p4_scaffold` to have already written that tree to disk) to a
+# transient tmpdir produced by ``materialize_into_tmpdir``. The catalog
+# CLI reads from the global `npx hyperframes` registry — cwd matters only
+# as a precondition that "an HF project exists" — so the cwd swap is
+# behaviour-neutral, but the cache-key fingerprint changes (we no longer
+# stat the canonical hf_dir).
+_CACHE_VERSION = 2
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -102,12 +110,13 @@ def parse_catalog_stdout(stdout: str) -> dict:
 
 
 def p4_catalog_scan_node(state):
-    episode_dir = state.get("episode_dir")
-    if not episode_dir:
-        return _error("episode_dir missing from state (pickup must run first)")
-    hf_dir = Path(episode_dir) / "hyperframes"
-    if not hf_dir.is_dir():
-        return _error(f"hyperframes/ directory missing at {hf_dir} (p4_scaffold must run first)")
+    slug = state.get("slug")
+    if not slug:
+        return _error("slug missing from state (pickup must run first)")
+    try:
+        hf_dir = materialize_scaffold_tmpdir(state, slug=slug)
+    except RuntimeError as exc:
+        return _error(f"materialize_scaffold_tmpdir failed: {exc}")
     try:
         result = subprocess.run(
             ["npx", "hyperframes", "catalog", "--json"],

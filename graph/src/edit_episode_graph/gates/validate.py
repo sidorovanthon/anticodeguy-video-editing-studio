@@ -32,7 +32,8 @@ from __future__ import annotations
 import re
 from datetime import datetime, timezone
 
-from ._base import Gate, CliResult, hyperframes_dir, run_hf_cli
+from ..nodes._materialize_tmpdir import materialize_into_tmpdir
+from ._base import Gate, CliResult, run_hf_cli
 
 # Markers that the validate failure is contrast/WCAG-related rather than
 # a structural schema failure. Lower-cased; matched case-insensitively.
@@ -102,11 +103,13 @@ class ValidateGate(Gate):
 
     def _run(self, state: dict) -> tuple[list[str], dict]:
         """Return (violations, extra_record_fields)."""
-        hf_dir = hyperframes_dir(state)
-        if hf_dir is None:
-            return ["no hyperframes_dir / episode_dir in state — cannot run validate"], {}
-        if not hf_dir.is_dir():
-            return [f"hyperframes dir not on disk: {hf_dir}"], {}
+        slug = state.get("slug")
+        if not slug:
+            return ["no slug in state — cannot materialize HF tmpdir for validate"], {}
+        try:
+            hf_dir = materialize_into_tmpdir(state, slug=slug)
+        except RuntimeError as exc:
+            return [f"materialize_into_tmpdir failed: {exc}"], {}
 
         result = run_hf_cli(["validate"], hf_dir)
         if result.ok:

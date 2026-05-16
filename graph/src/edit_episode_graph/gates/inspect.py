@@ -27,7 +27,8 @@ import re
 from html.parser import HTMLParser
 from typing import Iterable, Sequence
 
-from ._base import Gate, hyperframes_dir, parse_cli_json, run_hf_cli
+from ..nodes._materialize_tmpdir import materialize_into_tmpdir
+from ._base import Gate, parse_cli_json, run_hf_cli
 
 
 _OPT_OUT_ATTRS = ("data-layout-allow-overflow", "data-layout-ignore")
@@ -202,11 +203,13 @@ class InspectGate(Gate):
         super().__init__(name="gate:inspect")
 
     def checks(self, state: dict) -> list[str]:
-        hf_dir = hyperframes_dir(state)
-        if hf_dir is None:
-            return ["no hyperframes_dir / episode_dir in state — cannot run inspect"]
-        if not hf_dir.is_dir():
-            return [f"hyperframes dir not on disk: {hf_dir}"]
+        slug = state.get("slug")
+        if not slug:
+            return ["no slug in state — cannot materialize HF tmpdir for inspect"]
+        try:
+            hf_dir = materialize_into_tmpdir(state, slug=slug)
+        except RuntimeError as exc:
+            return [f"materialize_into_tmpdir failed: {exc}"]
 
         args = ["inspect", "--json"]
         offsets = _beat_start_offsets(state)

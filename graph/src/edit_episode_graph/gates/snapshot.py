@@ -35,7 +35,8 @@ import re
 from pathlib import Path
 from typing import Sequence
 
-from ._base import Gate, hyperframes_dir, run_hf_cli
+from ..nodes._materialize_tmpdir import materialize_into_tmpdir
+from ._base import Gate, run_hf_cli
 
 
 # Blank/black 1080x1920 PNG compresses to ~5–15 kB. Real content with
@@ -82,11 +83,13 @@ class SnapshotGate(Gate):
         super().__init__(name="gate:snapshot")
 
     def checks(self, state: dict) -> list[str]:
-        hf_dir = hyperframes_dir(state)
-        if hf_dir is None:
-            return ["no hyperframes_dir / episode_dir in state — cannot run snapshot"]
-        if not hf_dir.is_dir():
-            return [f"hyperframes dir not on disk: {hf_dir}"]
+        slug = state.get("slug")
+        if not slug:
+            return ["no slug in state — cannot materialize HF tmpdir for snapshot"]
+        try:
+            hf_dir = materialize_into_tmpdir(state, slug=slug)
+        except RuntimeError as exc:
+            return [f"materialize_into_tmpdir failed: {exc}"]
 
         offsets = _beat_start_offsets(state)
         args: list[str] = ["snapshot"]
