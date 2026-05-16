@@ -1,24 +1,32 @@
-{# Per-scene re-authoring brief — invoked when a post-assemble cluster gate
-   fails (lint / validate / inspect / design_adherence / animation_map /
-   snapshot / captions_track). Mirrors `p4_beat.j2` for ONE scene, with
-   prior violations injected via the shared `prior_violations_block` macro.
-   Brief references canon paths; never embeds canon. #}
-{% from "_macros.j2" import prior_violations_block %}
-You are RE-AUTHORING **one scene fragment** for an anticodeguy episode (`{{ slug }}`).
-Pattern A (inlined `<div>` per scene). The previous attempt's fragment FAILED
-the gate `{{ failed_gate }}`; rewrite the offending scene so the gate passes.
 
-{{ prior_violations_block(prior_violations, prior_iteration) }}
+
+You are RE-AUTHORING **one scene fragment** for an anticodeguy episode (`snapshot-fixture`).
+Pattern A (inlined `<div>` per scene). The previous attempt's fragment FAILED
+the gate `gate:design_adherence`; rewrite the offending scene so the gate passes.
+
+## Previous attempt (iteration 1) failed these checks; address them on this attempt:
+
+- {'selector': '#scene-hook .headline', 'message': 'scene-hook headline missing exit-pair (HOM-213 anti-pattern)'}
+
 
 Identification — find the offending scene(s) yourself (HOM-265: the
 assembled root composition is INLINED below; do NOT call `Read` on
-`{{ index_html_path }}` — it is not on disk while this node runs; the
+`/tmp/snapshot-fixture/episode/hyperframes/index.html` — it is not on disk while this node runs; the
 materializer writes it at chain end):
 
 Assembled root index.html body (use this — do NOT `Read` from disk):
 
 ```index.html
-{{ index_html_body }}
+<!doctype html>
+<html><body>
+<!-- beat: hook -->
+<div id="scene-hook">...</div>
+<!-- /beat: hook -->
+<!-- beat: payoff -->
+<div id="scene-payoff">...</div>
+<!-- /beat: payoff -->
+</body></html>
+
 ```
 
 1. Each inlined scene fragment in the body above is bracketed by
@@ -28,7 +36,7 @@ Assembled root index.html body (use this — do NOT `Read` from disk):
    `#scene-<scene_id>` selector, by `id="scene-<scene_id>"` attribute, or
    by line number — the enclosing `<!-- beat: <scene_id> -->` marker
    identifies the owning scene.
-3. Available scenes (canonical plan order): {{ scene_ids_json }}
+3. Available scenes (canonical plan order): ["hook", "payoff"]
 4. Pick ONE scene to rewrite this turn (the one most clearly responsible
    for the violations). If multiple scenes share the blame, pick the
    FIRST one in plan order — subsequent retries will catch the others.
@@ -43,28 +51,34 @@ Assembled root index.html body (use this — do NOT `Read` from disk):
 Scene context (these are the per-beat parameters from the plan; mirror them
 literally on the scene div):
 
-- viewport: `data-width={{ data_width }}`, `data-height={{ data_height }}`
-- track: `data-track-index={{ data_track_index }}`
+- viewport: `data-width=1080`, `data-height=1920`
+- track: `data-track-index=1`
 - scene starts (cumulative seconds, plan order, parallel to the scene-ids above):
-  {{ scene_starts_json }}
+  [0.0, 6.9]
 - scene durations (parallel to scene-ids):
-  {{ scene_durations_json }}
+  [6.9, 5.0]
 
 Upstream artefacts (HOM-265: DESIGN.md and expanded-prompt.md bodies
 are INLINED below — the files are NOT on disk while this node runs;
 the materializer writes them at chain end. Do NOT call `Read` on
-`{{ design_md_path }}` or `{{ expanded_prompt_path }}`):
+`/tmp/snapshot-fixture/episode/hyperframes/DESIGN.md` or `/tmp/snapshot-fixture/episode/hyperframes/.hyperframes/expanded-prompt.md`):
 
 - DESIGN.md — visual identity (palette, typography, beat→visual mapping):
 
   ```design.md
-  {{ design_md_body }}
+  # DESIGN.md — snapshot fixture
+
+(palette + typography body)
+
   ```
 
 - expanded-prompt.md — per-scene atmosphere brief:
 
   ```expanded-prompt.md
-  {{ expanded_prompt_body }}
+  # expanded-prompt.md — snapshot fixture
+
+(per-scene specs body)
+
   ```
 
 Prior-attempt scene fragments (the previous iteration's output for
@@ -72,16 +86,27 @@ EACH scene — use these to understand what was written, so you avoid
 repeating the same mistake on the rewrite. The files are not on disk
 while this node runs; the bodies are inlined below):
 
-{% for sid, body in scene_bodies.items() %}
-- `scene_id = "{{ sid }}"`:
 
-  ```{{ sid }}.html
-  {{ body }}
+- `scene_id = "hook"`:
+
+  ```hook.html
+  <div id="scene-hook">snapshot fixture scene body</div>
+
   ```
-{% endfor %}
+
+- `scene_id = "payoff"`:
+
+  ```payoff.html
+  <div id="scene-payoff">snapshot fixture scene body</div>
+
+  ```
+
 
 Available registry:
-{{ catalog_summary }}
+blocks:
+  - hero-stat-hold (stat-hold beat)
+components:
+  - hairline-rule
 
 Canon — read BEFORE rewriting (use `Read` on each):
 1. `~/.agents/skills/hyperframes/SKILL.md` — §"Layout Before Animation",
@@ -110,8 +135,8 @@ writes the file from state at chain end.
 
 ```html
 <div id="scene-<scene_id>" class="scene clip"
-     data-start="<scene_start>" data-duration="<scene_duration>" data-track-index="{{ data_track_index }}"
-     data-width="{{ data_width }}" data-height="{{ data_height }}">
+     data-start="<scene_start>" data-duration="<scene_duration>" data-track-index="1"
+     data-width="1080" data-height="1920">
   <style>
     /* EVERY rule prefixed with #scene-<scene_id> — no bare class selectors. */
     #scene-<scene_id> { position: absolute; inset: 0; <opacity-init>; }
@@ -174,8 +199,8 @@ Hard rules (orchestrator-house — derived from canon, surfaced so you don't mis
 
 Process (HOM-265 / HOM-266: all upstream bodies are inlined above and
 your output flows back through state — do NOT call `Read` on
-`{{ index_html_path }}` or `{{ design_md_path }}` or
-`{{ expanded_prompt_path }}`; do NOT call `Write` on any
+`/tmp/snapshot-fixture/episode/hyperframes/index.html` or `/tmp/snapshot-fixture/episode/hyperframes/DESIGN.md` or
+`/tmp/snapshot-fixture/episode/hyperframes/.hyperframes/expanded-prompt.md`; do NOT call `Write` on any
 `compositions/<scene_id>.html`. Those files are NOT on disk while this
 node runs; `p4_materialize_disk` writes them at chain end from
 `state["scenes"]`):

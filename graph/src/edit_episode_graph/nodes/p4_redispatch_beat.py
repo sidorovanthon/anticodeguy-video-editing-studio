@@ -28,13 +28,13 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
-from pathlib import Path
 
 from .._paths import EpisodePaths
 from .._scene_id import scene_id_for
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
 from ..gates._base import latest_gate_result
+from ..schemas.p4_beat import BeatOutput
 from ._llm import LLMNode, _load_brief
 from .p4_beat import _catalog_summary
 
@@ -155,12 +155,8 @@ def _render_ctx(state: dict) -> dict:
     if slug:
         ep = EpisodePaths(slug)
         index_html_path = str(ep.index_html_path)
-        compositions_dir = str(ep.compositions_dir)
     else:
         index_html_path = compose.get("index_html_path") or ""
-        compositions_dir = (
-            str(Path(index_html_path).parent / "compositions") if index_html_path else ""
-        )
 
     scene_ids, scene_starts, scene_durations = _scene_metadata(state)
     # Viewport dimensions: `p4_assemble_index` always runs upstream of any
@@ -179,7 +175,6 @@ def _render_ctx(state: dict) -> dict:
         "prior_violations": list(failure.get("violations") or []),
         "prior_iteration": int(failure.get("iteration") or 0),
         "index_html_path": index_html_path,
-        "compositions_dir": compositions_dir,
         # HOM-224: derive via slug; compose echo dropped.
         "design_md_path": str(EpisodePaths(slug).design_md_path) if slug else (compose.get("design_md_path") or ""),
         "expanded_prompt_path": str(EpisodePaths(slug).expanded_prompt_path) if slug else (compose.get("expanded_prompt_path") or ""),
@@ -207,13 +202,15 @@ def _build_node() -> LLMNode:
         name="p4_redispatch_beat",
         requirements=NodeRequirements(tier="expensive", needs_tools=True, backends=["claude"]),
         brief_template=_load_brief("p4_redispatch_beat"),
-        output_schema=None,
+        # HOM-266: structured BeatOutput return — parity with p4_beat.
+        # Sub-agent no longer Writes to disk; body flows back through state
+        # via the `_scenes_merge` reducer and `p4_materialize_disk` writes
+        # the file at chain end.
+        output_schema=BeatOutput,
         result_namespace="compose",
         result_key="redispatch",
         timeout_s=300,
-        # TODO(HOM-266): Write is dropped; downstream reads state["scenes"]
-        # only. See ticket for migration plan (switch to BeatOutput return).
-        allowed_tools=["Read", "Write"],
+        allowed_tools=["Read"],
         extra_render_ctx=_render_ctx,
     )
 
@@ -228,23 +225,31 @@ def p4_redispatch_beat_node(state, *, router: BackendRouter | None = None):
             ],
         }
 
+    # HOM-266: gate on the in-state assembled root composition body, not
+    # the on-disk file. Post-HOM-239 (state-first artifacts) the disk
+    # `index.html` is the scaffolded baseline written by `p4_scaffold` —
+    # NOT the assembled root the sub-agent needs to read to identify
+    # which scene owns the violations. The assembled body lives at
+    # `state["compose"]["index_html"]` (populated by `p4_assemble_index`;
+    # see `p4_transitions.py:136` for the same access pattern). If it's
+    # missing, `p4_assemble_index` hasn't run yet — surface the misorder
+    # rather than dispatching against an empty inline body.
     compose = state.get("compose") or {}
-    # HOM-224: derive index.html via slug.
-    slug = state.get("slug")
-    if slug:
-        index_path = EpisodePaths(slug).index_html_path
-    else:
-        legacy = compose.get("index_html_path")
-        index_path = Path(legacy) if legacy else None
-    # TODO(HOM-266): check state index_html body instead of scaffold baseline file.
-    if index_path is None or not index_path.is_file():
+    index_html_body = compose.get("index_html")
+    if not isinstance(index_html_body, str) or not index_html_body:
         return {
             "errors": [{
                 "node": "p4_redispatch_beat",
-                "message": f"index.html missing at {index_path!r}; cannot identify beat owner",
+                "message": (
+                    "compose.index_html missing from state — "
+                    "p4_assemble_index must run before redispatch; cannot "
+                    "identify beat owner without the assembled root body"
+                ),
                 "timestamp": _now(),
             }],
-            "notices": ["p4_redispatch_beat: index.html missing — see errors[]"],
+            "notices": [
+                "p4_redispatch_beat: compose.index_html missing — see errors[]"
+            ],
         }
 
     scene_ids, _, _ = _scene_metadata(state)
@@ -256,4 +261,101 @@ def p4_redispatch_beat_node(state, *, router: BackendRouter | None = None):
             ],
         }
 
-    return _build_node()(state, router=router)
+    # HOM-266: structured BeatOutput return. The LLMNode lands the parsed
+    # body at `result["compose"]["redispatch"] = {"html": "..."}`; re-route
+    # it through the top-level `scenes` channel keyed by scene_id so the
+    # `_scenes_merge` reducer (state.py L91 — last-write-wins per key,
+    # other scenes preserved) overlays the corrected fragment over the
+    # prior attempt. `p4_assemble_index` re-runs downstream and re-inlines
+    # the body into the root composition.
+    #
+    # Beat-owner identification: pre-HOM-266 the sub-agent Wrote to
+    # `<scene_id>.html` and the filename told us which scene was rewritten.
+    # Now the sub-agent picks one scene_id internally (per the brief) and
+    # returns only the body — we can't unambiguously identify which scene
+    # was rewritten from the body alone. Match by scanning the returned
+    # body for the `id="scene-<sid>"` attribute. If zero markers match we
+    # emit a hard error rather than silently overwriting the first scene
+    # (HOM-266 review BLOCKER: silent misattribution is the same bug class
+    # this PR was opened to fix; the gate retry-loop cannot detect a wrong
+    # overwrite). The follow-up refactor — pre-resolving the failing
+    # scene_id Python-side from gate `violations[]` — is tracked as a
+    # separate ticket (see PR #150 review thread).
+    result = _build_node()(state, router=router)
+    raw = (result.get("compose") or {}).pop("redispatch", None) or {}
+    body = raw.get("html") if isinstance(raw, dict) else None
+
+    out: dict = {"llm_runs": result.get("llm_runs", [])}
+    # Preserve any side-channel writes LLMNode emitted (e.g. notices,
+    # errors). The reroute below replaces only the structured `compose`
+    # return path; everything else flows through.
+    for key in ("notices", "errors"):
+        passthrough = result.get(key)
+        if passthrough:
+            out[key] = passthrough
+
+    if not (isinstance(body, str) and body):
+        # HOM-266 review: align empty-body with marker-miss — both are
+        # un-attributable failure modes that the gate-retry loop must see
+        # as a failed attempt (not a silent no-op).
+        out.setdefault("errors", []).append({
+            "node": "p4_redispatch_beat",
+            "message": (
+                "sub-agent returned empty BeatOutput.html — "
+                "no scene merged into state['scenes']"
+            ),
+            "timestamp": _now(),
+        })
+        out.setdefault("notices", []).append(
+            "p4_redispatch_beat: sub-agent returned empty BeatOutput.html — see errors[]"
+        )
+        return out
+
+    matched: list[str] = []
+    for sid in scene_ids:
+        if f'id="scene-{sid}"' in body or f"id='scene-{sid}'" in body:
+            matched.append(sid)
+
+    if not matched:
+        # HOM-266 review BLOCKER: do NOT silently default to scene_ids[0].
+        # An un-attributable body is a failed attempt — push to errors[]
+        # so the gate retry-loop counts it and `halt_llm_boundary` carries
+        # the explicit notice after `max_attempts`.
+        out.setdefault("errors", []).append({
+            "node": "p4_redispatch_beat",
+            "message": (
+                "sub-agent returned un-attributable body — no recognisable "
+                "id=\"scene-<sid>\" marker matching plan-order scene_ids "
+                f"{scene_ids!r}"
+            ),
+            "timestamp": _now(),
+        })
+        out.setdefault("notices", []).append(
+            "p4_redispatch_beat: un-attributable body — see errors[]; "
+            "no scene merged into state['scenes']"
+        )
+        return out
+
+    # Attribute to the first plan-order match. Multiple markers in one
+    # body is suspicious (sub-agent should target exactly one scene) but
+    # not necessarily wrong — the rewritten fragment may legitimately
+    # reference other scenes in HTML comments or transition refs. Surface
+    # a notice and proceed with the first match.
+    picked_sid = matched[0]
+    if len(matched) > 1:
+        out.setdefault("notices", []).append(
+            f"p4_redispatch_beat: returned body matches multiple plan-order "
+            f"scene_ids {matched!r}; attributing to first match "
+            f"scene_id={picked_sid!r} (sub-agent should target exactly one "
+            f"scene — extra matches may be comments / transition refs)"
+        )
+
+    # Concern 2: `_scenes_merge` is a shallow reducer that REPLACES the
+    # whole per-scene dict on a key collision. Today the per-scene entry
+    # is single-field (`{"html": ...}`) so no regression, but preserve
+    # siblings explicitly to defend against future per-scene metadata
+    # (attempt count, model, beat_id) being wiped on a redispatch.
+    # shallow reducer replaces whole per-scene dict — preserve siblings explicitly
+    prev = (state.get("scenes") or {}).get(picked_sid) or {}
+    out["scenes"] = {picked_sid: {**prev, "html": body}}
+    return out
