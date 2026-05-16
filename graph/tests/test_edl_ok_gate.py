@@ -10,21 +10,29 @@ import pytest
 from edit_episode_graph.gates.edl_ok import EdlOkGate, edl_ok_gate_node
 
 
+_DEFAULT_WORDS = [
+    {"text": "alpha", "start": 1.000, "end": 1.500, "type": "word"},
+    {"text": " ",     "start": 1.500, "end": 2.000, "type": "spacing"},
+    {"text": "beta",  "start": 2.000, "end": 2.500, "type": "word"},
+    {"text": " ",     "start": 2.500, "end": 3.000, "type": "spacing"},
+    {"text": "gamma", "start": 3.000, "end": 3.500, "type": "word"},
+]
+
+
 @pytest.fixture()
 def episode(tmp_path: Path) -> Path:
+    """HOM-285: Class A — the gate reads transcript body from state, not
+    disk. We retain the on-disk transcripts directory so tests that
+    deliberately mismatch disk-vs-state can prove the gate ignores disk.
+    """
     transcripts = tmp_path / "edit" / "transcripts"
     transcripts.mkdir(parents=True)
     # Construct words at well-known positions: word_a [1.000-1.500], word_b
     # [2.000-2.500], word_c [3.000-3.500]. Boundaries: 1.0, 1.5, 2.0, 2.5, 3.0,
     # 3.5. Cut edges in [0.85,0.97] / [3.53,3.65] = padding 30-150ms.
-    words = [
-        {"text": "alpha", "start": 1.000, "end": 1.500, "type": "word"},
-        {"text": " ",     "start": 1.500, "end": 2.000, "type": "spacing"},
-        {"text": "beta",  "start": 2.000, "end": 2.500, "type": "word"},
-        {"text": " ",     "start": 2.500, "end": 3.000, "type": "spacing"},
-        {"text": "gamma", "start": 3.000, "end": 3.500, "type": "word"},
-    ]
-    (transcripts / "raw.json").write_text(json.dumps({"words": words}), encoding="utf-8")
+    (transcripts / "raw.json").write_text(
+        json.dumps({"words": _DEFAULT_WORDS}), encoding="utf-8"
+    )
     return tmp_path
 
 
@@ -33,17 +41,29 @@ def _state(
     edl: dict,
     source_duration_s: float = 5.0,
     length_estimate_s: float | None = 2.05,
+    words: list[dict] | None = None,
 ) -> dict:
     """Default fixture provides a strategy.length_estimate_s matching the
     canonical cut total (~2.05s for `_good_edl()`). Pass `length_estimate_s=None`
-    to exercise the upstream-contract-violation branch."""
+    to exercise the upstream-contract-violation branch.
+
+    HOM-285: the transcript body is injected into
+    ``state.transcripts.bodies.raw`` (state-channel only, no disk
+    fallback). The optional ``words`` argument lets a test override the
+    fixture default while keeping the same body-shape.
+    """
     edit = {
         "edl": edl,
         "inventory": {"sources": [{"stem": "raw", "duration_s": source_duration_s}]},
     }
     if length_estimate_s is not None:
         edit["strategy"] = {"length_estimate_s": length_estimate_s}
-    return {"episode_dir": str(episode), "edit": edit}
+    body = json.dumps({"words": words if words is not None else _DEFAULT_WORDS})
+    return {
+        "episode_dir": str(episode),
+        "edit": edit,
+        "transcripts": {"bodies": {"raw": body}},
+    }
 
 
 def _good_edl() -> dict:
@@ -160,14 +180,11 @@ def test_falls_back_to_ffprobe_when_inventory_missing(tmp_path: Path, monkeypatc
     unverifiable: source durations missing" because the gate read only
     inventory.sources. ffprobe fallback over edl.sources paths fixes it.
     """
-    transcripts = tmp_path / "edit" / "transcripts"
-    transcripts.mkdir(parents=True)
     words = [
         {"text": "alpha", "start": 1.0, "end": 1.5, "type": "word"},
         {"text": "beta",  "start": 2.0, "end": 2.5, "type": "word"},
         {"text": "gamma", "start": 3.0, "end": 3.5, "type": "word"},
     ]
-    (transcripts / "raw.json").write_text(json.dumps({"words": words}), encoding="utf-8")
 
     # Stub ffprobe by monkeypatching the helper directly. Avoids needing
     # a real video file on disk.
@@ -176,6 +193,8 @@ def test_falls_back_to_ffprobe_when_inventory_missing(tmp_path: Path, monkeypatc
 
     state = {
         "episode_dir": str(tmp_path),
+        # HOM-285: transcript body lives in state.
+        "transcripts": {"bodies": {"raw": json.dumps({"words": words})}},
         "edit": {
             # inventory deliberately absent — mirrors skip-inventory routing
             "edl": _good_edl(),
@@ -192,13 +211,10 @@ def test_strategy_estimate_supersedes_fallback(tmp_path: Path):
     Old fixed 25–35% pacing rejected this (80% kept). The new strategy-anchored
     ±20% bound around 62s admits any cut in [49.6, 74.4]. 56s passes.
     """
-    transcripts = tmp_path / "edit" / "transcripts"
-    transcripts.mkdir(parents=True)
     words = [
         {"text": "intro", "start": 4.0, "end": 5.0, "type": "word"},
         {"text": "outro", "start": 60.0, "end": 61.0, "type": "word"},
     ]
-    (transcripts / "raw.json").write_text(json.dumps({"words": words}), encoding="utf-8")
     edl = {
         "version": 1,
         "sources": {"raw": "/abs/raw.mp4"},
@@ -213,6 +229,7 @@ def test_strategy_estimate_supersedes_fallback(tmp_path: Path):
     }
     state = {
         "episode_dir": str(tmp_path),
+        "transcripts": {"bodies": {"raw": json.dumps({"words": words})}},
         "edit": {
             "edl": edl,
             "inventory": {"sources": [{"stem": "raw", "duration_s": 70.0}]},
@@ -226,6 +243,7 @@ def test_strategy_estimate_supersedes_fallback(tmp_path: Path):
 def test_fails_when_source_durations_missing(episode: Path):
     state = {
         "episode_dir": str(episode),
+        "transcripts": {"bodies": {"raw": json.dumps({"words": _DEFAULT_WORDS})}},
         "edit": {"edl": _good_edl()},
     }
     update = edl_ok_gate_node(state)
@@ -272,14 +290,11 @@ def test_long_silence_cut_passes_when_close_to_neighbor(tmp_path: Path):
     cut at 4.05 because it was ~2.95s from the next word at 7.0 — even though
     the near side (prev word ending at 4.0) sits at 50ms.
     """
-    transcripts = tmp_path / "edit" / "transcripts"
-    transcripts.mkdir(parents=True)
     words = [
         {"text": "alpha", "start": 3.500, "end": 4.000, "type": "word"},
         # 3-second silence here
         {"text": "beta",  "start": 7.000, "end": 7.500, "type": "word"},
     ]
-    (transcripts / "raw.json").write_text(json.dumps({"words": words}), encoding="utf-8")
     edl = {
         "version": 1,
         "sources": {"raw": "/abs/raw.mp4"},
@@ -296,6 +311,7 @@ def test_long_silence_cut_passes_when_close_to_neighbor(tmp_path: Path):
     }
     state = {
         "episode_dir": str(tmp_path),
+        "transcripts": {"bodies": {"raw": json.dumps({"words": words})}},
         "edit": {
             "edl": edl,
             "inventory": {"sources": [{"stem": "raw", "duration_s": 4.0}]},
@@ -312,13 +328,10 @@ def test_cut_in_middle_of_long_silence_fails(tmp_path: Path):
     The new bracketing logic treats this correctly: nearest neighboring
     boundary is 1.5s away, well above the 200ms cap.
     """
-    transcripts = tmp_path / "edit" / "transcripts"
-    transcripts.mkdir(parents=True)
     words = [
         {"text": "alpha", "start": 0.0, "end": 1.0, "type": "word"},
         {"text": "beta",  "start": 4.0, "end": 5.0, "type": "word"},
     ]
-    (transcripts / "raw.json").write_text(json.dumps({"words": words}), encoding="utf-8")
     edl = {
         "version": 1,
         "sources": {"raw": "/abs/raw.mp4"},
@@ -332,6 +345,7 @@ def test_cut_in_middle_of_long_silence_fails(tmp_path: Path):
     }
     state = {
         "episode_dir": str(tmp_path),
+        "transcripts": {"bodies": {"raw": json.dumps({"words": words})}},
         "edit": {
             "edl": edl,
             "inventory": {"sources": [{"stem": "raw", "duration_s": 8.0}]},
@@ -349,14 +363,11 @@ def test_asymmetric_gap_violation_is_prescriptive(tmp_path: Path):
     violation must say so explicitly so retry / human can drop the range
     instead of nudging the cut by 1ms each iteration.
     """
-    transcripts = tmp_path / "edit" / "transcripts"
-    transcripts.mkdir(parents=True)
     words = [
         {"text": "being.", "start": 66.500, "end": 67.000, "type": "word"},
         {"text": "For",    "start": 67.059, "end": 67.300, "type": "word"},
         {"text": "more",   "start": 67.350, "end": 68.500, "type": "word"},
     ]
-    (transcripts / "raw.json").write_text(json.dumps({"words": words}), encoding="utf-8")
     edl = {
         "version": 1,
         "sources": {"raw": "/abs/raw.mp4"},
@@ -371,6 +382,7 @@ def test_asymmetric_gap_violation_is_prescriptive(tmp_path: Path):
     }
     state = {
         "episode_dir": str(tmp_path),
+        "transcripts": {"bodies": {"raw": json.dumps({"words": words})}},
         "edit": {
             "edl": edl,
             "inventory": {"sources": [{"stem": "raw", "duration_s": 70.0}]},
@@ -478,28 +490,22 @@ def test_passes_reading_transcript_body_from_state_without_disk_file(tmp_path: P
     assert record["passed"], record["violations"]
 
 
-def test_state_body_supersedes_disk_for_word_intervals(tmp_path: Path):
-    """HOM-279: when both `state.transcripts.bodies.raw` and the disk
-    file exist, the gate prefers the state body — proving the
-    consumer migration is wired (not just an additive read).
-
-    Constructs a disk transcript that would PASS, then overrides the
-    state body with a word stream that would FAIL the HR 7 padding
-    check on the same EDL. If the gate consults state first (as
-    designed), it sees the failing body and emits the violation. If
-    it still reads disk, the test catches the silent regression.
+def test_state_body_is_only_source_disk_ignored(tmp_path: Path):
+    """HOM-285: Class A — state.transcripts.bodies.raw is the SOLE
+    source; disk is never consulted. Construct a passing disk
+    transcript AND a state body that would fail; the gate must report
+    the state-derived failure (proving disk is not read).
     """
     transcripts = tmp_path / "edit" / "transcripts"
     transcripts.mkdir(parents=True)
-    # Disk: would-pass words.
+    # Disk: would-pass words. Gate must NOT see these.
     disk_words = [
         {"text": "alpha", "start": 1.000, "end": 1.500, "type": "word"},
         {"text": "beta",  "start": 2.000, "end": 2.500, "type": "word"},
         {"text": "gamma", "start": 3.000, "end": 3.500, "type": "word"},
     ]
     (transcripts / "raw.json").write_text(json.dumps({"words": disk_words}), encoding="utf-8")
-    # State body: word stream pinned so the cut edges land mid-word
-    # (HR 6 violation: cuts inside word).
+    # State body: cut edges land mid-word (HR 6 violation).
     state_words = [
         {"text": "alpha", "start": 0.5, "end": 1.7, "type": "word"},
         {"text": "beta",  "start": 1.8, "end": 3.6, "type": "word"},
@@ -517,9 +523,38 @@ def test_state_body_supersedes_disk_for_word_intervals(tmp_path: Path):
     record = edl_ok_gate_node(state)["gate_results"][0]
     assert not record["passed"], (
         "gate read disk-side transcript instead of state body — "
-        "HOM-279 consumer migration regression"
+        "HOM-285 Class A regression (disk fallback re-introduced)"
     )
     assert any("cuts inside word" in v for v in record["violations"]), record["violations"]
+
+
+def test_emits_violation_when_state_body_absent(tmp_path: Path):
+    """HOM-285: with no `state.transcripts.bodies.raw`, the gate must
+    emit an informative violation pointing at the upstream contract —
+    no silent disk fallback (the file at the canonical path is
+    deliberately present here to prove it is NOT consulted).
+    """
+    transcripts = tmp_path / "edit" / "transcripts"
+    transcripts.mkdir(parents=True)
+    (transcripts / "raw.json").write_text(
+        json.dumps({"words": _DEFAULT_WORDS}), encoding="utf-8"
+    )
+    state = {
+        "episode_dir": str(tmp_path),
+        # transcripts.bodies deliberately absent
+        "edit": {
+            "edl": _good_edl(),
+            "inventory": {"sources": [{"stem": "raw", "duration_s": 7.0}]},
+            "strategy": {"length_estimate_s": 2.05},
+        },
+    }
+    record = edl_ok_gate_node(state)["gate_results"][0]
+    assert not record["passed"]
+    violations = record["violations"]
+    assert any(
+        "transcript body missing from state" in v and "p3_inventory" in v
+        for v in violations
+    ), violations
 
 
 def test_solvable_gap_violation_suggests_target(tmp_path: Path):
@@ -527,14 +562,11 @@ def test_solvable_gap_violation_suggests_target(tmp_path: Path):
     recommend a concrete target inside the valid window instead of just
     saying "infeasible". Verifies the prescriptive path of `_hr7_violation`.
     """
-    transcripts = tmp_path / "edit" / "transcripts"
-    transcripts.mkdir(parents=True)
     # 200ms gap between words → valid window for the cut start exists.
     words = [
         {"text": "alpha", "start": 1.0, "end": 1.5, "type": "word"},
         {"text": "beta",  "start": 1.7, "end": 2.2, "type": "word"},
     ]
-    (transcripts / "raw.json").write_text(json.dumps({"words": words}), encoding="utf-8")
     edl = {
         "version": 1,
         "sources": {"raw": "/abs/raw.mp4"},
@@ -549,6 +581,7 @@ def test_solvable_gap_violation_suggests_target(tmp_path: Path):
     }
     state = {
         "episode_dir": str(tmp_path),
+        "transcripts": {"bodies": {"raw": json.dumps({"words": words})}},
         "edit": {
             "edl": edl,
             "inventory": {"sources": [{"stem": "raw", "duration_s": 5.0}]},

@@ -140,6 +140,31 @@ def test_p4_scaffold_slug_change_invalidates_key(tmp_path):
     )
 
 
+def test_p3_inventory_cache_version_bump_invalidates_key(tmp_path):
+    """HOM-285: `p3_inventory` is deterministic (make_key). Same
+    exemption from CREATIVE_NODES as p4_scaffold / p4_assemble_index —
+    focused test for the version bump and upstream file edge."""
+    from tests._helpers.fingerprint_assertions import (
+        assert_brief_change_invalidates,
+    )
+
+    assert_brief_change_invalidates("p3_inventory", tmp_path=tmp_path)
+
+
+def test_p3_inventory_raw_video_edit_invalidates_key(tmp_path):
+    """HOM-285: editing the upstream raw video (the canonical
+    cache-key input via `pickup.raw_path`) MUST flip the cache key.
+    Body hoist itself is an output-shape change captured by the
+    version bump above; this asserts the load-bearing file edge."""
+    from tests._helpers.fingerprint_assertions import (
+        assert_upstream_artifact_change_invalidates,
+    )
+
+    assert_upstream_artifact_change_invalidates(
+        "p3_inventory", tmp_path=tmp_path
+    )
+
+
 def test_p4_assemble_index_cache_version_bump_invalidates_key(tmp_path):
     """HOM-280: `p4_assemble_index` is deterministic (make_key). Same
     exemption from CREATIVE_NODES — focused test for the version bump."""

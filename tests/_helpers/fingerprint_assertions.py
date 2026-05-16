@@ -394,6 +394,28 @@ _p3_strategy_mutator = _mutate_file(
 )
 
 
+def _p3_inventory_base(tmp_dir: Path) -> dict:
+    """Base state for p3_inventory cache key (HOM-285).
+
+    Cache key reads slug + `pickup.raw_path` + `audio.wav_path`
+    (deterministic file fingerprints; HOM-223 identity-only state). The
+    mutator flips the `pickup.raw_path` file to invalidate the key — the
+    HOM-285 body hoist is a state-output-shape change, not a new
+    cache-key input, so the mutator covers the load-bearing file edge.
+    """
+    episode_dir = _pin_project_root_to(tmp_dir)
+    raw_video = episode_dir / "raw.mp4"
+    raw_video.write_bytes(b"fp-fixture raw video bytes")
+    wav = episode_dir / "edit" / "audio.wav"
+    wav.parent.mkdir(parents=True, exist_ok=True)
+    wav.write_bytes(b"fp-fixture wav bytes")
+    return {
+        "slug": _FP_SLUG,
+        "pickup": {"raw_path": str(raw_video)},
+        "audio": {"wav_path": str(wav)},
+    }
+
+
 _NODE_REGISTRY: dict[
     str, tuple[str, Callable[[Path], dict], Callable[[dict], None]]
 ] = {
@@ -401,6 +423,16 @@ _NODE_REGISTRY: dict[
         "edit_episode_graph.nodes.p3_strategy",
         _p3_strategy_base,
         _p3_strategy_mutator,
+    ),
+    # HOM-285: p3_inventory is a deterministic node (make_key, not
+    # make_llm_key) — same CREATIVE_NODES exemption as p4_scaffold /
+    # p4_assemble_index / gate_animation_map. Cache key reads slug,
+    # `pickup.raw_path`, `audio.wav_path` (via files=). The mutator
+    # edits the raw video file to flip the key.
+    "p3_inventory": (
+        "edit_episode_graph.nodes.p3_inventory",
+        _p3_inventory_base,
+        _mutate_file(lambda s: Path(s["pickup"]["raw_path"])),
     ),
     # p4_design_system: files=[final_json_path, edl_path] (Phase 3 disk),
     # extras=(strategy_fingerprint,). The Phase 3 transcript file edit
