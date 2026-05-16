@@ -57,7 +57,12 @@ from ._llm import LLMNode, _load_brief
 # runs post-HOM-239); replaced with `stable_fingerprint` of the in-state
 # DESIGN.md body. `transcripts/final.json` stays in `files=` (Phase 3
 # disk artifact, legitimate file-fingerprint).
-_CACHE_VERSION = 6
+# v7 (HOM-279): transcript body migrated from disk-read to state-read.
+# Brief now inlines `transcript_json_body` (the JSON text) directly in
+# the render context — the dispatched sub-agent no longer calls `Read`
+# on the transcript file. Cache key swaps the transcript file
+# fingerprint for an in-state `stable_fingerprint(transcript_body)`.
+_CACHE_VERSION = 7
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -70,26 +75,22 @@ def _cache_key(state, *_args, **_kwargs):
     slug = state.get("slug") or "__unbound__"
     compose = state.get("compose") or {}
     style_request = compose.get("style_request") or ""
-    # HOM-224: derive paths via EpisodePaths(slug) — identity-only state.
-    # HOM-240: design_md body fingerprint replaces design_md_path
-    # file_fingerprint in extras (file no longer on disk pre-materialize).
-    if slug and slug != "__unbound__":
-        paths = EpisodePaths(slug)
-        final_json_path: str | None = str(paths.transcripts_final_json_path)
-    else:
-        final_json_path = None
     design = compose.get("design") or {}
     design_md_body = design.get("design_md") or ""
+    # HOM-279: transcript body fingerprint replaces final_json_path
+    # file_fingerprint (the body is what the LLM consumes via the
+    # inlined brief; the disk file remains authoritative on Phase 3
+    # side).
+    transcript_body = _transcript_body(state)
     return make_llm_key(
         node="p4_prompt_expansion",
         version=_CACHE_VERSION,
         slug=slug,
-        files=[
-            final_json_path,
-        ],
+        files=[],
         extras=(
             stable_fingerprint(style_request),
             stable_fingerprint(design_md_body),
+            stable_fingerprint(transcript_body),
         ),
     )
 
@@ -152,7 +153,20 @@ def _design_md_body(state: dict) -> str:
 
 
 def _transcript_path(state: dict) -> str:
-    """Resolve transcript JSON path via EpisodePaths(slug). Final wins over raw."""
+    """Resolve transcript JSON path via EpisodePaths(slug). Final wins over raw.
+
+    HOM-279: when `transcripts.bodies.{final,raw}_path` is set in state
+    (post-`glue_remap_transcript`), prefer that — keeps the brief's
+    citation matching the body actually hoisted into state.
+    """
+    transcripts = state.get("transcripts") or {}
+    bodies = transcripts.get("bodies") or {}
+    final_path = bodies.get("final_path")
+    if isinstance(final_path, str) and final_path:
+        return final_path
+    raw_path = bodies.get("raw_path")
+    if isinstance(raw_path, str) and raw_path:
+        return raw_path
     slug = state.get("slug")
     if not slug:
         return ""
@@ -162,6 +176,26 @@ def _transcript_path(state: dict) -> str:
     if paths.transcripts_raw_json_path.exists():
         return str(paths.transcripts_raw_json_path)
     return str(paths.transcripts_final_json_path)
+
+
+def _transcript_body(state: dict) -> str:
+    """HOM-279: read transcript JSON body from state.
+
+    `glue_remap_transcript` hydrates `transcripts.bodies.{raw|final}` at
+    the Phase 3 → Phase 4 boundary. Prefer `final` (EDL-remapped — beat
+    timings line up with the EDL ranges this node expands); fall back
+    to `raw` if `final` is missing. Empty string when neither is
+    present — the node body skip-gates on that.
+    """
+    transcripts = state.get("transcripts") or {}
+    bodies = transcripts.get("bodies") or {}
+    final_body = bodies.get("final")
+    if isinstance(final_body, str) and final_body:
+        return final_body
+    raw_body = bodies.get("raw")
+    if isinstance(raw_body, str) and raw_body:
+        return raw_body
+    return ""
 
 
 def _render_ctx(state: dict) -> dict:
@@ -175,6 +209,9 @@ def _render_ctx(state: dict) -> dict:
         "strategy_json": json.dumps(_strategy(state), ensure_ascii=False),
         "edl_beats_json": json.dumps(_edl_beats(state), ensure_ascii=False),
         "transcript_json_path": _transcript_path(state),
+        # HOM-279: inline the transcript JSON body. Body source:
+        # `state.transcripts.bodies` hoisted by `glue_remap_transcript`.
+        "transcript_json_body": _transcript_body(state),
         "style_request_json": json.dumps(compose.get("style_request") or "", ensure_ascii=False),
     }
 

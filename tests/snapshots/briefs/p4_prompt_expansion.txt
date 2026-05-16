@@ -39,7 +39,13 @@ Inputs:
 - Strategy from Phase 3 (shape / takes / grade / pacing / length): `{"shape": "hook-problem-payoff", "takes": ["take-1"], "grade": "neutral, mild contrast lift", "pacing": "fast-SLOW-fast", "length_estimate_s": 30.0}`
 - EDL beats already chosen for the cut — these are the SCENES the expansion
   must produce per-scene specs for: `["HOOK", "PROBLEM", "PAYOFF"]`
-- Transcript JSON path (per-word timing for pacing references): `/tmp/snapshot-fixture/episode/edit/transcripts/raw.json`
+- Transcript JSON body — INLINED below (HOM-279: state-first; do NOT call
+  `Read` on `/tmp/snapshot-fixture/episode/edit/transcripts/raw.json`). Per-word timing source for pacing
+  references and beat duration anchoring:
+
+  ```transcript.json
+  {"edl_hash":"snapshot-fixture","words":[{"text":"hello","start":0.0,"end":0.5,"type":"word"},{"text":"world","start":0.6,"end":1.1,"type":"word"}]}
+  ```
 
 Outputs:
 

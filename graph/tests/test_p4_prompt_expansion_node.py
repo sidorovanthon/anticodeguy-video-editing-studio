@@ -148,6 +148,37 @@ def test_runs_with_tools_and_no_state_path_mirror(tmp_path, monkeypatch):
     assert "Editorial calm" in task
 
 
+def test_brief_inlines_transcript_body_after_hom279():
+    """HOM-279: brief inlines `transcript_json_body` so the sub-agent
+    no longer calls `Read` on the transcript file.
+    """
+    brief = node_module._load_brief("p4_prompt_expansion")
+    assert "{{ transcript_json_body }}" in brief, (
+        "brief did not inline the transcript body context variable — "
+        "HOM-279 consumer migration regression"
+    )
+    assert "HOM-279" in brief, "missing HOM-279 cite for the inlined-body rule"
+    assert "do NOT call `Read`" in brief or "Do NOT call `Read`" in brief, (
+        "brief missing the do-NOT-Read-transcript imperative"
+    )
+
+
+def test_transcript_body_helper_prefers_final_then_raw(tmp_path, monkeypatch):
+    """HOM-279: `_transcript_body` resolves
+    state.transcripts.bodies.final first, then raw, then "".
+    """
+    final_only = {"transcripts": {"bodies": {"final": "FINAL"}}}
+    assert node_module._transcript_body(final_only) == "FINAL"
+    raw_only = {"transcripts": {"bodies": {"raw": "RAW"}}}
+    assert node_module._transcript_body(raw_only) == "RAW"
+    both = {"transcripts": {"bodies": {"raw": "RAW", "final": "FINAL"}}}
+    assert node_module._transcript_body(both) == "FINAL"
+    empty = {"transcripts": {"bodies": {}}}
+    assert node_module._transcript_body(empty) == ""
+    no_transcripts = {}
+    assert node_module._transcript_body(no_transcripts) == ""
+
+
 def test_brief_references_canon_paths_without_embedding():
     brief = node_module._load_brief("p4_prompt_expansion")
     assert "~/.agents/skills/hyperframes/SKILL.md" in brief

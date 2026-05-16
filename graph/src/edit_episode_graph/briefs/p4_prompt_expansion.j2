@@ -36,7 +36,13 @@ Inputs:
 - Strategy from Phase 3 (shape / takes / grade / pacing / length): `{{ strategy_json }}`
 - EDL beats already chosen for the cut — these are the SCENES the expansion
   must produce per-scene specs for: `{{ edl_beats_json }}`
-- Transcript JSON path (per-word timing for pacing references): `{{ transcript_json_path }}`
+- Transcript JSON body — INLINED below (HOM-279: state-first; do NOT call
+  `Read` on `{{ transcript_json_path }}`). Per-word timing source for pacing
+  references and beat duration anchoring:
+
+  ```transcript.json
+  {{ transcript_json_body }}
+  ```
 
 Outputs:
 

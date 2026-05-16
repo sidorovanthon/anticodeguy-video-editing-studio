@@ -92,6 +92,17 @@ _FIXED_SCENE_BODIES = {
 }
 _FIXED_PROJECT_MD_BODY = ""  # fresh-run signal: no prior sessions.
 
+# HOM-279: snapshot fixture for the transcript JSON body inlined into
+# captions / prompt-expansion briefs. Compact deterministic placeholder
+# — the brief snapshot tests assert shape, not content fidelity.
+_FIXED_TRANSCRIPT_JSON_BODY = (
+    '{"edl_hash":"snapshot-fixture",'
+    '"words":['
+    '{"text":"hello","start":0.0,"end":0.5,"type":"word"},'
+    '{"text":"world","start":0.6,"end":1.1,"type":"word"}'
+    ']}'
+)
+
 
 def _base() -> dict:
     """Slug + episode_dir — what LLMNode.__call__ injects unconditionally."""
@@ -141,6 +152,8 @@ def p4_prompt_expansion_ctx() -> dict:
         "strategy_json": json.dumps(_FIXED_STRATEGY, ensure_ascii=False),
         "edl_beats_json": json.dumps(_FIXED_EDL_BEATS, ensure_ascii=False),
         "transcript_json_path": TRANSCRIPT_JSON_PATH,
+        # HOM-279: transcript body inlined into the brief.
+        "transcript_json_body": _FIXED_TRANSCRIPT_JSON_BODY,
         "style_request_json": json.dumps(
             "Editorial restraint; analytical not festive.", ensure_ascii=False
         ),
@@ -305,6 +318,8 @@ def p4_captions_layer_ctx() -> dict:
         "design_md_body": _FIXED_DESIGN_MD_BODY,
         "transcript_json_path": TRANSCRIPT_JSON_PATH,
         "transcript_json_filename": "raw.json",
+        # HOM-279: transcript body inlined into the brief.
+        "transcript_json_body": _FIXED_TRANSCRIPT_JSON_BODY,
         "data_width": 1080,
         "data_height": 1920,
         "data_duration_s": 30.0,

@@ -77,7 +77,16 @@ from ._llm import LLMNode, _load_brief
 # pre-materialize); replaced with `stable_fingerprint` of the in-state
 # DESIGN.md body. `transcripts/final.json` stays in `files=` (Phase 3
 # disk artifact, legitimate file-fingerprint).
-_CACHE_VERSION = 7
+# v8 (HOM-279): transcript body migrated from disk-read to state-read.
+# Brief now inlines `transcript_json_body` (the JSON text) directly in
+# the render context — the dispatched sub-agent no longer calls `Read`
+# on the transcript file. Cache key swaps the transcript file
+# fingerprint for an in-state `stable_fingerprint(transcript_body)` —
+# the disk file is still authoritative (Phase 3 ffmpeg artifact) but
+# fingerprinting the body in state matches the actual consumed input.
+# Tool list drops the transcript `Read` requirement but the brief still
+# allows `Read` for canon docs.
+_CACHE_VERSION = 8
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -87,23 +96,21 @@ def _cache_key(state, *_args, **_kwargs):
         )
     # See p4_design_system._cache_key for the empty-slug rationale.
     slug = state.get("slug") or "__unbound__"
-    # HOM-224: derive paths via EpisodePaths(slug) — identity-only state.
-    # HOM-240: design_md body fingerprint replaces design_md_path file
-    # fingerprint (file no longer on disk pre-materialize).
-    if slug and slug != "__unbound__":
-        paths = EpisodePaths(slug)
-        final_json_path: str | None = str(paths.transcripts_final_json_path)
-    else:
-        final_json_path = None
+    # HOM-279: transcript body migrated to in-state fingerprint
+    # (`transcripts.bodies.{final|raw}` via `_transcript_body(state)`).
+    # The disk file remains authoritative but the brief inlines the body,
+    # so the key tracks what the LLM actually sees.
     design_md_body = _design_md_body(state)
+    transcript_body = _transcript_body(state)
     return make_llm_key(
         node="p4_captions_layer",
         version=_CACHE_VERSION,
         slug=slug,
-        files=[
-            final_json_path,
-        ],
-        extras=(stable_fingerprint(design_md_body),),
+        files=[],
+        extras=(
+            stable_fingerprint(design_md_body),
+            stable_fingerprint(transcript_body),
+        ),
     )
 
 
@@ -143,7 +150,18 @@ def _design_md_body(state: dict) -> str:
 
 
 def _transcript_path(state: dict) -> str:
-    """HOM-224: derive via slug. Final wins over raw."""
+    """HOM-224 + HOM-279: prefer the path recorded in state.transcripts.bodies
+    (set by `glue_remap_transcript` post-EDL remap); fall back to a slug-
+    derived probe for legacy / pre-hoist resume points. Final wins over raw.
+    """
+    transcripts = state.get("transcripts") or {}
+    bodies = transcripts.get("bodies") or {}
+    final_path = bodies.get("final_path")
+    if isinstance(final_path, str) and final_path:
+        return final_path
+    raw_path = bodies.get("raw_path")
+    if isinstance(raw_path, str) and raw_path:
+        return raw_path
     slug = state.get("slug")
     if not slug:
         return ""
@@ -152,6 +170,27 @@ def _transcript_path(state: dict) -> str:
         return str(paths.transcripts_final_json_path)
     if paths.transcripts_raw_json_path.exists():
         return str(paths.transcripts_raw_json_path)
+    return ""
+
+
+def _transcript_body(state: dict) -> str:
+    """HOM-279: read transcript JSON body from state.
+
+    `glue_remap_transcript` hydrates `transcripts.bodies.{raw|final}` at
+    the Phase 3 → Phase 4 boundary. Prefer `final` (EDL-remapped word
+    timings — match the cut timeline the captions block animates over);
+    fall back to `raw` if `final` is missing (e.g. test fixtures that
+    skip the remap step). Empty string when neither is present —
+    the node body skip-gates on that.
+    """
+    transcripts = state.get("transcripts") or {}
+    bodies = transcripts.get("bodies") or {}
+    final_body = bodies.get("final")
+    if isinstance(final_body, str) and final_body:
+        return final_body
+    raw_body = bodies.get("raw")
+    if isinstance(raw_body, str) and raw_body:
+        return raw_body
     return ""
 
 
@@ -201,6 +240,10 @@ def _render_ctx(state: dict) -> dict:
         "design_md_body": _design_md_body(state),
         "transcript_json_path": transcript_path,
         "transcript_json_filename": Path(transcript_path).name if transcript_path else "",
+        # HOM-279: inline the transcript JSON body — sub-agent no longer
+        # `Read`s the file. Body source: `state.transcripts.bodies`
+        # hoisted by `glue_remap_transcript`.
+        "transcript_json_body": _transcript_body(state),
         "data_width": width,
         "data_height": height,
         "data_duration_s": _composition_duration(state),
@@ -243,15 +286,18 @@ def p4_captions_layer_node(state, *, router: BackendRouter | None = None):
             },
         }
 
-    transcript_path = _transcript_path(state)
-    if not transcript_path or not Path(transcript_path).is_file():
+    # HOM-279: gate on transcript BODY in state, not disk file presence.
+    # `glue_remap_transcript` hydrates `transcripts.bodies.{raw|final}`
+    # — if neither is set, the Phase 3 → Phase 4 hand-off didn't run.
+    if not _transcript_body(state):
         return {
             "compose": {
                 "captions": {
                     "skipped": True,
                     "skip_reason": (
-                        "no transcript JSON available (transcripts.final_json_path / "
-                        "raw_json_path missing) — Phase 3 must run first"
+                        "no transcript body in state "
+                        "(transcripts.bodies.{raw,final} both missing) — "
+                        "glue_remap_transcript must run first"
                     ),
                 },
             },
