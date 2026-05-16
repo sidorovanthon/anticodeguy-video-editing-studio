@@ -73,7 +73,7 @@ SNAPSHOT_DIR = (
 # Tolerance of pixel mismatches per snapshot in default mode. Anti-aliasing
 # and font hinting differ tiny amounts across rendering machines; allow a
 # small budget so the suite stays useful as a gate without becoming flaky.
-# 5000 px on a 1080x1920 frame is 0.024 % — still tight enough to catch
+# 5000 px on a 1080x1920 frame is ~0.24 % — still tight enough to catch
 # any structural divergence, loose enough to absorb subpixel jitter.
 SNAPSHOT_PIXEL_BUDGET = 5000
 
@@ -203,31 +203,6 @@ def test_payoff_visible_at_t17(shots):
 # ---------------------------------------------------------------------------
 # 2. At most one caption block visible at any captured frame
 # ---------------------------------------------------------------------------
-
-
-def test_at_most_one_caption_block_per_frame(shots, page_factory=None):
-    """HOM-210 caption-overlap class — exit-before-next-entrance contract.
-
-    Captions layer must clear the previous block before the next one
-    enters; multiple visible blocks at any captured frame indicates
-    ``p4_captions_layer`` regressed on the HOM-215 fix.
-
-    The body_text-based heuristic counts caption-block sentinels — the
-    composition's caption blocks all live under ``.caption-block`` per
-    HF canon. We approximate "visible" by counting non-empty caption
-    text segments in the body_text output.
-    """
-    # Caption text is appended into body_text along with scene text. We
-    # rely on the structural assertion below — the body_text check here
-    # is intentionally weak (just sanity that some text exists at t≥1).
-    for s in shots:
-        if s.t_seconds < 1.0:
-            continue
-        # Don't enforce content presence at gap timestamps (e.g., t=14
-        # is intentionally between thesis exit and payoff entrance);
-        # these are exercised by the per-frame content assertions above.
-    # The strong caption-overlap check happens at capture time via a
-    # dedicated re-visit pass — see test_caption_block_count_in_dom.
 
 
 def test_caption_block_count_in_dom():
