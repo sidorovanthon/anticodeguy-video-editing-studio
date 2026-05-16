@@ -99,6 +99,54 @@ def _scene_metadata(state: dict) -> tuple[list[str], list[float], list[float]]:
     return ids, starts, durations
 
 
+def _design_md_body(state: dict) -> str:
+    """HOM-265: read DESIGN.md body from state."""
+    compose = state.get("compose") or {}
+    design = compose.get("design") or {}
+    body = design.get("design_md")
+    return body if isinstance(body, str) else ""
+
+
+def _expanded_prompt_body(state: dict) -> str:
+    """HOM-265: read expanded-prompt.md body from state."""
+    compose = state.get("compose") or {}
+    expansion = compose.get("expansion") or {}
+    body = expansion.get("expanded_prompt")
+    return body if isinstance(body, str) else ""
+
+
+def _index_html_body(state: dict) -> str:
+    """HOM-265: read assembled root index.html body from state.
+
+    Post-D2 (HOM-239) the assembled body lives at top-level
+    `state["index_html"]` (see state.py docstring §"HOM-231 Step A").
+    The disk file is written by `p4_materialize_disk_node` at chain end —
+    while this node runs, the in-state body is the source of truth.
+    """
+    body = state.get("index_html")
+    return body if isinstance(body, str) else ""
+
+
+def _scene_bodies(state: dict) -> dict[str, str]:
+    """HOM-265: per-scene HTML bodies from the top-level `scenes` channel.
+
+    Populated by `p4_beat` Sends (HOM-234 / _scenes_merge reducer). On a
+    redispatch loop the prior beat output(s) live here keyed by scene_id;
+    the sub-agent reads from this dict instead of the per-scene
+    `compositions/<scene_id>.html` files (which `p4_materialize_disk_node`
+    writes at chain end, NOT while this redispatch runs).
+    """
+    scenes = state.get("scenes") or {}
+    out: dict[str, str] = {}
+    if isinstance(scenes, dict):
+        for sid, entry in scenes.items():
+            if isinstance(entry, dict):
+                body = entry.get("html")
+                if isinstance(body, str):
+                    out[sid] = body
+    return out
+
+
 def _render_ctx(state: dict) -> dict:
     failure = _latest_cluster_failure(state) or {}
     compose = state.get("compose") or {}
@@ -135,6 +183,15 @@ def _render_ctx(state: dict) -> dict:
         # HOM-224: derive via slug; compose echo dropped.
         "design_md_path": str(EpisodePaths(slug).design_md_path) if slug else (compose.get("design_md_path") or ""),
         "expanded_prompt_path": str(EpisodePaths(slug).expanded_prompt_path) if slug else (compose.get("expanded_prompt_path") or ""),
+        # HOM-265: inline body strings — sub-agent no longer Reads from disk.
+        # `index_html_body` is the assembled root composition; `scene_bodies`
+        # maps each scene_id to its prior-attempt fragment so the sub-agent
+        # can read what the previous iteration produced without touching
+        # `compositions/<scene_id>.html` on disk.
+        "design_md_body": _design_md_body(state),
+        "expanded_prompt_body": _expanded_prompt_body(state),
+        "index_html_body": _index_html_body(state),
+        "scene_bodies": _scene_bodies(state),
         "catalog_summary": _catalog_summary(state),
         "scene_ids_json": json.dumps(scene_ids, ensure_ascii=False),
         "scene_starts_json": json.dumps(scene_starts),
@@ -154,6 +211,8 @@ def _build_node() -> LLMNode:
         result_namespace="compose",
         result_key="redispatch",
         timeout_s=300,
+        # TODO(HOM-266): Write is dropped; downstream reads state["scenes"]
+        # only. See ticket for migration plan (switch to BeatOutput return).
         allowed_tools=["Read", "Write"],
         extra_render_ctx=_render_ctx,
     )
@@ -177,6 +236,7 @@ def p4_redispatch_beat_node(state, *, router: BackendRouter | None = None):
     else:
         legacy = compose.get("index_html_path")
         index_path = Path(legacy) if legacy else None
+    # TODO(HOM-266): check state index_html body instead of scaffold baseline file.
     if index_path is None or not index_path.is_file():
         return {
             "errors": [{

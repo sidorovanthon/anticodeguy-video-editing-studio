@@ -34,6 +34,10 @@ def _state_with_inputs(tmp_path) -> dict:
         "slug": "demo",
         "compose": {
             "style_request": "Editorial calm — Stripe-press energy.",
+            # HOM-265 (Step E partial of HOM-230): consumer gates check
+            # state-body presence, not disk. Seed the DESIGN.md body so
+            # the node body passes its precondition and dispatches.
+            "design": {"design_md": "# DESIGN.md fixture body\n"},
         },
         "edit": {
             "edl": {
@@ -76,22 +80,19 @@ def test_skips_when_slug_missing():
 
 
 def test_skips_when_design_md_missing(tmp_path, monkeypatch):
-    # HOM-224: design absent on disk → skip with DESIGN.md reason. No
-    # state-echo to fall back on — skip path now triggers via the slug
-    # presence + design-not-on-disk combination, but the node body skip
-    # currently triggers before checking disk (when the derived path is
-    # falsy). Since the slug always produces a non-empty path, the body
-    # falls into the LLM dispatch unless we gate elsewhere — see node
-    # body for the implementation. This test pins behaviour: when slug
-    # is set but DESIGN.md absent, we want a skip; the dispatch should
-    # not run.
+    # HOM-265 (Step E partial of HOM-230): gate switched to state-body
+    # presence. When `compose.design.design_md` is absent from state, the
+    # node MUST skip without dispatching — `p4_design_system` is the
+    # upstream producer of that body and must have run first.
     slug = _seed_episode(tmp_path, monkeypatch, design=False)
     state = {
         "slug": slug,
+        "compose": {},  # NO design body
         "edit": {"edl": {"ranges": [{"beat": "HOOK"}]}},
     }
     update = p4_prompt_expansion_node(state, router=MagicMock())
     assert update["compose"]["expansion"]["skipped"] is True
+    assert "DESIGN.md" in update["compose"]["expansion"]["skip_reason"]
 
 
 def test_skips_when_edl_empty(tmp_path, monkeypatch):

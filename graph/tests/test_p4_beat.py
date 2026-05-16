@@ -240,7 +240,12 @@ def test_brief_references_canon_paths_without_embedding():
     # The brief must NOT lift canonical paragraphs verbatim.
     assert "Layout Before Animation" in brief  # section reference is OK
     # Sanity: the brief stays compact (path-references, ~70 lines target).
-    assert brief.count("\n") < 160, f"brief grew to {brief.count(chr(10))} lines — should reference canon, not embed"
+    # HOM-265 raised the bound from 160 to 200 — Step E partial inlines
+    # DESIGN.md / expanded-prompt.md BODIES (state data, not canon) into
+    # the brief context so the sub-agent no longer Reads them from disk.
+    # The inlined-body wrappers add ~25 lines; the canon-references-not-
+    # embeds contract still holds (canon is referenced by path).
+    assert brief.count("\n") < 200, f"brief grew to {brief.count(chr(10))} lines — should reference canon, not embed"
 
 
 # ---------------------------------------------------------------------------

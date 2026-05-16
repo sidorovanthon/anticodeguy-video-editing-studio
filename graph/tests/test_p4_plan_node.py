@@ -147,11 +147,28 @@ def _seed_episode(tmp_path, monkeypatch, *, design=True, expansion=True):
     return slug
 
 
+def _seed_state_bodies(*, design=True, expansion=True) -> dict:
+    """HOM-265 helper: build state.compose with body strings populated.
+
+    Post-D2 (state-first artifacts) the consumer gates check
+    `compose.design.design_md` and `compose.expansion.expanded_prompt`
+    body presence, NOT disk-file presence. Tests that previously relied
+    on the disk seed must also populate the body fields.
+    """
+    compose: dict = {}
+    if design:
+        compose["design"] = {"design_md": "# DESIGN"}
+    if expansion:
+        compose["expansion"] = {"expanded_prompt": "# expanded"}
+    return compose
+
+
 def test_skips_when_design_md_missing(tmp_path, monkeypatch):
+    # HOM-265: gate switched to state-body presence; no body → skip.
     slug = _seed_episode(tmp_path, monkeypatch, design=False, expansion=False)
     state = {
         "slug": slug,
-        "compose": {},
+        "compose": _seed_state_bodies(design=False, expansion=False),
         "edit": {"edl": {"ranges": [
             {"source": "raw", "start": 0.0, "end": 1.0,
              "beat": "HOOK", "quote": "x", "reason": "y"},
@@ -163,10 +180,12 @@ def test_skips_when_design_md_missing(tmp_path, monkeypatch):
 
 
 def test_skips_when_expanded_prompt_missing(tmp_path, monkeypatch):
+    # HOM-265: gate switched to state-body presence; design body seeded,
+    # expansion body missing → skip with expanded-prompt.md reason.
     slug = _seed_episode(tmp_path, monkeypatch, design=True, expansion=False)
     state = {
         "slug": slug,
-        "compose": {},
+        "compose": _seed_state_bodies(design=True, expansion=False),
         "edit": {"edl": {"ranges": [
             {"source": "raw", "start": 0.0, "end": 1.0,
              "beat": "HOOK", "quote": "x", "reason": "y"},
@@ -181,7 +200,7 @@ def test_skips_when_edl_empty(tmp_path, monkeypatch):
     slug = _seed_episode(tmp_path, monkeypatch)
     state = {
         "slug": slug,
-        "compose": {},
+        "compose": _seed_state_bodies(),
         "edit": {"edl": {"ranges": []}},
     }
     update = p4_plan_node(state, router=MagicMock())
@@ -208,7 +227,7 @@ def test_runs_with_smart_tier_and_passes_canon_paths(tmp_path, monkeypatch):
     slug = _seed_episode(tmp_path, monkeypatch)
     state = {
         "slug": slug,
-        "compose": {},
+        "compose": _seed_state_bodies(),
         "edit": {
             "edl": {
                 "ranges": [

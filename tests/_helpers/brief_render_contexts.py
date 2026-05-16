@@ -75,6 +75,23 @@ _FIXED_CATALOG_SUMMARY = (
     "  - hairline-rule"
 )
 
+# HOM-265 (Step E partial of HOM-230): brief body inlines. Use compact
+# deterministic placeholder strings so the snapshot diff stays small —
+# the brief snapshot test asserts shape, not content fidelity.
+_FIXED_DESIGN_MD_BODY = "# DESIGN.md — snapshot fixture\n\n(palette + typography body)\n"
+_FIXED_EXPANDED_PROMPT_BODY = "# expanded-prompt.md — snapshot fixture\n\n(per-scene specs body)\n"
+_FIXED_INDEX_HTML_BODY = (
+    "<!doctype html>\n<html><body>\n"
+    "<!-- beat: hook -->\n<div id=\"scene-hook\">...</div>\n<!-- /beat: hook -->\n"
+    "<!-- beat: payoff -->\n<div id=\"scene-payoff\">...</div>\n<!-- /beat: payoff -->\n"
+    "</body></html>\n"
+)
+_FIXED_SCENE_BODIES = {
+    "hook": "<div id=\"scene-hook\">snapshot fixture scene body</div>\n",
+    "payoff": "<div id=\"scene-payoff\">snapshot fixture scene body</div>\n",
+}
+_FIXED_PROJECT_MD_BODY = ""  # fresh-run signal: no prior sessions.
+
 
 def _base() -> dict:
     """Slug + episode_dir — what LLMNode.__call__ injects unconditionally."""
@@ -120,6 +137,7 @@ def p4_prompt_expansion_ctx() -> dict:
         **_base(),
         "expanded_prompt_path": EXPANDED_PROMPT_PATH,
         "design_md_path": DESIGN_MD_PATH,
+        "design_md_body": _FIXED_DESIGN_MD_BODY,
         "strategy_json": json.dumps(_FIXED_STRATEGY, ensure_ascii=False),
         "edl_beats_json": json.dumps(_FIXED_EDL_BEATS, ensure_ascii=False),
         "transcript_json_path": TRANSCRIPT_JSON_PATH,
@@ -134,6 +152,8 @@ def p4_plan_ctx() -> dict:
         **_base(),
         "design_md_path": DESIGN_MD_PATH,
         "expanded_prompt_path": EXPANDED_PROMPT_PATH,
+        "design_md_body": _FIXED_DESIGN_MD_BODY,
+        "expanded_prompt_body": _FIXED_EXPANDED_PROMPT_BODY,
         "strategy_json": json.dumps(_FIXED_STRATEGY, ensure_ascii=False),
         "edl_beats_json": json.dumps(_FIXED_EDL_BEATS, ensure_ascii=False),
     }
@@ -154,6 +174,8 @@ def p4_beat_ctx() -> dict:
         "plan_beat_json": json.dumps(_FIXED_PLAN_BEAT, ensure_ascii=False),
         "design_md_path": DESIGN_MD_PATH,
         "expanded_prompt_path": EXPANDED_PROMPT_PATH,
+        "design_md_body": _FIXED_DESIGN_MD_BODY,
+        "expanded_prompt_body": _FIXED_EXPANDED_PROMPT_BODY,
         "catalog_summary": _FIXED_CATALOG_SUMMARY,
         "scene_html_path": SCENE_HTML_PATH,
     }
@@ -226,6 +248,7 @@ def p4_persist_session_ctx() -> dict:
     return {
         **_base(),
         "project_md_path": PROJECT_MD_PATH,
+        "project_md_body": _FIXED_PROJECT_MD_BODY,
         "design_md_path": DESIGN_MD_PATH,
         "expanded_prompt_path": EXPANDED_PROMPT_PATH,
         "plan_json": json.dumps(plan, ensure_ascii=False),
@@ -242,6 +265,7 @@ def p4_captions_layer_ctx() -> dict:
         **_base(),
         "captions_block_path": CAPTIONS_BLOCK_PATH,
         "design_md_path": DESIGN_MD_PATH,
+        "design_md_body": _FIXED_DESIGN_MD_BODY,
         "transcript_json_path": TRANSCRIPT_JSON_PATH,
         "transcript_json_filename": "raw.json",
         "data_width": 1080,

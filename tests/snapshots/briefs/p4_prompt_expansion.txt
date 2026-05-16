@@ -20,8 +20,19 @@ load-bearing and we do not paraphrase them here):
   typography, color, motion rules that apply to every scene.
 
 Inputs:
-- DESIGN.md path (read it; cite its EXACT hex values, font names, and tokens —
-  do NOT invent palette or typography): `/tmp/snapshot-fixture/episode/hyperframes/DESIGN.md`
+- DESIGN.md body — INLINED below; cite its EXACT hex values, font names, and
+  tokens; do NOT invent palette or typography. Do NOT call `Read` on
+  `/tmp/snapshot-fixture/episode/hyperframes/DESIGN.md` — the file is not on disk while this node runs
+  (HOM-265: state-first artifacts, Step E partial; the materializer writes
+  it at chain end). Treat the body verbatim as if you had just read it:
+
+  ```design.md
+  # DESIGN.md — snapshot fixture
+
+(palette + typography body)
+
+  ```
+
 - User prompt seed (the original brief; enrichment must preserve everything in
   it — atmosphere, ambient motion, micro-details are added on top, never as
   replacement): `"Editorial restraint; analytical not festive."`
