@@ -49,8 +49,6 @@ literally on the scene div):
   {{ scene_starts_json }}
 - scene durations (parallel to scene-ids):
   {{ scene_durations_json }}
-- output directory: `{{ compositions_dir }}` — write the rewritten fragment to
-  `{{ compositions_dir }}/<scene_id>.html` for the scene you picked.
 
 Upstream artefacts (HOM-265: DESIGN.md and expanded-prompt.md bodies
 are INLINED below — the files are NOT on disk while this node runs;
@@ -71,9 +69,8 @@ the materializer writes them at chain end. Do NOT call `Read` on
 
 Prior-attempt scene fragments (the previous iteration's output for
 EACH scene — use these to understand what was written, so you avoid
-repeating the same mistake on the rewrite. Do NOT call `Read` on
-`{{ compositions_dir }}/<scene_id>.html` — those files are not on disk
-while this node runs):
+repeating the same mistake on the rewrite. The files are not on disk
+while this node runs; the bodies are inlined below):
 
 {% for sid, body in scene_bodies.items() %}
 - `scene_id = "{{ sid }}"`:
@@ -102,8 +99,14 @@ Canon — read BEFORE rewriting (use `Read` on each):
 6. `~/.agents/skills/hyperframes/house-style.md` — §"Background Layer":
    2-5 ambient-motion BG decoratives per scene.
 
-Output shape — Pattern A scene fragment, ONE `<div>` written to the
-compositions file for the chosen scene_id:
+Output — return JSON matching `BeatOutput { html: str }` (same contract
+as `p4_beat`; HOM-266 — state-first artifacts, Step D2 of HOM-230 epic).
+The fragment shown below is the SHAPE of the `html` field's value (a
+single JSON-escaped string). Do NOT call the `Write` tool. Do NOT touch
+the filesystem. The orchestrator merges your returned body into
+`state["scenes"][<scene_id>]["html"]`; `p4_assemble_index` re-runs and
+re-inlines the body into the root composition, and `p4_materialize_disk`
+writes the file from state at chain end.
 
 ```html
 <div id="scene-<scene_id>" class="scene clip"
@@ -136,6 +139,18 @@ Substitute:
 - `<opacity-init>` → `opacity: 1` for the FIRST scene in plan order (index 0),
   `opacity: 0` for any other scene (the visibility shim sets opacity at start).
 
+Return ONLY JSON matching `BeatOutput { html: "<...>" }` (no prose
+outside the JSON). The `html` field carries the FULL rewritten scene
+fragment as a single JSON-escaped string — backslashes, double-quotes,
+newlines need standard JSON escaping. Typical body is ~5–10 KB. The
+orchestrator's extractor accepts the first valid fenced ```json``` code
+block (see `graph/src/edit_episode_graph/backends/_schema_extract.py`);
+take care not to truncate.
+
+```json
+{ "html": "<div id=\"scene-<scene_id>\" class=\"scene clip\" ... >...</div>" }
+```
+
 Hard rules (orchestrator-house — derived from canon, surfaced so you don't miss them):
 - **`class="scene clip"` on the scene div** — `clip` is required by HF lint.
 - **CSS scoping** — every rule prefixed with `#scene-<scene_id>`. No bare class selectors.
@@ -157,11 +172,13 @@ Hard rules (orchestrator-house — derived from canon, surfaced so you don't mis
   literal token `repeat:` followed by the infinite sentinel even inside
   comments — HF lint regex false-positives on the substring.
 
-Process (HOM-265: all upstream bodies are inlined above — do NOT call
-`Read` on `{{ index_html_path }}`, `{{ design_md_path }}`,
-`{{ expanded_prompt_path }}`, or any
-`{{ compositions_dir }}/<scene_id>.html`; those files are NOT on disk
-while this node runs):
+Process (HOM-265 / HOM-266: all upstream bodies are inlined above and
+your output flows back through state — do NOT call `Read` on
+`{{ index_html_path }}` or `{{ design_md_path }}` or
+`{{ expanded_prompt_path }}`; do NOT call `Write` on any
+`compositions/<scene_id>.html`. Those files are NOT on disk while this
+node runs; `p4_materialize_disk` writes them at chain end from
+`state["scenes"]`):
 1. Read the violations above and the canon list (canon files in
    `~/.agents/skills/hyperframes/` ARE on disk — `Read` them).
 2. Use the inlined index.html body to identify which scene the violations
@@ -170,15 +187,12 @@ while this node runs):
 4. Use the inlined prior-attempt scene fragment for your picked
    `scene_id` so you understand what the previous attempt wrote (avoid
    repeating the same mistake).
-{# TODO(HOM-266): sub-agent `Write` is dropped — `p4_assemble_index` reads
-   from `state["scenes"]` only and `p4_materialize_disk` overwrites disk
-   from stale state. Migration to BeatOutput return shape pending. #}
-5. `Write` ONE file to `{{ compositions_dir }}/<scene_id>.html` with the
-   rewritten fragment.
-6. Reply on a single line:
-   `Rewrote <scene_id> for {{ failed_gate }} (<N> elements, <M> tweens).`
+5. Return JSON `BeatOutput { html: "<rewritten scene fragment>" }`
+   matching the shape above. The orchestrator merges the body into
+   `state["scenes"][<scene_id>]["html"]` (last-write-wins reducer keyed
+   by scene_id) — the rest of the scenes map is preserved.
 
-Do NOT modify the root `index.html`, do NOT touch sibling
-`compositions/*.html` other than the one scene you picked, do NOT add
-`<script src=...>` tags. The `p4_assemble_index` node will re-inline your
-fragment into the root composition — stay inside your scene.
+Do NOT modify the root `index.html`, do NOT touch sibling scenes other
+than the one you picked, do NOT add `<script src=...>` tags. The
+`p4_assemble_index` node will re-inline your fragment into the root
+composition — stay inside your scene.
