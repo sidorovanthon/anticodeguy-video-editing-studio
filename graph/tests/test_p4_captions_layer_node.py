@@ -49,7 +49,12 @@ def test_brief_references_canon_paths_without_embedding():
     assert "tl.fromTo" in brief
     assert "#captions-layer" in brief
     # Compactness — brief stays a path-reference, not a canon paste.
-    assert brief.count("\n") < 200, (
+    # HOM-279 raised the cap from 200→220 to accommodate the inlined
+    # transcript JSON body block (state-first artifacts cutover —
+    # body inlined into the brief in lieu of a sub-agent `Read`).
+    # Static brief lines (excluding the body placeholder) remain
+    # canon-reference-only; the body expands at render time.
+    assert brief.count("\n") < 220, (
         f"brief grew to {brief.count(chr(10))} lines — "
         "should reference canon, not embed"
     )
@@ -58,6 +63,47 @@ def test_brief_references_canon_paths_without_embedding():
 # ---------------------------------------------------------------------------
 # HOM-215: exit-before-next-entrance imperative survives future edits
 # ---------------------------------------------------------------------------
+
+
+def test_brief_inlines_transcript_body_after_hom279():
+    """HOM-279: brief inlines `transcript_json_body` so the sub-agent
+    no longer calls `Read` on the transcript file. Static-shape
+    guard: brief mentions the body context key + tells the sub-agent
+    NOT to Read the transcript file.
+    """
+    brief = node_module._load_brief("p4_captions_layer")
+    assert "{{ transcript_json_body }}" in brief, (
+        "brief did not inline the transcript body context variable — "
+        "HOM-279 consumer migration regression"
+    )
+    assert "HOM-279" in brief, "missing HOM-279 cite for the inlined-body rule"
+    # The do-NOT-Read instruction is the load-bearing imperative for the
+    # consumer cutover; without it the sub-agent may still attempt to
+    # open the file (a file that may not exist on the run machine).
+    assert "do NOT call `Read`" in brief or "Do NOT call `Read`" in brief, (
+        "brief missing the do-NOT-Read-transcript imperative"
+    )
+
+
+def test_skips_when_transcript_body_missing(tmp_path, monkeypatch):
+    """HOM-279: when `state.transcripts.bodies.{raw,final}` is empty,
+    the node skip-gates without dispatching — `glue_remap_transcript`
+    must run first.
+    """
+    from unittest.mock import MagicMock
+
+    monkeypatch.setenv("HOMESTUDIO_PROJECT_ROOT", str(tmp_path))
+    slug = "demo"
+    hf_dir = tmp_path / "episodes" / slug / "hyperframes"
+    hf_dir.mkdir(parents=True, exist_ok=True)
+    state = {
+        "slug": slug,
+        "compose": {"design": {"design_md": "# DESIGN.md body\n"}},
+        # No transcripts.bodies in state.
+    }
+    update = node_module.p4_captions_layer_node(state, router=MagicMock())
+    assert update["compose"]["captions"]["skipped"] is True
+    assert "transcript body" in update["compose"]["captions"]["skip_reason"]
 
 
 def test_brief_mandates_exit_before_next_entrance():

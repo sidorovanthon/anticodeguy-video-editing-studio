@@ -111,23 +111,28 @@ def _p4_design_system_base(tmp_dir: Path) -> dict:
 
 
 def _p4_prompt_expansion_base(tmp_dir: Path) -> dict:
-    """Base state for p4_prompt_expansion cache key (HOM-240).
+    """Base state for p4_prompt_expansion cache key (HOM-240 → HOM-279).
 
-    Post-HOM-240 the node's `_cache_key`:
-      - files=[transcripts_final_json_path] — Phase 3 disk artifact.
-      - extras += stable_fingerprint(design_md body in state).
+    Post-HOM-279 the node's `_cache_key`:
+      - files=[] — transcript body migrated to in-state extras.
+      - extras += stable_fingerprint(style_request),
+                   stable_fingerprint(design_md body),
+                   stable_fingerprint(transcript body).
 
-    Seed both the disk transcript (file-edit invariant) and the in-state
-    DESIGN.md body (state-mutation invariant).
+    Seed the in-state DESIGN.md + transcript bodies; the file-edit
+    invariant for transcripts is owned by `glue_remap_transcript` and
+    asserted via the state-body mutator below.
     """
-    episode_dir = _pin_project_root_to(tmp_dir)
-    transcript = episode_dir / "edit" / "transcripts" / "final.json"
-    transcript.parent.mkdir(parents=True, exist_ok=True)
-    transcript.write_text('{"segments":[]}', encoding="utf-8")
+    _pin_project_root_to(tmp_dir)
     return {
         "slug": _FP_SLUG,
-        "episode_dir": str(episode_dir),
         "compose": {"design": {"design_md": "# DESIGN.md fixture\n"}},
+        "transcripts": {
+            "bodies": {
+                "raw": '{"words":[]}',
+                "final": '{"edl_hash":"abc","words":[]}',
+            },
+        },
         "edit": {"edl": {"ranges": []}, "strategy": {"shape": "hpp"}},
     }
 
@@ -233,17 +238,20 @@ def _p4_captions_layer_base(tmp_dir: Path) -> dict:
 
     HOM-224: paths derive via EpisodePaths(slug).
     HOM-240: `design_md_path` dropped from files=; DESIGN.md body lives
-    in `compose.design.design_md`. `transcripts_final_json_path` stays
-    in files= (Phase 3 disk artifact).
+    in `compose.design.design_md`.
+    HOM-279: transcript body dropped from files= too; both DESIGN.md
+    and transcript bodies live in state extras.
     """
-    episode_dir = _pin_project_root_to(tmp_dir)
-    transcript = episode_dir / "edit" / "transcripts" / "final.json"
-    transcript.parent.mkdir(parents=True, exist_ok=True)
-    transcript.write_text('{"words":[]}', encoding="utf-8")
+    _pin_project_root_to(tmp_dir)
     return {
         "slug": _FP_SLUG,
-        "episode_dir": str(episode_dir),
         "compose": {"design": {"design_md": "# DESIGN.md fixture\n"}},
+        "transcripts": {
+            "bodies": {
+                "raw": '{"words":[]}',
+                "final": '{"edl_hash":"abc","words":[]}',
+            },
+        },
     }
 
 
@@ -364,15 +372,24 @@ _NODE_REGISTRY: dict[
         _p4_beat_base,
         _mutate_state_at("compose", "design", "design_md"),
     ),
-    # HOM-240: p4_captions_layer files=[final_json_path];
-    # `compose.design.design_md` moved to extras. Use the state-body
-    # mutator — the file_fingerprint path also flips it, but the body
-    # mutator catches a Step-E regression (e.g. someone reintroducing
-    # `design_md_path` to files= without removing the extras entry).
+    # HOM-279: p4_captions_layer files=[]; both DESIGN.md and transcript
+    # bodies live in state extras. The mutator overwrites the transcript
+    # body — this catches a Step-HOM-279 regression where someone
+    # reintroduces `transcripts_final_json_path` to files= without
+    # adding the body to extras.
     "p4_captions_layer": (
         "edit_episode_graph.nodes.p4_captions_layer",
         _p4_captions_layer_base,
-        _mutate_state_at("compose", "design", "design_md"),
+        _mutate_state_at("transcripts", "bodies", "final"),
+    ),
+    # HOM-279: p4_prompt_expansion files=[]; style_request + DESIGN.md
+    # body + transcript body all in state extras. Mutator overwrites
+    # the transcript body — catches the same regression class as
+    # p4_captions_layer.
+    "p4_prompt_expansion": (
+        "edit_episode_graph.nodes.p4_prompt_expansion",
+        _p4_prompt_expansion_base,
+        _mutate_state_at("transcripts", "bodies", "final"),
     ),
     # HOM-240: p4_persist_session files=[];
     # cache_key fingerprints `compose.index_html` body.

@@ -75,7 +75,13 @@ def _patch_subprocess_ok(final_json_envelope: dict | None = None):
 
 
 def test_hydrates_edl_from_disk(project_root_episode):
-    """HOM-144 contract: state.edit.edl is populated from edit/edl.json."""
+    """HOM-144 contract: state.edit.edl is populated from edit/edl.json.
+
+    HOM-279 contract: transcripts.bodies.{raw,final} are populated with
+    the JSON body strings so downstream Phase-4 consumers
+    (`p4_captions_layer`, `p4_prompt_expansion`, `gate:edl_ok`) can
+    read transcript content from state instead of disk.
+    """
     slug, episode_dir = project_root_episode
     _scaffold(episode_dir)
     with _patch_subprocess_ok():
@@ -84,7 +90,14 @@ def test_hydrates_edl_from_disk(project_root_episode):
     assert out["edit"]["edl"] == _VALID_EDL
     # HOM-223: identity-only state — `raw_json_path`, `final_json_path` no
     # longer echoed; only content fingerprint (`edl_hash`) remains.
-    assert out["transcripts"] == {"edl_hash": "abc123"}
+    transcripts = out["transcripts"]
+    assert transcripts["edl_hash"] == "abc123"
+    # HOM-279: bodies hoisted into state.
+    bodies = transcripts["bodies"]
+    assert json.loads(bodies["raw"]) == {"words": []}
+    assert json.loads(bodies["final"]) == {"edl_hash": "abc123", "words": []}
+    assert bodies["raw_path"].endswith("raw.json")
+    assert bodies["final_path"].endswith("final.json")
 
 
 def test_missing_slug_errors():

@@ -7,11 +7,12 @@ fragments and the v4 visibility shim. Pattern A composition — the captions
 container is a regular `<div>` (no `data-composition-id`, no `<template>`
 wrapper) that sits inside the root composition's `<body>`.
 
-Inputs (HOM-265: DESIGN.md body is INLINED below — the file is NOT on
-disk while this node runs; the materializer writes it at chain end. Do
-NOT call `Read` on `{{ design_md_path }}`. Transcript JSON, however,
-IS still on disk — it's a Phase 3 ffmpeg artifact and you DO call
-`Read` on it as before):
+Inputs (HOM-265 + HOM-279: BOTH the DESIGN.md and the transcript JSON
+bodies are INLINED below — neither file is read from disk while this
+node runs. DESIGN.md is post-HOM-265 state-first (materializer writes
+it at chain end); the transcript body was hoisted into state by
+`glue_remap_transcript` at the Phase 3 → Phase 4 boundary (HOM-279).
+Do NOT call `Read` on either path):
 
 - DESIGN.md — visual identity (palette, typography, refs, anti-patterns).
   Captions MUST inherit the design system: pick fonts + colors from
@@ -21,11 +22,17 @@ IS still on disk — it's a Phase 3 ffmpeg artifact and you DO call
   {{ design_md_body }}
   ```
 
-- `{{ transcript_json_path }}` — word-level transcript with `text`,
-  `start`, `end` per token. `Read` this file. Group tokens into caption
-  groups per canon §"Word Grouping". Reference this file (or its
-  filename) verbatim in the HTML so `gate:captions_track` can detect
-  the captions track.
+- Transcript JSON (`{{ transcript_json_filename }}`) — word-level
+  transcript with `text`, `start`, `end` per token. The body is
+  inlined below; consume it directly. Do NOT call `Read` on
+  `{{ transcript_json_path }}`. Group tokens into caption groups per
+  canon §"Word Grouping". Reference the filename
+  (`{{ transcript_json_filename }}`) verbatim in the HTML so
+  `gate:captions_track` can detect the captions track:
+
+  ```transcript.json
+  {{ transcript_json_body }}
+  ```
 
 Composition viewport: `{{ data_width }} × {{ data_height }}` — choose the
 portrait vs. landscape positioning rules from canon §"Positioning".
@@ -182,7 +189,9 @@ Hard rules (orchestrator-house, derived from canon — surfaced so you don't mis
 Process:
 1. Use the inlined DESIGN.md body above for typography + palette
    (HOM-265: do NOT call `Read` on `{{ design_md_path }}`).
-2. `Read` `{{ transcript_json_path }}` for the word stream and detect tone.
+2. Use the inlined transcript JSON body above for the word stream and
+   tone detection (HOM-279: do NOT call `Read` on
+   `{{ transcript_json_path }}`).
 3. `Read` the canon list above (mandatory; do not rely on memory).
 4. Group words per §"Word Grouping" using the band that matches the detected tone.
 5. Apply per-word emphasis per §"Per-Word Styling" — brand/product names, ALL CAPS,

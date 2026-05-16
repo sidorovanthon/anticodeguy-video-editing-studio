@@ -208,12 +208,59 @@ class AudioState(TypedDict, total=False):
     reason: str | None
 
 
+class TranscriptBodies(TypedDict, total=False):
+    """Phase-3 transcript JSON body strings hoisted into graph state
+    (HOM-279, Class A consumer cutover precursor).
+
+    Populated by `glue_remap_transcript` after it has produced
+    `edit/transcripts/final.json` from `edit/transcripts/raw.json` + the
+    EDL. Both bodies are the raw JSON text (the on-disk file contents) —
+    consumers re-parse them per their own needs (`gate:edl_ok` extracts
+    word intervals; `p4_captions_layer` / `p4_prompt_expansion` inline the
+    body into their dispatched-sub-agent briefs).
+
+    Fields:
+    * ``raw`` — body of `edit/transcripts/raw.json` (Phase 3 ElevenLabs
+      Scribe output; word-level timing pre-cut). Always present once
+      `glue_remap_transcript` has run successfully.
+    * ``final`` — body of `edit/transcripts/final.json` (post-EDL remap;
+      word timings re-anchored to the cut timeline). ``None`` until
+      `glue_remap_transcript` produces the file.
+    * ``raw_path`` / ``final_path`` — the slug-derived disk locations at
+      the time bodies were hydrated, kept for debug/parity (consumers
+      that need to reference the filename in HTML — e.g. the
+      `transcript_json_filename` comment in the captions block — read
+      these rather than re-deriving via `EpisodePaths(slug)`).
+    """
+    raw: str | None
+    final: str | None
+    raw_path: str | None
+    final_path: str | None
+
+
 class TranscriptsState(TypedDict, total=False):
     raw_json_path: str | None
     final_json_path: str | None
     edl_hash: str | None
     raw_json_paths: list[str]
     takes_packed_path: str | None
+    # HOM-279 (Class A consumer cutover precursor): in-state transcript
+    # body strings, populated by `glue_remap_transcript` at the Phase
+    # 3 → Phase 4 boundary. Phase-4 consumers (`p4_captions_layer`,
+    # `p4_prompt_expansion`, `gate:edl_ok`) read bodies from state instead
+    # of opening transcript JSON files from disk — the bodies live here
+    # so the consumers no longer depend on the file existing at run
+    # time. The disk artifacts (`edit/transcripts/raw.json` /
+    # `edit/transcripts/final.json`) remain authoritative — they are
+    # Phase 3 ffmpeg outputs and `p4_materialize_disk_node` does not
+    # rewrite them. ``final`` is ``None`` until `glue_remap_transcript`
+    # produces it (raw transcript is hydrated first; final is the
+    # EDL-remapped derivative). ``raw_path`` / ``final_path`` mirror
+    # the disk locations at the time of read for debuggability and
+    # downstream-consumer parity (e.g. the `transcript_json_filename`
+    # in captions briefs). Pre-HOM-279 checkpoints carry no `bodies`
+    # field — TypedDict total=False keeps them parsing.
+    bodies: TranscriptBodies
 
 
 class DesignState(TypedDict, total=False):

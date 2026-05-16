@@ -39,9 +39,15 @@ LENGTH_TOLERANCE = 0.20  # ±20% of strategy.length_estimate_s
 EPSILON_S = 1e-6
 
 
-def _word_intervals(transcript_path: Path) -> list[tuple[float, float]]:
-    """Return [(start, end), ...] for type=='word' entries, sorted by start."""
-    data = json.loads(transcript_path.read_text(encoding="utf-8"))
+def _word_intervals_from_body(body: str) -> list[tuple[float, float]]:
+    """Return [(start, end), ...] for type=='word' entries, sorted by start.
+
+    HOM-279: parses the transcript JSON body string carried in state
+    (``transcripts.bodies.{raw|final}``) rather than re-opening the
+    file from disk. The body source is hydrated by
+    ``glue_remap_transcript`` at the Phase 3 → Phase 4 boundary.
+    """
+    data = json.loads(body)
     words = [
         (float(w["start"]), float(w["end"]))
         for w in (data.get("words") or [])
@@ -232,8 +238,47 @@ def _source_duration_map(state: dict) -> dict[str, float]:
 
 
 def _transcript_dir(state: dict) -> Path:
+    """Transitional (HOM-279): in the current Phase 3 topology
+    ``gate_edl_ok`` runs upstream of ``glue_remap_transcript``, so
+    ``state.transcripts.bodies`` is not yet populated when this gate
+    fires — the disk path resolved here is the load-bearing one on the
+    live hot path. The state-read branch in ``_transcript_body_for_source``
+    becomes primary once raw-transcript hydration moves earlier in
+    Phase 3 (follow-up to HOM-279, out of scope for this PR).
+    """
     episode_dir = state.get("episode_dir")
     return Path(episode_dir) / "edit" / "transcripts"
+
+
+def _transcript_body_for_source(state: dict, source_key: str) -> str | None:
+    """Resolve transcript JSON body string for an EDL source key (HOM-279).
+
+    The gate's word-interval check is over the PRE-CUT word timings
+    (matching the EDL range edges against the source-side timeline).
+    `glue_remap_transcript` hydrates the raw transcript body under
+    ``state.transcripts.bodies.raw`` (and the per-source disk filename
+    stem is ``raw`` for the canonical single-source fixture).
+
+    Transitional note: in the current Phase 3 topology gate_edl_ok
+    runs upstream of ``glue_remap_transcript``, so on the live hot
+    path ``state.transcripts.bodies`` is not yet populated when the
+    gate fires — the disk fallback in ``_load`` is load-bearing and
+    this helper returns ``None``. Once raw-transcript hydration is
+    hoisted earlier in Phase 3 (follow-up to HOM-279), this becomes
+    the primary path and the helper widens to a per-source map.
+    """
+    transcripts = state.get("transcripts") or {}
+    bodies = transcripts.get("bodies") or {}
+    # Single-source canonical-fixture path: body keyed by the disk
+    # filename stem (``raw`` / ``final``). The gate is interested in
+    # the pre-cut word timings, so prefer ``raw`` — the ``final`` body
+    # carries post-EDL re-anchored timings that do NOT align with the
+    # EDL range edges the gate validates.
+    if source_key == "raw":
+        raw_body = bodies.get("raw")
+        if isinstance(raw_body, str) and raw_body:
+            return raw_body
+    return None
 
 
 # Matches each occurrence of `curves=master='<keypoints>'` (or "double-quoted")
@@ -336,11 +381,33 @@ class EdlOkGate(Gate):
         def _load(source_key: str) -> list[tuple[float, float]] | None:
             if source_key in word_cache:
                 return word_cache[source_key]
+            # HOM-279: try transcript body from state first
+            # (``state.transcripts.bodies.raw``), then fall back to
+            # disk. In the current Phase 3 topology gate_edl_ok
+            # runs upstream of `glue_remap_transcript`, so the
+            # state branch is typically empty here and the disk
+            # read is load-bearing on the live hot path. The
+            # state-preferred shape lets the gate flip to
+            # state-primary once raw-transcript hydration moves
+            # earlier in Phase 3 (follow-up to HOM-279).
+            body = _transcript_body_for_source(state, source_key)
+            if body is not None:
+                try:
+                    words = _word_intervals_from_body(body)
+                except (ValueError, KeyError) as exc:
+                    violations.append(
+                        f"transcript body unreadable for source `{source_key}`: {exc}"
+                    )
+                    return None
+                word_cache[source_key] = words
+                return words
             tpath = transcripts_dir / f"{source_key}.json"
             if not tpath.is_file():
                 return None
             try:
-                words = _word_intervals(tpath)
+                words = _word_intervals_from_body(
+                    tpath.read_text(encoding="utf-8")
+                )
             except (OSError, ValueError, KeyError) as exc:
                 violations.append(f"transcript unreadable for source `{source_key}`: {exc}")
                 return None
