@@ -1,0 +1,223 @@
+
+
+You are RE-AUTHORING **one scene fragment** for an anticodeguy episode (`snapshot-fixture`).
+Pattern A (inlined `<div>` per scene). The previous attempt's fragment FAILED
+the gate `gate:design_adherence`; rewrite the offending scene so the gate passes.
+
+## Previous attempt (iteration 1) failed these checks; address them on this attempt:
+
+- {'selector': '#scene-hook .headline', 'message': 'scene-hook headline missing exit-pair (HOM-213 anti-pattern)'}
+
+
+Identification — find the offending scene(s) yourself (HOM-265: the
+assembled root composition is INLINED below; do NOT call `Read` on
+`/tmp/snapshot-fixture/episode/hyperframes/index.html` — it is not on disk while this node runs; the
+materializer writes it at chain end):
+
+Assembled root index.html body (use this — do NOT `Read` from disk):
+
+```index.html
+<!doctype html>
+<html><body>
+<!-- beat: hook -->
+<div id="scene-hook">...</div>
+<!-- /beat: hook -->
+<!-- beat: payoff -->
+<div id="scene-payoff">...</div>
+<!-- /beat: payoff -->
+</body></html>
+
+```
+
+1. Each inlined scene fragment in the body above is bracketed by
+   `<!-- beat: <scene_id> -->` markers.
+2. Cross-reference the violations above with the assembled HTML. Most lint /
+   validate / design-adherence violations name the scene either by
+   `#scene-<scene_id>` selector, by `id="scene-<scene_id>"` attribute, or
+   by line number — the enclosing `<!-- beat: <scene_id> -->` marker
+   identifies the owning scene.
+3. Available scenes (canonical plan order): ["hook", "payoff"]
+4. Pick ONE scene to rewrite this turn (the one most clearly responsible
+   for the violations). If multiple scenes share the blame, pick the
+   FIRST one in plan order — subsequent retries will catch the others.
+5. **If the violation cannot be traced to ANY `<!-- beat: ... -->` marker**
+   (e.g. a validate error about a root-composition attribute, a
+   captions-track failure with no per-scene attribution): pick the FIRST
+   scene in plan order, and prefix your reply with `WARN: violation not
+   beat-attributable —` so the orchestrator surfaces the uncertainty in the
+   halt notice when retries exhaust. Do NOT skip writing — the loop relies
+   on a fresh fragment to make progress.
+
+Scene context (these are the per-beat parameters from the plan; mirror them
+literally on the scene div):
+
+- viewport: `data-width=1080`, `data-height=1920`
+- track: `data-track-index=1`
+- scene starts (cumulative seconds, plan order, parallel to the scene-ids above):
+  [0.0, 6.9]
+- scene durations (parallel to scene-ids):
+  [6.9, 5.0]
+
+Upstream artefacts (HOM-265: DESIGN.md and expanded-prompt.md bodies
+are INLINED below — the files are NOT on disk while this node runs;
+the materializer writes them at chain end. Do NOT call `Read` on
+`/tmp/snapshot-fixture/episode/hyperframes/DESIGN.md` or `/tmp/snapshot-fixture/episode/hyperframes/.hyperframes/expanded-prompt.md`):
+
+- DESIGN.md — visual identity (palette, typography, beat→visual mapping):
+
+  ```design.md
+  # DESIGN.md — snapshot fixture
+
+(palette + typography body)
+
+  ```
+
+- expanded-prompt.md — per-scene atmosphere brief:
+
+  ```expanded-prompt.md
+  # expanded-prompt.md — snapshot fixture
+
+(per-scene specs body)
+
+  ```
+
+Prior-attempt scene fragments (the previous iteration's output for
+EACH scene — use these to understand what was written, so you avoid
+repeating the same mistake on the rewrite. The files are not on disk
+while this node runs; the bodies are inlined below):
+
+
+- `scene_id = "hook"`:
+
+  ```hook.html
+  <div id="scene-hook">snapshot fixture scene body</div>
+
+  ```
+
+- `scene_id = "payoff"`:
+
+  ```payoff.html
+  <div id="scene-payoff">snapshot fixture scene body</div>
+
+  ```
+
+
+Available registry:
+blocks:
+  - hero-stat-hold (stat-hold beat)
+components:
+  - hairline-rule
+
+Canon — read BEFORE rewriting (use `Read` on each):
+1. `~/.agents/skills/hyperframes/SKILL.md` — §"Layout Before Animation",
+   §"Scene Transitions" (HR 1–4; HR 4 final-fade only on the LAST scene),
+   §"Animation Guardrails", §"Rules (Non-Negotiable)".
+2. `~/.agents/skills/hyperframes/references/transitions/catalog.md` — Hard
+   Rules (CSS) L9 + L13, scene template L36-80. Pattern A: only the root
+   composition gets `data-composition-id`; the scene div does NOT; no
+   `<template>` wrapper; non-first scenes start with `opacity: 0`.
+3. `~/.agents/skills/hyperframes/references/motion-principles.md` — L115-123:
+   every entrance MUST be `tl.fromTo(...)` — never `tl.from(...)`.
+4. `~/.agents/skills/hyperframes/references/video-composition.md` — density
+   floor (≥ 8 elements per scene, L15-23).
+5. `~/.agents/skills/hyperframes/references/typography.md` — type system.
+6. `~/.agents/skills/hyperframes/house-style.md` — §"Background Layer":
+   2-5 ambient-motion BG decoratives per scene.
+
+Output — return JSON matching `BeatOutput { html: str }` (same contract
+as `p4_beat`; HOM-266 — state-first artifacts, Step D2 of HOM-230 epic).
+The fragment shown below is the SHAPE of the `html` field's value (a
+single JSON-escaped string). Do NOT call the `Write` tool. Do NOT touch
+the filesystem. The orchestrator merges your returned body into
+`state["scenes"][<scene_id>]["html"]`; `p4_assemble_index` re-runs and
+re-inlines the body into the root composition, and `p4_materialize_disk`
+writes the file from state at chain end.
+
+```html
+<div id="scene-<scene_id>" class="scene clip"
+     data-start="<scene_start>" data-duration="<scene_duration>" data-track-index="1"
+     data-width="1080" data-height="1920">
+  <style>
+    /* EVERY rule prefixed with #scene-<scene_id> — no bare class selectors. */
+    #scene-<scene_id> { position: absolute; inset: 0; <opacity-init>; }
+    /* …per-element rules… */
+  </style>
+  <div class="scene-content">
+    <!-- ≥ 8 elements visible at hero frame; ≥ 2 BG decoratives with ambient motion -->
+  </div>
+  <script>
+    (function() {
+      window.__sceneTimelines = window.__sceneTimelines || {};
+      const tl = gsap.timeline({ paused: true });
+      // entrance-only, every entrance via tl.fromTo()
+      // ≥ 3 distinct eases; first entrance offset 0.1–0.3s
+      window.__sceneTimelines["<scene_id>"] = tl;
+    })();
+  </script>
+</div>
+```
+
+Substitute:
+- `<scene_id>` → the scene_id you picked.
+- `<scene_start>` and `<scene_duration>` → the values from the parallel
+  arrays above for that scene's index.
+- `<opacity-init>` → `opacity: 1` for the FIRST scene in plan order (index 0),
+  `opacity: 0` for any other scene (the visibility shim sets opacity at start).
+
+Return ONLY JSON matching `BeatOutput { html: "<...>" }` (no prose
+outside the JSON). The `html` field carries the FULL rewritten scene
+fragment as a single JSON-escaped string — backslashes, double-quotes,
+newlines need standard JSON escaping. Typical body is ~5–10 KB. The
+orchestrator's extractor accepts the first valid fenced ```json``` code
+block (see `graph/src/edit_episode_graph/backends/_schema_extract.py`);
+take care not to truncate.
+
+```json
+{ "html": "<div id=\"scene-<scene_id>\" class=\"scene clip\" ... >...</div>" }
+```
+
+Hard rules (orchestrator-house — derived from canon, surfaced so you don't miss them):
+- **`class="scene clip"` on the scene div** — `clip` is required by HF lint.
+- **CSS scoping** — every rule prefixed with `#scene-<scene_id>`. No bare class selectors.
+- **`tl.fromTo()` only** for entrances — never `tl.from()`, never bare `gsap.from()`.
+- **No `data-composition-id` on the scene div.**
+- **No `<template>` wrapper.**
+- **No `<script src=".../gsap...">`** — root scaffold supplies GSAP once.
+- **IIFE-wrap the entire script body** — un-IIFE'd `const tl` collides with
+  the scaffold's top-level `const tl` and trips `hyperframes validate` with
+  `Identifier 'tl' has already been declared`.
+- **Density floor**: ≥ 8 elements visible at the hero frame, ≥ 2 BG
+  decoratives with ambient motion (`tl.to()` on the seekable `tl`).
+- **≥ 3 distinct eases**; first entrance offset 0.1–0.3s.
+- **Final-fade (HR 4)**: permitted ONLY on the last scene (highest index in
+  plan order). Otherwise NO `tl.to(..., {opacity: 0})` on the scene container.
+- **NO infinite repeats** — the GSAP infinite-repeat sentinel is forbidden
+  (canon: SKILL.md §"Animation Guardrails" L227 + Rules L240). Compute
+  finite counts from `data-duration` and tween duration. Never write the
+  literal token `repeat:` followed by the infinite sentinel even inside
+  comments — HF lint regex false-positives on the substring.
+
+Process (HOM-265 / HOM-266: all upstream bodies are inlined above and
+your output flows back through state — do NOT call `Read` on
+`/tmp/snapshot-fixture/episode/hyperframes/index.html` or `/tmp/snapshot-fixture/episode/hyperframes/DESIGN.md` or
+`/tmp/snapshot-fixture/episode/hyperframes/.hyperframes/expanded-prompt.md`; do NOT call `Write` on any
+`compositions/<scene_id>.html`. Those files are NOT on disk while this
+node runs; `p4_materialize_disk` writes them at chain end from
+`state["scenes"]`):
+1. Read the violations above and the canon list (canon files in
+   `~/.agents/skills/hyperframes/` ARE on disk — `Read` them).
+2. Use the inlined index.html body to identify which scene the violations
+   target (the `<!-- beat: <scene_id> -->` markers).
+3. Use the inlined DESIGN.md and expanded-prompt.md bodies for direction.
+4. Use the inlined prior-attempt scene fragment for your picked
+   `scene_id` so you understand what the previous attempt wrote (avoid
+   repeating the same mistake).
+5. Return JSON `BeatOutput { html: "<rewritten scene fragment>" }`
+   matching the shape above. The orchestrator merges the body into
+   `state["scenes"][<scene_id>]["html"]` (last-write-wins reducer keyed
+   by scene_id) — the rest of the scenes map is preserved.
+
+Do NOT modify the root `index.html`, do NOT touch sibling scenes other
+than the one you picked, do NOT add `<script src=...>` tags. The
+`p4_assemble_index` node will re-inline your fragment into the root
+composition — stay inside your scene.

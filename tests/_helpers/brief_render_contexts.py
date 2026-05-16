@@ -181,6 +181,44 @@ def p4_beat_ctx() -> dict:
     }
 
 
+def p4_redispatch_beat_ctx() -> dict:
+    """HOM-266: brief snapshot fixture for the cluster-gate redispatch node.
+
+    Mirrors the production ``_render_ctx`` shape — failed gate name, prior
+    violations list, prior iteration counter, the assembled root index.html
+    body (inlined post-HOM-265), the per-scene prior-attempt bodies, the
+    DESIGN.md / expanded-prompt.md inlined bodies, plus the timing parallel
+    arrays the brief substitutes into the scene fragment shape.
+    """
+    prior_violations = [
+        {
+            "selector": "#scene-hook .headline",
+            "message": "scene-hook headline missing exit-pair (HOM-213 anti-pattern)",
+        },
+    ]
+    return {
+        **_base(),
+        "failed_gate": "gate:design_adherence",
+        "prior_violations": prior_violations,
+        "prior_iteration": 1,
+        "index_html_path": INDEX_HTML_PATH,
+        "compositions_dir": f"{EPISODE_DIR}/hyperframes/compositions",
+        "design_md_path": DESIGN_MD_PATH,
+        "expanded_prompt_path": EXPANDED_PROMPT_PATH,
+        "design_md_body": _FIXED_DESIGN_MD_BODY,
+        "expanded_prompt_body": _FIXED_EXPANDED_PROMPT_BODY,
+        "index_html_body": _FIXED_INDEX_HTML_BODY,
+        "scene_bodies": _FIXED_SCENE_BODIES,
+        "catalog_summary": _FIXED_CATALOG_SUMMARY,
+        "scene_ids_json": json.dumps(["hook", "payoff"], ensure_ascii=False),
+        "scene_starts_json": json.dumps([0.0, 6.9]),
+        "scene_durations_json": json.dumps([6.9, 5.0]),
+        "data_width": 1080,
+        "data_height": 1920,
+        "data_track_index": 1,
+    }
+
+
 def gate_animation_map_classify_ctx() -> dict:
     """HOM-156: cheap-tier fix-or-justify classifier brief context."""
     flagged = [
@@ -282,6 +320,7 @@ NODE_CONTEXTS = {
     "p4_prompt_expansion": p4_prompt_expansion_ctx,
     "p4_plan": p4_plan_ctx,
     "p4_beat": p4_beat_ctx,
+    "p4_redispatch_beat": p4_redispatch_beat_ctx,
     "p4_captions_layer": p4_captions_layer_ctx,
     "p4_persist_session": p4_persist_session_ctx,
     "gate_animation_map_classify": gate_animation_map_classify_ctx,
