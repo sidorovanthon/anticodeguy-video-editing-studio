@@ -70,11 +70,11 @@ def _format_at_arg(offsets: Sequence[float]) -> str:
 
 
 def _png_files(snapshots_dir: Path) -> list[Path]:
-    if not snapshots_dir.is_dir():
+    if not snapshots_dir.is_dir():  # disk-io-allow: enumerate snapshot PNGs in materialized tmpdir produced by `npx hyperframes snapshot`
         return []
     return sorted(
-        p for p in snapshots_dir.iterdir()
-        if p.is_file() and _FRAME_FILENAME.match(p.name)
+        p for p in snapshots_dir.iterdir()  # disk-io-allow: enumerate snapshot PNGs in materialized tmpdir
+        if p.is_file() and _FRAME_FILENAME.match(p.name)  # disk-io-allow: filter snapshot PNGs in materialized tmpdir
     )
 
 
@@ -108,10 +108,10 @@ class SnapshotGate(Gate):
         # snapshot writes into <hf_dir>/snapshots/. Clear stale frames so
         # blank-render detection isn't masked by a previous good run.
         snapshots_dir = hf_dir / "snapshots"
-        if snapshots_dir.is_dir():
+        if snapshots_dir.is_dir():  # disk-io-allow: clear stale snapshot PNGs from prior run in materialized tmpdir
             for stale in _png_files(snapshots_dir):
                 try:
-                    stale.unlink()
+                    stale.unlink()  # disk-io-allow: see above
                 except OSError:
                     pass
 

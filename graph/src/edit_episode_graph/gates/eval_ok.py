@@ -26,7 +26,7 @@ from ._base import Gate
 
 
 def _probe_duration_s(path: Path) -> float | None:
-    if shutil.which("ffprobe") is None or not path.exists():
+    if shutil.which("ffprobe") is None or not path.exists():  # disk-io-allow: ffprobe duration probe pre-flight on final.mp4
         return None
     try:
         result = subprocess.run(

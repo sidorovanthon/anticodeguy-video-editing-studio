@@ -166,9 +166,9 @@ def _transcript_path(state: dict) -> str:
     if not slug:
         return ""
     paths = EpisodePaths(slug)
-    if paths.transcripts_final_json_path.exists():
+    if paths.transcripts_final_json_path.exists():  # disk-io-allow: select on-disk transcript path to surface in brief; body itself comes from state
         return str(paths.transcripts_final_json_path)
-    if paths.transcripts_raw_json_path.exists():
+    if paths.transcripts_raw_json_path.exists():  # disk-io-allow: fallback path selection; body itself comes from state
         return str(paths.transcripts_raw_json_path)
     return ""
 

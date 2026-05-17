@@ -186,7 +186,7 @@ def _ffprobe_duration_s(path: Path) -> float | None:
     happens when route_after_preflight skipped p3_inventory because
     takes_packed.md already existed (resume-on-cached-episode path).
     """
-    if shutil.which("ffprobe") is None or not path.is_file():
+    if shutil.which("ffprobe") is None or not path.is_file():  # disk-io-allow: ffprobe duration probe pre-flight on takes_packed source
         return None
     try:
         result = subprocess.run(
