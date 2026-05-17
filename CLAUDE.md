@@ -163,6 +163,19 @@ orchestration. Empirically this produced canon deviations. The decomposed graph 
 trades looser intra-step canon-trust for structurally-enforced step boundaries plus
 deterministic gates between artifacts.
 
+**Gates must match canon, or they are worse than no gate.** A gate whose blocking criteria
+fire on canonical patterns (e.g. canonical caption opacity-0 hidden state flagged as
+`invisible`; canonical z-stacked scenes flagged as `collision`) triggers `p4_redispatch_beat`
+retry-with-feedback exhaustion and burns LLM budget on content that doesn't need fixing.
+Free-form `/hyperframes` runs succeed in part because the agent **triages** lint warnings
+(canon-aware FP dismissal); the graph has no triage layer for blocking-class findings, so
+any FP in the gate is a redispatch loop. When adding or extending a gate, the carve-out list
+MUST be cross-referenced against the canonical patterns that produce the flag — the gate's
+own assertions are not the source of truth; canon is. See [retro 2026-05-17 — gate:animation_map
+canonical false positives](docs/retros/retro-2026-05-17-gate-animation-map-canonical-false-positives.md)
+(HOM-316) for the canonical case study; the diagnostic chain (free-form transcripts vs canon
+vs gate code vs recordings) is reusable for the next gate-canon-mismatch hypothesis.
+
 **Definition of done for LLM-node tickets** (fixture-replay model, HOM-179 / spec
 `docs/superpowers/specs/2026-05-08-testing-infra-fixture-replay-design.md`). Before opening
 the PR, the node MUST satisfy all mandatory items, plus any conditional items that apply.
