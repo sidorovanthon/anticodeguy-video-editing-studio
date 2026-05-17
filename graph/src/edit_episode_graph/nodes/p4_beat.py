@@ -95,7 +95,23 @@ from ._llm import LLMNode, _load_brief
 # can render the same rules). Rendered brief output is byte-identical, but
 # the brief's source template changed — spec §8 requires a version bump on
 # brief edits regardless of output equivalence.
-_CACHE_VERSION = 12
+# v13 (HOM-326): brief gained two anti-patterns closing authoring defects
+# diagnosed in `docs/retros/retro-2026-05-17-gate-animation-map-canonical-
+# false-positives.md` §"Follow-up — empirical verification" items 2 + 3:
+#   (3) decoratives with `position: absolute` MUST have CSS final coordinates
+#       landing on-canvas — cites `SKILL.md` §"The process" steps 2-3 ("CSS
+#       position is the ground truth"). Closes the `offscreen` blocking
+#       finding on `div.col-rule` / `div.column-rule` from the HOM-216 halt
+#       evidence (canon-absolute per SKILL.md:74, post-HOM-317 still hard-block).
+#   (4) no free-form staged opacity reveals on content elements — cites
+#       `references/captions.md` as the canonical mechanism for sequenced
+#       reveals (caption-group `#cg-N` chain), and instructs Read before
+#       authoring. Closes the `invisible` advisory finding on
+#       `p.pull-quote.line-b/c/d` (un-canonized staged reveal pattern).
+# Both entries follow the canon-references-not-embeds rule (CLAUDE.md
+# §"Decomposition via brief-references-canon" item 1) — name pattern by
+# path, instruct Read, do NOT inline-paraphrase.
+_CACHE_VERSION = 13
 
 
 def _cache_key(state, *_args, **_kwargs):
