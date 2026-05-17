@@ -182,7 +182,16 @@ from ._base import Gate
 #   `node.duration()` excluding GSAP repeat cycles. Carve-out output shape
 #   unchanged but verdict logic changed (blocking → advisory for the
 #   trailing class) ⇒ cache invalidation.
-_CACHE_VERSION = 9
+# v10 = HOM-316: caption word-span + invisible-on-cg + #scene-* carve-outs.
+#   (a) `_is_caption_canon` now matches `span.w` (with optional modifier
+#   classes / descendant combinators) in addition to `#cg-N`; (b) `invisible`
+#   flag on caption-canon selectors demoted to advisory only (matches the
+#   existing collision carve-out shape — captions canon keeps non-active
+#   groups in opacity-0/visibility-hidden state); (c) `#scene-*` z-stacked
+#   containers carved out of cross-scene collision (canonical inset:0 layout
+#   produces by-construction bbox overlap). Verdict logic changed ⇒ cache
+#   invalidation. Source: retro-2026-05-17.
+_CACHE_VERSION = 10
 
 
 # Helper script paths (relative to roots; joined with appropriate root).
@@ -225,6 +234,27 @@ _JUSTIFIABLE_FLAGS = ("paced-fast", "paced-slow")
 # redispatch loop on the canonical fixture's 17 caption groups (51 of 109
 # collision findings).
 _CG_SELECTOR_RE = re.compile(r"^#cg-\d+$")
+
+# HOM-316: caption word-span carve-out. Captions canon emits per-word
+# `<span class="w">` (plus optional modifier classes `accent`, `allcaps`,
+# `payoff`, `quote`, `brand`) inside each `#cg-N` group. The bbox sampler
+# flags these as colliding (siblings overlap during entrance/exit) and as
+# `invisible` (opacity-0 in the cg's hidden state). Pattern matches the
+# `span.w` token wherever it appears in the selector (`span.w`,
+# `span.w.accent`, `#cg-3 span.w`, etc.), with word boundaries on both
+# sides so non-caption classes like `.wrapper` do not false-match.
+_CAPTION_WORD_SPAN_RE = re.compile(r"\bspan\.w\b")
+
+# HOM-316: `#scene-*` z-stacked container carve-out. Canonical HF scene
+# template (references/transitions/catalog.md) stacks `#scene-hook`,
+# `#scene-problem`, `#scene-pivot`, `#scene-payoff`, etc. at
+# `position:absolute; inset:0` — all occupying the same screen rect by
+# construction. Cross-scene bbox-overlap is not an authoring defect;
+# canonical opacity-driven transitions handle temporal isolation.
+# Predicate matches an id-only selector (no descendant combinator) — a
+# collision *inside* a scene container (`#scene-hook .headline`) is still
+# a real layout overlap and stays blocking.
+_SCENE_CONTAINER_RE = re.compile(r"^#scene-[\w-]+$")
 
 # Default ambient-decorative selector substrings. The chrome decoratives
 # (entrance fromTo + breathing yoyo on the same element) trigger
@@ -276,9 +306,34 @@ def _gate_config() -> dict:
 
 
 def _is_caption_canon(selector: str) -> bool:
-    """`#cg-N` selectors emit by-construction collision flags from the
-    canon caption authoring pattern. Always carved out."""
-    return bool(_CG_SELECTOR_RE.match(selector or ""))
+    """Canonical caption selectors emit by-construction collision +
+    invisible flags from the canon caption authoring pattern.
+
+    Two shapes are carved out (HOM-316):
+      * `#cg-N` — the caption-group container (`set(visible) → fromTo →
+        to → set(hidden)` chain at each cg-N start/end).
+      * `span.w` (with optional modifier classes / descendant combinators)
+        — per-word spans inside the cg group. Captions canon emits
+        `<span class="w">`, `<span class="w accent">`, `<span class="w
+        allcaps">`, etc.; bbox sampler flags neighbouring word-spans as
+        colliding and the cg's opacity-0/visibility-hidden hidden state
+        as invisible.
+    """
+    sel = selector or ""
+    if _CG_SELECTOR_RE.match(sel):
+        return True
+    if _CAPTION_WORD_SPAN_RE.search(sel):
+        return True
+    return False
+
+
+def _is_scene_container(selector: str) -> bool:
+    """`#scene-<name>` id-only selectors are canonical z-stacked HF scene
+    containers (`position:absolute; inset:0`). Cross-scene bbox overlap is
+    by-construction (HOM-316). Descendants inside a scene container are
+    NOT carved out — `#scene-hook .headline` is a real intra-scene layout
+    concern."""
+    return bool(_SCENE_CONTAINER_RE.match(selector or ""))
 
 
 def _is_decorative(selector: str, allowlist: tuple[str, ...]) -> bool:
@@ -320,6 +375,8 @@ def _collision_is_blocking(tween: dict, selector: str, *, decorative_allowlist: 
     the element is caption canon (`#cg-N`) or a chrome decorative whose
     entrance + ambient yoyo overlap by construction."""
     if _is_caption_canon(selector):
+        return False
+    if _is_scene_container(selector):
         return False
     if _is_decorative(selector, decorative_allowlist):
         return False
@@ -509,6 +566,7 @@ def _extract_flags(
     blocking_degenerate: list[str] = []
     offscreen: list[str] = []
     invisible: list[str] = []
+    blocking_invisible: list[str] = []
 
     for tw in tweens:
         flags = tw.get("flags") or []
@@ -528,9 +586,16 @@ def _extract_flags(
             # is structurally always wrong (audience never sees it).
             offscreen.append(sel)
         if "invisible" in flags:
-            # Same: zero-opacity throughout = element never renders. No FP
-            # class identified in the HOM-211 audit.
+            # HOM-316: captions canon keeps non-active groups in
+            # `opacity:0; visibility:hidden` between active windows — the
+            # bbox sampler reports `invisible` by construction. Carve out
+            # caption-canon selectors (mirrors the existing collision
+            # carve-out shape). All other invisibles remain blocking —
+            # zero-opacity throughout on a content element means the
+            # audience never sees it.
             invisible.append(sel)
+            if not _is_caption_canon(sel):
+                blocking_invisible.append(sel)
         for flag in _JUSTIFIABLE_FLAGS:
             if flag in flags:
                 pending_classify.append({
@@ -579,9 +644,9 @@ def _extract_flags(
             "blocking offscreen flag(s) on " + ", ".join(offscreen)
             + " — element off-canvas throughout the tween (HOM-212)"
         )
-    if invisible:
+    if blocking_invisible:
         blocking.append(
-            "blocking invisible flag(s) on " + ", ".join(invisible)
+            "blocking invisible flag(s) on " + ", ".join(blocking_invisible)
             + " — zero opacity throughout the tween (HOM-212)"
         )
 
