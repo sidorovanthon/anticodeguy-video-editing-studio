@@ -34,6 +34,17 @@ gates:
     # bbox samples means the element is a 1-2px decorative (hairline /
     # tick / underline) where degenerate-by-construction is intentional.
     degenerate_min_bbox_px: 2.0
+    # HOM-284: trailing dead-zone carve-out. A dead zone whose end is
+    # within `dead_zone_tail_tolerance_s` seconds of the composition
+    # duration AND whose own length is ≤ `dead_zone_trailing_max_s`
+    # seconds is demoted from blocking to advisory — it's an upstream
+    # measurement artifact from yoyo+repeat tweens under-reporting
+    # total time vs `node.duration()`, not a real pacing hole.
+    dead_zone_tail_tolerance_s: 0.5
+    # Strict-mode escape hatch: set `dead_zone_trailing_max_s: 0` to
+    # disable the trailing carve-out entirely (every trailing dead zone
+    # over `dead_zone_threshold_s` flags as blocking, no demotion).
+    dead_zone_trailing_max_s: 5.0
 
 concurrency:
   claude: 2
