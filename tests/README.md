@@ -55,6 +55,31 @@ $env:HOMESTUDIO_TEST_MODE = "record"
 python -m pytest tests/test_graph_replay.py
 ```
 
+## First-time fixture bootstrap
+
+One-shot, before the first `record_fixture` run on a clean checkout. The
+`gate:animation_map` helper resolves `@hyperframes/producer` (and `sharp`
+for `gate:contrast`) by ancestor-walking the fixture project's `package.json`
++ `node_modules/`. The bundled-first lookup in
+`gates/animation_map.py::_resolve_helper` falls back to the global skill
+helper at `~/.agents/skills/hyperframes/scripts/animation-map.mjs`, which
+on Windows-Node aborts on `npm.cmd spawnSync EINVAL` when the deps are
+missing — so without a one-time install the gate halts with
+`"Could not determine the bundled HyperFrames version for @hyperframes/producer"`
+(infrastructure failure, not a content violation).
+
+```powershell
+cd tests/fixtures/episodes/canonical-portrait-talking-head/hyperframes
+npm install
+```
+
+The fixture's `package.json` pins the relevant versions
+(`@hyperframes/producer`, `sharp`); `node_modules/` is deliberately
+gitignored — do **not** commit it. Subsequent record/replay runs are
+$0 once the local install has populated `node_modules/`. Refs:
+CLAUDE.md §"Known Windows blocker" (skill helper bootstrap) and
+HOM-300.
+
 ## Recording a fresh fixture
 
 > **CRITICAL — set `HOMESTUDIO_PROJECT_ROOT` before recording.** Without it,

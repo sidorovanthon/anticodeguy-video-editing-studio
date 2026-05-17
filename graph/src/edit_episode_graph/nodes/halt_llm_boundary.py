@@ -258,6 +258,24 @@ def halt_llm_boundary_node(state):
                     "p4_redispatch_beat is not invoked"
                 )
                 return {"notices": [msg]}
+        # HOM-300: when a cluster gate fails with `violations` populated
+        # but `blocking_findings` empty, the failure is an infrastructure
+        # error (e.g. animation-map helper bootstrap blew up before it
+        # could classify findings — see gates/animation_map.py lines
+        # 858–862: on infra failure `violations := infra_failures` and
+        # `blocking_findings` stays []). Redispatch never ran, so the
+        # default "p4_redispatch_beat retry-with-feedback exhausted"
+        # suffix actively misleads operators reading the halt log.
+        blocking_findings = cluster_failure.get("blocking_findings") or []
+        if not blocking_findings:
+            msg = (
+                f"v4 halt: {gate_name} FAILED at iter {iter_n} ({n_v} violation(s)){advisory_part} — "
+                "infrastructure failure (see gate_results); "
+                f"{_persist_summary()}; {_materialize_summary()}; "
+                "redispatch did not run — operator action required to fix the helper "
+                "environment before re-running the gate"
+            )
+            return {"notices": [msg]}
         msg = (
             f"v4 halt: {gate_name} FAILED at iter {iter_n} ({n_v} violation(s)){advisory_part} — "
             "see gate_results; "
