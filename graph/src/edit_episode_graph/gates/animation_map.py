@@ -175,7 +175,14 @@ from ._base import Gate
 #   cached row would replay without `animation_map_report` in extras and
 #   silently feed the classifier an empty {} — quality regression, not
 #   hard error. Bump invalidates those rows.
-_CACHE_VERSION = 8
+# v9 = HOM-284: trailing dead-zone carve-out. Dead zones whose end is within
+#   ``dead_zone_tail_tolerance_s`` of composition duration AND whose own
+#   duration is within ``dead_zone_trailing_max_s`` are demoted from
+#   blocking to advisory, attributed to the upstream `animation-map.mjs`
+#   `node.duration()` excluding GSAP repeat cycles. Carve-out output shape
+#   unchanged but verdict logic changed (blocking → advisory for the
+#   trailing class) ⇒ cache invalidation.
+_CACHE_VERSION = 9
 
 
 # Helper script paths (relative to roots; joined with appropriate root).
@@ -238,6 +245,23 @@ _DEFAULT_DEGENERATE_MIN_BBOX_PX = 2.0
 # Default dead-zone-duration threshold (seconds). Above this, the dead
 # zone flips from advisory to blocking. The ticket specifies 2.0s default.
 _DEFAULT_DEAD_ZONE_THRESHOLD_S = 2.0
+
+# HOM-284 trailing dead-zone carve-out (structural — measurement artifact,
+# not authoring defect). Upstream `animation-map.mjs` enumerates tween
+# end-times as ``start + node.duration()``, which excludes GSAP
+# ``repeat`` cycles. Ambient yoyo+repeat decoratives (DESIGN.md line 136
+# breathing layer — grain, glow, hairline, vignette, ...) that play the
+# full scene length report a tween that "ends" after one cycle, leaving
+# a phantom dead zone at the tail of the last scene where only the
+# under-reported yoyos remain. We demote dead zones to advisory when
+# they end within ``dead_zone_tail_tolerance_s`` of the composition
+# duration AND have duration <= ``dead_zone_trailing_max_s`` — matching
+# HOM-212's structural-by-construction philosophy (caption canon, chrome
+# decoratives). Operator-tunable via ``gates.animation_map.*``; an
+# explicit ``dead_zone_trailing_max_s: 0`` disables the carve-out
+# entirely for strict-mode reviews.
+_DEFAULT_DEAD_ZONE_TAIL_TOLERANCE_S = 0.5
+_DEFAULT_DEAD_ZONE_TRAILING_MAX_S = 5.0
 
 
 def _gate_config() -> dict:
@@ -441,6 +465,8 @@ def _extract_flags(
     decorative_allowlist: tuple[str, ...] | None = None,
     degenerate_min_bbox_px: float | None = None,
     dead_zone_threshold_s: float | None = None,
+    dead_zone_tail_tolerance_s: float | None = None,
+    dead_zone_trailing_max_s: float | None = None,
 ) -> tuple[list[str], list[dict], list[str], list[str]]:
     """Split helper output into (always_fix, pending_classify, dead_zones,
     blocking_violations).
@@ -462,6 +488,15 @@ def _extract_flags(
         degenerate_min_bbox_px = _DEFAULT_DEGENERATE_MIN_BBOX_PX
     if dead_zone_threshold_s is None:
         dead_zone_threshold_s = _DEFAULT_DEAD_ZONE_THRESHOLD_S
+    if dead_zone_tail_tolerance_s is None:
+        dead_zone_tail_tolerance_s = _DEFAULT_DEAD_ZONE_TAIL_TOLERANCE_S
+    if dead_zone_trailing_max_s is None:
+        dead_zone_trailing_max_s = _DEFAULT_DEAD_ZONE_TRAILING_MAX_S
+
+    try:
+        composition_duration_s = float(report.get("duration") or 0.0)
+    except (TypeError, ValueError):
+        composition_duration_s = 0.0
 
     always_fix: list[str] = []
     pending_classify: list[dict] = []
@@ -552,6 +587,7 @@ def _extract_flags(
 
     dead_zones: list[str] = []
     blocking_dead_zone_durs: list[float] = []
+    carved_trailing_durs: list[float] = []
     for zone in report.get("deadZones") or []:
         try:
             dur = float(zone.get("duration", 0.0))
@@ -560,6 +596,32 @@ def _extract_flags(
         if dur > 1.0:
             start = zone.get("start")
             end = zone.get("end")
+            try:
+                end_f = float(end) if end is not None else None
+            except (TypeError, ValueError):
+                end_f = None
+            # HOM-284 trailing carve-out — dead zones whose end touches
+            # composition duration (within tolerance) AND whose own
+            # duration is within the trailing-max grace are a known
+            # upstream measurement artifact from yoyo+repeat tweens
+            # under-reporting their total time. Demote to advisory.
+            is_trailing_artifact = (
+                dead_zone_trailing_max_s > 0
+                and composition_duration_s > 0
+                and end_f is not None
+                and abs(composition_duration_s - end_f) <= dead_zone_tail_tolerance_s
+                and dur <= dead_zone_trailing_max_s
+            )
+            if is_trailing_artifact:
+                dead_zones.append(
+                    f"trailing dead zone {start}s–{end}s (duration {dur}s) — "
+                    "advisory: ambient yoyo+repeat tweens under-report total "
+                    "time vs node.duration() (HOM-284); raise "
+                    "gates.animation_map.dead_zone_trailing_max_s in "
+                    "graph/config.yaml to flag as blocking if intentional"
+                )
+                carved_trailing_durs.append(dur)
+                continue
             dead_zones.append(
                 f"dead zone {start}s–{end}s (duration {dur}s > 1.0s) — "
                 "no animation; intentional hold or missing entrance?"
@@ -766,12 +828,20 @@ class AnimationMapGate(Gate):
         dead_zone_threshold_s = float(
             cfg.get("dead_zone_threshold_s", _DEFAULT_DEAD_ZONE_THRESHOLD_S)
         )
+        dead_zone_tail_tolerance_s = float(
+            cfg.get("dead_zone_tail_tolerance_s", _DEFAULT_DEAD_ZONE_TAIL_TOLERANCE_S)
+        )
+        dead_zone_trailing_max_s = float(
+            cfg.get("dead_zone_trailing_max_s", _DEFAULT_DEAD_ZONE_TRAILING_MAX_S)
+        )
 
         always_fix, pending_classify, dead_zones, blocking = _extract_flags(
             report,
             decorative_allowlist=decorative_allowlist,
             degenerate_min_bbox_px=degenerate_min_bbox_px,
             dead_zone_threshold_s=dead_zone_threshold_s,
+            dead_zone_tail_tolerance_s=dead_zone_tail_tolerance_s,
+            dead_zone_trailing_max_s=dead_zone_trailing_max_s,
         )
         advisory_findings = {
             "always_fix": always_fix,
