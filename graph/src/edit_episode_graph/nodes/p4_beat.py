@@ -90,7 +90,12 @@ from ._llm import LLMNode, _load_brief
 # `design_md_path` and `expanded_prompt_path` dropped from `files=` (no
 # longer on disk pre-materialize); replaced with `stable_fingerprint`
 # extras over the in-state bodies. `files=` is now empty for this node.
-_CACHE_VERSION = 11
+# v12 (HOM-294): palette + typography hard-rule blocks hoisted into shared
+# `design_adherence_hard_rules` macro in `_macros.j2` (so p4_redispatch_beat
+# can render the same rules). Rendered brief output is byte-identical, but
+# the brief's source template changed — spec §8 requires a version bump on
+# brief edits regardless of output equivalence.
+_CACHE_VERSION = 12
 
 
 def _cache_key(state, *_args, **_kwargs):

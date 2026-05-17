@@ -191,6 +191,25 @@ Hard rules (orchestrator-house — derived from canon, surfaced so you don't mis
 - **≥ 3 distinct eases**; first entrance offset 0.1–0.3s.
 - **Final-fade (HR 4)**: permitted ONLY on the last scene (highest index in
   plan order). Otherwise NO `tl.to(..., {opacity: 0})` on the scene container.
+- **Palette discipline (strict ⊆).** Use ONLY hexes from `state.compose.design.palette[*].hex` (already pre-baked with gradient-stop / highlight derivatives by `p4_design_system`). No improvised gradient stops, no shade variants, no near-palette derivatives. The HF canon `gate:design_adherence` (`~/.agents/skills/hyperframes/SKILL.md` §"Design Adherence" item 1) rejects any hex not literally in the palette set. If a needed shade isn't in the palette, choose the nearest palette entry — do NOT invent a 5-6 unit-off-channel variant. If you genuinely need an in-between value, prefer alpha-blending via `rgba(...)` (a literal palette hex parsed to channels + an alpha) or `tl.set/.to(..., {opacity: ...})`; both are gate-clean because the gate hex-extracts only `#RRGGBB` / `#RRGGBBAA` tokens.
+  ```css
+  /* ❌ ALL three stops missing from palette — gate:design_adherence will fail */
+  background: linear-gradient(180deg, #2a221c 0%, #1f1a16 55%, #14100e 100%);
+  /* ✅ every stop is a literal palette[*].hex — pre-baked by p4_design_system */
+  background: linear-gradient(180deg, var(--background) 0%, var(--background-stop-1) 55%, var(--background-stop-2) 100%);
+  ```
+- **Typography fallback discipline.** In any `font-family` stack, use ONLY:
+  - named families from `state.compose.design.typography[*].family` (Playfair Display, Inter — whatever DESIGN.md declares),
+  - generic CSS keywords (`serif`, `sans-serif`, `monospace`),
+  - the system-UI whitelist (`system-ui`, `-apple-system`).
+
+  Do NOT add named fallbacks like Georgia, Helvetica, Times New Roman. `gate:design_adherence` (`~/.agents/skills/hyperframes/SKILL.md` §"Design Adherence" item 2) flags any token not in `typography[*].family` ∪ generics ∪ whitelist. Web fonts loaded by the root scaffold render reliably across the capture engine; named fallbacks would only fire if web-loading fails (it doesn't), and would render differently on different operator machines (Win/Mac may have Georgia, Linux Chromium resolves to Liberation/DejaVu Serif — divergent video output).
+  ```css
+  /* ❌ "Georgia" not in typography list — gate:design_adherence will fail */
+  font-family: "Playfair Display", "Georgia", serif;
+  /* ✅ design family + generic keyword */
+  font-family: "Playfair Display", serif;
+  ```
 - **NO infinite repeats** — the GSAP infinite-repeat sentinel is forbidden
   (canon: SKILL.md §"Animation Guardrails" L227 + Rules L240). Compute
   finite counts from `data-duration` and tween duration. Never write the

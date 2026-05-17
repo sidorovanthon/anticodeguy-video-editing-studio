@@ -3,7 +3,7 @@
    snapshot / captions_track). Mirrors `p4_beat.j2` for ONE scene, with
    prior violations injected via the shared `prior_violations_block` macro.
    Brief references canon paths; never embeds canon. #}
-{% from "_macros.j2" import prior_violations_block %}
+{% from "_macros.j2" import prior_violations_block, design_adherence_hard_rules %}
 You are RE-AUTHORING **one scene fragment** for an anticodeguy episode (`{{ slug }}`).
 Pattern A (inlined `<div>` per scene). The previous attempt's fragment FAILED
 the gate `{{ failed_gate }}`; rewrite the offending scene so the gate passes.
@@ -166,6 +166,7 @@ Hard rules (orchestrator-house — derived from canon, surfaced so you don't mis
 - **≥ 3 distinct eases**; first entrance offset 0.1–0.3s.
 - **Final-fade (HR 4)**: permitted ONLY on the last scene (highest index in
   plan order). Otherwise NO `tl.to(..., {opacity: 0})` on the scene container.
+{{ design_adherence_hard_rules() }}
 - **NO infinite repeats** — the GSAP infinite-repeat sentinel is forbidden
   (canon: SKILL.md §"Animation Guardrails" L227 + Rules L240). Compute
   finite counts from `data-duration` and tween duration. Never write the
