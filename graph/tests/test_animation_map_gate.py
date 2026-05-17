@@ -1118,3 +1118,16 @@ def test_scene_container_regex_does_not_match_class_form():
     assert gate_mod._is_scene_container("div.scene") is False
     assert gate_mod._is_scene_container("#scene-hook .headline") is False
     assert gate_mod._is_scene_container("") is False
+
+
+def test_caption_word_span_regex_does_not_match_unrelated_w_classes():
+    """HOM-316 defensive: `\\bspan\\.w\\b` carves canonical caption word-
+    spans only — selectors whose class name merely starts with `w` (e.g.
+    `span.warning`, `span.wrapper`) must stay non-canon so a real
+    collision/invisible defect on them still blocks."""
+    assert gate_mod._is_caption_canon("span.w") is True
+    assert gate_mod._is_caption_canon("span.w.accent") is True
+    assert gate_mod._is_caption_canon("#cg-3 span.w") is True
+    assert gate_mod._is_caption_canon("span.warning") is False
+    assert gate_mod._is_caption_canon("span.wrapper") is False
+    assert gate_mod._is_caption_canon("span.weak") is False
