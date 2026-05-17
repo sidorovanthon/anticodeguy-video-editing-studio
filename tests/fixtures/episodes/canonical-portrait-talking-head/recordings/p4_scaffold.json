@@ -1,11 +1,24 @@
-{
-  "channel_writes": "deque([['notices', ['v1 halt: scaffold complete; next phase `p4_design_system` requires LLM (v2+)']], ['branch:to:p4_design_system', None]])",
-  "fingerprint": "47abb73b394fbd4577efccb5a12f9483",
-  "namespace": "__pregel_ns_writes,edit_episode_graph.nodes._deterministic.deterministic_node.<locals>.node,p4_scaffold",
-  "node": "p4_scaffold",
-  "recorded_at": null,
-  "recording_meta": {
-    "encoding": "msgpack",
-    "value_bytes": 140
+[
+  {
+    "channel_writes": "deque([['notices', ['v1 halt: scaffold complete; next phase `p4_design_system` requires LLM (v2+)']], ['branch:to:p4_design_system', None]])",
+    "fingerprint": "1837eaad2bd67c74d57424517aa6cc54",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes._deterministic.deterministic_node.<locals>.node,p4_scaffold",
+    "node": "p4_scaffold",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 140
+    }
+  },
+  {
+    "channel_writes": "deque([['compose', {'scaffold': {'index_html': '<!doctype html>\\n<html lang=\"en\">\\n  <head>\\n    <meta charset=\"UTF-8\" />\\n    <meta name=\"viewport\" content=\"width=1080, height=1920\" />\\n    <script src=\"https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js\"></script>\\n    <style>\\n      * {\\n        margin: 0;\\n        padding: 0;\\n        box-sizing: border-box;\\n      }\\n      html,\\n      body {\\n        margin: 0;\\n        width: 1080px;\\n        height: 1920px;\\n        overflow: hidden;\\n        background: var(--bg, transparent);\\n      }\\n    </style>\\n  </head>\\n  <body>\\n    <div\\n      id=\"root\"\\n      data-composition-id=\"root\"\\n      data-start=\"0\"\\n      data-duration=\"26.283\"\\n      data-width=\"1080\"\\n      data-height=\"1920\"\\n    >\\n      <video id=\"el-video\" class=\"clip\" data-start=\"0\" data-track-index=\"0\"\\n             src=\"final.mp4\" data-has-audio=\"false\" muted playsinline></video>\\n      <audio id=\"el-audio\" class=\"clip\" data-start=\"0\" data-track-index=\"2\"\\n             src=\"final.mp4\" data-volume=\"1\"></audio>\\n    </div>\\n\\n    <script>\\n      window.__timelines = window.__timelines || {};\\n      const tl = gsap.timeline({ paused: true });\\n      // Example: tl.from(\"#title\", { opacity: 0, y: -50, duration: 1 }, 0);\\n      window.__timelines[\"root\"] = tl;\\n    </script>\\n  </body>\\n</html>\\n', 'scaffolded_at': '2026-05-17T09:49:27.469579+00:00'}}], ['notices', ['v1 halt: scaffold complete; next phase `p4_design_system` requires LLM (v2+)']], ['branch:to:p4_design_system', None]])",
+    "fingerprint": "a79fc299dd00c0e2dc0a084c12e1da2c",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_scaffold.p4_scaffold_node,p4_scaffold",
+    "node": "p4_scaffold",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 1469
+    }
   }
-}
+]
