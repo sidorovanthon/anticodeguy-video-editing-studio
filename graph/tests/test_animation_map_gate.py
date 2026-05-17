@@ -99,8 +99,18 @@ def _stub_resolver(monkeypatch, helper_path: Path, used_fallback: bool = False):
 # ── HOM-204: cache version bump ──────────────────────────────────────────────
 
 
-def test_cache_version_is_9():
-    """HOM-284 bumps 8→9: trailing dead-zone carve-out — dead zones at the
+def test_cache_version_is_10():
+    """HOM-316 bumps 9→10: three carve-outs land in the same pass —
+    (a) `_is_caption_canon` extended to match `span.w` (with modifier
+    classes / descendant combinators), (b) `invisible` flag on
+    caption-canon selectors demoted to advisory only, (c) `#scene-*`
+    z-stacked containers carved out of cross-scene collision. Verdict
+    logic changed for caption word-spans, invisible-on-cg, and
+    cross-scene collisions — a pre-HOM-316 cached row would replay the
+    wrong blocking verdict on the same report, so the version bump
+    invalidates those rows. Source: retro-2026-05-17.
+
+    HOM-284 bumped 8→9: trailing dead-zone carve-out — dead zones at the
     tail of the timeline (within ``dead_zone_tail_tolerance_s`` of total
     duration, up to ``dead_zone_trailing_max_s`` long) flip from blocking
     to advisory. Cache-key inputs are unchanged but a pre-HOM-284 cached
@@ -123,7 +133,7 @@ def test_cache_version_is_9():
     cover this deterministic gate (it uses ``make_key``, not
     ``make_llm_key``); this direct assertion is the version-bump gate.
     """
-    assert gate_mod._CACHE_VERSION == 9
+    assert gate_mod._CACHE_VERSION == 10
 
 
 def test_cache_key_includes_version(tmp_path, monkeypatch):
@@ -760,7 +770,11 @@ def test_offscreen_is_unconditionally_blocking(tmp_path, monkeypatch):
 
 
 def test_invisible_is_unconditionally_blocking(tmp_path, monkeypatch):
-    """Same as offscreen — zero-opacity throughout = element never renders."""
+    """Zero-opacity throughout on a non-caption-canon element = audience
+    never sees it. HOM-316 added a captions-only carve-out (canonical
+    `#cg-N` / `span.w` patterns sit in opacity-0 hidden state between
+    active windows); non-caption selectors like `div.glow` continue to
+    block as before."""
     hf_dir = _hf_dir(tmp_path, monkeypatch)
     _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
     _stub_helper(monkeypatch, report={
@@ -954,3 +968,153 @@ def test_decorative_allowlist_overridable_via_config(tmp_path, monkeypatch):
     assert record["passed"] is False
     assert any("blocking collision" in v for v in record["violations"])
     assert any("div.glow" in v for v in record["violations"])
+
+
+# ── HOM-316: caption word-span + invisible-on-cg + #scene-* carve-outs ──────
+
+
+def test_caption_word_span_collision_stays_advisory(tmp_path, monkeypatch):
+    """HOM-316 Gap A: per-word `<span class="w">` inside `#cg-N` groups is
+    canonical captions output. Sibling word-spans overlap by construction
+    during entrance/exit — must be carved out."""
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            {"index": 1, "selector": "span.w", "duration": 0.32, "flags": ["collision"]},
+        ],
+        "deadZones": [],
+    })
+    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
+    assert record["passed"] is True, "span.w caption word-span carved out"
+    assert record["violations"] == []
+    assert record["blocking_findings"] == []
+
+
+def test_caption_word_span_with_modifier_class_stays_advisory(tmp_path, monkeypatch):
+    """HOM-316 Gap A: caption canon emits modifier-class variants
+    (`span.w.accent`, `span.w.allcaps`, `span.w.payoff`, etc.) and
+    descendant combinator forms (`#cg-3 span.w`). All must carve out."""
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            {"index": 1, "selector": "span.w.accent", "duration": 0.32, "flags": ["collision"]},
+            {"index": 2, "selector": "#cg-3 span.w", "duration": 0.32, "flags": ["collision"]},
+            {"index": 3, "selector": "span.w.allcaps.brand", "duration": 0.32, "flags": ["collision"]},
+        ],
+        "deadZones": [],
+    })
+    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
+    assert record["passed"] is True
+    assert record["violations"] == []
+    assert record["blocking_findings"] == []
+
+
+def test_caption_canon_invisible_stays_advisory(tmp_path, monkeypatch):
+    """HOM-316 Gap B: captions canon keeps non-active groups in
+    `<div class="cg" id="cg-N" style="opacity:0;visibility:hidden">` —
+    bbox sampler reports `invisible`. Mirror of
+    `test_caption_canon_collision_stays_advisory` for the invisible flag."""
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            {"index": 1, "selector": "#cg-3", "duration": 0.32, "flags": ["invisible"]},
+            {"index": 2, "selector": "#cg-12", "duration": 0.32, "flags": ["invisible"]},
+        ],
+        "deadZones": [],
+    })
+    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
+    assert record["passed"] is True, "caption canon invisible carved out"
+    assert record["violations"] == []
+    assert record["blocking_findings"] == []
+    # Still surfaces in advisory always_fix for operator visibility.
+    assert any("invisible" in s for s in record["advisory_findings"]["always_fix"])
+
+
+def test_caption_word_span_invisible_stays_advisory(tmp_path, monkeypatch):
+    """HOM-316 Gap B: `span.w` inside an opacity-0 cg group also samples
+    as invisible. Caption-canon carve-out applies to both flag classes."""
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            {"index": 1, "selector": "span.w", "duration": 0.32, "flags": ["invisible"]},
+        ],
+        "deadZones": [],
+    })
+    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
+    assert record["passed"] is True
+    assert record["violations"] == []
+    assert record["blocking_findings"] == []
+
+
+def test_invisible_on_non_caption_is_still_blocking(tmp_path, monkeypatch):
+    """HOM-316 regression guard: the invisible carve-out is captions-only,
+    NOT a blanket demotion. A content element (`.headline`) flagged
+    invisible still blocks — audience never sees it."""
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            {"index": 1, "selector": ".headline", "duration": 0.6, "flags": ["invisible"]},
+        ],
+        "deadZones": [],
+    })
+    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
+    assert record["passed"] is False, "non-caption invisible still blocks"
+    assert any("blocking invisible" in v for v in record["violations"])
+    assert any(".headline" in v for v in record["violations"])
+
+
+def test_scene_container_collision_stays_advisory(tmp_path, monkeypatch):
+    """HOM-316 Gap C: `#scene-*` z-stacked containers all occupy `inset:0`
+    by canon (references/transitions/catalog.md). Cross-scene bbox-overlap
+    is built into the canonical scene template; canonical opacity-driven
+    transitions handle temporal isolation."""
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            {"index": 1, "selector": "#scene-hook", "duration": 0.6, "flags": ["collision"]},
+            {"index": 2, "selector": "#scene-payoff", "duration": 0.6, "flags": ["collision"]},
+        ],
+        "deadZones": [],
+    })
+    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
+    assert record["passed"] is True, "scene-container z-stack collision carved out"
+    assert record["violations"] == []
+    assert record["blocking_findings"] == []
+
+
+def test_scene_descendant_collision_is_blocking(tmp_path, monkeypatch):
+    """HOM-316 Gap C boundary: a collision *inside* a scene container
+    (`#scene-hook .headline`) is a real intra-scene layout overlap and
+    must still block. The carve-out is for the z-stacked containers
+    themselves, not for arbitrary content under them."""
+    hf_dir = _hf_dir(tmp_path, monkeypatch)
+    _stub_resolver(monkeypatch, tmp_path / "fake-helper.mjs")
+    _stub_helper(monkeypatch, report={
+        "tweens": [
+            {"index": 1, "selector": "#scene-hook .headline", "duration": 0.6,
+             "flags": ["collision"]},
+        ],
+        "deadZones": [],
+    })
+    record = animation_map_gate_node(_state(hf_dir))["gate_results"][0]
+    assert record["passed"] is False
+    assert any("blocking collision" in v for v in record["violations"])
+    assert any("#scene-hook .headline" in v for v in record["violations"])
+
+
+def test_scene_container_regex_does_not_match_class_form():
+    """HOM-316 defensive: `_is_scene_container` is id-only — a class-form
+    selector like `.scene-title` must not substring-false-match."""
+    assert gate_mod._is_scene_container("#scene-hook") is True
+    assert gate_mod._is_scene_container("#scene-payoff") is True
+    assert gate_mod._is_scene_container("#scene-some-long-name") is True
+    assert gate_mod._is_scene_container(".scene-title") is False
+    assert gate_mod._is_scene_container("div.scene") is False
+    assert gate_mod._is_scene_container("#scene-hook .headline") is False
+    assert gate_mod._is_scene_container("") is False
