@@ -1,4 +1,5 @@
 
+
 You are authoring **one scene fragment** for an anticodeguy episode (`snapshot-fixture`).
 Pattern A (inlined `<div>` per scene) — sub-compositions are unavailable upstream.
 
