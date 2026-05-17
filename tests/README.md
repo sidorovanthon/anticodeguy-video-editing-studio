@@ -55,6 +55,37 @@ $env:HOMESTUDIO_TEST_MODE = "record"
 python -m pytest tests/test_graph_replay.py
 ```
 
+## Preflight (HOM-307)
+
+`scripts/record_fixture.py` runs a 5-check preflight before mounting the
+cache. It fails fast in <10s with a remediation hint rather than letting
+a misconfigured run consume \$3–12 in LLM tokens and halt deep in Phase 4.
+
+| # | Check | What it asserts |
+| - | ----- | --------------- |
+| 1 | `project_root` | `_paths.project_root()` resolves under `tests/fixtures` and `episodes/<slug>/` exists. Wrong root → poisoned fingerprints (HOM-189 retro). |
+| 2 | `hf_node_modules` | `@hyperframes/producer` + `sharp` installed under the fixture HF dir, versions satisfy `package.json` devDep pins (HOM-300). |
+| 3 | `sharp_smoke` | `node -e "require('sharp')"` returns 0 in the fixture HF dir — the Windows `npm.cmd spawnSync EINVAL` failure mode for `contrast-report.mjs`. |
+| 4 | `brief_snapshots` | `pytest tests/test_brief_snapshots.py --collect-only` exits 0 — catches a broken snapshot setup before it triggers gate redispatch loops on the paid run. |
+| 5 | `raw_input` | `episodes/<slug>/raw.mp4` exists. |
+
+The preflight is the default. Emergency override:
+
+```powershell
+python -m scripts.record_fixture --slug <slug> --no-preflight `
+  --preflight-override-reason "investigating brief-snapshots timeout HOM-XYZ"
+```
+
+`--no-preflight` without `--preflight-override-reason` exits 2. The
+override reason is logged in stdout so a reviewer looking at the resulting
+cache.db diff sees why the operator skipped.
+
+The 5/5 summary line is the green signal. On failure, the operator runs
+the printed remediation hint and re-tries.
+
+See also: [Recording a fresh fixture](#recording-a-fresh-fixture) below —
+preflight is the front gate of that workflow.
+
 ## First-time fixture bootstrap
 
 One-shot, before the first `record_fixture` run on a clean checkout. The
@@ -114,6 +145,11 @@ HOM-300.
 
 After M6 wave work or a node schema bump:
 
+0. Confirm the [HOM-307 preflight](#preflight-hom-307) passes — it runs
+   automatically when you invoke `record_fixture.py` (default on) and
+   short-circuits the 5 known failure modes before any LLM dispatch. To
+   audit ahead of time, you can run `--dry-run` first; preflight runs
+   identically there.
 1. Set `HOMESTUDIO_PROJECT_ROOT=tests/fixtures` (mandatory, see warning above).
 2. Set `HOMESTUDIO_TEST_MODE=record-on-miss` (or `record` for a clean wipe).
 3. Run the relevant `pytest tests/test_graph_replay.py::test_<node>_smoke`,
