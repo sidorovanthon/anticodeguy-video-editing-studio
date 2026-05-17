@@ -99,8 +99,15 @@ def _stub_resolver(monkeypatch, helper_path: Path, used_fallback: bool = False):
 # ── HOM-204: cache version bump ──────────────────────────────────────────────
 
 
-def test_cache_version_is_8():
-    """HOM-282 bumps 7→8: output shape changed — gate-record ``extras`` now
+def test_cache_version_is_9():
+    """HOM-284 bumps 8→9: trailing dead-zone carve-out — dead zones at the
+    tail of the timeline (within ``dead_zone_tail_tolerance_s`` of total
+    duration, up to ``dead_zone_trailing_max_s`` long) flip from blocking
+    to advisory. Cache-key inputs are unchanged but a pre-HOM-284 cached
+    row would replay the wrong blocking verdict on the same report, so
+    the version bump invalidates those rows.
+
+    HOM-282 bumped 7→8: output shape changed — gate-record ``extras`` now
     carries the parsed ``animation_map_report`` payload for downstream
     consumption by ``gate_animation_map_classify`` (routing-sentinel split).
     A pre-HOM-282 cached row would replay without the report in extras and
@@ -116,7 +123,7 @@ def test_cache_version_is_8():
     cover this deterministic gate (it uses ``make_key``, not
     ``make_llm_key``); this direct assertion is the version-bump gate.
     """
-    assert gate_mod._CACHE_VERSION == 8
+    assert gate_mod._CACHE_VERSION == 9
 
 
 def test_cache_key_includes_version(tmp_path, monkeypatch):
