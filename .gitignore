@@ -73,3 +73,6 @@ tests/fixtures/episodes/*/hyperframes/node_modules/
 tests/fixtures/episodes/*/hyperframes/package-lock.json
 tests/fixtures/episodes/*/hyperframes/.waveform-cache/
 tests/fixtures/episodes/*/hyperframes/snapshots/
+
+# Transient prewarm logs (record_fixture stdout dump). Never committed.
+prewarm.log
