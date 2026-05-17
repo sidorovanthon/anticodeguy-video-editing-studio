@@ -118,6 +118,8 @@ Verification path: after the fix, run `pytest tests/test_graph_replay.py` in rep
 For the next operator/agent investigating similar halts:
 
 - This investigation lives at `docs/retros/retro-2026-05-17-gate-animation-map-canonical-false-positives.md` (this file).
+- **Originating Claude Code session log** (local-only, not in git): `~/.claude/projects/C--Users-sidor-repos-anticodeguy-video-editing-studio/6e786012-685b-4535-ba02-7d6e9b0a91b3.jsonl` — full transcript of the investigation that produced this retro. Operator framing and decision moments are in `user` events; the load-bearing ones are around event ids 371/379/439/468/518. Use `tail` + JSON-lines parsing rather than full read (1.6 MB).
+- **HOM-316 follow-up session log** (local-only): `~/.claude/projects/C--Users-sidor-repos-anticodeguy-video-editing-studio/249d5ab2-c98c-44ab-bffa-6b7dc7b1b839.jsonl` — implementation + empirical verification on the actual halt-producing `animation-map.json` (regenerated from `repro/index.html` via local `animation-map.mjs` run, $0). Surfaced the LLM-vocabulary boundary; see "Follow-up — empirical verification" §.
 - Free-form transcripts that diverge from the graph: `docs/clean-skills-usage-examples/{hyperframes,video-use}/*.jsonl`. Use a dispatched agent — they're 20MB+ collectively.
 - Gate code under audit: `graph/src/edit_episode_graph/gates/animation_map.py`, especially L222-281 (carve-out comment that admits the canonical-FP problem) and L513-586 (the flag extraction with the three blind spots).
 - Recordings to cross-reference: `tests/fixtures/episodes/canonical-portrait-talking-head/recordings/{gate_animation_map_classify,p4_captions_layer,p4_beat}.json`.
@@ -130,4 +132,19 @@ For the next operator/agent investigating similar halts:
 - HOM-203, HOM-204, HOM-211, HOM-212 — earlier passes at this gate's blocking criteria; established the advisory model but did not catch the three gaps documented here.
 - HOM-148 — the redispatch retry-with-feedback mechanism; correct behavior, wrong upstream signal (false positives in, retries out).
 - HOM-310, HOM-311, HOM-312 — orthogonal follow-ups from the same prewarm.
-- HOM-316 (filed by this retro) — the gate fix.
+- HOM-316 (filed by this retro) — the gate fix (caption/scene/word-span carve-outs); landed PR #172.
+- HOM-317 (filed by HOM-316 follow-up session, 2026-05-17) — architectural successor: extend `gate_animation_map_classify` LLM-triage to `collision` + `invisible`, drop `_DEFAULT_DECORATIVE_ALLOWLIST`-style substring matching. Closes the canon-FP loop without the unbounded-vocabulary problem documented in the follow-up below.
+
+## Follow-up — empirical verification of HOM-316 carve-outs (2026-05-17)
+
+After PR #172 merged, the next session ran `animation-map.mjs` locally against `repro/index.html` from the halt-evidence (`C:\Users\sidor\AppData\Local\Temp\hom-216-halt-evidence\repro\`) and fed the resulting JSON through post-HOM-316 `_extract_flags`. **Verdict was still `passed=False`**. Three remaining blocking categories:
+
+1. `collision` on `div.halo`, `div.ghost`, `div.ghost-word`, `div.wash`, `div.plate-tint` — canonical full-bleed atmosphere layers (per `references/video-composition.md:19` ghost type, `references/transitions/css-light.md:5` color wash, `references/typography.md:142` halo).
+2. `offscreen` on `div.col-rule`, `div.column-rule` — convention, not in canon; one or both may be real defect per `SKILL.md:74` (entrance MUST land on-canvas).
+3. `invisible` on `p.pull-quote.line-b/c/d` — pull-quote staged reveal **not canonical**; likely authoring defect or un-canonized convention.
+
+**The key insight from this verification:** HOM-316's caption/scene carve-outs work because `#cg-N` and `#scene-*` are emitted by **code** (`p4_captions_layer` / `p4_scaffold`) — the set is bounded. The remaining FPs are emitted by the **`p4_beat` LLM** as free-form class names — same canonical pattern produces different vocabularies per prewarm (`grain` / `pf-grain` / `bg-noise` / `film-grain` are all "the same canonical thing"). **A substring allowlist over LLM-emitted vocabulary is unbounded by construction**; every prewarm produces new synonyms; the gate halts forever.
+
+This is exactly the trap the retro's "Secondary observations" §"Triage layer for hard-blocking findings" warned about — and we very nearly fell into it by filing "HOM-317: extend `_DEFAULT_DECORATIVE_ALLOWLIST` with halo/ghost/wash/plate-tint". The operator caught the structural problem and steered to the architectural fix (HOM-317).
+
+CLAUDE.md amended in PR #173 (`2f2d8fa1`) with the "Carve-out allowlists over LLM-emitted identifiers are structurally wrong" rule next to "Gates must match canon". Memory: `feedback_finite_allowlists_against_llm_vocab`.
