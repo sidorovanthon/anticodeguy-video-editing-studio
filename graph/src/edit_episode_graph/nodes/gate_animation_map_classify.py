@@ -83,7 +83,18 @@ from ._llm import LLMNode, _load_brief
 #      depends on the file being present at dispatch time. Bump
 #      invalidates so recordings made under v4 (which assumed `Read`
 #      tool calls on the file) are not replayed under the new brief.
-_CACHE_VERSION = 5
+# v6 = HOM-317 — input set expanded: classifier now triages `collision`
+#      and `invisible` flags in addition to `paced-fast` / `paced-slow`.
+#      Vocabulary-allowlist carve-outs (HOM-212 caption-canon /
+#      decorative-allowlist / HOM-316 scene-container) retired upstream
+#      in the gate; the LLM-triage layer now covers all vocabulary-rich
+#      flag classes per CLAUDE.md §"Carve-out allowlists over LLM-emitted
+#      identifiers are structurally wrong". Brief rewritten to give
+#      explicit per-flag canon-aware decision guidance for the expanded
+#      flag-class set. A pre-HOM-317 cached classification covered only
+#      pace flags; replaying it against the new pending_classify shape
+#      (mixed flag classes) would produce decisions for a subset only.
+_CACHE_VERSION = 6
 
 
 # ---------------------------------------------------------------------------

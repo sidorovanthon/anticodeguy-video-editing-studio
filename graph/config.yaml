@@ -12,23 +12,12 @@ gates:
     # holds (≤ 2s) are intentional pacing beats per canon; blocking
     # treatment would produce false positives on canonical pacing.
     dead_zone_threshold_s: 2.0
-    # Selector-substring allowlist for collision-flag carve-outs (chrome
-    # decoratives where helper bbox-overlap on entrance + breathing yoyo
-    # is FP-by-construction; HOM-211 reviewer caveat). Each entry is
-    # a substring matched against the helper-reported `selector` string;
-    # any hit demotes the collision flag from blocking to advisory.
-    # Caption canon (`#cg-N`) is matched separately by regex and is
-    # always carved out — this list covers the chrome decoratives only.
-    collision_decorative_allowlist:
-      - "grain"
-      - "glow"
-      - "hairline"
-      - "vignette"
-      - "overline"
-      - "corner-mark"
-      - "footer-mark"
-      - "caption-strip"
-      - "margin-tick"
+    # HOM-317: `collision_decorative_allowlist` retired — vocabulary
+    # allowlists over LLM-emitted class names are structurally wrong
+    # (CLAUDE.md §"Carve-out allowlists over LLM-emitted identifiers").
+    # `collision` and `invisible` flags now route to LLM-triage advisory
+    # via `gate_animation_map_classify`. Legacy entries in this file are
+    # ignored by the gate; remove them whenever convenient.
     # Minimum bbox dimension (pixels) for a `degenerate` flag to be
     # blocking. Smaller-than-this on either width or height across all
     # bbox samples means the element is a 1-2px decorative (hairline /
