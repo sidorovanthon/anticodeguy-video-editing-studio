@@ -233,12 +233,16 @@ def test_classifier_preserves_upstream_advisory_findings(monkeypatch):
     assert "dead zone" in advisory["dead_zones"][0]
 
 
-def test_classifier_cache_version_is_5():
+def test_classifier_cache_version_is_6():
     """HOM-204 bumped 1→2 (shape change); HOM-206 bumped 2→3 (brief
     rewrite — advisory framing); HOM-225 bumped 3→4 (cache key + render
     ctx derive paths via `EpisodePaths(slug)` rather than legacy
     `compose.hyperframes_dir` / `compose.design_md_path` echoes);
     HOM-282 bumped 4→5 (Class C fold-in — brief inlines parsed
     animation-map report from upstream gate record's extras, no
-    longer asks the sub-agent to Read the JSON file)."""
-    assert node_mod._CACHE_VERSION == 5
+    longer asks the sub-agent to Read the JSON file);
+    HOM-317 bumped 5→6 (classifier now triages collision + invisible
+    in addition to pace flags — vocabulary-allowlist carve-outs retired
+    upstream in the gate; brief rewritten with explicit per-flag
+    canon-aware decision guidance for the expanded flag-class set)."""
+    assert node_mod._CACHE_VERSION == 6

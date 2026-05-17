@@ -1,6 +1,6 @@
 """gate:animation_map — runs the bundled `animation-map.mjs` helper, parses
 the report, surfaces findings as **advisory** metadata by default with
-per-flag blocking carve-outs (HOM-212).
+narrow code-side hard-blocking for canon-absolute violations only.
 
 Per canon `~/.agents/skills/hyperframes/SKILL.md` §"Quality Checks":
 `animation-map` enumerates every GSAP timeline tween, samples bounding
@@ -20,7 +20,7 @@ layout. So we prefer the bundled copy under the HF project's
 `fallback_helper_used=True` so the operator can see the project should
 have its dependencies pinned.
 
-## Pass criteria — ADVISORY by default + per-flag blocking carve-outs (HOM-212)
+## Pass criteria — narrow hard-blocking + LLM-triage advisory (HOM-317)
 
 Canon (SKILL.md §"Quality Checks" §"Animation Map"):
 
@@ -34,59 +34,79 @@ The mandate is on the *author*, not on a deterministic gate. Per HOM-203
 this gate started as **advisory only**: it ran the helper, surfaced
 findings, and never blocked the run (HOM-204).
 
-HOM-212 refines that: most findings remain advisory, but a small set of
-**structural carve-outs** flip to blocking because they cannot be
-justified post-hoc by an author (e.g. an `offscreen` flag on a content
-element means the audience never sees it). The HOM-211 reviewer caveat
-(`always_fix.count > 0` regresses to the HOM-203 redispatch loop on
-canonical caption-chains and chrome decoratives) drove the per-flag
-classification rather than per-category — see `_blocking_classification`
-below for the precise rules.
+HOM-212 introduced per-flag carve-outs and HOM-316 extended them for
+canonical caption (`#cg-N`, `span.w`) and `#scene-*` z-stack patterns.
+HOM-317 retires the carve-out *vocabulary allowlists* entirely (per
+CLAUDE.md §"Carve-out allowlists over LLM-emitted identifiers are
+structurally wrong" — the `p4_beat` LLM emits a fresh class-name
+vocabulary each prewarm: `halo` / `ghost` / `wash` / `plate-tint` /
+`grain` / `pf-grain` / `bg-noise` / ... — substring allowlists never
+converge). Architectural split:
+
+* **Code-side hard-blocking — canon-absolute, vocabulary-independent:**
+  - `offscreen` flag, unconditional. Per `SKILL.md:74` "CSS position is
+    the ground truth" — an element off-canvas the full tween means the
+    audience never sees it, regardless of class name.
+  - `degenerate` flag whose bbox is ≥ `degenerate_min_bbox_px` (default
+    2 px) on both width AND height across all samples. This is a
+    **geometric** criterion on bbox dimensions, NOT a class-name match;
+    1-2 px hairlines / ticks / underlines are intentional decoratives
+    even if the LLM names them `kw-rule` one run and `accent-line` the
+    next. The threshold is operator-tunable
+    (`gates.animation_map.degenerate_min_bbox_px`).
+  - Dead zones whose duration exceeds `dead_zone_threshold_s` (default
+    2.0 s). Dead zones live on the **root timeline** (gaps between
+    scenes); they are class-name-free by construction. The HOM-284
+    trailing carve-out (yoyo+repeat tweens under-report total time vs
+    `node.duration()`) is geometric — keyed on end-position-near-
+    composition-duration, not on selector identity.
+  - Infrastructure failures (helper missing, exit != 0, JSON
+    unparseable, bootstrap blockers).
+
+* **LLM-triage advisory — vocabulary-rich, canon-context-dependent:**
+  - `collision` flags on ANY selector. Sibling overlaps during entrance
+    / exit, captions canon word-spans, ambient yoyo+repeat decoratives,
+    z-stacked scene containers — all produce by-construction collision
+    flags whose disposition depends on canonical authoring patterns the
+    `p4_beat` LLM applies with a fresh vocabulary each prewarm. These
+    are sent to `gate_animation_map_classify` for per-flag
+    canon-aware triage.
+  - `invisible` flags on ANY selector. Captions canon keeps
+    non-active groups in `opacity:0; visibility:hidden` between active
+    windows — sampler reports `invisible` by construction. Ambient
+    atmosphere layers fade in/out by canonical transition. Disposition
+    again depends on the beat's intended choreography; LLM-triaged.
+  - `paced-fast` / `paced-slow` flags (unchanged from HOM-204 — pace
+    classifications were always LLM-judgement territory).
+
+Both classifier-`decision="fix"` and `decision="justify"` outputs are
+**advisory**. The classifier's output never affects routing — operators
+read it as Studio metadata. This preserves the HOM-204 demotion.
 
 `passed = True` whenever the helper itself ran successfully AND no
-finding crossed a blocking threshold. Findings that are blocking-by-rule
-populate ``record["violations"]`` so the routing layer (which still
-reads ``violations`` for its retry decision) re-dispatches the offending
-beat — symmetric to the wiring HOM-204 removed, but only for the
-structurally-actionable subset.
-
-Only **infrastructure failures** keep `passed=False` regardless of
-findings:
-
-* helper not found at bundled path or global fallback
-* `node` executable not found on PATH
-* helper exit_code != 0 (incl. dependency-bootstrap failure on Windows)
-* `animation-map.json` missing despite exit 0
-* JSON parse error
-
-These are operator-actionable problems (install deps / fix PATH); the
-run cannot be trusted until they're resolved. They are NOT findings
-about the authored animation.
+finding crossed a code-side hard-blocking threshold (offscreen,
+degenerate≥2px, dead-zone>threshold). Hard-blocking findings populate
+``record["violations"]`` so the routing layer's existing
+cluster-retry helper re-dispatches the offending beat — symmetric to
+HOM-212's wiring, but only for the narrow canon-absolute subset.
 
 Successful-run findings live under ``record["advisory_findings"]`` —
 a dict with three keys, always present (empty lists on a clean run):
 
 * ``always_fix`` — list of human-readable strings for ``collision``,
-  ``degenerate``, ``offscreen``, ``invisible`` flags.
+  ``degenerate``, ``offscreen``, ``invisible`` flags (operator-visible
+  even when classifier-triaged).
 * ``dead_zones`` — list of human-readable strings for dead zones
   > 1.0s.
-* ``pending_classify`` — list of pace-flag dicts (``paced-fast`` /
-  ``paced-slow``) the ``gate_animation_map_classify`` LLM node will
-  triage. After the classifier runs, this list carries the per-flag
-  decision + reason.
-
-``record["violations"]`` is kept on every record (Gate base contract)
-but stays empty ``[]`` on any successful helper run — the routing layer
-no longer reads it for animation-map. Infrastructure failures still
-populate ``violations`` so existing operator-error display surfaces
-unchanged.
+* ``pending_classify`` — list of flag dicts (``collision`` /
+  ``invisible`` / ``paced-fast`` / ``paced-slow``) the
+  ``gate_animation_map_classify`` LLM node will triage. After the
+  classifier runs, each entry carries the per-flag decision + reason.
 
 The deterministic gate **never calls an LLM**. The LLM dispatch lives
 in ``nodes/gate_animation_map_classify.py`` so LangGraph's
 ``cache_policy=`` mechanism can apply (CLAUDE.md §"Idempotency" — re-run
-on identical inputs produces zero LLM dispatches). Its output is also
-advisory — it merges into ``advisory_findings.pending_classify`` and
-never affects routing.
+on identical inputs produces zero LLM dispatches).
 
 ## Windows bootstrap blocker
 
@@ -115,17 +135,14 @@ this gate are:
   ``gate:animation_map: advisory — no findings (helper ran clean).``
 * Global-fallback helper used (appended to either of the above):
   `` (via global fallback helper — consider pinning @hyperframes/producer + sharp in the HF project)``
+* Hard-blocking finding (offscreen / degenerate≥2px / dead-zone>threshold):
+  ``gate:animation_map: BLOCKING — N finding(s) require fix. <strings>. See {animation_map_json_path}.``
 * Infrastructure failure (helper missing / exit != 0 / unparseable):
   ``gate:animation_map: infrastructure failure (N issue(s)) — see gate_results``
 
-Keep the ``advisory`` / ``infrastructure failure`` prefix exactly as
-written — the prefix is the severity signal that downstream surfaces
-(halt_llm_boundary, future Studio panels) key off. Do not rephrase to
-"WARN" / "FAILED" / "issue" without bumping ``_CACHE_VERSION`` and
-revising the cross-referenced halt_llm_boundary branch. The
-``halt_llm_boundary`` node uses the same breakdown shape
-``(always_fix: a, dead_zones: d, pending_classify: p)`` when it folds
-advisory counts into a cluster-halt notice — keep both sites aligned.
+Keep the ``advisory`` / ``BLOCKING`` / ``infrastructure failure`` prefix
+exactly as written — the prefix is the severity signal that downstream
+surfaces (halt_llm_boundary, future Studio panels) key off.
 """
 
 from __future__ import annotations
@@ -148,50 +165,28 @@ from ._base import Gate
 # Bump on brief / schema / pass-criteria change. See HOM-132 spec §8.
 # v3 = HOM-156 review-fix: gate is purely deterministic; LLM-justify dispatch
 #   moved to nodes/gate_animation_map_classify.py (its own _CACHE_VERSION).
-# v4 = HOM-204: demote to advisory. `passed=True` on any successful helper
-#   run; findings move to `advisory_findings`; routing no longer reads
-#   `violations` from this gate. Output shape change ⇒ cache invalidation.
-# v5 = HOM-212: per-flag blocking carve-outs. Pass criteria now depends on
-#   carved-out blocking conditions (collision off-canon, degenerate ≥ 2px,
-#   offscreen, invisible, dead_zone > threshold); routing reads `violations`
-#   again on the blocking branch. Output shape unchanged but verdict logic
-#   changed ⇒ cache invalidation.
-# v6 = HOM-225: cache key derives `hf_dir` via `EpisodePaths(slug)` rather
-#   than reading the deprecated `compose.hyperframes_dir` /
-#   `state["episode_dir"]` chain. Mirrors the HOM-224 p4 migration —
-#   identity-only state. Same migration applied to `_animation_map_json_path`
-#   (used in advisory notice surface) for consistency.
-# v7 = HOM-281: subprocess cwd migrated from canonical hf_dir to a
-#   transient tmpdir produced by ``materialize_into_tmpdir``. Helper-script
-#   resolution still targets the canonical hf_dir so its bundled sibling
-#   deps (`@hyperframes/producer`) resolve. The `animation-map.json`
-#   output now lands under the tmpdir rather than `<hf_dir>/.hyperframes/`;
-#   the advisory-notice path still surfaces the canonical hf_dir target
-#   so the operator's path expectation is unchanged. Cache-key inputs
-#   unchanged ⇒ semantic bump only.
-# v8 = HOM-282: output shape changed — the gate-record `extras` now carries
-#   the parsed `animation_map_report` payload for downstream consumption by
-#   `gate_animation_map_classify` (routing-sentinel split). A pre-HOM-282
-#   cached row would replay without `animation_map_report` in extras and
-#   silently feed the classifier an empty {} — quality regression, not
-#   hard error. Bump invalidates those rows.
-# v9 = HOM-284: trailing dead-zone carve-out. Dead zones whose end is within
-#   ``dead_zone_tail_tolerance_s`` of composition duration AND whose own
-#   duration is within ``dead_zone_trailing_max_s`` are demoted from
-#   blocking to advisory, attributed to the upstream `animation-map.mjs`
-#   `node.duration()` excluding GSAP repeat cycles. Carve-out output shape
-#   unchanged but verdict logic changed (blocking → advisory for the
-#   trailing class) ⇒ cache invalidation.
+# v4 = HOM-204: demote to advisory.
+# v5 = HOM-212: per-flag blocking carve-outs.
+# v6 = HOM-225: cache key derives `hf_dir` via `EpisodePaths(slug)`.
+# v7 = HOM-281: subprocess cwd migrated to materialized tmpdir.
+# v8 = HOM-282: extras carry parsed animation_map_report.
+# v9 = HOM-284: trailing dead-zone carve-out.
 # v10 = HOM-316: caption word-span + invisible-on-cg + #scene-* carve-outs.
-#   (a) `_is_caption_canon` now matches `span.w` (with optional modifier
-#   classes / descendant combinators) in addition to `#cg-N`; (b) `invisible`
-#   flag on caption-canon selectors demoted to advisory only (matches the
-#   existing collision carve-out shape — captions canon keeps non-active
-#   groups in opacity-0/visibility-hidden state); (c) `#scene-*` z-stacked
-#   containers carved out of cross-scene collision (canonical inset:0 layout
-#   produces by-construction bbox overlap). Verdict logic changed ⇒ cache
-#   invalidation. Source: retro-2026-05-17.
-_CACHE_VERSION = 10
+# v11 = HOM-317: vocabulary-allowlist carve-outs retired (caption-canon, scene-
+#   container, decorative-allowlist predicates all dropped). `collision` and
+#   `invisible` flags now route to LLM-triage advisory (pending_classify);
+#   code-side hard-blocking restricted to canon-absolute geometric/structural
+#   categories — `offscreen` (unconditional, per SKILL.md:74 "CSS position
+#   is the ground truth"), `degenerate` with bbox ≥ degenerate_min_bbox_px
+#   (geometric, vocabulary-independent), dead-zone-over-threshold, infra
+#   failures. Output shape: `pending_classify` entries now mix flag types
+#   (`paced-fast`/`paced-slow`/`collision`/`invisible`); a pre-HOM-317
+#   cached row would replay the wrong blocking verdict on canonical
+#   captions / scene z-stacks / LLM-emitted ambient classes (`halo`,
+#   `ghost`, `wash`, ...) — version bump invalidates those rows.
+#   Source: CLAUDE.md §"Carve-out allowlists over LLM-emitted identifiers
+#   are structurally wrong"; retro 2026-05-17 §"Follow-up".
+_CACHE_VERSION = 11
 
 
 # Helper script paths (relative to roots; joined with appropriate root).
@@ -217,79 +212,26 @@ _NPM_INSTALL_LINE = re.compile(
 )
 _WINDOWS_EINVAL = re.compile(r"\bEINVAL\b|\bspawnSync\b.*\bnpm", re.IGNORECASE)
 
-# Pace flags the LLM-classify node triages. They land under
-# `advisory_findings.pending_classify`; everything else with structural
-# significance lands under `advisory_findings.always_fix`.
-_JUSTIFIABLE_FLAGS = ("paced-fast", "paced-slow")
-
-# HOM-212 carve-out defaults. Operator-tunable via `gates.animation_map.*`
-# in `graph/config.yaml`; these are the fall-throughs when the YAML key is
-# absent. Rationale lives in the HOM-211 reviewer caveat (Linear comment
-# `0b8c433d-96c0-4b9f-9c4d-941178279564`, AMENDMENT section).
-
-# Caption canonical chain. The `set(visible) → fromTo(entrance) → to(exit)
-# → set(hidden)` pattern at each cg-N start/end produces by-construction
-# bbox-overlap collision flags on every caption group. These are not
-# authoring defects — refusing to demote them re-introduces the HOM-203
-# redispatch loop on the canonical fixture's 17 caption groups (51 of 109
-# collision findings).
-_CG_SELECTOR_RE = re.compile(r"^#cg-\d+$")
-
-# HOM-316: caption word-span carve-out. Captions canon emits per-word
-# `<span class="w">` (plus optional modifier classes `accent`, `allcaps`,
-# `payoff`, `quote`, `brand`) inside each `#cg-N` group. The bbox sampler
-# flags these as colliding (siblings overlap during entrance/exit) and as
-# `invisible` (opacity-0 in the cg's hidden state). Pattern matches the
-# `span.w` token wherever it appears in the selector (`span.w`,
-# `span.w.accent`, `#cg-3 span.w`, etc.), with word boundaries on both
-# sides so non-caption classes like `.wrapper` do not false-match.
-_CAPTION_WORD_SPAN_RE = re.compile(r"\bspan\.w\b")
-
-# HOM-316: `#scene-*` z-stacked container carve-out. Canonical HF scene
-# template (references/transitions/catalog.md) stacks `#scene-hook`,
-# `#scene-problem`, `#scene-pivot`, `#scene-payoff`, etc. at
-# `position:absolute; inset:0` — all occupying the same screen rect by
-# construction. Cross-scene bbox-overlap is not an authoring defect;
-# canonical opacity-driven transitions handle temporal isolation.
-# Predicate matches an id-only selector (no descendant combinator) — a
-# collision *inside* a scene container (`#scene-hook .headline`) is still
-# a real layout overlap and stays blocking.
-_SCENE_CONTAINER_RE = re.compile(r"^#scene-[\w-]+$")
-
-# Default ambient-decorative selector substrings. The chrome decoratives
-# (entrance fromTo + breathing yoyo on the same element) trigger
-# helper bbox-overlap by construction; these are the elements canon DESIGN
-# patterns explicitly call ambient. Operator can extend / shrink via
-# `gates.animation_map.collision_decorative_allowlist` in graph/config.yaml.
-_DEFAULT_DECORATIVE_ALLOWLIST = (
-    "grain", "glow", "hairline", "vignette", "overline",
-    "corner-mark", "footer-mark", "caption-strip", "margin-tick",
-)
+# Flags routed to LLM-triage advisory (`pending_classify`). HOM-317
+# expanded this from just-pace-flags (HOM-204) to also cover
+# `collision` + `invisible` — both are vocabulary-rich and
+# canon-context-dependent (caption word-spans, ambient atmosphere layers,
+# z-stacked scene containers). Pace flags were already triaged.
+_LLM_TRIAGE_FLAGS = ("paced-fast", "paced-slow", "collision", "invisible")
 
 # Default minimum bbox dimension (pixels) for a degenerate flag to be
 # blocking. < this on either width or height across all bbox samples
 # means the element is a 1-2px decorative (hairline / tick / underline)
 # where degenerate-by-construction is the intended visual.
+# GEOMETRIC, NOT VOCABULARY — this carve-out KEEPS post-HOM-317.
 _DEFAULT_DEGENERATE_MIN_BBOX_PX = 2.0
 
 # Default dead-zone-duration threshold (seconds). Above this, the dead
 # zone flips from advisory to blocking. The ticket specifies 2.0s default.
 _DEFAULT_DEAD_ZONE_THRESHOLD_S = 2.0
 
-# HOM-284 trailing dead-zone carve-out (structural — measurement artifact,
-# not authoring defect). Upstream `animation-map.mjs` enumerates tween
-# end-times as ``start + node.duration()``, which excludes GSAP
-# ``repeat`` cycles. Ambient yoyo+repeat decoratives (DESIGN.md line 136
-# breathing layer — grain, glow, hairline, vignette, ...) that play the
-# full scene length report a tween that "ends" after one cycle, leaving
-# a phantom dead zone at the tail of the last scene where only the
-# under-reported yoyos remain. We demote dead zones to advisory when
-# they end within ``dead_zone_tail_tolerance_s`` of the composition
-# duration AND have duration <= ``dead_zone_trailing_max_s`` — matching
-# HOM-212's structural-by-construction philosophy (caption canon, chrome
-# decoratives). Operator-tunable via ``gates.animation_map.*``; an
-# explicit ``dead_zone_trailing_max_s: 0`` disables the carve-out
-# entirely for strict-mode reviews.
+# HOM-284 trailing dead-zone carve-out — geometric (end-position-near-
+# composition-duration), vocabulary-independent. KEEPS post-HOM-317.
 _DEFAULT_DEAD_ZONE_TAIL_TOLERANCE_S = 0.5
 _DEFAULT_DEAD_ZONE_TRAILING_MAX_S = 5.0
 
@@ -303,43 +245,6 @@ def _gate_config() -> dict:
     """
     from ..config import load_default_config
     return load_default_config().resolve_gate("animation_map")
-
-
-def _is_caption_canon(selector: str) -> bool:
-    """Canonical caption selectors emit by-construction collision +
-    invisible flags from the canon caption authoring pattern.
-
-    Two shapes are carved out (HOM-316):
-      * `#cg-N` — the caption-group container (`set(visible) → fromTo →
-        to → set(hidden)` chain at each cg-N start/end).
-      * `span.w` (with optional modifier classes / descendant combinators)
-        — per-word spans inside the cg group. Captions canon emits
-        `<span class="w">`, `<span class="w accent">`, `<span class="w
-        allcaps">`, etc.; bbox sampler flags neighbouring word-spans as
-        colliding and the cg's opacity-0/visibility-hidden hidden state
-        as invisible.
-    """
-    sel = selector or ""
-    if _CG_SELECTOR_RE.match(sel):
-        return True
-    if _CAPTION_WORD_SPAN_RE.search(sel):
-        return True
-    return False
-
-
-def _is_scene_container(selector: str) -> bool:
-    """`#scene-<name>` id-only selectors are canonical z-stacked HF scene
-    containers (`position:absolute; inset:0`). Cross-scene bbox overlap is
-    by-construction (HOM-316). Descendants inside a scene container are
-    NOT carved out — `#scene-hook .headline` is a real intra-scene layout
-    concern."""
-    return bool(_SCENE_CONTAINER_RE.match(selector or ""))
-
-
-def _is_decorative(selector: str, allowlist: tuple[str, ...]) -> bool:
-    """Substring match against the chrome-decorative allowlist."""
-    sel = (selector or "").lower()
-    return any(needle.lower() in sel for needle in allowlist)
 
 
 def _max_bbox_dim(tween: dict) -> tuple[float, float]:
@@ -370,24 +275,12 @@ def _max_bbox_dim(tween: dict) -> tuple[float, float]:
     return max_w, max_h
 
 
-def _collision_is_blocking(tween: dict, selector: str, *, decorative_allowlist: tuple[str, ...]) -> bool:
-    """Per HOM-211 reviewer caveat: collision flags are blocking unless
-    the element is caption canon (`#cg-N`) or a chrome decorative whose
-    entrance + ambient yoyo overlap by construction."""
-    if _is_caption_canon(selector):
-        return False
-    if _is_scene_container(selector):
-        return False
-    if _is_decorative(selector, decorative_allowlist):
-        return False
-    return True
-
-
 def _degenerate_is_blocking(tween: dict, *, min_bbox_px: float) -> bool:
     """Degenerate flag is blocking only when the bbox is large enough
     that an authoring fix is plausible. 1-2px hairlines / ticks are
-    intentional (HOM-211 caveat: 5/5 canonical degenerate findings are
-    on `pf-hairline` / `margin-tick` / `kw-underline`)."""
+    intentional. This is a GEOMETRIC test on bbox dimensions, NOT a
+    class-name allowlist — it is vocabulary-independent and survives
+    HOM-317's retirement of vocab carve-outs."""
     max_w, max_h = _max_bbox_dim(tween)
     # Both dimensions must clear the threshold to count as a "real" element.
     return (max_w >= min_bbox_px) and (max_h >= min_bbox_px)
@@ -519,7 +412,6 @@ def _flag_id(selector: str, idx: int, flag: str) -> str:
 def _extract_flags(
     report: dict,
     *,
-    decorative_allowlist: tuple[str, ...] | None = None,
     degenerate_min_bbox_px: float | None = None,
     dead_zone_threshold_s: float | None = None,
     dead_zone_tail_tolerance_s: float | None = None,
@@ -528,19 +420,29 @@ def _extract_flags(
     """Split helper output into (always_fix, pending_classify, dead_zones,
     blocking_violations).
 
-    HOM-212: returns a fourth element — `blocking_violations` — populated
-    when a finding crosses a per-flag carve-out (see
-    `_collision_is_blocking` / `_degenerate_is_blocking` /
-    threshold-based dead-zones / unconditional offscreen+invisible).
+    HOM-317: vocabulary-allowlist carve-outs retired. `collision` and
+    `invisible` flags route to `pending_classify` for LLM-triage advisory.
+    Code-side hard-blocking restricted to canon-absolute
+    vocabulary-independent categories:
 
-    The first three return values keep their HOM-204 shape (advisory
-    metadata for Studio). Findings that ARE blocking still appear in the
-    advisory lists too — they're not mutually exclusive — so the operator
-    sees the full picture; the routing layer keys solely off
-    `blocking_violations`.
+      * `offscreen` (unconditional — `SKILL.md:74` "CSS position is the
+        ground truth"; audience never sees off-canvas elements regardless
+        of selector name).
+      * `degenerate` with bbox ≥ `degenerate_min_bbox_px` on BOTH width
+        and height (geometric criterion, vocabulary-independent — the
+        HOM-211 1-2 px hairline/tick exemption stays as a geometric
+        threshold, not a class-name allowlist).
+      * Dead zones with duration > `dead_zone_threshold_s` (root-timeline
+        concern, class-name-free by construction). The HOM-284 trailing
+        carve-out (end-position-near-composition-duration) keeps —
+        also geometric.
+
+    Per CLAUDE.md §"Carve-out allowlists over LLM-emitted identifiers":
+    `p4_beat`-emitted free-form class names (`halo`, `ghost`, `wash`,
+    `plate-tint`, ...) produce a fresh vocabulary each prewarm; substring
+    allowlists never converge. The classifier handles vocabulary-rich
+    cases (collision/invisible) with canon-context awareness.
     """
-    if decorative_allowlist is None:
-        decorative_allowlist = _DEFAULT_DECORATIVE_ALLOWLIST
     if degenerate_min_bbox_px is None:
         degenerate_min_bbox_px = _DEFAULT_DEGENERATE_MIN_BBOX_PX
     if dead_zone_threshold_s is None:
@@ -561,12 +463,10 @@ def _extract_flags(
 
     tweens = report.get("tweens") or []
     collisions: list[str] = []
-    blocking_collisions: list[str] = []
     degenerate: list[str] = []
     blocking_degenerate: list[str] = []
     offscreen: list[str] = []
     invisible: list[str] = []
-    blocking_invisible: list[str] = []
 
     for tw in tweens:
         flags = tw.get("flags") or []
@@ -575,28 +475,18 @@ def _extract_flags(
         duration = tw.get("duration")
         if "collision" in flags:
             collisions.append(sel)
-            if _collision_is_blocking(tw, sel, decorative_allowlist=decorative_allowlist):
-                blocking_collisions.append(sel)
         if "degenerate" in flags:
             degenerate.append(sel)
             if _degenerate_is_blocking(tw, min_bbox_px=degenerate_min_bbox_px):
                 blocking_degenerate.append(sel)
         if "offscreen" in flags:
-            # No canon-known FP class. Content element off-canvas throughout
-            # is structurally always wrong (audience never sees it).
+            # Unconditional hard-block — `SKILL.md:74` "CSS position is the
+            # ground truth"; audience never sees off-canvas elements
+            # regardless of selector identity.
             offscreen.append(sel)
         if "invisible" in flags:
-            # HOM-316: captions canon keeps non-active groups in
-            # `opacity:0; visibility:hidden` between active windows — the
-            # bbox sampler reports `invisible` by construction. Carve out
-            # caption-canon selectors (mirrors the existing collision
-            # carve-out shape). All other invisibles remain blocking —
-            # zero-opacity throughout on a content element means the
-            # audience never sees it.
             invisible.append(sel)
-            if not _is_caption_canon(sel):
-                blocking_invisible.append(sel)
-        for flag in _JUSTIFIABLE_FLAGS:
+        for flag in _LLM_TRIAGE_FLAGS:
             if flag in flags:
                 pending_classify.append({
                     "flag_id": _flag_id(sel, idx if isinstance(idx, int) else -1, flag),
@@ -609,7 +499,7 @@ def _extract_flags(
     if collisions:
         always_fix.append(
             "collision flag(s) on " + ", ".join(collisions)
-            + " — overlapping animated elements; refine layout"
+            + " — overlapping animated elements; LLM-triage advisory (HOM-317)"
         )
     if degenerate:
         always_fix.append(
@@ -624,16 +514,12 @@ def _extract_flags(
     if invisible:
         always_fix.append(
             "invisible flag(s) on " + ", ".join(invisible)
-            + " — zero opacity throughout the tween"
+            + " — zero opacity throughout the tween; LLM-triage advisory (HOM-317)"
         )
 
-    # Blocking violations — distinct, structured strings the routing layer
-    # reads. Decoratives + caption canon collisions are filtered out.
-    if blocking_collisions:
-        blocking.append(
-            "blocking collision flag(s) on " + ", ".join(blocking_collisions)
-            + " — overlapping animated content; refine layout (HOM-212)"
-        )
+    # Blocking violations — narrow code-side hard-blocks for canon-absolute
+    # vocabulary-independent categories only. Collision + invisible no
+    # longer code-side block; LLM-triage handles their disposition advisory.
     if blocking_degenerate:
         blocking.append(
             "blocking degenerate flag(s) on " + ", ".join(blocking_degenerate)
@@ -642,17 +528,11 @@ def _extract_flags(
     if offscreen:
         blocking.append(
             "blocking offscreen flag(s) on " + ", ".join(offscreen)
-            + " — element off-canvas throughout the tween (HOM-212)"
-        )
-    if blocking_invisible:
-        blocking.append(
-            "blocking invisible flag(s) on " + ", ".join(blocking_invisible)
-            + " — zero opacity throughout the tween (HOM-212)"
+            + " — element off-canvas throughout the tween (HOM-317)"
         )
 
     dead_zones: list[str] = []
     blocking_dead_zone_durs: list[float] = []
-    carved_trailing_durs: list[float] = []
     for zone in report.get("deadZones") or []:
         try:
             dur = float(zone.get("duration", 0.0))
@@ -665,11 +545,7 @@ def _extract_flags(
                 end_f = float(end) if end is not None else None
             except (TypeError, ValueError):
                 end_f = None
-            # HOM-284 trailing carve-out — dead zones whose end touches
-            # composition duration (within tolerance) AND whose own
-            # duration is within the trailing-max grace are a known
-            # upstream measurement artifact from yoyo+repeat tweens
-            # under-reporting their total time. Demote to advisory.
+            # HOM-284 trailing carve-out — geometric, KEEPS post-HOM-317.
             is_trailing_artifact = (
                 dead_zone_trailing_max_s > 0
                 and composition_duration_s > 0
@@ -685,7 +561,6 @@ def _extract_flags(
                     "gates.animation_map.dead_zone_trailing_max_s in "
                     "graph/config.yaml to flag as blocking if intentional"
                 )
-                carved_trailing_durs.append(dur)
                 continue
             dead_zones.append(
                 f"dead zone {start}s–{end}s (duration {dur}s > 1.0s) — "
@@ -705,25 +580,11 @@ def _extract_flags(
 
 # ---------------------------------------------------------------------------
 # Cache key — exposed for the L0 fingerprint-invalidation registry only.
-#
-# The gate is intentionally NOT bound to a `cache_policy=` in graph.py: the
-# deterministic helper subprocess (animation-map.mjs) is fast enough that
-# always re-running it on each gate visit is cheaper than fingerprint I/O.
-# Post-HOM-204 there is no redispatch loop on this gate, but the cache-key
-# helper is still exposed so the fingerprint-invalidation registry can
-# parametrise the per-node invariants (`_CACHE_VERSION` bump, etc.).
-# The LLM dispatch that actually justifies caching lives in
-# `nodes/gate_animation_map_classify.py`.
 # ---------------------------------------------------------------------------
 
 
 def _gate_cache_key(state, *_args, **_kwargs):
-    """Deterministic cache key for gate_animation_map (post-helper-run).
-
-    HOM-225: ``hf_dir`` derives via ``EpisodePaths(slug)`` — identity-only
-    state. Legacy ``compose.hyperframes_dir`` / ``state["episode_dir"]``
-    chain removed (no p4 node writes those keys after HOM-224).
-    """
+    """Deterministic cache key for gate_animation_map (post-helper-run)."""
     if not isinstance(state, dict):
         raise TypeError(
             f"animation_map gate cache key requires dict state, got {type(state).__name__}"
@@ -749,12 +610,6 @@ _cache_key = _gate_cache_key  # alias for the fingerprint registry
 
 
 def _animation_map_json_path(state: dict) -> str:
-    """Return the canonical path string for the animation-map.json output.
-
-    Used in the advisory notice so the operator can open the helper
-    output directly from Studio. HOM-225: derives via
-    ``EpisodePaths(slug)`` — identity-only state.
-    """
     slug = state.get("slug")
     if not slug:
         return _OUT_FILE
@@ -762,7 +617,8 @@ def _animation_map_json_path(state: dict) -> str:
 
 
 class AnimationMapGate(Gate):
-    """gate:animation_map — bundled-helper invocation, advisory findings (HOM-204).
+    """gate:animation_map — bundled-helper invocation; narrow code-side
+    hard-blocking + LLM-triage advisory (HOM-317).
 
     Overrides `Gate.__call__` so the gate record can carry helper-path
     provenance (`helper_path`, `fallback_helper_used`) and the
@@ -770,36 +626,16 @@ class AnimationMapGate(Gate):
     that the `gate_animation_map_classify` LLM node will triage downstream
     and that the operator reads in Studio.
 
-    `passed=False` ONLY on infrastructure failure (helper not found, node
-    missing, helper exit != 0, JSON unparseable). Successful helper runs
-    always set `passed=True` regardless of how many findings the helper
-    surfaced — findings are operator-visible metadata, not routing signals.
+    `passed=False` ONLY on infrastructure failure OR canon-absolute
+    hard-blocking (offscreen / degenerate≥2px / dead-zone>threshold).
+    Vocabulary-rich findings (collision / invisible / paced-*) advance to
+    LLM-triage.
     """
 
     def __init__(self) -> None:
         super().__init__(name="gate:animation_map")
 
     def _run(self, state: dict) -> tuple[list[str], dict, list[str], dict]:
-        """Returns ``(infra_failures, advisory_findings, blocking_violations, extras)``.
-
-        ``infra_failures`` is non-empty only when the helper itself could
-        not run — these become hard `passed=False` violations. On any
-        successful helper run it is empty `[]`, regardless of how many
-        findings landed in ``advisory_findings``.
-
-        ``advisory_findings`` always has the canonical three-key shape:
-        ``{"always_fix": [...], "dead_zones": [...], "pending_classify": [...]}``
-        — empty lists on a clean run, populated otherwise.
-
-        ``blocking_violations`` (HOM-212) is the carved-out subset of
-        findings that should redispatch the offending beat. Empty list
-        on a clean run OR on a run where every finding fell into a
-        carve-out (caption canon, chrome decorative, sub-threshold
-        dead zone, sub-2px degenerate). When non-empty AND no infra
-        failure, the gate emits ``passed=False`` with these strings as
-        ``violations`` so the routing layer's existing retry helper
-        re-dispatches.
-        """
         empty_advisory: dict = {"always_fix": [], "dead_zones": [], "pending_classify": []}
 
         slug = state.get("slug")
@@ -815,12 +651,6 @@ class AnimationMapGate(Gate):
         except RuntimeError as exc:
             return ([f"materialize_into_tmpdir failed: {exc}"], empty_advisory, [], {})
 
-        # Helper-script resolution prefers the bundled copy under
-        # ``<canonical hf_dir>/node_modules/...`` so its sibling-deps
-        # ancestor-walk (`@hyperframes/producer`) succeeds — the tmpdir
-        # never carries ``node_modules/``. The script's input project
-        # and output dir still point at the tmpdir so the analyzer reads
-        # the materialized index.html and writes its JSON next to it.
         canonical_hf_dir = EpisodePaths(slug).hyperframes_dir
         helper, used_fallback = _resolve_helper(canonical_hf_dir)
         if helper is None:
@@ -870,23 +700,14 @@ class AnimationMapGate(Gate):
         except (OSError, json.JSONDecodeError) as exc:
             return ([f"could not parse {report_path}: {exc}"], empty_advisory, [], extras)
 
-        # HOM-282 (Class C fold-in): hoist the parsed helper output into
-        # the gate record's extras so downstream consumers
-        # (``gate_animation_map_classify``) read from state instead of
-        # re-opening the JSON file on disk. The disk file remains a
-        # debug artifact owned by the external helper subprocess
-        # (Class C — runtime side-channel, not an authored episode
-        # artifact); it is no longer load-bearing for control flow.
+        # HOM-282: hoist parsed report into extras for downstream consumers.
         extras["animation_map_report"] = report
 
-        # HOM-212: resolve operator-tunable carve-out config.
+        # HOM-317: resolve operator-tunable thresholds. The
+        # `collision_decorative_allowlist` config key is RETIRED — its
+        # presence in graph/config.yaml is silently ignored (legacy
+        # configs continue to load). Geometric thresholds remain.
         cfg = _gate_config()
-        # Distinguish "absent" (use defaults) from "explicit empty list"
-        # (operator strict-mode toggle — no carve-out at all).
-        if "collision_decorative_allowlist" in cfg:
-            decorative_allowlist = tuple(cfg["collision_decorative_allowlist"] or ())
-        else:
-            decorative_allowlist = _DEFAULT_DECORATIVE_ALLOWLIST
         degenerate_min_bbox_px = float(
             cfg.get("degenerate_min_bbox_px", _DEFAULT_DEGENERATE_MIN_BBOX_PX)
         )
@@ -902,7 +723,6 @@ class AnimationMapGate(Gate):
 
         always_fix, pending_classify, dead_zones, blocking = _extract_flags(
             report,
-            decorative_allowlist=decorative_allowlist,
             degenerate_min_bbox_px=degenerate_min_bbox_px,
             dead_zone_threshold_s=dead_zone_threshold_s,
             dead_zone_tail_tolerance_s=dead_zone_tail_tolerance_s,
@@ -917,9 +737,6 @@ class AnimationMapGate(Gate):
 
     def __call__(self, state: dict) -> dict:
         infra_failures, advisory_findings, blocking, extras = self._run(state)
-        # HOM-212: passed=False on infra failure OR blocking carve-out hit.
-        # `violations` carries either the infra strings (existing operator-
-        # error UI) or the blocking strings (routing-layer retry helper).
         passed = not infra_failures and not blocking
         if infra_failures:
             violations = list(infra_failures)
@@ -930,10 +747,6 @@ class AnimationMapGate(Gate):
             "passed": passed,
             "violations": violations,
             "advisory_findings": advisory_findings,
-            # HOM-212: blocking findings are also persisted as their own key
-            # so Studio surfaces (and downstream test introspection) can
-            # distinguish "blocking" from "infra-failure" violations even
-            # though both populate the standard `violations` field.
             "blocking_findings": list(blocking),
             "iteration": self._iteration(state),
             "timestamp": _now(),
@@ -961,10 +774,6 @@ class AnimationMapGate(Gate):
         )
 
         if blocking:
-            # HOM-212: blocking notice calls out the offending categories
-            # explicitly so the operator can act before redispatch fires.
-            # Notice prefix is `BLOCKING` (load-bearing — Studio surfaces /
-            # halt_llm_boundary key off the prefix to choose severity).
             update["notices"] = [
                 f"{self.name}: BLOCKING — {len(blocking)} finding(s) require fix. "
                 + " | ".join(blocking)

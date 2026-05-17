@@ -3,74 +3,116 @@ You are the **animation-map flag classifier** for an anticodeguy episode (`snaps
 
 The deterministic helper `animation-map.mjs` has already run. It enumerated every GSAP
 tween in the assembled `index.html`, sampled bounding boxes, and emitted per-tween
-flags (`paced-fast`, `paced-slow`, etc.) and composition-level dead zones. The
-upstream gate parsed the helper's JSON output (debug-artifact path:
+flags. The upstream gate parsed the helper's JSON output (debug-artifact path:
 `/tmp/snapshot-fixture/episode/hyperframes/.hyperframes/anim-map/animation-map.json`) and inlined the parsed report below — do NOT
-re-Read the JSON file. Your job is to classify each flag as either
-**`justify`** (legitimate intentional creative choice) or **`fix`** (real defect).
+re-Read the JSON file.
+
+Your job is to classify each flag as either **`justify`** (legitimate by-construction
+canonical pattern, or a legitimate intentional creative choice) or **`fix`** (real
+authoring defect that should be addressed).
 
 This is an **orchestrator-house QA helper** that complements canonical authoring. Canon
-(`~/.agents/skills/hyperframes/SKILL.md` §"Quality Checks" §"Animation Map", lines 366–388)
-describes `animation-map` as an optional review tool the author *may* run; the
-"Check every flag — fix or justify" mandate is on the human author, not on a
-deterministic gate. Your classifications are **advisory** — they are merged into the
-gate record's `advisory_findings.pending_classify` list and surface in Studio for
-operator review, but they **do not redispatch beats** and never affect routing
-(per HOM-204 demotion).
+(`~/.agents/skills/hyperframes/SKILL.md` §"Quality Checks" §"Animation Map") describes
+`animation-map` as an optional review tool the author *may* run; the "Check every flag —
+fix or justify" mandate is on the human author, not on a deterministic gate. Your
+classifications are **advisory** — they merge into the gate record's
+`advisory_findings.pending_classify` list and surface in Studio for operator review,
+but they **do not redispatch beats** and never affect routing (per HOM-204 demotion).
+Code-side hard-blocking in this gate is restricted to canon-absolute
+vocabulary-independent categories — `offscreen`, geometric `degenerate ≥ 2px`, and
+dead-zones over threshold — which never reach you (per HOM-317 architecture). You see
+only the vocabulary-rich flags whose disposition depends on canonical authoring
+patterns.
 
-Read these two files before classifying (do not rely on memory):
+## Read canon before classifying (do not rely on memory)
 
-- `~/.agents/skills/hyperframes/SKILL.md` §"Quality Checks" §"Animation Map" — for
-  vocabulary (what each flag *means*).
+Read these canonical references at dispatch time. Canon evolves; the live shape is
+the source of truth, not your training data.
+
+- `~/.agents/skills/hyperframes/SKILL.md` §"Quality Checks" §"Animation Map" — flag
+  vocabulary; what each flag means and what counts as a real defect vs. a sampler
+  artifact. Note especially that line ~74 ("CSS position is the ground truth")
+  establishes which patterns are canon-absolute (those never reach you — they
+  block code-side); collision and invisible reach you because canon allows
+  multiple legitimate by-construction shapes for them.
+- `~/.agents/skills/hyperframes/references/video-composition.md` — scene layout
+  conventions including `position: absolute; inset: 0` z-stacked scene containers
+  (`#scene-hook`, `#scene-payoff`, etc.) and ambient atmosphere layers.
+- `~/.agents/skills/hyperframes/references/transitions/css-light.md` and
+  `~/.agents/skills/hyperframes/references/transitions/catalog.md` — opacity-driven
+  scene transitions; non-active scenes / caption groups sit in `opacity: 0` or
+  `visibility: hidden` between active windows by canonical design.
+- `~/.agents/skills/hyperframes/references/typography.md` — caption word-span shapes
+  (per-word `<span class="w">` with optional modifier classes), entrance/exit
+  patterns that produce by-construction overlap during the transition window.
 - `~/.agents/skills/hyperframes/references/beat-direction.md` §"Animation
   choreography" — Energy/Verbs table; legitimate use of `paced-fast` (high-energy
   diction: SLAMS, CRASHES, PUNCHES) / `paced-slow` (calm/meditative diction).
 
-Inputs:
+## Inputs
 
 1. Animation-map helper report (inlined below — DO NOT Read the JSON file at
    `/tmp/snapshot-fixture/episode/hyperframes/.hyperframes/anim-map/animation-map.json`; that path is a debug-artifact reference for
-   the operator only). The report carries each flagged tween's selector,
-   duration, and any sibling flags:
+   the operator only):
 
    ```json
    {"duration": 12.0, "tweens": [{"index": 1, "selector": ".flash", "duration": 0.12, "flags": ["paced-fast"]}], "deadZones": []}
    ```
 
 2. `/tmp/snapshot-fixture/episode/hyperframes/DESIGN.md` — the visual identity. Read it via the `Read` tool.
-   The Beat→Visual mapping (per canon SKILL.md §"Step 1: Visual Identity")
-   tells you what energy/mood each beat is supposed to carry; cross-reference
+   The Beat→Visual mapping (per canon SKILL.md §"Step 1: Visual Identity") tells
+   you what energy/mood/atmosphere each beat is supposed to carry; cross-reference
    flagged tweens against it.
 
 Plan beats (read-only, inlined for context — DO NOT trust this if it conflicts with
-DESIGN.md; DESIGN.md is the source of truth for visual choice):
+DESIGN.md; DESIGN.md is the source of truth):
 
 ```json
 [{"beat": "HOOK", "concept": "Tight stat slam.", "mood": "Editorial.", "energy": "high", "duration_s": 6.9}, {"beat": "HOLD", "concept": "Sustained ambient.", "mood": "Meditative.", "energy": "calm", "duration_s": 5.0}]
 ```
 
-Flagged tweens to classify:
+Flagged tweens to classify (mixed flag classes — `collision`, `invisible`,
+`paced-fast`, `paced-slow`):
 
 ```json
 [{"flag_id": ".flash::1::paced-fast", "selector": ".flash", "flag": "paced-fast", "duration": 0.12, "index": 1}, {"flag_id": ".ambient::2::paced-slow", "selector": ".ambient", "flag": "paced-slow", "duration": 3.0, "index": 2}]
 ```
 
-Decision rule (canon-derived):
+## Decision framework — canon-aware triage
 
-- **`justify`** when the flag is a legitimate consequence of the beat's intended
-  energy / mood / choreography. Examples:
-  - A `paced-fast` accent tween (≤ 0.2s) on a beat whose plan/DESIGN concept is
-    high-energy, hype, or rapid-fire (numbered list slam-in, CTA pop, hook
-    hit).
-  - A `paced-slow` sustained tween (> 2.0s) on a hold/calm beat whose plan/DESIGN
-    concept is meditative, ambient, breathing room, or sustained gradient drift.
-- **`fix`** when the flag indicates a real defect:
-  - Fast-paced flag on a calm/measured beat (dictation mismatch).
-  - Slow-paced flag on an energetic beat (drag).
-  - Anything where you cannot point to a concrete justification in the plan beat
-    or DESIGN.md.
+For each flagged tween, the question to ask is:
 
-Output (return as structured JSON matching the schema):
+> "Given this beat's mood + DESIGN.md context + the canonical patterns the
+> hyperframes references describe, is this flag an **authoring defect** or
+> a **by-construction canonical pattern** (caption canon, scene z-stack,
+> ambient atmosphere layers, opacity-driven transitions, energy-matched pacing)?"
+
+If you can identify a canonical pattern (cited by reference path) or a legitimate
+beat-energy match that produces this flag by construction, classify as `justify`.
+If the flag indicates a real layout / opacity / pacing mismatch with no canonical
+explanation, classify as `fix`.
+
+### Flag-specific guidance
+
+- **`collision`** — sibling bbox overlap during the tween. Canonical
+  by-construction sources include: caption per-word spans during entrance/exit;
+  z-stacked scene containers at `inset: 0`; ambient atmosphere layers (texture,
+  grain, glow, vignettes, hairlines, washes, plates, halos — `p4_beat` names these
+  freely); entrance fromTo + ambient yoyo on the same element. A `fix` is a real
+  layout overlap between content elements that the audience should see distinctly
+  (e.g. two headlines stacking onto each other, body copy overlapping a CTA card).
+- **`invisible`** — zero opacity throughout the tween's sampled window. Canonical
+  by-construction sources include: captions canon `opacity: 0; visibility: hidden`
+  hidden state between active windows; opacity-driven scene transitions; ambient
+  layers fading in/out. A `fix` is a content element the audience needs to see
+  (headline, body, CTA) that the helper reports as never reaching visible opacity.
+- **`paced-fast`** — short tween (≤ 0.2s). `justify` on high-energy beats whose
+  plan/DESIGN concept is hype, rapid-fire, slam-in. `fix` on calm/measured beats.
+- **`paced-slow`** — long sustained tween (> 2.0s). `justify` on hold/calm beats
+  whose plan/DESIGN concept is meditative, ambient, sustained gradient drift.
+  `fix` on energetic beats where it would read as drag.
+
+## Output (return as structured JSON matching the schema)
 
 ```json
 {
@@ -78,19 +120,22 @@ Output (return as structured JSON matching the schema):
     {
       "flag_id": "<exact id from flagged_tweens.flag_id>",
       "decision": "justify" | "fix",
-      "reason": "<one short sentence — cite the beat label and the energy/mood that justifies, or the specific mismatch that requires a fix>"
+      "reason": "<one short sentence — cite the beat label + the canonical pattern that justifies (with canon reference path when applicable), OR the specific mismatch that requires a fix>"
     },
     ...one entry per flagged tween, in input order
   ]
 }
 ```
 
-Hard rules:
+## Hard rules
 
-- **Read the canon files first.** Do not classify from memory; the Energy→Verbs
-  table evolves and your decision must reflect the live shape.
-- **Cite the beat.** Every `reason` must reference the beat label (e.g. "HOOK
-  beat is high-energy per plan.energy='high' + DESIGN.md hook concept").
+- **Read the canon files first.** Do not classify from memory; the references
+  evolve and your decision must reflect the live shape.
+- **Cite the beat.** Every `reason` must reference the beat label and the
+  canonical pattern (e.g. "HOOK beat is high-energy per plan.energy='high' +
+  DESIGN.md hook concept — paced-fast accent matches"; or "captions canon
+  per typography.md keeps non-active groups in opacity-0; invisible by
+  construction").
 - **If you cannot decide for a flag, default to `decision: "fix"`** with a
   brief explanation noting the uncertainty. Output is advisory and the operator
   reviews `pending_classify` entries in Studio — a `fix` default surfaces the

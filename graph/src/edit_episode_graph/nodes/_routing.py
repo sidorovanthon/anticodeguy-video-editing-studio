@@ -641,10 +641,14 @@ route_after_design_adherence = route_after_gate_with_retry(
     max_iterations=3,
 )
 _ANIMATION_MAP_BLOCKING_REDISPATCH_PREFIXES = (
-    "blocking collision",
+    # HOM-317: blocking collision + invisible retired from code-side
+    # hard-blocking — both now route to LLM-triage advisory
+    # (`pending_classify`). Code-side hard-blocking is restricted to
+    # canon-absolute vocabulary-independent categories. Beat-actionable
+    # blocking is now degenerate≥2px + offscreen only; dead-zone blocking
+    # is structural (root-timeline, not beat-actionable).
     "blocking degenerate",
     "blocking offscreen",
-    "blocking invisible",
 )
 
 
