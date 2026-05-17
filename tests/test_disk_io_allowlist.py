@@ -100,11 +100,24 @@ ALLOW_COMMENT = "disk-io-allow"
 
 
 class _DiskIOVisitor(ast.NodeVisitor):
+    """AST visitor that flags disk-I/O call sites.
+
+    Place the ``# disk-io-allow:`` comment on the same source line as the
+    call's *start* (the receiver), not the method-name line — ``ast.Call.lineno``
+    points at the receiver in chained expressions.
+    """
+
     def __init__(self, source_lines: list[str]) -> None:
         self.source_lines = source_lines
         self.findings: list[tuple[int, str]] = []
 
     def _line_suppressed(self, lineno: int) -> bool:
+        """Return True iff the source line carries a ``# disk-io-allow`` comment.
+
+        Keyed on ``ast.Call.lineno``, which points at the call's *start* (the
+        receiver in chained expressions). For multi-line chained calls, put the
+        suppression comment on the receiver's line, not the method-name line.
+        """
         if lineno < 1 or lineno > len(self.source_lines):
             return False
         line = self.source_lines[lineno - 1]
@@ -158,3 +171,28 @@ def test_disk_io_allowlist() -> None:
         "`tests/test_disk_io_allowlist.py` with a reviewer-justified rationale. "
         "Findings:\n  " + "\n  ".join(violations)
     )
+
+
+def _scan_source(source: str) -> list[tuple[int, str]]:
+    tree = ast.parse(source)
+    visitor = _DiskIOVisitor(source.splitlines())
+    visitor.visit(tree)
+    return visitor.findings
+
+
+def test_visitor_self_test_negative_cases() -> None:
+    """Guard against silent regressions in `_DiskIOVisitor` detection."""
+    # 1. Bare Path(...).read_text() — must be reported.
+    findings = _scan_source("import pathlib\npathlib.Path('x').read_text()\n")
+    assert findings and findings[0][1] == ".read_text", findings
+
+    # 2. Same call with a same-line `# disk-io-allow: <reason>` — suppressed.
+    findings = _scan_source(
+        "import pathlib\n"
+        "pathlib.Path('x').read_text()  # disk-io-allow: test fixture\n"
+    )
+    assert findings == [], findings
+
+    # 3. Bare-name `open(...)` — must be reported.
+    findings = _scan_source("open('x')\n")
+    assert findings and findings[0][1] == "open", findings
