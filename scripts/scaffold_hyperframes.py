@@ -108,27 +108,63 @@ def build_package_json(*, slug: str, hyperframes_version: str) -> dict:
     }
 
 
+def _is_already_scaffolded(hf: Path) -> bool:
+    """Return True iff ``hf/`` is already populated enough that `npx hyperframes init` would fail.
+
+    HOM-287: the probe must recognize BOTH shapes that block init's
+    "directory already exists and is not empty" guard:
+
+    1. The classic case — `index.html` is present (a prior scaffold run, or
+       the legacy fixture shape that committed index.html). Skipping here
+       avoids the cache-bump replay hazard (HOM-194).
+
+    2. The partial-cleanup case — `hyperframes.json` AND `package.json` are
+       present but `index.html` is missing. This is what HOM-283's fixture
+       cleanup leaves behind: it removes the state-first text artifacts
+       (index.html, compositions/*) but keeps source-asset markers
+       (hyperframes.json, package.json, meta.json, transcript.json,
+       hardlinked final.mp4). The directory is non-empty, so init refuses
+       to run, but the markers prove an init was performed previously —
+       re-running it would just re-emit identical scaffolding. Skip init
+       and let the caller bootstrap a fresh `index.html` template via
+       ``_bootstrap_index_html_from_tmp``.
+
+    Why both markers, not either? `hyperframes.json` alone is suspicious
+    (could be a stray write), `package.json` alone is generic JS metadata.
+    Requiring both narrows the signal to "this dir was previously scaffolded".
+    """
+    if (hf / "index.html").exists():
+        return True
+    if (hf / "hyperframes.json").exists() and (hf / "package.json").exists():
+        return True
+    return False
+
+
 def _run_init(episode_dir: Path) -> Path:
     """Run `npx hyperframes init hyperframes --yes` from inside episode_dir.
 
     Returns path to the created hyperframes/ subdirectory.
 
-    Idempotent: if `<episode_dir>/hyperframes/index.html` already exists (e.g. a
-    prior `scaffold` run, or the canonical fixture's tracked artifact under
-    `tests/fixtures/episodes/<slug>/hyperframes/`), `npx hyperframes init` is
-    skipped entirely — upstream HF CLI hard-aborts on non-empty target dirs
+    Idempotent: if `<episode_dir>/hyperframes/` is already scaffolded (see
+    ``_is_already_scaffolded`` for the widened HOM-287 probe), `npx hyperframes init`
+    is skipped entirely — upstream HF CLI hard-aborts on non-empty target dirs
     (`Directory already exists and is not empty: hyperframes`), which would
     block any re-execution after a `_CACHE_VERSION` bump on `p4_scaffold`
-    (HOM-194). The caller (`scaffold`) still re-applies `patch_index_html` on
-    the existing file; the patches are themselves idempotent so the final
-    artifact converges to the same shape regardless of starting state.
+    (HOM-194) or after a partial fixture cleanup (HOM-283 → HOM-287). The
+    caller (`scaffold`) still re-applies `patch_index_html` on whatever
+    `index.html` is present — bootstrapping a fresh template into the dir
+    via ``_bootstrap_index_html_from_tmp`` when the partial-cleanup case
+    left no `index.html` behind. The patches are themselves idempotent so
+    the final artifact converges to the same shape regardless of starting
+    state.
     """
     hf = episode_dir / "hyperframes"
-    if (hf / "index.html").exists():
+    if _is_already_scaffolded(hf):
         print(
             f"[scaffold] {hf}/ already populated — skipping init, applying patches only",
             file=sys.stderr,
         )
+        hf.mkdir(parents=True, exist_ok=True)
         return hf
     cmd = ["npx", "hyperframes", "init", "hyperframes", "--yes"]
     result = subprocess.run(
@@ -148,6 +184,48 @@ def _run_init(episode_dir: Path) -> Path:
     if not hf.is_dir():
         raise RuntimeError(f"npx hyperframes init reported success but {hf} does not exist")
     return hf
+
+
+def _bootstrap_index_html_from_tmp(hf: Path) -> None:
+    """Run `npx hyperframes init` in a scratch tmp dir to extract a fresh `index.html` template.
+
+    HOM-287: when ``_is_already_scaffolded`` skipped init because the
+    partial-cleanup shape was detected (hyperframes.json + package.json
+    present, index.html absent), the rest of ``scaffold()`` still needs a
+    canonical `index.html` template to patch. We get one by running init
+    in a brand-new tmp dir (where the "non-empty dir" guard cannot trip),
+    copying just the `index.html` file into ``hf``, and discarding the
+    rest. The orchestrator-house patches in ``patch_index_html`` then
+    overlay on top.
+
+    No-op if ``hf/index.html`` already exists (post-HOM-194 skip path).
+    """
+    if (hf / "index.html").exists():
+        return
+    import tempfile
+
+    with tempfile.TemporaryDirectory(prefix="hf-init-bootstrap-") as tmp:
+        tmp_path = Path(tmp)
+        cmd = ["npx", "hyperframes", "init", "hyperframes", "--yes"]
+        result = subprocess.run(
+            cmd,
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            shell=(sys.platform == "win32"),
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"npx hyperframes init (tmp bootstrap) failed (exit {result.returncode}):\n"
+                f"stdout: {result.stdout}\nstderr: {result.stderr}"
+            )
+        src = tmp_path / "hyperframes" / "index.html"
+        if not src.exists():
+            raise RuntimeError(
+                f"npx hyperframes init (tmp bootstrap) reported success but {src} is missing"
+            )
+        shutil.copyfile(src, hf / "index.html")
 
 
 def _ffprobe_dimensions_and_duration(video: Path) -> tuple[int, int, float]:
@@ -234,6 +312,13 @@ def scaffold(
         width, height, duration = _ffprobe_dimensions_and_duration(final_mp4)
 
     hf = _run_init(episode_dir)
+
+    # HOM-287: if init was skipped because of the widened partial-cleanup
+    # probe (hyperframes.json + package.json present but no index.html),
+    # bootstrap a fresh template from a scratch tmp dir so the patch step
+    # below has something to overlay onto. No-op when index.html already
+    # exists (the classic HOM-194 skip path).
+    _bootstrap_index_html_from_tmp(hf)
 
     # Patch index.html
     index_path = hf / "index.html"

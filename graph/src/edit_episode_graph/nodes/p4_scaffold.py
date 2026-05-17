@@ -45,7 +45,13 @@ SCRIPTS_ROOT = scripts_root()
 # downstream consumers no longer depend on the disk file. The v4 force-re-run
 # rationale is obsolete and the cache-hit-vs-disk-write race is closed by
 # construction.
-_CACHE_VERSION = 5
+# v6 (HOM-287): scaffold subprocess probe semantics widened — partial-cleanup
+# fixture state (hyperframes.json + package.json present, index.html absent)
+# is now recognized as "scaffolded, skip init" and the script bootstraps a
+# fresh index.html template via a scratch tmp dir. Node body unchanged but
+# the upstream contract is, so bump invalidates stale cache rows recorded
+# under the v5 narrower-probe behavior.
+_CACHE_VERSION = 6
 
 
 def _cache_key(state, *_args, **_kwargs):
