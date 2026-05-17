@@ -60,3 +60,16 @@ tests/fixtures/episodes/*/hyperframes/DESIGN.md
 tests/fixtures/episodes/*/hyperframes/compositions/
 tests/fixtures/episodes/*/hyperframes/.hyperframes/
 tests/fixtures/episodes/*/edit/project.md
+
+# HOM-283: fixture-side Windows-npm + runtime gate outputs that should
+# never be committed:
+# - `node_modules/` + `package-lock.json` from the one-time
+#   `npm install` inside the fixture HF dir (CLAUDE.md §"Skill copies"
+#   Known Windows blocker).
+# - `.waveform-cache/` and `snapshots/` are runtime gate outputs of
+#   `npx hyperframes` subprocesses driven by gates against the
+#   materialized tmpdir.
+tests/fixtures/episodes/*/hyperframes/node_modules/
+tests/fixtures/episodes/*/hyperframes/package-lock.json
+tests/fixtures/episodes/*/hyperframes/.waveform-cache/
+tests/fixtures/episodes/*/hyperframes/snapshots/

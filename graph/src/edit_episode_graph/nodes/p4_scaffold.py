@@ -147,7 +147,7 @@ def p4_scaffold_node(state: dict) -> dict:
         return _error("slug missing from state — cannot resolve index.html path")
     index_path = EpisodePaths(slug).index_html_path
     try:
-        body = index_path.read_text(encoding="utf-8")
+        body = index_path.read_text(encoding="utf-8")  # disk-io-allow: re-read scaffolded index.html written by npx hyperframes init subprocess (HOM-280)
     except OSError as exc:
         return _error(
             f"failed to read scaffolded index.html at {index_path}: {exc!r}"

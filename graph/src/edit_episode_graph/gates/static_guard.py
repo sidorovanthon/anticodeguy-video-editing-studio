@@ -159,13 +159,13 @@ def static_guard_gate_node(state: dict, *, sleep_fn=time.sleep) -> dict:
     # Popen lifecycle bookkeeping, not an authored episode artifact
     # (HOM-282 allowlist note — no project lint plugin exists today;
     # comment-only deferral).
-    if not log_path.is_file():
+    if not log_path.is_file():  # disk-io-allow: scan Studio preview.log runtime side-channel (HOM-282 allowlist note)
         return _record(False, [f"preview log not on disk: {log_path}"], {})
 
     sleep_fn(_resolved_window_s())
 
     try:
-        text = log_path.read_text(encoding="utf-8", errors="replace")
+        text = log_path.read_text(encoding="utf-8", errors="replace")  # disk-io-allow: read Studio preview.log runtime side-channel
     except OSError as exc:
         return _record(False, [f"could not read preview log: {exc}"], {})
 

@@ -342,9 +342,9 @@ def _now() -> str:
 
 def _resolve_helper(hf_dir: Path) -> tuple[Path | None, bool]:
     bundled = hf_dir / _BUNDLED_REL
-    if bundled.is_file():
+    if bundled.is_file():  # disk-io-allow: helper-script discovery inside materialized tmpdir (HOM-281)
         return bundled, False
-    if _GLOBAL_FALLBACK.is_file():
+    if _GLOBAL_FALLBACK.is_file():  # disk-io-allow: global skill-copy fallback for helper-script discovery
         return _GLOBAL_FALLBACK, True
     return None, False
 
@@ -380,11 +380,11 @@ def _run_helper(hf_dir: Path, helper: Path, used_fallback: bool, timeout: float 
         return "node executable not found on PATH — cannot run animation-map helper"
 
     out_dir = hf_dir / _OUT_SUBDIR
-    out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True, exist_ok=True)  # disk-io-allow: prepare animation-map report output dir in materialized tmpdir
     stale = out_dir / _OUT_FILE
-    if stale.is_file():
+    if stale.is_file():  # disk-io-allow: clear stale report from prior run inside materialized tmpdir
         try:
-            stale.unlink()
+            stale.unlink()  # disk-io-allow: see above
         except OSError:
             pass
 
@@ -793,7 +793,7 @@ class AnimationMapGate(Gate):
             )
 
         report_path = ran.out_dir / _OUT_FILE
-        if not report_path.is_file():
+        if not report_path.is_file():  # disk-io-allow: read animation-map JSON report produced by node helper
             return (
                 [f"animation-map helper exited 0 but {_OUT_FILE} not found at {report_path}"],
                 empty_advisory,
@@ -801,7 +801,7 @@ class AnimationMapGate(Gate):
                 extras,
             )
         try:
-            report = json.loads(report_path.read_text(encoding="utf-8"))
+            report = json.loads(report_path.read_text(encoding="utf-8"))  # disk-io-allow: parse animation-map JSON report produced by node helper
         except (OSError, json.JSONDecodeError) as exc:
             return ([f"could not parse {report_path}: {exc}"], empty_advisory, [], extras)
 

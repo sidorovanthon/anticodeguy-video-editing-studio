@@ -114,6 +114,24 @@ After M6 wave work or a node schema bump:
 6. Reviewer agent inspects the diff plus the human-readable
    `recordings/<node>.json` companion dump.
 
+> **Windows preflight — `npm install` inside the fixture HF dir.**
+> A fresh-tier `record_fixture` prewarm reaches Phase 4 gates that drive
+> `npx hyperframes <cmd>` (lint / validate / inspect / snapshot / catalog
+> / animation-map) via a materialized tmpdir (HOM-281). On Windows-Node,
+> `animation-map.mjs` and `contrast-report.mjs` bootstrap
+> `@hyperframes/producer` + `sharp` via `npm.cmd spawnSync` which yields
+> `EINVAL`. One-time fix:
+> ```powershell
+> cd tests/fixtures/episodes/canonical-portrait-talking-head/hyperframes
+> npm install
+> ```
+> The exact-version constraints come from the script's missing-deps
+> error if a leaner install is preferred. After this once, both helpers
+> run without `HYPERFRAMES_SKILL_BOOTSTRAP_DEPS=1`. Refs:
+> CLAUDE.md §"Skill copies: docs vs. runnable" — Known Windows blocker.
+> `node_modules/` and `package-lock.json` under the fixture HF dir are
+> gitignored — do not commit them.
+
 ## How it plugs into the compiled graph
 
 Production code lives in `graph/src/edit_episode_graph/graph.py::build_graph`,
