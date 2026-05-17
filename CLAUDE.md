@@ -58,6 +58,24 @@ The legacy `/edit-episode` slash command separately walked artifact existence on
 (final.mp4 → index.html → studio); that flow predates the LangGraph migration and is now
 secondary. Phase 3+ runs through `graph/` + Studio.
 
+## Working from the pipeline roadmap — read milestone before starting
+
+Linear project `LangGraph pipeline migration` (UUID `d693a351-3f37-4053-b54f-297404769d50`) is the source of truth for the version-sequenced roadmap (M1..M6: deterministic graph → Phase 3 LLM → Phase 4 → cutover → hardening → brief/profile). **Before starting any ticket from this project, read its `projectMilestone.description`** — it carries the architectural rationale, sequencing constraints, and close-criteria that determine whether the ticket is even relevant right now, and which sibling tickets are prerequisites.
+
+```powershell
+# Get milestone for a ticket (also shows priority + state):
+& 'C:\Users\sidor\go\bin\linear-pp-cli.exe' issues HOM-<n> --json | ConvertFrom-Json | Select-Object -ExpandProperty results | Select-Object identifier,priority,@{N='milestone';E={$_.projectMilestone.name}}
+
+# Read milestone body (GraphQL — CLI doesn't surface description on list):
+$apiKey = (Get-Content "$env:USERPROFILE\.config\linear-pp-cli\config.toml" | Select-String "api_key" | %% { $_ -replace ".*'(.+)'.*",'$1' })
+$body = '{"query":"query { project(id:\"d693a351-3f37-4053-b54f-297404769d50\") { projectMilestones { nodes { name description } } } }"}'
+Invoke-RestMethod "https://api.linear.app/graphql" -Method Post -Headers @{Authorization=$apiKey;"Content-Type"="application/json"} -Body $body
+```
+
+If a ticket has no milestone, that's a signal: either it predates the roadmap (verify-and-close it as part of an earlier milestone) or it belongs in one — don't just start coding, fix the milestone first. If a ticket's milestone description contradicts the ticket body, surface the contradiction before code lands.
+
+This rule applies to tickets in `LangGraph pipeline migration` only. Other projects (e.g. `Data Migration v2`) have their own conventions.
+
 ## Branching workflow — non-negotiable
 
 **Every change goes through a feature branch and a GitHub PR. No direct commits to `main`.**
