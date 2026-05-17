@@ -413,6 +413,124 @@ def test_scaffold_second_call_is_no_op_on_index_html(tmp_path: Path):
     )
 
 
+def test_is_already_scaffolded_index_html_only(tmp_path: Path):
+    """HOM-287 regression guard: index.html-only dir is recognized as scaffolded.
+
+    The classic HOM-194 path — fixture or prior-run dir with index.html
+    present — must still short-circuit init regardless of whether
+    `hyperframes.json` / `package.json` exist.
+    """
+    from scripts.scaffold_hyperframes import _is_already_scaffolded
+
+    hf = tmp_path / "hyperframes"
+    hf.mkdir()
+    (hf / "index.html").write_text("<html></html>", encoding="utf-8")
+    assert _is_already_scaffolded(hf) is True
+
+
+def test_is_already_scaffolded_partial_cleanup_state(tmp_path: Path):
+    """HOM-287: hyperframes.json + package.json without index.html → scaffolded.
+
+    This is the post-HOM-283 fixture-cleanup shape. Without recognizing
+    it, `npx hyperframes init` halts on "Directory already exists and is
+    not empty" and a fresh-tier prewarm cannot make forward progress.
+    """
+    from scripts.scaffold_hyperframes import _is_already_scaffolded
+
+    hf = tmp_path / "hyperframes"
+    hf.mkdir()
+    (hf / "hyperframes.json").write_text("{}", encoding="utf-8")
+    (hf / "package.json").write_text("{}", encoding="utf-8")
+    assert _is_already_scaffolded(hf) is True
+
+
+def test_is_already_scaffolded_empty_dir(tmp_path: Path):
+    """HOM-287 regression guard: empty dir is NOT scaffolded, init must run."""
+    from scripts.scaffold_hyperframes import _is_already_scaffolded
+
+    hf = tmp_path / "hyperframes"
+    hf.mkdir()
+    assert _is_already_scaffolded(hf) is False
+
+
+def test_is_already_scaffolded_partial_single_marker(tmp_path: Path):
+    """HOM-287: a single marker alone is insufficient — both required.
+
+    `hyperframes.json` alone could be a stray write; `package.json` alone
+    is generic JS metadata. Requires both to narrow the signal to
+    "previously scaffolded".
+    """
+    from scripts.scaffold_hyperframes import _is_already_scaffolded
+
+    hf = tmp_path / "hyperframes"
+    hf.mkdir()
+    (hf / "hyperframes.json").write_text("{}", encoding="utf-8")
+    assert _is_already_scaffolded(hf) is False
+
+    (hf / "hyperframes.json").unlink()
+    (hf / "package.json").write_text("{}", encoding="utf-8")
+    assert _is_already_scaffolded(hf) is False
+
+
+def test_run_init_skips_when_partial_cleanup_markers_present(tmp_path: Path, monkeypatch):
+    """HOM-287: `_run_init` must skip the subprocess when the widened
+    probe matches the partial-cleanup shape, even without `index.html`.
+
+    Verified by monkey-patching ``subprocess.run`` so any invocation
+    raises — if init were called, the test would fail.
+    """
+    from scripts import scaffold_hyperframes as sh
+
+    episode_dir = tmp_path / "ep"
+    hf = episode_dir / "hyperframes"
+    hf.mkdir(parents=True)
+    (hf / "hyperframes.json").write_text("{}", encoding="utf-8")
+    (hf / "package.json").write_text("{}", encoding="utf-8")
+
+    def fail_run(*args, **kwargs):
+        raise AssertionError(
+            "subprocess.run must not be invoked when partial-cleanup markers exist"
+        )
+
+    monkeypatch.setattr(sh.subprocess, "run", fail_run)
+
+    out = sh._run_init(episode_dir)
+    assert out == hf
+    # Files preserved — probe is read-only.
+    assert (hf / "hyperframes.json").exists()
+    assert (hf / "package.json").exists()
+
+
+def test_run_init_invokes_subprocess_on_empty_dir(tmp_path: Path, monkeypatch):
+    """HOM-287 regression guard: empty `hyperframes/` (or missing entirely) → init runs."""
+    from scripts import scaffold_hyperframes as sh
+
+    episode_dir = tmp_path / "ep"
+    episode_dir.mkdir()
+
+    calls: list[tuple] = []
+
+    class FakeResult:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    def fake_run(cmd, **kwargs):
+        calls.append((tuple(cmd), kwargs.get("cwd")))
+        # Simulate init creating the hyperframes/ dir
+        (episode_dir / "hyperframes").mkdir(exist_ok=True)
+        return FakeResult()
+
+    monkeypatch.setattr(sh.subprocess, "run", fake_run)
+
+    out = sh._run_init(episode_dir)
+    assert out == episode_dir / "hyperframes"
+    assert len(calls) == 1, f"expected exactly one subprocess.run call, got {len(calls)}"
+    cmd, cwd = calls[0]
+    assert cmd[0] == "npx" and "init" in cmd
+    assert cwd == episode_dir
+
+
 def test_hardlink_final_mp4_is_idempotent(tmp_path: Path):
     """Running twice does not raise — second call is a no-op."""
     from scripts.scaffold_hyperframes import _hardlink_final_mp4
