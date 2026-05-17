@@ -1,11 +1,24 @@
-{
-  "channel_writes": "deque([['llm_runs', [{'node': 'p4_persist_session', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'cheap', 'success': True, 'reason': None, 'wall_time_s': 83.79699999999866, 'tokens_in': 23, 'tokens_out': 7946, 'timestamp': '2026-05-09T11:15:00.695156+00:00'}]], ['compose', {'persist': {'persisted_at': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\edit\\\\project.md', 'session_n': 3}, 'session_persisted': True}], ['branch:to:studio_launch', None]])",
-  "fingerprint": "14bbbfc14282bf718717a2731f2d3ed6",
-  "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_persist_session.p4_persist_session_node,p4_persist_session",
-  "node": "p4_persist_session",
-  "recorded_at": null,
-  "recording_meta": {
-    "encoding": "msgpack",
-    "value_bytes": 440
+[
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_persist_session', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'cheap', 'success': True, 'reason': None, 'wall_time_s': 83.79699999999866, 'tokens_in': 23, 'tokens_out': 7946, 'timestamp': '2026-05-09T11:15:00.695156+00:00'}]], ['compose', {'persist': {'persisted_at': 'C:\\\\Users\\\\sidor\\\\repos\\\\anticodeguy-video-editing-studio\\\\tests\\\\fixtures\\\\episodes\\\\canonical-portrait-talking-head\\\\edit\\\\project.md', 'session_n': 3}, 'session_persisted': True}], ['branch:to:studio_launch', None]])",
+    "fingerprint": "14bbbfc14282bf718717a2731f2d3ed6",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_persist_session.p4_persist_session_node,p4_persist_session",
+    "node": "p4_persist_session",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 440
+    }
+  },
+  {
+    "channel_writes": "deque([['llm_runs', [{'node': 'p4_persist_session', 'backend': 'claude', 'model': 'claude-haiku-4-5-20251001', 'tier': 'cheap', 'success': True, 'reason': None, 'wall_time_s': 40.26499999999942, 'tokens_in': 9, 'tokens_out': 3946, 'timestamp': '2026-05-17T15:54:37.065924+00:00'}]], ['compose', {'persist': {'session_block': '## Session 1 — 2026-05-17 (Phase 4 — HyperFrames composition)\\n\\n- **design**: DESIGN.md specifies visual identity with Fraunces 5.5rem headlines, Inter body text, left-gutter layout, accent-stop-1 champagne accents (one per beat), background color steps 0–2, edge-to-edge ground rules on PAYOFF scene\\n- **plan**: 4 beats (HOOK 1.7s / PROBLEM 10.3s / PIVOT 5.5s / PAYOFF 9.0s) with narrative arc: hook + problem setup → rhetorical pivot → philosophical payoff; transitions: cross-warp-morph (0.6–1.2s) between beats, final-fade (1.0s) on exit; total 26.5s\\n- **composition**: index.html root with 4 scene layers (#scene-hook, #scene-problem, #scene-pivot, #scene-payoff); captions.html embedded; 143 tweens mapped, 34 micro-tweens skipped; animation timeline fully synchronized to beats\\n- **gates**: All 9 passed (design_ok, plan_ok, lint, validate, inspect, design_adherence, animation_map iteration 2 with classifier, snapshot, captions_track); advisory findings: collision and invisible opacity flags on caption elements (expected per HOM-317 LLM-triage pattern)', 'persisted_at': '2026-05-17T15:54:37.065924+00:00', 'session_n': 1}, 'session_persisted': True}], ['branch:to:p4_materialize_disk', None]])",
+    "fingerprint": "285ccc1807ecb4df54c5eeff24db5a87",
+    "namespace": "__pregel_ns_writes,edit_episode_graph.nodes.p4_persist_session.p4_persist_session_node,p4_persist_session",
+    "node": "p4_persist_session",
+    "recorded_at": null,
+    "recording_meta": {
+      "encoding": "msgpack",
+      "value_bytes": 1444
+    }
   }
-}
+]
