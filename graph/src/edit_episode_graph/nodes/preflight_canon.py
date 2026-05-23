@@ -231,6 +231,52 @@ def preflight_canon_node(
     Pure side effects are bounded to the sidecar JSON; node returns a
     state delta with ``preflight.checked`` and any ``notices``.
     """
+    # HOM-334 Phase A.5: step-debug pre/post interrupts. Wraps the body
+    # below so the operator can pause before / after the bare-repro
+    # subprocess fan-out. No-op when ``HOMESTUDIO_STEP_DEBUG`` is unset.
+    from .._step_debug import is_enabled as _sd_enabled, wrap_deterministic_node
+
+    if _sd_enabled():
+        return wrap_deterministic_node(
+            "preflight_canon",
+            state=state,
+            context={
+                "slug": state.get("slug") if isinstance(state, dict) else None,
+                "n_watchlist": len(
+                    list(watchlist) if watchlist is not None else WATCHLIST
+                ),
+            },
+            inner=lambda: _preflight_canon_body(
+                state,
+                runner=runner,
+                state_path=state_path,
+                repros_dir=repros_dir,
+                watchlist=watchlist,
+                max_age_days=max_age_days,
+                timeout_s=timeout_s,
+            ),
+        )
+    return _preflight_canon_body(
+        state,
+        runner=runner,
+        state_path=state_path,
+        repros_dir=repros_dir,
+        watchlist=watchlist,
+        max_age_days=max_age_days,
+        timeout_s=timeout_s,
+    )
+
+
+def _preflight_canon_body(
+    state,
+    *,
+    runner: Runner | None = None,
+    state_path: Path | None = None,
+    repros_dir: Path | None = None,
+    watchlist: Iterable[tuple[str, str]] | None = None,
+    max_age_days: int = MAX_STALE_DAYS,
+    timeout_s: float = DEFAULT_TIMEOUT_S,
+):
     runner = runner or _default_runner
     state_path = state_path or DEFAULT_STATE_PATH
     repros_dir = repros_dir or BARE_REPROS_DIR

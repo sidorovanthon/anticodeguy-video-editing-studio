@@ -231,6 +231,24 @@ def p4_materialize_disk_node(state: dict) -> dict:
     timestamp) plus ``files_written`` (absolute paths of files whose
     write actually changed content; idempotent skips are NOT listed).
     """
+    # HOM-334 Phase A.5: step-debug pre/post interrupts. Wraps the
+    # atomic-writer body so an operator-driven session pauses before and
+    # after disk writes (the post-interrupt's `files_written` list is the
+    # primary audit signal). No-op when ``HOMESTUDIO_STEP_DEBUG`` is
+    # unset.
+    from .._step_debug import is_enabled as _sd_enabled, wrap_deterministic_node
+
+    if _sd_enabled():
+        return wrap_deterministic_node(
+            "p4_materialize_disk",
+            state=state,
+            context={"slug": state.get("slug")},
+            inner=lambda: _p4_materialize_disk_body(state),
+        )
+    return _p4_materialize_disk_body(state)
+
+
+def _p4_materialize_disk_body(state: dict) -> dict:
     compose = state.get("compose") or {}
     skipped, skip_reason = upstream_skipped(compose)
     if skipped:

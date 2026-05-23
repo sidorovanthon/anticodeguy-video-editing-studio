@@ -120,6 +120,24 @@ def static_guard_gate_node(state: dict, *, sleep_fn=time.sleep) -> dict:
     `sleep_fn` is parameterised so unit tests can pass a no-op — the gate's
     own time budget is incidental to its decision logic.
     """
+    # HOM-334 Phase A.5: step-debug pre/post interrupts. No-op when
+    # ``HOMESTUDIO_STEP_DEBUG`` is unset.
+    from .._step_debug import is_enabled as _sd_enabled, wrap_deterministic_node
+
+    if _sd_enabled():
+        return wrap_deterministic_node(
+            "gate_static_guard",
+            state=state,
+            context={
+                "slug": state.get("slug") if isinstance(state, dict) else None,
+                "gate_name": "gate:static_guard",
+            },
+            inner=lambda: _static_guard_gate_body(state, sleep_fn=sleep_fn),
+        )
+    return _static_guard_gate_body(state, sleep_fn=sleep_fn)
+
+
+def _static_guard_gate_body(state: dict, *, sleep_fn=time.sleep) -> dict:
     name = "gate:static_guard"
     iteration = sum(
         1 for r in (state.get("gate_results") or []) if r.get("gate") == name
