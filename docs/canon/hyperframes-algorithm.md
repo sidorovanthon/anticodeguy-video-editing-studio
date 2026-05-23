@@ -723,7 +723,7 @@ Rules of thumb:
 
 **Verbatim canon text:**
 
-```
+````
 ## Video and Audio
 
 Video must be `muted playsinline`. Audio is always a separate `<audio>` element:
@@ -747,7 +747,7 @@ Video must be `muted playsinline`. Audio is always a separate `<audio>` element:
   data-volume="1"
 ></audio>
 ```
-```
+````
 
 **Inputs:** any media assets (video/audio files) referenced by the composition.
 
