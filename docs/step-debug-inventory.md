@@ -86,15 +86,18 @@ unchanged when `HOMESTUDIO_STEP_DEBUG` is unset.
 
 ## Gates (HOM-334 Phase A.5)
 
-Twelve graph-level gate nodes; all 12 are wrapped. Eleven inherit
+Twelve graph-level gate nodes; all 12 are wrapped. Nine inherit
 `wrap_deterministic_node` through the base-class hook in
 `gates/_base.Gate.__call__` (the topology name `gate_<x>` is derived from
-the canonical `gate:<x>` Gate.name with `:` replaced by `_`); two have
+the canonical `gate:<x>` Gate.name with `:` replaced by `_`); three have
 custom wrap sites because they bypass `Gate.__call__`:
 
 - `gate_animation_map` overrides `Gate.__call__` to return advisory +
   blocking findings separately; its body carries an inline
   `wrap_deterministic_node` call (animation_map.py).
+- `gate_validate` overrides `Gate.__call__` to attach the
+  `headless_artifact_suspected` annotation onto the gate record; its
+  body carries an inline `wrap_deterministic_node` call (validate.py).
 - `gate_static_guard` is a free function (not a `Gate` subclass) because
   the time-budget sleep doesn't match `Gate.checks` shape; its body
   carries an inline `wrap_deterministic_node` call (static_guard.py).
@@ -106,7 +109,7 @@ custom wrap sites because they bypass `Gate.__call__`:
 | `gate_design_ok` | deterministic | `compose.design`, `edit.edl` | appended `gate_results[gate:design_ok]` |
 | `gate_plan_ok` | deterministic | `compose.plan`, `edit.edl` | appended `gate_results[gate:plan_ok]` |
 | `gate_lint` | deterministic | spawns `npx hyperframes lint` against materialized HF tmpdir | appended `gate_results[gate:lint]` |
-| `gate_validate` | deterministic | spawns `npx hyperframes validate` | appended `gate_results[gate:validate]` |
+| `gate_validate` | deterministic (custom `__call__`) | spawns `npx hyperframes validate` | appended `gate_results[gate:validate]` with optional `headless_artifact_suspected` annotation |
 | `gate_inspect` | deterministic | spawns `npx hyperframes inspect` | appended `gate_results[gate:inspect]` |
 | `gate_design_adherence` | deterministic | `compose.design.design_md`, `compose.index_html` | appended `gate_results[gate:design_adherence]` |
 | `gate_animation_map` | deterministic (custom `__call__`) | spawns `animation-map.mjs` helper against materialized HF tmpdir | appended `gate_results[gate:animation_map]` with advisory + blocking split |

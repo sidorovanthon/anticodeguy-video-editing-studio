@@ -463,6 +463,63 @@ def test_halt_llm_boundary_wraps_under_flag(enabled, monkeypatch):
     assert captured[1]["phase"] == "post"
 
 
+def test_validate_gate_wraps_under_flag(enabled, monkeypatch):
+    """``ValidateGate.__call__`` overrides the base — must also wrap under the flag.
+
+    The subclass bypasses ``Gate.__call__`` to attach the headless-artifact
+    triage annotation onto the record, so the base-class wrap added in
+    HOM-334 Phase A doesn't apply. Phase A.5 wires the wrap explicitly in
+    the override; this test pins that contract so a future refactor that
+    drops the explicit wrap fails loudly.
+    """
+    captured = _stub_interrupt(monkeypatch, "approved")
+
+    from edit_episode_graph.gates.validate import ValidateGate
+
+    class _StubValidateGate(ValidateGate):
+        # Short-circuit subprocess + materialize work — return a clean pass.
+        def _run(self, state):  # type: ignore[override]
+            return [], {}
+
+    out = _StubValidateGate()({"slug": "abc"})
+    # Gate record landed on state.
+    assert isinstance(out, dict) and "gate_results" in out
+    record = out["gate_results"][0]
+    assert record["gate"] == "gate:validate"
+    assert record["passed"] is True
+    # Two interrupts fired around the override; node name uses ``_``.
+    assert len(captured) == 2
+    assert captured[0]["node"] == "gate_validate"
+    assert captured[0]["phase"] == "pre"
+    assert captured[1]["node"] == "gate_validate"
+    assert captured[1]["phase"] == "post"
+    pre_ctx_path = captured[0]["context_dump_path"]
+    pre_ctx = json.loads(Path(pre_ctx_path).read_text(encoding="utf-8"))
+    assert pre_ctx["context"]["gate_name"] == "gate:validate"
+    assert pre_ctx["context"]["slug"] == "abc"
+
+
+def test_validate_gate_passthrough_when_disabled(disabled, monkeypatch):
+    """ValidateGate must be a pure pass-through under the production default."""
+    import langgraph.types as lg_types
+
+    def boom(payload):  # pragma: no cover - guard
+        raise AssertionError("interrupt fired with HOMESTUDIO_STEP_DEBUG unset")
+
+    monkeypatch.setattr(lg_types, "interrupt", boom)
+
+    from edit_episode_graph.gates.validate import ValidateGate
+
+    class _StubValidateGate(ValidateGate):
+        def _run(self, state):  # type: ignore[override]
+            return ["bad thing"], {}
+
+    out = _StubValidateGate()({"slug": "x"})
+    record = out["gate_results"][0]
+    assert record["passed"] is False
+    assert record["violations"] == ["bad thing"]
+
+
 def test_abort_in_wrap_llm_node_call(enabled, monkeypatch):
     _stub_interrupt(monkeypatch, "abort")
 
