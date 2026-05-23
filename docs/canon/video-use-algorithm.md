@@ -277,7 +277,7 @@ From Helpers:
 
 From "Editor sub-agent brief (for multi-take selection)":
 
-```
+````
 When the task is "pick the best take of each beat across many clips," spawn a dedicated sub-agent with a brief shaped like this. The structure is load-bearing; the pitch-shape example is not.
 
 ```
@@ -314,7 +314,7 @@ OUTPUT (JSON array, no prose):
 
 Return the final EDL and a one-line total runtime check.
 ```
-```
+````
 
 **Inputs (per the brief, `SKILL.md:131-137`):** `takes_packed.md`, 2-sentence product/narrative context, speaker info, expected structure (archetype or invented), the pre-scan verbal-slips list, target runtime.
 
