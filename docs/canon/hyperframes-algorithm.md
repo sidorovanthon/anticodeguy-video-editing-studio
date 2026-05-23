@@ -1202,8 +1202,8 @@ Cross-reference of every Hard Rule and named convention to the step that introdu
 - **No `repeat: -1`** — calculate exact repeat count from composition duration. (`SKILL.md:303`). Steps 8, 15.
 - **Synchronous timeline construction** — never inside `async`/`await`, `setTimeout`, or Promises. (`SKILL.md:305`). Step 8.
 - **Never-do 1** — Forget `window.__timelines` registration. (`SKILL.md:309`). Step 8.
-- **Never-do 2** — Use video for audio. (`SKILL.md:309`). Step 13.
-- **Never-do 3** — Nest video inside a timed div. (`SKILL.md:310`). Step 13.
+- **Never-do 2** — Use video for audio. (`SKILL.md:310`). Step 13.
+- **Never-do 3** — Nest video inside a timed div. (`SKILL.md:311`). Step 13.
 - **Never-do 4** — Use `data-layer` or `data-end` instead of `data-track-index`/`data-duration`. (`SKILL.md:311`). Step 11.
 - **Never-do 5** — Animate video element dimensions. (`SKILL.md:312`). Step 13.
 - **Never-do 6** — Call play/pause/seek on media. (`SKILL.md:313`). Step 13.
