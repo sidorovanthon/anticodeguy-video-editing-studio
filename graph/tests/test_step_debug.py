@@ -323,6 +323,146 @@ def test_wrap_deterministic_node_fires_pre_and_post(enabled, monkeypatch):
     assert captured[0]["expected_schema"] is None
 
 
+# --------------------------------------------------------------------------- #
+# Phase A.5: factory + non-factory + gate-base coverage
+# --------------------------------------------------------------------------- #
+
+
+def test_deterministic_factory_wraps_under_flag(enabled, monkeypatch):
+    """Factory-built nodes (pickup, isolate_audio) inherit step-debug wrap."""
+    captured = _stub_interrupt(monkeypatch, "approved")
+
+    from edit_episode_graph.nodes._deterministic import deterministic_node
+
+    cmd_calls: list[list[str]] = []
+    parser_calls: list[str] = []
+
+    def cmd_factory(state):
+        argv = ["echo", "ok"]
+        cmd_calls.append(argv)
+        return argv
+
+    def parser(stdout: str) -> dict:
+        parser_calls.append(stdout)
+        # The fake interrupt above approves; the actual subprocess will run.
+        # The stub returns whatever the OS produced — only care that parser fires.
+        return {"factory_test": True}
+
+    node = deterministic_node(
+        name="factory_test_node",
+        cmd_factory=cmd_factory,
+        parser=parser,
+    )
+    result = node({"slug": "abc"})
+
+    # Two interrupts — pre + post — fired around the subprocess.
+    assert len(captured) == 2
+    assert captured[0]["phase"] == "pre"
+    assert captured[0]["node"] == "factory_test_node"
+    # Pre context carries the cmd preview the operator inspects.
+    pre_ctx_path = captured[0]["context_dump_path"]
+    assert pre_ctx_path is not None
+    pre_ctx = json.loads(Path(pre_ctx_path).read_text(encoding="utf-8"))
+    assert pre_ctx["context"]["cmd"] == "echo ok"
+    assert pre_ctx["context"]["slug"] == "abc"
+    assert captured[1]["phase"] == "post"
+    assert cmd_calls and parser_calls  # subprocess + parser actually ran
+    assert result.get("factory_test") is True
+
+
+def test_deterministic_factory_passthrough_when_disabled(disabled, monkeypatch):
+    """Factory must be a pure pass-through under the production default."""
+    import langgraph.types as lg_types
+
+    def boom(payload):  # pragma: no cover - guard
+        raise AssertionError("interrupt fired with HOMESTUDIO_STEP_DEBUG unset")
+
+    monkeypatch.setattr(lg_types, "interrupt", boom)
+
+    from edit_episode_graph.nodes._deterministic import deterministic_node
+
+    def cmd_factory(_state):
+        return ["echo", "noop"]
+
+    def parser(_stdout: str) -> dict:
+        return {"ok": True}
+
+    node = deterministic_node(
+        name="passthrough_test",
+        cmd_factory=cmd_factory,
+        parser=parser,
+    )
+    out = node({"slug": "x"})
+    assert out == {"ok": True}
+
+
+def test_gate_base_wraps_under_flag(enabled, monkeypatch):
+    """``Gate.__call__`` fires step-debug pre/post around the checks call."""
+    captured = _stub_interrupt(monkeypatch, "approved")
+
+    from edit_episode_graph.gates._base import Gate
+
+    class _DummyGate(Gate):
+        def __init__(self):
+            super().__init__(name="gate:dummy")
+
+        def checks(self, state):  # type: ignore[override]
+            return []
+
+    out = _DummyGate()({"slug": "abc"})
+    # Gate record landed on state.
+    assert isinstance(out, dict) and "gate_results" in out
+    record = out["gate_results"][0]
+    assert record["gate"] == "gate:dummy"
+    assert record["passed"] is True
+    # Two interrupts fired; the node name uses ``_`` (topology
+    # convention), not ``:`` (Gate.name convention).
+    assert len(captured) == 2
+    assert captured[0]["node"] == "gate_dummy"
+    assert captured[1]["node"] == "gate_dummy"
+    pre_ctx_path = captured[0]["context_dump_path"]
+    pre_ctx = json.loads(Path(pre_ctx_path).read_text(encoding="utf-8"))
+    assert pre_ctx["context"]["gate_name"] == "gate:dummy"
+
+
+def test_gate_base_passthrough_when_disabled(disabled, monkeypatch):
+    """Gate must be a pure pass-through under the production default."""
+    import langgraph.types as lg_types
+
+    def boom(payload):  # pragma: no cover - guard
+        raise AssertionError("interrupt fired with HOMESTUDIO_STEP_DEBUG unset")
+
+    monkeypatch.setattr(lg_types, "interrupt", boom)
+
+    from edit_episode_graph.gates._base import Gate
+
+    class _DummyGate(Gate):
+        def __init__(self):
+            super().__init__(name="gate:dummy_off")
+
+        def checks(self, state):  # type: ignore[override]
+            return ["bad thing"]
+
+    out = _DummyGate()({"slug": "x"})
+    record = out["gate_results"][0]
+    assert record["passed"] is False
+    assert record["violations"] == ["bad thing"]
+
+
+def test_halt_llm_boundary_wraps_under_flag(enabled, monkeypatch):
+    """Non-factory deterministic node — `halt_llm_boundary` — fires pre/post."""
+    captured = _stub_interrupt(monkeypatch, "approved")
+
+    from edit_episode_graph.nodes.halt_llm_boundary import halt_llm_boundary_node
+
+    out = halt_llm_boundary_node({"slug": "abc"})
+    assert isinstance(out, dict) and "notices" in out
+    assert len(captured) == 2
+    assert captured[0]["node"] == "halt_llm_boundary"
+    assert captured[0]["phase"] == "pre"
+    assert captured[1]["phase"] == "post"
+
+
 def test_abort_in_wrap_llm_node_call(enabled, monkeypatch):
     _stub_interrupt(monkeypatch, "abort")
 
