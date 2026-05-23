@@ -25,6 +25,26 @@ def _final_mp4_exists(state: dict) -> bool:
 
 
 def halt_llm_boundary_node(state):
+    # HOM-334 Phase A.5: step-debug pre/post interrupts around the halt
+    # notice synthesis. The pre payload lets the operator inspect which
+    # branch will fire; the post payload carries the rendered notice.
+    from .._step_debug import is_enabled as _sd_enabled, wrap_deterministic_node
+
+    if _sd_enabled():
+        return wrap_deterministic_node(
+            "halt_llm_boundary",
+            state=state,
+            context={
+                "slug": state.get("slug"),
+                "n_gate_results": len(state.get("gate_results") or []),
+                "n_errors": len(state.get("errors") or []),
+            },
+            inner=lambda: _halt_llm_boundary_body(state),
+        )
+    return _halt_llm_boundary_body(state)
+
+
+def _halt_llm_boundary_body(state):
     edit = state.get("edit") or {}
     edl_state = edit.get("edl") or {}
     render_state = edit.get("render") or {}

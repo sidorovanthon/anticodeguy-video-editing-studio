@@ -44,6 +44,21 @@ def _clean_strategy(persisted: dict) -> dict:
 
 
 def rehydrate_skip_phase3_node(state: dict) -> dict:
+    # HOM-334 Phase A.5: step-debug pre/post interrupts. No-op when
+    # ``HOMESTUDIO_STEP_DEBUG`` is unset.
+    from .._step_debug import is_enabled as _sd_enabled, wrap_deterministic_node
+
+    if _sd_enabled():
+        return wrap_deterministic_node(
+            "rehydrate_skip_phase3",
+            state=state,
+            context={"slug": state.get("slug")},
+            inner=lambda: _rehydrate_skip_phase3_body(state),
+        )
+    return _rehydrate_skip_phase3_body(state)
+
+
+def _rehydrate_skip_phase3_body(state: dict) -> dict:
     slug = state.get("slug")
     if not slug:
         # No slug means upstream pickup failed — let routing short-circuit

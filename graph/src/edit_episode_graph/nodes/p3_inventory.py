@@ -225,6 +225,25 @@ def _ensure_tools() -> str | None:
 
 
 def p3_inventory_node(state, *, runner=_run):
+    # HOM-334 Phase A.5: step-debug pre/post interrupts around the
+    # ElevenLabs Scribe + take-pack fan-out. No-op when
+    # ``HOMESTUDIO_STEP_DEBUG`` is unset. Note: Scribe is a PAID call —
+    # the pre-interrupt fires BEFORE dispatch so the operator can abort
+    # if needed (Phase A decision: pre-execution skip is not in scope;
+    # an operator who's exhausted credits can abort).
+    from .._step_debug import is_enabled as _sd_enabled, wrap_deterministic_node
+
+    if _sd_enabled():
+        return wrap_deterministic_node(
+            "p3_inventory",
+            state=state,
+            context={"slug": state.get("slug")},
+            inner=lambda: _p3_inventory_body(state, runner=runner),
+        )
+    return _p3_inventory_body(state, runner=runner)
+
+
+def _p3_inventory_body(state, *, runner=_run):
     slug = state.get("slug")
     if not slug:
         return _error("slug missing from state (pickup must run first)")

@@ -120,6 +120,22 @@ def p4_scaffold_node(state: dict) -> dict:
     from state, so a cache hit (which skips the subprocess) replays the
     same state update without depending on the file's disk presence.
     """
+    # HOM-334 Phase A.5: step-debug pre/post interrupts around the
+    # ``npx hyperframes init`` subprocess + state hoist. No-op when
+    # ``HOMESTUDIO_STEP_DEBUG`` is unset.
+    from .._step_debug import is_enabled as _sd_enabled, wrap_deterministic_node
+
+    if _sd_enabled():
+        return wrap_deterministic_node(
+            "p4_scaffold",
+            state=state,
+            context={"slug": state.get("slug")},
+            inner=lambda: _p4_scaffold_body(state),
+        )
+    return _p4_scaffold_body(state)
+
+
+def _p4_scaffold_body(state: dict) -> dict:
     cmd = _cmd(state)
     result = subprocess.run(
         cmd,
