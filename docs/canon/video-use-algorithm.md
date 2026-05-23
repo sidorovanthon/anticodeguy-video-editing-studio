@@ -228,6 +228,8 @@ From Helpers:
 
 - "Do not use a fixed checklist — the right questions are different every time." (`SKILL.md:87`)
 - Principle 4: "Generalize. Do not assume what kind of video this is. Look at the material, ask the user, then edit." (`SKILL.md:13`)
+- Delivery-format default — "Match the source unless the user asked for something specific." (`SKILL.md:264`)
+- Delivery-format prompt — "Worth asking the user which delivery format matters." (`SKILL.md:266`)
 
 **Quality checks:** None canonically prescribed.
 
@@ -417,20 +419,35 @@ One sub-agent = one file (unique filenames, parallel agents don't overwrite each
 
 **Inputs:** the strategy's animation plan, agreed palette/font/visual language from conversation (`SKILL.md:199`), per-slot specs.
 
-**Outputs / artifacts:** one `<edit>/animations/slot_<id>/render.mp4` per slot (`SKILL.md:50`, `SKILL.md:252`). Animation source + reasoning live in the same slot directory (`SKILL.md:50`).
+**Outputs / artifacts:** one `<edit>/animations/slot_<id>/render.mp4` per slot (`SKILL.md:50`, `SKILL.md:252`). Animation source + reasoning live in the same slot directory (`SKILL.md:50`). For HyperFrames slots the final render alpha branches per slot:
+
+- Opaque overlay: `npx --yes hyperframes render . -o render.mp4` (`SKILL.md:210`).
+- Alpha-required overlay: `npx --yes hyperframes render . --format webm -o render.webm` (`SKILL.md:210`).
 
 **Conventions / hard rules at this step:**
 
 - Hard Rule 10: "Parallel sub-agents for multiple animations. Never sequential. Spawn N at once via the `Agent` tool; total wall time ≈ slowest one." (`SKILL.md:31`)
 - "Get the palette, font, and visual language from the conversation — never assume a default. If the user hasn't told you, propose a palette in the strategy phase and wait for confirmation before building anything." (`SKILL.md:199`)
 - Tool-options rule: "Pick the engine per animation slot. Do not default to Remotion just because the animation is web-adjacent." (`SKILL.md:203`)
+- Engine selection criteria — four canon bullets (verbatim, `SKILL.md:205-208`):
+  - **HyperFrames** — "Browser-native HTML/CSS/GSAP video compositions: product UI motion, website-to-video or mockup-to-video captures, kinetic typography, landing-page/storyboard promos, data-driven UI states, transparent WebM overlays, and clips that need deterministic frame capture plus HyperFrames lint/validate/render checks. Best when the animation should be authored and verified like a web composition instead of a React component tree." (`SKILL.md:205`)
+  - **Remotion** — "React/CSS compositions with component state, reusable React primitives, or an existing Remotion brand system. Best when the user specifically asks for React/Remotion or when React composition is the simpler authoring model." (`SKILL.md:206`)
+  - **Manim** — "formal diagrams, state machines, equation derivations, graph morphs. Read `skills/manim-video/SKILL.md` and its references for depth." (`SKILL.md:207`)
+  - **PIL + PNG sequence + ffmpeg** — "simple overlay cards: counters, typewriter text, single bar reveals, progressive draws. Fast to iterate, any aesthetic you want. The launch video used this." (`SKILL.md:208`)
+- HyperFrames slot setup (verbatim, `SKILL.md:210`): "scaffold the slot inside `edit/animations/slot_<id>/` with `npx --yes hyperframes init . --example blank --non-interactive --skip-skills`, build the HTML composition there, run the HyperFrames checks that fit the slot (`lint`, `validate`, and a draft render when practical), then produce the final overlay video with `npx --yes hyperframes render . -o render.mp4` or `--format webm -o render.webm` when alpha is required. Point the EDL overlay `file` at the actual rendered path."
+- Remotion slot setup (verbatim, `SKILL.md:212`): "keep the Remotion project isolated inside the same slot directory, scaffold with `npx create-video@latest` or install Remotion locally there, render the composition to `render.mp4` with the project-local `remotion render` command, and verify duration and dimensions with `ffprobe`."
+- Hybrid invention clause: "None is mandatory. Invent hybrids if useful (e.g., PIL background with a HyperFrames or Remotion layer on top)." (`SKILL.md:214`)
 - Easing rule: "Easing (universal — never `linear`, it looks robotic)" with `ease_out_cubic` for single reveals, `ease_in_out_cubic` for continuous draws (`SKILL.md:226-235`).
 - Duration thumb-rules (sync-to-narration vs beat-synced vs over voiceover), "Hold the final frame ≥ 1s before the cut (universal)", "Over voiceover: total duration ≥ narration_length + 1s (universal)", "Never parallel-reveal independent elements" (`SKILL.md:216-222`).
 - Animation payoff timing: "get the payoff word's timestamp. Start the overlay `reveal_duration` seconds earlier so the landing frame coincides with the spoken payoff word." (`SKILL.md:224`)
 - Typing text anchor trick: "center on the FULL string's width, not the partial-string width — otherwise text slides left during reveal." (`SKILL.md:237`)
 - "One sub-agent = one file (unique filenames, parallel agents don't overwrite each other)." (`SKILL.md:262`)
 
-**Quality checks:** brief item 9 — "Deliverable checklist (script, render, verify duration via ffprobe, report)" (`SKILL.md:259`).
+**Quality checks:**
+
+- Universal sub-agent brief item 9 — "Deliverable checklist (script, render, verify duration via ffprobe, report)" (`SKILL.md:259`).
+- HyperFrames slot Quality Check — "run the HyperFrames checks that fit the slot (`lint`, `validate`, and a draft render when practical)" before producing the final overlay (`SKILL.md:210`).
+- Remotion slot Quality Check — "verify duration and dimensions with `ffprobe`" after `remotion render` (`SKILL.md:212`).
 
 **Sub-agent dispatches:**
 
@@ -523,7 +540,18 @@ From Helpers:
 - Hard Rule 3: "30ms audio fades at every segment boundary (`afade=t=in:st=0:d=0.03,afade=t=out:st={dur-0.03}:d=0.03`). Otherwise audible pops at every cut." (`SKILL.md:24`)
 - Hard Rule 4: "Overlays use `setpts=PTS-STARTPTS+T/TB` to shift the overlay's frame 0 to its window start. Otherwise you see the middle of the animation during the overlay window." (`SKILL.md:25`)
 - Hard Rule 5: "Master SRT uses output-timeline offsets: `output_time = word.start - segment_start + segment_offset`. Otherwise captions misalign after segment concat." (`SKILL.md:26`)
-- Subtitle force_style for `bold-overlay` ships in `render.py` as `SUB_FORCE_STYLE` (`SKILL.md:184`).
+- Subtitle reasoning axes (canon): "Subtitles have three dimensions worth reasoning about: **chunking** (1/2/3/sentence per line), **case** (UPPER/Title/Natural), and **placement** (margin from bottom). The right combo depends on content." (`SKILL.md:180`)
+- `bold-overlay` worked style — "short-form tech launch, fast-paced social. 2-word chunks, UPPERCASE, break on punctuation, Helvetica 18 Bold, white-on-outline, `MarginV=35`. `render.py` ships with this as `SUB_FORCE_STYLE`." (`SKILL.md:184`) Verbatim ASS force_style block:
+
+  ```
+  FontName=Helvetica,FontSize=18,Bold=1,
+  PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BackColour=&H00000000,
+  BorderStyle=1,Outline=2,Shadow=0,
+  Alignment=2,MarginV=35
+  ```
+  (`SKILL.md:186-191`)
+- `natural-sentence` alternative style (if invented): "narrative, documentary, education. 4–7 word chunks, sentence case, break on natural pauses, `MarginV=60–80`, larger font for readability, slightly wider max-width. No shipped force_style — design one if you need it." (`SKILL.md:193`)
+- "Invent a third style if neither fits. Hard rules: subtitles LAST (Rule 1), output-timeline offsets (Rule 5)." (`SKILL.md:194-195`)
 - Output spec defaults: `render.py` defaults the scale to 1080p from any source (`SKILL.md:266`).
 
 **Quality checks:** none additional beyond `render.py`'s own execution — explicit verification happens at Step 14 (Self-eval).

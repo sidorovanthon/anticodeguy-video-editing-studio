@@ -126,19 +126,76 @@ Always run on every composition (except single-scene pieces and trivial edits). 
 Read [references/prompt-expansion.md](references/prompt-expansion.md) for the full process and output format.
 ```
 
-**Inputs:** the user's intent (from prompt + Discovery answers), `design.md` and/or `house-style.md` (`SKILL.md:41`).
+**Inputs:** the user's intent (from prompt + Discovery answers), plus four prerequisite reads required before generating (`references/prompt-expansion.md:9-16`):
 
-**Outputs / artifacts:** "a consistent intermediate that every downstream agent reads the same way" — full process and output format are defined in `references/prompt-expansion.md` (`SKILL.md:41-43`).
+- **Pre-action 1** — read `DESIGN.md` (if it exists): "extract brand colors, fonts, mood, and constraints. The expansion cites these exact values (hex codes, font names); it does not invent new ones." (`prompt-expansion.md:11`)
+- **Pre-action 2** — read `beat-direction.md`: "per-beat planning format (concept, mood, choreography verbs, transitions, depth layers, rhythm). The expansion outputs each scene using this format." (`prompt-expansion.md:12`)
+- **Pre-action 3** — read `video-composition.md`: "video-medium rules for density, scale, and color presence. The expansion applies these automatically." (`prompt-expansion.md:13`)
+- **Pre-action 4** — read `../house-style.md`: "its rules for Background Layer (2-5 decoratives), Color, Motion, Typography apply to every scene. The expansion writes output that conforms to them." (`prompt-expansion.md:14`)
+
+If `DESIGN.md` doesn't exist yet, run Step 1 (Design system) first — "Expansion without a design context produces generic scene breakdowns that later agents ignore." (`prompt-expansion.md:16`)
+
+**Outputs / artifacts:** the expanded prompt is written to `.hyperframes/expanded-prompt.md` in the project directory — the canonical output path (`prompt-expansion.md:58-60`): "Write the expanded prompt to `.hyperframes/expanded-prompt.md` in the project directory. Do NOT dump it into the chat — it will be hundreds of lines." The file contains six required sections (`prompt-expansion.md:38-56`):
+
+- **Output section 1 — Title + style block.** "cite design.md's exact hex values, font names, and mood. Do NOT invent a palette — quote what the design provides." (`prompt-expansion.md:41`)
+- **Output section 2 — Rhythm declaration.** "name the scene rhythm before detailing any scene. Example: `hook-PUNCH-breathe-CTA` or `slow-build-BUILD-PEAK-breathe-CTA`. Derive the rhythm from the brand and the storyboard's emotional arc — see [beat-direction.md] for the considerations that drive this decision." (`prompt-expansion.md:43`)
+- **Output section 3 — Global rules.** "parallax layers, micro-motion requirements, transition style, primary + accent transitions. Match energy to mood (calm → slow eases, high → snappy eases)." (`prompt-expansion.md:45`)
+- **Output section 4 — Per-scene beats in beat-direction format.** Each scene includes (`prompt-expansion.md:48-52`):
+  - **Concept** — "the big idea in 2-3 sentences. What visual WORLD? What metaphor? What should the viewer FEEL?"
+  - **Mood direction** — "cultural/design references, not hex codes. (\"Bauhaus color studies\", \"cinematic title sequence\", \"editorial calm\")"
+  - **Depth layers** — "BG (2-5 decoratives with ambient motion), MG (content), FG (accents, structural elements, micro-details). 8-10 total elements per scene per video-composition.md."
+  - **Animation choreography** — "specific verbs per element. High: SLAMS, CRASHES. Medium: CASCADE, SLIDES. Low: floats, types on, counts up. Every element gets a verb. If you can't name the verb, the element is not yet designed."
+  - **Transition out** — "shader or CSS, with specific type and parameters. Not \"crossfade\" but \"blur crossfade, 0.4s, power2.inOut.\""
+- **Output section 5 — Recurring motifs.** "visual threads across scenes from the brand palette." (`prompt-expansion.md:54`)
+- **Output section 6 — Negative prompt.** "what to avoid, informed by design.md's constraints if present." (`prompt-expansion.md:56`)
 
 **Conventions / hard rules at this step:**
 
 - "Always run on every composition (except single-scene pieces and trivial edits)." (`SKILL.md:41`)
+- "Do not skip. Do not pass through. Single-scene compositions and trivial edits are the only exceptions." (`prompt-expansion.md:35`)
+- "The expansion is never pass-through. Every user prompt — no matter how detailed — is a _seed_." (`prompt-expansion.md:20`)
+- Canonical output path is `.hyperframes/expanded-prompt.md` — "Do NOT dump it into the chat — it will be hundreds of lines." (`prompt-expansion.md:60`)
 
-**Quality checks:** None canonically prescribed at this step.
+**Quality checks:** None mechanical; verification is the user-approval gate at Step 2b.
 
 **Sub-agent dispatches:** None explicitly named in SKILL.md at this step; the expansion's role is to give downstream agents a shared intermediate (`SKILL.md:41`).
 
-**Transition rule to next step:** the expanded intermediate exists; proceed to Step 3.
+**Transition rule to next step:** the expanded intermediate exists on disk at `.hyperframes/expanded-prompt.md`; proceed to Step 2b (await approval).
+
+---
+
+## Step 2b: Await prompt-expansion approval
+
+**Canon source:** `references/prompt-expansion.md:58-68`
+
+**Verbatim canon text:**
+
+```
+Write the expanded prompt to `.hyperframes/expanded-prompt.md` in the project directory. Do NOT dump it into the chat — it will be hundreds of lines.
+
+Tell the user:
+
+> "I've expanded your prompt into a full production breakdown. Review it here: `.hyperframes/expanded-prompt.md`
+>
+> It has [N] scenes across [duration] seconds with specific visual elements, transitions, and pacing. Edit anything you want, then let me know when you're ready to proceed."
+
+Only move to construction after the user approves or says to continue.
+```
+
+**Inputs:** the just-written `.hyperframes/expanded-prompt.md` from Step 2.
+
+**Outputs / artifacts:** an explicit user approval (or edits + approval). No new file produced; the gate is a conversational checkpoint.
+
+**Conventions / hard rules at this step:**
+
+- The verbatim approval message above is the canonical hand-off — quote `.hyperframes/expanded-prompt.md` by path, state `[N] scenes` and `[duration] seconds`, invite edits (`prompt-expansion.md:64-66`).
+- "Only move to construction after the user approves or says to continue." (`prompt-expansion.md:68`) — WAIT for approval; do not proceed.
+
+**Quality checks:** the user's review serves as the check.
+
+**Sub-agent dispatches:** None.
+
+**Transition rule to next step:** user approves (or says continue); proceed to Step 3.
 
 ---
 
@@ -290,6 +347,10 @@ Position every element where it should be at its **most visible moment** — the
 - "The CSS position is the ground truth; the tween describes the journey to get there." (`SKILL.md:74`)
 - "If element A exits before element B enters in the same area, both should have correct CSS positions for their respective hero frames." (`SKILL.md:128`)
 - Intentional overlap is layered effects (glow, shadow, background patterns) and z-stacked designs; the layout step catches unintentional overlap (`SKILL.md:132`).
+- **Scene structure: build, breathe, resolve** (`motion-principles.md:39-46`): "Every scene has three phases. The most common failure is dumping everything into the build and leaving nothing for the other two."
+  - **Build (0–30%)** — "elements enter, staggered. Not all at once." (`motion-principles.md:43`)
+  - **Breathe (30–70%)** — "content visible, alive with one ambient motion. The viewer reads, registers, settles." (`motion-principles.md:44`)
+  - **Resolve (70–100%)** — "exit or decisive end. Exits are faster than entrances (see Asymmetry below)." (`motion-principles.md:45`)
 
 **Quality checks:** None until the inspect/validate phase (Steps 17-19); the layout-step rationale is that overlap is invisible until render unless caught here (`SKILL.md:68`).
 
@@ -344,6 +405,32 @@ tl.from(".logo", { scale: 0.8, opacity: 0, duration: 0.4, ease: "power2.out" }, 
 - "Never animate the same property on the same element from multiple timelines simultaneously." (`SKILL.md:301`)
 - No `repeat: -1`: "Infinite-repeat timelines break the capture engine. Calculate the exact repeat count from composition duration: `repeat: Math.ceil(duration / cycleDuration) - 1`." (`SKILL.md:303`)
 - Synchronous timeline construction: "Never build timelines inside `async`/`await`, `setTimeout`, or Promises. The capture engine reads `window.__timelines` synchronously after page load." (`SKILL.md:305`)
+- **Load-Bearing GSAP Rule 1 — No iframes for captured content** (`motion-principles.md:93`): "Iframes do not seek deterministically with the timeline — the capture engine cannot scrub inside them, so they appear frozen (or blank) in the rendered output. If the source you're stylizing is a live web app, use the screenshots from `capture/` as stacked panels or layered images, not live embeds."
+- **Load-Bearing GSAP Rule 2 — Never stack two transform tweens on the same element** (`motion-principles.md:95`): "A common failure: a `y` entrance plus a `scale` Ken Burns on the same `<img>`. The second tween's `immediateRender: true` writes the element's initial state at construction time, overwriting whatever the first tween set — leaving the element invisible or offscreen with no lint warning. A secondary mechanism: `tl.from()` resets to its declared 'from' state when the playhead is seeked past the timeline's end." Fix by combining into one `tl.fromTo()` or splitting across parent + child (`motion-principles.md:97-121`).
+- **Load-Bearing GSAP Rule 3 — Prefer `tl.fromTo()` over `tl.from()` inside `.clip` scenes** (`motion-principles.md:123`): "`gsap.from()` sets `immediateRender: true` by default, which writes the 'from' state at timeline construction — before the `.clip` scene's `data-start` is active. Elements can flash visible, start from the wrong position, or skip their entrance entirely when the scene is seeked non-linearly (which the capture engine does). Explicit `fromTo` makes the state at every timeline position deterministic."
+
+  ```js
+  // BRITTLE: immediateRender interacts badly with scene boundaries
+  tl.from(el, { opacity: 0, y: 50, duration: 0.6 }, t);
+
+  // DETERMINISTIC: state is defined at both ends, no immediateRender surprise
+  tl.fromTo(el, { opacity: 0, y: 50 }, { opacity: 1, y: 0, duration: 0.6 }, t);
+  ```
+- **Load-Bearing GSAP Rule 4 — Ambient pulses must attach to the seekable `tl`, never bare `gsap.to()`** (`motion-principles.md:133`): "Auras, shimmers, gentle float loops, logo breathing — all of these must be added to the scene's timeline, not fired standalone. Standalone tweens run on wallclock time and do not scrub with the capture engine, so the effect is absent in the rendered video even though it looks correct in the studio preview."
+
+  ```js
+  // BAD: lives outside the timeline, never renders in capture
+  gsap.to(".aura", { scale: 1.08, yoyo: true, repeat: 5, duration: 1.2 });
+
+  // GOOD: seekable, deterministic, renders
+  tl.to(".aura", { scale: 1.08, yoyo: true, repeat: 5, duration: 1.2 }, 0);
+  ```
+- **Hard-kill at every scene boundary** (`motion-principles.md:143`): "The same hard-kill pattern from `captions.md` generalizes to all elements with exit animations: any element whose visibility changes at a beat boundary needs a deterministic `tl.set()` kill after its fade, because later tweens on the same element (or `immediateRender` from a sibling tween) can resurrect it."
+
+  ```js
+  tl.to(el, { opacity: 0, duration: 0.3 }, beatEnd);
+  tl.set(el, { opacity: 0, visibility: "hidden" }, beatEnd + 0.3); // deterministic kill
+  ```
 
 **Quality checks:** Animation Map run later (Step 21) verifies choreography.
 
@@ -426,12 +513,93 @@ From the references list:
 - Rule 1 — ALWAYS use transitions between scenes (`SKILL.md:325`).
 - "Always read for multi-scene compositions" applies to `references/transitions.md` (`SKILL.md:487`).
 - Shader transitions live in `@hyperframes/shader-transitions` package source, not skill files (`SKILL.md:489`).
+- **Energy → Transition character calibration — three ranges** (`transitions.md:18-22`):
+  - **Soft/organic character** — "transitions that breathe, dissolve, or drift. Nothing sharp, mechanical, or percussive. Duration 0.5–0.8s, smooth easing curves." (`transitions.md:18`)
+  - **Directional/purposeful character** — "transitions that move content decisively. Clear direction, readable momentum. Duration 0.3–0.5s, clean deceleration." (`transitions.md:20`)
+  - **Percussive/instant character** — "transitions that hit like a cut. Immediate, almost hard-cut energy. Duration 0.15–0.3s, aggressive or near-instant easing." (`transitions.md:22`)
+
+  "Pick ONE character that defines the video's primary transitions, then use 1–2 contrasting moments as intentional accents." (`transitions.md:24`)
+
+- **Mood → Motion quality — nine moods** (`transitions.md:30-40`). Verbatim table:
+
+  | Mood                     | Motion quality that fits                                                                    | Why                                                                                 |
+  | ------------------------ | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+  | **Warm / inviting**      | Soft edges, dissolving, color-temperature washes — nothing sharp, mechanical, or percussive | Warmth reads as continuity and flow; hard cuts or compression feel cold             |
+  | **Cold / clinical**      | Mechanical transformation — compression, slicing, gridding, precision                       | The content appears to be processed or structured, reinforcing a systematic quality |
+  | **Editorial / magazine** | Clean directional movement — like turning a page                                            | Feels like content is being browsed or curated, not revealed                        |
+  | **Tech / futuristic**    | Data-like fragmentation, digital displacement, scan artifacts                               | Transition feels computational rather than physical                                 |
+  | **Tense / edgy**         | Instability, distortion, displacement — something slightly wrong about the image            | Introduces friction where smooth transitions would release tension                  |
+  | **Playful / fun**        | Overshoot, expansion, rotation — motion with personality and bounce                         | Transitions that feel like objects rather than effects                              |
+  | **Dramatic / cinematic** | Scale, weight, light extremes — the cut is an event, not a bridge                           | Every shader and every hard cut carries narrative gravity                           |
+  | **Premium / luxury**     | Restraint — transitions that are barely visible, or invisible                               | Luxury communicates through what it withholds                                       |
+  | **Retro / analog**       | Organic imperfection — light bleed, scan lines, color wash                                  | Physical film artifacts; imperfection as authenticity                               |
+
+- **Narrative Position — six named positions** (`transitions.md:48-53`):
+  - **Opening** — "establishes the motion language for the entire video. Make a deliberate choice; whatever you pick here sets the viewer's expectation for everything that follows." (`transitions.md:48`)
+  - **Between related points** — "should be almost invisible. The content is continuing; the transition shouldn't draw attention to itself. Consistency matters more than distinctiveness here." (`transitions.md:49`)
+  - **Topic change** — "needs enough contrast from your primary that it signals 'something different is starting.' The contrast is in motion character, not just duration." (`transitions.md:50`)
+  - **Climax / hero reveal** — "this is the moment the video has been building to. The transition should feel earned by what came before. 'Use your boldest transition here' is a default, not a rule — the climax of a restrained editorial piece might be a hard cut." (`transitions.md:51`)
+  - **Wind-down** — "returns to a motion character that allows the viewer to exhale. Matches the opening in tone, not necessarily in technique." (`transitions.md:52`)
+  - **Outro** — "no new energy. Slowest and simplest in the video. Closure." (`transitions.md:53`)
+- **Blur and motion intensity — three calibration ranges** (`transitions.md:62-66`):
+  - Soft/organic: blur 20–30px, duration 0.8–1.2s, hold 0.3–0.5s (`transitions.md:64`).
+  - Directional/purposeful: blur 8–15px, duration 0.4–0.6s, hold 0.1–0.2s (`transitions.md:65`).
+  - Percussive/instant: blur 3–6px, duration 0.2–0.3s, no hold (`transitions.md:66`).
+- **Shader-Compatible CSS Rules — six** (`transitions.md:124-134`, apply only to shader-transition compositions):
+  1. "No `transparent` keyword in gradients. Canvas interpolates `transparent` as `rgba(0,0,0,0)` (black at zero alpha), creating dark fringes. Always use the target color at zero alpha: `rgba(200,117,51,0)` not `transparent`." (`transitions.md:127`)
+  2. "No gradient backgrounds on elements thinner than 4px. Canvas can't match CSS gradient rendering on 1-2px elements. Use solid `background-color` on thin accent lines." (`transitions.md:128`)
+  3. "No CSS variables (`var()`) on elements visible during capture. html2canvas doesn't reliably resolve custom properties. Use literal color values in inline styles." (`transitions.md:129`)
+  4. "Mark uncapturable decorative elements with `data-no-capture`. The capture function skips these. They're present on the live DOM but absent from the shader texture. Use for elements that can't follow the rules above." (`transitions.md:130`)
+  5. "No gradient opacity below 0.15. Gradient elements below 10% opacity render differently in canvas vs CSS. Increase to 0.15+ or use a solid color at equivalent brightness." (`transitions.md:131`)
+  6. "Every `.scene` div must have explicit `background-color`, AND pass the same color as `bgColor` in the `init()` config. The package captures scene elements via html2canvas. Both the CSS `background-color` on `.scene` and the `bgColor` config must match. Without either, the texture renders as black." (`transitions.md:132`)
+- **Velocity-Matched Transitions** (`beat-direction.md:169-171`): "Exit the outgoing beat with an accelerating ease (power2.in or power3.in) plus a blur ramp. Enter the incoming beat with a decelerating ease (power2.out or power3.out) plus blur clear. The fastest point of both easing curves meets at the cut — the viewer perceives continuous camera motion, not two discrete animations. Match exit velocity to entry velocity within ~5% tolerance."
+- **Catalog Hard Rule — Scene visibility** (`catalog.md:9`): "Scene 1 visible by default (no `opacity: 0`). Scenes 2+ have `opacity: 0` on the CONTAINER div. GSAP reveals them. No visibility shim (`timedEls`)."
+- **Catalog Hard Rule — Fonts** (`catalog.md:11`): "Just write the `font-family` you want — the compiler embeds supported fonts automatically via `@font-face` with inline data URIs. No need for `<link>` tags or `@import`. Works in all contexts including sandboxed iframes."
+- **Catalog Hard Rule — Element structure** (`catalog.md:13`): "No `class=\"clip\"` on scene divs in standalone compositions. Only the root div gets `data-composition-id`/`data-start`/`data-duration`."
+- **Catalog Hard Rule — Overlay elements** (`catalog.md:15`): "Staggered blocks = full-screen 1920x1080, NOT thin strips. Glitch RGB overlays = normal blending at 35% opacity, NOT `mix-blend-mode: multiply` (invisible on dark backgrounds). Light leak overlays = larger than the frame (2400px+), never a visible shape. Overexposure = use `filter: brightness()` on the scene, not just a white overlay."
+- **Catalog Hard Rule — VHS tape** (`catalog.md:17`): "Clone actual scene content with `cloneNode(true)`, NOT colored bars. Each strip: wider than frame (2020px at left:-50px). Red+blue chromatic copies at z-index above main strip. Seeded PRNG for deterministic random offsets."
+- **Catalog Hard Rule — Z-index** (`catalog.md:19`): "Gravity drop, zoom out, diagonal split need outgoing scene ON TOP (`zIndex: 10`) so it exits while revealing the new scene behind (`zIndex: 1`)."
+- **Catalog Hard Rule — Page burn** (`catalog.md:21`): "Content burns with the page — no falling debris. Hide scene1 via `tl.set` at burn end, NEVER `onComplete` (not reversible). `onUpdate` must restore `clipPath: \"none\"` when `wp <= 0` for rewind support. Incoming scene fades from black at 90% through burn."
+- **Catalog Hard Rule — Clock wipe** (`catalog.md:23`): "9-point polygon with intermediate edge positions. Step through 4 quadrants with separate tweens."
+- **Catalog Hard Rule — Grid dissolve** (`catalog.md:25`): "Cycle 5 palette colors per cell, not monochrome."
+- **Catalog Hard Rule — Blinds count by energy** (`catalog.md:27`): "Calm: 4h/6v. Medium: 6-8h/8v. High: 12-16h/16v."
+- **Catalog Hard Rule — Don't use** (`catalog.md:29`): "Star iris (polygon interpolation broken), tilt-shift (no selective CSS blur), lens flare (visible shape, not optical), hinge/door (distorts too fast)."
 
 **Quality checks:** None at this step; Output Checklist (Step 16) and Animation Map (Step 21) verify downstream.
 
 **Sub-agent dispatches:** None.
 
-**Transition rule to next step:** all scene boundaries have transitions; proceed to data attributes and timeline-contract authoring details.
+**Transition rule to next step:** all scene boundaries have transitions; proceed to the visual-identity HARD-GATE.
+
+---
+
+## Step 10b: Verify visual identity (HARD-GATE)
+
+**Canon source:** `SKILL.md:60-62`
+
+**Verbatim canon text:**
+
+```
+<HARD-GATE>
+Before writing ANY composition HTML — verify you have a visual identity from Step 1. If you're reaching for `#333`, `#3b82f6`, or `Roboto`, you skipped it.
+</HARD-GATE>
+```
+
+**Inputs:** the outputs of Step 1 / Step 1b (extracted brand values: colors, fonts, mood, constraints) and the planning artifacts from Steps 3-10.
+
+**Outputs / artifacts:** an internal pass — confirmation that a concrete brand identity exists and will be used in the HTML about to be written; OR a halt with a return to Step 1/1b if the check fails.
+
+**Conventions / hard rules at this step:**
+
+- This gate fires "Before writing ANY composition HTML" — it is the last checkpoint before Step 11 (`SKILL.md:61`).
+- Three canonical failure-tells indicating Step 1 was skipped (verbatim): `#333`, `#3b82f6`, `Roboto` (`SKILL.md:61`). Reaching for any of these means halt and return to Step 1/1b.
+- The gate references "a visual identity from Step 1" — i.e., the design.md extraction (Step 1) or the no-design.md three-way choice (Step 1b).
+
+**Quality checks:** the self-check is mechanical — scan the planned colors, the planned `font-family`, and any inline style values against the three failure-tells; if any match, the gate fails.
+
+**Sub-agent dispatches:** None.
+
+**Transition rule to next step:** gate passes (visual identity confirmed, no failure-tells present); proceed to Step 11.
 
 ---
 
@@ -676,7 +844,24 @@ Video must be `muted playsinline`. Audio is always a separate `<audio>` element:
 
 **Outputs / artifacts:** edits that bring every Non-Negotiable into compliance — no `Math.random()`/`Date.now()`, only visual GSAP properties, no `repeat: -1`, synchronous timeline construction, no `<br>` in content text (except permitted display-title exception), etc.
 
-**Conventions / hard rules at this step:** every bullet in the "Rules (Non-Negotiable)" section and every "Never do" item. Each is a hard rule introduced by this section.
+**Conventions / hard rules at this step:** sixteen named non-negotiables — five Rules + eleven Never-do items. Each is enumerated below with its canon anchor (see also the Conventions index "Rules (Non-Negotiable)" appendix entry that lists every one with the same anchors).
+
+- **Rule 1 — Deterministic** (`SKILL.md:297`). No `Math.random()`, `Date.now()`, or time-based logic. Use a seeded PRNG if you need pseudo-random values (e.g. mulberry32).
+- **Rule 2 — GSAP visual-properties-only** (`SKILL.md:299`). Only animate visual properties (`opacity`, `x`, `y`, `scale`, `rotation`, `color`, `backgroundColor`, `borderRadius`, transforms). Do NOT animate `visibility`, `display`, or call `video.play()`/`audio.play()`.
+- **Rule 3 — Animation conflicts** (`SKILL.md:301`). Never animate the same property on the same element from multiple timelines simultaneously.
+- **Rule 4 — No `repeat: -1`** (`SKILL.md:303`). Infinite-repeat timelines break the capture engine. Calculate the exact repeat count from composition duration: `repeat: Math.ceil(duration / cycleDuration) - 1`.
+- **Rule 5 — Synchronous timeline construction** (`SKILL.md:305`). Never build timelines inside `async`/`await`, `setTimeout`, or Promises. The capture engine reads `window.__timelines` synchronously after page load.
+- **Never-do 1** (`SKILL.md:309`). Forget `window.__timelines` registration.
+- **Never-do 2** (`SKILL.md:310`). Use video for audio — always muted video + separate `<audio>`.
+- **Never-do 3** (`SKILL.md:311`). Nest video inside a timed div — use a non-timed wrapper.
+- **Never-do 4** (`SKILL.md:312`). Use `data-layer` (use `data-track-index`) or `data-end` (use `data-duration`).
+- **Never-do 5** (`SKILL.md:313`). Animate video element dimensions — animate a wrapper div.
+- **Never-do 6** (`SKILL.md:314`). Call play/pause/seek on media — framework owns playback.
+- **Never-do 7** (`SKILL.md:315`). Create a top-level container without `data-composition-id`.
+- **Never-do 8** (`SKILL.md:316`). Use `repeat: -1` on any timeline or tween — always finite repeats.
+- **Never-do 9** (`SKILL.md:317`). Build timelines asynchronously (inside `async`, `setTimeout`, `Promise`).
+- **Never-do 10** (`SKILL.md:318`). Use `gsap.set()` on clip elements from later scenes — they don't exist in the DOM at page load. Use `tl.set(selector, vars, timePosition)` inside the timeline at or after the clip's `data-start` time instead.
+- **Never-do 11** (`SKILL.md:319`). Use `<br>` in content text — forced line breaks don't account for actual rendered font width. Exception: short display titles where each word is deliberately on its own line.
 
 **Quality checks:** `lint` catches many of these mechanically at Step 17.
 
@@ -1000,7 +1185,7 @@ Cross-reference of every Hard Rule and named convention to the step that introdu
 
 ### HARD-GATE (`SKILL.md:60-62`)
 
-- **Visual-identity HARD-GATE** — "Before writing ANY composition HTML — verify you have a visual identity from Step 1. If you're reaching for `#333`, `#3b82f6`, or `Roboto`, you skipped it." (`SKILL.md:61`). Applied at Step 1/1b → Step 11 boundary.
+- **Visual-identity HARD-GATE** — "Before writing ANY composition HTML — verify you have a visual identity from Step 1. If you're reaching for `#333`, `#3b82f6`, or `Roboto`, you skipped it." (`SKILL.md:61`). Discrete Step 10b — fires after planning is complete (Steps 3-10) and before Step 11 (Write composition HTML).
 
 ### Scene Transitions (Non-Negotiable) (`SKILL.md:321-348`)
 
@@ -1017,8 +1202,8 @@ Cross-reference of every Hard Rule and named convention to the step that introdu
 - **No `repeat: -1`** — calculate exact repeat count from composition duration. (`SKILL.md:303`). Steps 8, 15.
 - **Synchronous timeline construction** — never inside `async`/`await`, `setTimeout`, or Promises. (`SKILL.md:305`). Step 8.
 - **Never-do 1** — Forget `window.__timelines` registration. (`SKILL.md:309`). Step 8.
-- **Never-do 2** — Use video for audio. (`SKILL.md:309`). Step 13.
-- **Never-do 3** — Nest video inside a timed div. (`SKILL.md:310`). Step 13.
+- **Never-do 2** — Use video for audio. (`SKILL.md:310`). Step 13.
+- **Never-do 3** — Nest video inside a timed div. (`SKILL.md:311`). Step 13.
 - **Never-do 4** — Use `data-layer` or `data-end` instead of `data-track-index`/`data-duration`. (`SKILL.md:311`). Step 11.
 - **Never-do 5** — Animate video element dimensions. (`SKILL.md:312`). Step 13.
 - **Never-do 6** — Call play/pause/seek on media. (`SKILL.md:313`). Step 13.
@@ -1098,6 +1283,58 @@ Cross-reference of every Hard Rule and named convention to the step that introdu
 - House-style-only path: Palette consistency + No lazy defaults (`SKILL.md:439-441`). Step 20.
 - Animation Map flags: `offscreen`, `collision`, `invisible`, `paced-fast`, `paced-slow` (`SKILL.md:459`). Step 21.
 - Animation Map skip rule for small edits (`SKILL.md:463`). Step 21.
+
+### Prompt Expansion (`references/prompt-expansion.md`)
+
+- Pre-action 1 — read `DESIGN.md` (`prompt-expansion.md:11`). Step 2.
+- Pre-action 2 — read `beat-direction.md` (`prompt-expansion.md:12`). Step 2.
+- Pre-action 3 — read `video-composition.md` (`prompt-expansion.md:13`). Step 2.
+- Pre-action 4 — read `house-style.md` (`prompt-expansion.md:14`). Step 2.
+- Output section 1 — Title + style block (`prompt-expansion.md:41`). Step 2.
+- Output section 2 — Rhythm declaration (`prompt-expansion.md:43`). Step 2.
+- Output section 3 — Global rules (`prompt-expansion.md:45`). Step 2.
+- Output section 4 — Per-scene beats in beat-direction format: Concept / Mood / Depth layers / Animation choreography / Transition out (`prompt-expansion.md:48-52`). Step 2.
+- Output section 5 — Recurring motifs (`prompt-expansion.md:54`). Step 2.
+- Output section 6 — Negative prompt (`prompt-expansion.md:56`). Step 2.
+- Canonical output path `.hyperframes/expanded-prompt.md` (`prompt-expansion.md:58-60`). Step 2.
+- Mandatory user-approval gate (`prompt-expansion.md:62-68`). Step 2b.
+
+### Transitions calibration (`references/transitions.md`)
+
+- Energy → Transition character — soft/organic, directional/purposeful, percussive/instant (`transitions.md:18-22`). Step 10.
+- Mood → Motion quality — nine moods (`transitions.md:30-40`). Step 10.
+- Narrative Position — six named positions (`transitions.md:48-53`). Step 10.
+- Blur and motion intensity — three calibration ranges (`transitions.md:64-66`). Step 10.
+- Shader-Compatible CSS Rule 1 — no `transparent` keyword in gradients (`transitions.md:127`). Step 10.
+- Shader-Compatible CSS Rule 2 — no gradient backgrounds on elements thinner than 4px (`transitions.md:128`). Step 10.
+- Shader-Compatible CSS Rule 3 — no `var()` on elements visible during capture (`transitions.md:129`). Step 10.
+- Shader-Compatible CSS Rule 4 — mark uncapturable decoratives with `data-no-capture` (`transitions.md:130`). Step 10.
+- Shader-Compatible CSS Rule 5 — no gradient opacity below 0.15 (`transitions.md:131`). Step 10.
+- Shader-Compatible CSS Rule 6 — every `.scene` div needs explicit `background-color` matching `bgColor` config (`transitions.md:132`). Step 10.
+- Velocity-Matched Transitions (`beat-direction.md:169-171`). Step 10.
+
+### Transitions Catalog Hard Rules (CSS) (`references/transitions/catalog.md`)
+
+- Scene visibility — Scene 1 visible by default; Scenes 2+ have `opacity: 0` on container div (`catalog.md:9`). Step 10.
+- Fonts — write `font-family`, compiler embeds via `@font-face` (`catalog.md:11`). Step 10.
+- Element structure — no `class="clip"` on scene divs in standalone (`catalog.md:13`). Step 10.
+- Overlay elements — staggered-blocks/glitch/light-leak/overexposure specifics (`catalog.md:15`). Step 10.
+- VHS tape specifics (`catalog.md:17`). Step 10.
+- Z-index — gravity drop / zoom out / diagonal split outgoing on top (`catalog.md:19`). Step 10.
+- Page burn — `tl.set` at burn end (not `onComplete`); restore `clipPath: "none"` on rewind (`catalog.md:21`). Step 10.
+- Clock wipe — 9-point polygon, 4 quadrant tweens (`catalog.md:23`). Step 10.
+- Grid dissolve — cycle 5 palette colors per cell (`catalog.md:25`). Step 10.
+- Blinds count by energy — calm 4h/6v, medium 6-8h/8v, high 12-16h/16v (`catalog.md:27`). Step 10.
+- Don't use — star iris, tilt-shift, lens flare, hinge/door (`catalog.md:29`). Step 10.
+
+### Load-Bearing GSAP Rules (`references/motion-principles.md`)
+
+- Scene structure: build, breathe, resolve (`motion-principles.md:39-46`). Step 7.
+- Load-Bearing Rule 1 — No iframes for captured content (`motion-principles.md:93`). Step 8.
+- Load-Bearing Rule 2 — Never stack two transform tweens on the same element (`motion-principles.md:95`). Step 8.
+- Load-Bearing Rule 3 — Prefer `tl.fromTo()` over `tl.from()` inside `.clip` scenes (`motion-principles.md:123`). Step 8.
+- Load-Bearing Rule 4 — Ambient pulses must attach to seekable `tl`, never bare `gsap.to()` (`motion-principles.md:133`). Step 8.
+- Hard-kill at every scene boundary (`motion-principles.md:143`). Step 8.
 
 ### Editing Existing Compositions (`SKILL.md:369-374`)
 
