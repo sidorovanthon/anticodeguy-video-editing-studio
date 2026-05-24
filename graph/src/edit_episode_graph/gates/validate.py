@@ -131,26 +131,6 @@ class ValidateGate(Gate):
         return [_format_violation(result)], {}
 
     def __call__(self, state: dict) -> dict:
-        # HOM-334 Phase A.5: step-debug pre/post interrupts around the
-        # validate gate. The subclass overrides ``Gate.__call__`` so the
-        # base-class wrap doesn't apply — wire it explicitly here.
-        # No-op when ``HOMESTUDIO_STEP_DEBUG`` is unset.
-        from .._step_debug import is_enabled as _sd_enabled, wrap_deterministic_node
-
-        if _sd_enabled():
-            return wrap_deterministic_node(
-                self.name.replace(":", "_"),
-                state=state,
-                context={
-                    "slug": state.get("slug") if isinstance(state, dict) else None,
-                    "gate_name": self.name,
-                    "iteration": self._iteration(state),
-                },
-                inner=lambda: self._invoke_body(state),
-            )
-        return self._invoke_body(state)
-
-    def _invoke_body(self, state: dict) -> dict:
         violations, extras = self._run(state)
         passed = not violations
         record = {

@@ -67,23 +67,6 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _recent_gate_findings(state: dict) -> list[dict]:
-    """Return the last few `gate_results` records — surfaced to step-debug pre-report.
-
-    Per HOM-334 §A.3 the pre-node payload includes "any gate findings sitting
-    in state" so the operator sees what an LLM redispatch / classify node
-    will be reasoning about before it dispatches.
-    """
-    if not isinstance(state, dict):
-        return []
-    results = state.get("gate_results") or []
-    if not isinstance(results, list):
-        return []
-    # Last 3 records is enough context without bloating the payload —
-    # the full list lives in state and is re-readable by the orchestrator.
-    return [r for r in results[-3:] if isinstance(r, dict)]
-
-
 def _safe_dispatch_event(name: str, payload: dict) -> None:
     try:
         from langgraph.config import get_stream_writer  # type: ignore
@@ -121,36 +104,11 @@ class LLMNode:
             needs_tools=self.requirements.needs_tools,
             backends=node_cfg.backend_preference or self.requirements.backends,
         )
-
-        # HOM-334: step-debug pre/post interrupts behind HOMESTUDIO_STEP_DEBUG=1.
-        # When disabled (production default), `wrap_llm_node_call` is a thin
-        # pass-through that calls `inner()` once with one extra function-call
-        # of overhead. When enabled, native LangGraph `interrupt()` fires
-        # before and after the dispatch with a structured stop-report; the
-        # node body re-executes on resume and the LLM call lands on the
-        # SqliteCache hit path (no re-charge — every LLM node carries
-        # `cache_policy=` in graph.py).
-        from .._step_debug import is_enabled as _sd_enabled, wrap_llm_node_call
-
-        def _inner() -> dict:
-            return self._invoke_with(
-                router, state, render_ctx=ctx,
-                requirements=effective_req,
-                timeout_s=node_cfg.timeout_s or self.timeout_s,
-                model_override=node_cfg.model,
-            )
-
-        if not _sd_enabled():
-            return _inner()
-
-        return wrap_llm_node_call(
-            self.name,
-            brief_template=self.brief_template,
-            output_schema=self.output_schema,
-            state=state,
-            render_ctx=ctx,
-            upstream_gate_findings=_recent_gate_findings(state),
-            inner=_inner,
+        return self._invoke_with(
+            router, state, render_ctx=ctx,
+            requirements=effective_req,
+            timeout_s=node_cfg.timeout_s or self.timeout_s,
+            model_override=node_cfg.model,
         )
 
     def _invoke_with(

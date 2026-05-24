@@ -65,6 +65,12 @@ from tests._helpers.replay_harness import (
 # ---------------------------------------------------------------------------
 
 _PREDECESSORS: dict[str, str] = {
+    # HOM-369: p3_pre_scan + p3_strategy added for the static-interrupt
+    # empirical billing test (tests/test_step_debug_billing.py). They were
+    # the original Phase 3 LLM nodes that surfaced the PR #183/#184
+    # double-dispatch bug in Run 4 of the HOM-334 walkthrough.
+    "p3_pre_scan": "p3_inventory",
+    "p3_strategy": "p3_pre_scan",
     "p3_edl_select": "strategy_confirmed_interrupt",
     "p4_design_system": "p4_scaffold",
     "p4_prompt_expansion": "gate_design_ok",

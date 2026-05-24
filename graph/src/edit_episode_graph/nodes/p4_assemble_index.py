@@ -582,23 +582,6 @@ def assemble_html(
 
 
 def p4_assemble_index_node(state):
-    # HOM-334: step-debug pre/post interrupts with snapshot capture.
-    from .._step_debug import is_enabled as _sd_enabled, wrap_deterministic_node
-
-    if _sd_enabled():
-        return wrap_deterministic_node(
-            "p4_assemble_index",
-            state=state,
-            context={
-                "slug": state.get("slug"),
-                "n_plan_beats": len(((state.get("compose") or {}).get("plan") or {}).get("beats") or []),
-            },
-            inner=lambda: _p4_assemble_index_body(state),
-        )
-    return _p4_assemble_index_body(state)
-
-
-def _p4_assemble_index_body(state):
     compose = state.get("compose") or {}
     plan = compose.get("plan") or {}
     plan_beats = plan.get("beats") or []

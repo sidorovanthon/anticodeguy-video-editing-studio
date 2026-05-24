@@ -109,7 +109,7 @@ def parse_catalog_stdout(stdout: str) -> dict:
     return _split_items(parsed)
 
 
-def _p4_catalog_scan_body(state):
+def p4_catalog_scan_node(state):
     slug = state.get("slug")
     if not slug:
         return _error("slug missing from state (pickup must run first)")
@@ -138,43 +138,3 @@ def _p4_catalog_scan_body(state):
             f"parser error: {exc!r}\n--- stdout ---\n{result.stdout[:2000]}"
         )
     return {"compose": {"catalog": report}}
-
-
-def p4_catalog_scan_node(state):
-    # HOM-334: step-debug pre/post interrupts. Deterministic node — no brief,
-    # no LLM, no schema; the pre/post payloads carry the slug + subprocess
-    # invocation context only.
-    from .._step_debug import (
-        is_enabled as _sd_enabled,
-        step_debug_post,
-        step_debug_pre,
-    )
-    import time as _time
-
-    if not _sd_enabled():
-        return _p4_catalog_scan_body(state)
-
-    step_debug_pre(
-        "p4_catalog_scan",
-        state,
-        brief_path=None,
-        brief_rendered=None,
-        context={
-            "slug": state.get("slug"),
-            "subprocess": "npx hyperframes catalog --json",
-        },
-        expected_schema=None,
-        upstream_gate_findings=None,
-    )
-    t0 = _time.monotonic()
-    out = _p4_catalog_scan_body(state)
-    step_debug_post(
-        "p4_catalog_scan",
-        out,
-        token_usage=None,
-        latency_s=_time.monotonic() - t0,
-        snapshot_png_path=None,
-        lint_findings=None,
-        state=state,
-    )
-    return out

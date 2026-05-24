@@ -1,284 +1,142 @@
-# Step-debug runbook — `HOMESTUDIO_STEP_DEBUG=1` (HOM-334 Phase A)
+# Step-debug runbook (HOM-369 model)
 
-Operator-driven step-debug of the production LangGraph pipeline. Pauses
-before and after every step-debug-eligible node (see
-`docs/step-debug-inventory.md`), publishes a structured stop-report the
-orchestrator session reads, lets the operator triage in conversation,
-and resumes via native LangGraph `Command(resume=...)`.
+Pause-between-nodes walkthrough of the LangGraph pipeline on a real episode. Used during the HOM-334 Phase B audit to surface canon-vs-orchestrator drift before the next paid prewarm.
 
-The goal is **context-pass audit** — at each pre-node interrupt, the
-operator and orchestrator inspect what the LLM is about to see, compare
-it to what a canonical free-form `/hyperframes` or `/video-use` agent
-would see at the same point, and capture the diff. Findings drive Phase
-B (HOM-334 §B) without burning paid `record_fixture` prewarms on
-brief-edit / gate-carve-out cycles.
+This runbook supersedes the original PR #183/#184 version, which wrapped every node body with an in-place `interrupt()` call. That approach was architecturally wrong (HOM-369 retro): the wrapper fired `interrupt()` AFTER the body ran but BEFORE the function returned, which LangGraph treats as a dynamic interrupt — on resume the entire body re-executes, producing a second paid LLM dispatch and non-deterministic committed state. The current model uses the native `interrupt_after="*"` compile-time parameter, which pauses at the superstep boundary AFTER state has already been committed.
 
-## Prerequisites
+---
 
-* A fixture or inbox episode in scope. The canonical fixture
-  (`tests/fixtures/episodes/canonical-portrait-talking-head/`) is the
-  cheapest target — its `cache.db` is committed, so every LLM dispatch
-  hits the cache on resume and the run costs $0.
-* `langgraph dev` running (see CLAUDE.md §"Studio replay (operator runbook)").
-* Orchestrator session (this assistant) attached to the same thread.
+## How it works
 
-## Start a step-debug run
+`graph/src/edit_episode_graph/graph.py::build_graph()` reads `HOMESTUDIO_STEP_DEBUG` at compile time:
+
+```python
+step_debug_on = os.environ.get("HOMESTUDIO_STEP_DEBUG") == "1"
+compile_kwargs = {"cache": _build_cache()}
+if step_debug_on:
+    compile_kwargs["interrupt_after"] = "*"  # langgraph.types.All
+return build_graph_uncompiled().compile(**compile_kwargs)
+```
+
+When the flag is unset (default — production), no static interrupts are wired. When set, LangGraph pauses after every node via the native `pregel._loop.should_interrupt` boundary check. The check fires BETWEEN ticks, AFTER the previous tick's results are already in the checkpoint and the `SqliteCache`. On resume only the next tick executes — the previous node does NOT re-execute.
+
+This is structurally different from the dynamic `interrupt()` primitive used by the four HITL nodes (`strategy_confirmed_interrupt`, `p3_review_interrupt`, `eval_failure_interrupt`, `edl_failure_interrupt`). Those nodes' bodies are *only* an `interrupt()` call — re-execution on resume is a no-op. Static interrupts plus dynamic HITL interrupts coexist; neither interferes with the other.
+
+Empirical billing test: `tests/test_step_debug_billing.py::test_no_double_llm_dispatch_under_static_interrupts` asserts that the fixture `cache.db` (recorded under the static-interrupt model) carries exactly ONE `llm_runs` append per LLM node — not two. Run it at $0 against the committed fixture:
 
 ```powershell
-# 1. Seed the cache (fixture replay — $0).
-copy tests\fixtures\episodes\canonical-portrait-talking-head\cache.db `
-     graph\.cache\langgraph.db
-$env:HOMESTUDIO_PROJECT_ROOT = "$PWD\tests\fixtures"
+& 'C:\Users\sidor\repos\anticodeguy-video-editing-studio\graph\.venv\Scripts\python.exe' `
+    -m pytest tests/test_step_debug_billing.py -v
+```
 
-# 2. Turn on step-debug.
+---
+
+## Operator workflow
+
+Stack: TrueNAS at `http://192.168.1.115:8124`. Never use `langgraph dev` for step-debug (checkpoint loss on restart — see CLAUDE.md §"Thread-state persistence across Studio restarts"). The env file on TrueNAS (`/var/lib/homestudio-langgraph/.env`) already carries `HOMESTUDIO_STEP_DEBUG=1`.
+
+1. **Drop the episode.** Move the raw video into `S:\anticodeguy-video-editing-studio\inbox\` (SMB share over TrueNAS). For prewarm sessions you may also pre-stage `script.txt`, `isolated.mp3`, `transcript.json` per the HOM-334 §B-prefab convention.
+
+2. **Start a thread in Studio.** Browse to `http://192.168.1.115:8124`, pick the graph, POST a run with `{"slug": "<slug>"}`. The run pauses after `pickup`.
+
+3. **At every pause, run the observability helper** from the dev box:
+
+   ```powershell
+   cd C:\Users\sidor\repos\anticodeguy-video-editing-studio
+   $env:PYTHONPATH = "graph\src"
+   & 'graph\.venv\Scripts\python.exe' -m scripts.step_debug_observe `
+       --thread-id <thread> `
+       --node <node_name>
+   ```
+
+   This dumps four artifacts to `tmp/step-debug/<thread>/<node>/`:
+
+   | Artifact            | Source                                             | What it tells you                                                                  |
+   | ------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------- |
+   | `brief.md`          | Rendered Jinja brief via prod `_BRIEF_ENV`         | What the LLM saw (LLM nodes only). Diff vs canon §X to spot embed-vs-cite drift.   |
+   | `context.json`      | The render context dict                            | Every state field the brief consumed. Surfaces "missing key" silent fallbacks.    |
+   | `post_output.json`  | State-delta vs the prior checkpoint                | What this node committed to state. Pair with on-disk side effects.                |
+   | `cli.txt`           | Resolved tier/model/timeout from `graph/config.yaml` | What the router would have dispatched (or did dispatch on a real call).            |
+
+   Deterministic nodes (no Jinja brief) get only `post_output.json` and `cli.txt`. That's by design — the 4-point report's "What it did" is the substantive review for them; the brief diff is N/A.
+
+   **Caveat — `brief.md` is an approximation, not a byte-for-byte replay.** `scripts/step_debug_observe.py::_render_brief_for_node` splats the committed state directly into the Jinja template under the prod `_BRIEF_ENV` (which uses Jinja's permissive `Undefined`, silently rendering empty for missing keys). Production nodes build a node-specific `_render_ctx` that often derives fields from upstream state at dispatch time — those derived fields are NOT reconstructible post-hoc and may silently render as empty in `brief.md`. Treat the rendered brief as a high-fidelity approximation for spotting canon embed-vs-cite drift; for byte-exact reproduction reach into the node's `_render_ctx` helper directly.
+
+4. **Write the 4-point report** (canon / what-it-did / clean-session / discrepancy) into `docs/step-debug-runs/2026-05-XX-<slug>.md`. Use the artifacts as evidence; cite line refs to canon. For deterministic / orchestrator-internal nodes mark clean-session as **"N/A — no canon analog, orchestrator-only"** rather than skipping the section.
+
+5. **Resume the thread.** From the dev box:
+
+   ```powershell
+   $apiKey = $env:LANGSMITH_API_KEY
+   $body = @{ command = @{ resume = "approved" } } | ConvertTo-Json
+   Invoke-RestMethod "http://192.168.1.115:8124/threads/<thread>/runs" `
+       -Method Post `
+       -Headers @{ "Content-Type" = "application/json" } `
+       -Body $body
+   ```
+
+   Or from Studio: click "Resume" with payload `{"resume": "approved"}`. For HITL nodes (`strategy_confirmed_interrupt`, `p3_review_interrupt`) the payload is the same string token.
+
+6. **Stop at any time** by issuing `{"resume": "abort"}` or by killing the run from Studio. Thread + cache persist across restarts (TrueNAS LangGraph Self-Hosted Lite, HOM-347).
+
+---
+
+## Empirical validation
+
+The HOM-369 acceptance criteria require validating that the static-interrupt model does NOT double-charge per node. Two checks, both included in this PR:
+
+1. **Wiring smoke** (always green, no fixture needed):
+
+   ```powershell
+   & 'graph\.venv\Scripts\python.exe' -m pytest `
+       tests/test_step_debug_billing.py::test_interrupt_after_wired_only_under_step_debug_flag -v
+   ```
+
+   Asserts that the flag toggles `compiled.interrupt_after_nodes` between `[]` (production) and `["*"]` (step-debug).
+
+2. **Empirical billing** (replay against committed `cache.db`, $0):
+
+   ```powershell
+   & 'graph\.venv\Scripts\python.exe' -m pytest `
+       tests/test_step_debug_billing.py::test_no_double_llm_dispatch_under_static_interrupts -v
+   ```
+
+   Walks `p3_pre_scan` and `p3_strategy` via the fixture-replay harness, counts `llm_runs` appends in each recorded cache row, asserts each is exactly 1. The reverted PR #183/#184 wrapper would have produced 2 — running this test in a future regression session catches that regression before it lands.
+
+For paid real-tier validation (operator-only, not CI), record a fresh fixture under the static-interrupt model and verify:
+
+```powershell
 $env:HOMESTUDIO_STEP_DEBUG = "1"
-# Optional: pin the dump dir somewhere other than tmp/step-debug/.
-# $env:HOMESTUDIO_STEP_DEBUG_DUMP_ROOT = "$PWD\.run-logs\step-debug"
-
-# 3. Launch the graph.
-cd graph
-.venv\Scripts\langgraph.exe dev --allow-blocking --no-browser
-
-# 4. In a separate terminal (or Studio UI): POST a run with
-#    slug = canonical-portrait-talking-head
+$env:HOMESTUDIO_TEST_MODE = "record"
+& 'graph\.venv\Scripts\python.exe' -m pytest `
+    tests/test_graph_replay.py -k "p3_pre_scan or p3_strategy" -v
+# Then re-run in replay mode and inspect llm_runs counts:
+$env:HOMESTUDIO_TEST_MODE = "replay"
+& 'graph\.venv\Scripts\python.exe' -m pytest tests/test_step_debug_billing.py -v
 ```
 
-Once the first node interrupts, the orchestrator session reads the
-stop-report payload (see §"What the stop-report contains" below) and
-walks the operator through the resume vocabulary.
+Anthropic billing for the recording run should show exactly one dispatch per LLM node walked, not two.
 
-To run against a live `inbox/` episode instead of the fixture: drop the
-`HOMESTUDIO_PROJECT_ROOT` override, drop the `copy` cache-seed step
-(but expect real LLM charges on the first walk-through if the cache.db
-is cold).
+---
 
-## What the stop-report contains
+## Why we don't wrap node bodies
 
-### Pre-node payload
+Trying to wrap the body with `interrupt({...})` is appealing — it would let us emit a rich JSON payload at the pause directly from inside the node. Don't do it. The semantic contract is:
 
-```jsonc
-{
-  "phase": "pre",
-  "node": "p4_beat",
-  "ts": "2026-05-23T07:30:00+00:00",
-  "brief_path": "graph/src/edit_episode_graph/briefs/p4_beat.j2",
-  "brief_rendered_excerpt": "<first 4000 chars of the rendered Jinja>",
-  "context_keys": ["beat_index", "design_md_body", "expanded_prompt_body", ...],
-  "context_dump_path": "tmp/step-debug/<thread>/p4_beat/pre_context.json",
-  "expected_schema": "edit_episode_graph.schemas.p4_beat.BeatOutput",
-  "upstream_gate_findings": [{"gate": "gate:lint", "passed": true, ...}],
-  "resume_vocabulary": ["approve", "rerun-with-edit:<state-patch-json>", "abort"]
-}
-```
+* **Dynamic `interrupt()` inside a body:** raises `GraphInterrupt`, body never returns, writes never commit, cache never writes. On resume the body re-executes from the top. For an LLM node: cache miss, second dispatch, different committed state. Empirically verified in Run 4 of `docs/step-debug-runs/2026-05-23-pending-slug.md` (thread `019e58ea-19c9-76f3-bf0a-13ef43d4d328`): `p3_pre_scan` first dispatch showed 4 slips, committed state had 3 with one slip's reason rewritten; `p3_strategy` first dispatch showed 7 takes + neutral grade, committed state had 6 annotated takes + warm-teal grade. Two paid dispatches per node.
+* **Static `interrupt_after` at compile time:** raises `GraphInterrupt` BETWEEN ticks, after the previous tick committed to checkpoint and cache. On resume only the next tick executes. One paid dispatch per node. The rich payload is built out-of-band by the observability helper, which reads committed state via `client.threads.get_state(thread_id)`.
 
-* `brief_rendered_excerpt` — first 4000 chars of the rendered brief.
-  Reads the *exact* string the sub-agent will receive. If it's
-  truncated, read the full text from `context_dump_path`.
-* `context_dump_path` — full pre-node render context dumped as JSON
-  (this is what the brief consumes, plus the top-level state-key list
-  for orientation).
-* `expected_schema` — fully-qualified Pydantic class name. Use it to
-  sanity-check what shape the LLM is expected to return.
-* `upstream_gate_findings` — last 3 `gate_results` entries. Empty `[]`
-  on a clean first pass; populated when the gate cluster has fired.
+The "rich payload at the pause" UX is preserved — it just moves from graph-side to orchestrator-side. The graph stays clean (no instrumentation, no per-node hooks); observability is a read-only operation against committed state. This is the same pattern CLAUDE.md §"LangGraph primitives — search docs before rolling custom" preaches: use the native primitive, build orchestration on top of state inspection.
 
-### Post-node payload
-
-```jsonc
-{
-  "phase": "post",
-  "node": "p4_beat",
-  "ts": "...",
-  "output_excerpt": "<first 4000 chars of stringified output>",
-  "output_dump_path": "tmp/step-debug/<thread>/p4_beat/post_output.json",
-  "tokens": {"input": 12345, "output": 678, "backend": "claude", "model": "..."},
-  "latency_s": 42.7,
-  "snapshot_png_path": "tmp/step-debug/<thread>/p4_beat/2026-05-23T07-30-00.png",
-  "lint_findings": [],
-  "resume_vocabulary": ["approve", "rerun-with-edit:<state-patch-json>", "abort"]
-}
-```
-
-* `output_dump_path` — full parsed output (Pydantic `model_dump` when
-  the schema matched, raw text otherwise).
-* `tokens` — pulled from the last entry in `state.llm_runs`. `None`
-  for deterministic nodes.
-* `snapshot_png_path` — set after `p4_beat`, `p4_assemble_index`,
-  `p4_transitions`. `None` everywhere else, and `None` when the
-  `npx hyperframes snapshot` call failed (see stderr for reason —
-  snapshot failures never halt the graph).
-
-### Where artifacts land
-
-```
-tmp/step-debug/
-  <thread_id>/
-    <node>/
-      pre_context.json   # full pre-node render context
-      post_output.json   # full post-node parsed output
-      <iso-timestamp>.png  # snapshot (p4_beat / p4_assemble_index / p4_transitions only)
-```
-
-`tmp/` is gitignored. Override the root with
-`$env:HOMESTUDIO_STEP_DEBUG_DUMP_ROOT`. Each `langgraph dev` thread
-gets its own subdirectory keyed by `thread_id`.
-
-## Resume vocabulary
-
-The orchestrator session resolves the operator's intent into one of
-three resume payloads:
-
-### `approve` — continue
-
-Empty payload, `"approve"`, `"approved"`, `"yes"`, `"ok"`, `True`, or
-`{"approved": True}`. The wrapper interprets all of these as approval;
-the graph advances to the next node.
-
-```python
-client.runs.create(thread_id, assistant_id, input=None, command={"resume": "approved"})
-```
-
-### `abort` — terminate cleanly
-
-`"abort"`, `"stop"`, `"cancel"`, `"halt"`, or `{"action": "abort"}`.
-The wrapper raises `StepDebugAborted`; LangGraph treats it as a
-terminal exception, the run halts, and no further state is committed.
-
-```python
-client.runs.create(thread_id, assistant_id, input=None, command={"resume": "abort"})
-```
-
-### `rerun-with-edit:<state-patch-json>` — mutate state and re-run the producer
-
-This is **orchestrator-side dispatch**, NOT graph-side code. The
-wrapper passes the resume payload through (does not abort, does not
-"approve"); the orchestrator then uses native LangGraph midpoint
-dispatch per CLAUDE.md §"LangGraph primitives":
-
-```python
-# 1. Mutate the relevant state slice with the operator's patch.
-client.threads.update_state(
-    thread_id,
-    values={"compose": {"plan": {"beats": [..., {"duration": 4.0}, ...]}}},
-    as_node="p4_plan",          # name of the node whose output we're overriding
-)
-
-# 2. Re-launch the run; graph treats `p4_plan` as just-completed and
-#    follows its outgoing edge, re-running `p4_dispatch_beats` / `p4_beat`
-#    against the patched plan.
-client.runs.create(thread_id, assistant_id, input=None)
-```
-
-#### Concrete example — extend beat 2 by 1 second
-
-Step-debug stops the run at the **post** interrupt of `p4_plan`. The
-operator says "beat 2 is too tight, give it another second". The
-orchestrator:
-
-1. Reads the `output_dump_path` from the post-payload to see the
-   current plan.
-2. Builds a JSON patch overriding `compose.plan.beats[2].duration`.
-3. Calls `update_state(as_node="p4_plan", values=<patch>)`.
-4. Calls `runs.create(thread_id, ..., input=None)` — the graph picks
-   up just downstream of `p4_plan` (`gate_plan_ok`), re-fans out the
-   beats against the new durations, and step-debug stops again at the
-   pre-interrupt of the next node.
-
-No code changes in the graph layer are needed for this — the wrapper
-already publishes `rerun-with-edit:<state-patch-json>` in
-`resume_vocabulary` so the orchestrator knows the option is supported.
-The graph-side wrapper is intentionally agnostic about WHAT the patch
-contains; that's a conversation between the operator and the
-orchestrator.
-
-## Idempotency on resume (HOM-334 acceptance §1)
-
-LangGraph's `interrupt()` is replay-safe by construction: when the
-thread resumes, the node body re-executes from the start, and
-`interrupt()` returns the resume payload **without re-firing the
-side-effects above it** (the publish + disk write happen on the
-first invocation only — replay sees the cached `__interrupt__` value).
-
-Every LLM node in the inventory (`docs/step-debug-inventory.md`)
-carries `cache_policy=` in `graph.py`, so the LLM dispatch lands on
-the `SqliteCache` hit path on replay. No re-charge: the
-`_caching.make_llm_key` fingerprint covers (brief snapshot, state
-subset, routing config) per HOM-157, and the operator's resume
-payload does not change any of those inputs.
-
-If you ever observe a paid re-dispatch on resume:
-
-* Check the node has `cache_policy=` wired in `graph.py`. Every LLM
-  node currently does — a missing one is a bug, not expected.
-* Check `make_llm_key` extras for the node — is the resume payload
-  somehow leaking into the fingerprint?
-
-## Capturing observations for Phase B
-
-Per HOM-334 §B.2, findings get captured **as ordered Linear comments
-on HOM-334**, not as new tickets. Premature ticket-splitting is the
-failure mode the methodology replaces.
-
-The single end-of-session artifact is
-`docs/step-debug-runs/2026-05-XX-<slug>.md` — one row per node
-walked, with the operator's verdict + context-gap notes.
-
-Example shape (canonicalize once the first session completes):
-
-```markdown
-## p3_pre_scan
-
-- Tokens: 1,234 in / 567 out (claude / claude-haiku-4-5)
-- Latency: 8.2s
-- Brief excerpt: ...
-- Context the LLM saw: `takes_packed.md` path, slips=[]
-- Canonical free-form video-use Step 2 sees: takes_packed.md content +
-  Phase 3 plan brief + operator intent statement
-- Gap: <describe>
-- Operator verdict: approve
-```
-
-Capture commands (PowerShell, run in main repo root):
-
-```powershell
-# Read the pre payload's full context dump
-Get-Content tmp\step-debug\<thread>\p4_beat\pre_context.json | Out-String
-
-# Read the post output dump
-Get-Content tmp\step-debug\<thread>\p4_beat\post_output.json | Out-String
-
-# View a snapshot PNG inline in the orchestrator session
-# (the assistant uses Read on the path published in snapshot_png_path)
-```
-
-After the session ends, attach the artifact path as an HOM-334 Linear
-comment via `linear-pp-cli`:
-
-```powershell
-& 'C:\Users\sidor\go\bin\linear-pp-cli.exe' issues comment HOM-334 `
-    --body "Step-debug run docs/step-debug-runs/2026-05-23-canonical.md: ..."
-```
-
-## Negative-result escape hatch (HOM-334 §"Non-acceptance signals")
-
-If after the first full session there are no clear context-gap
-findings, the hypothesis is wrong and the next iteration is **visual
-feedback loop integration** (retro `Secondary observation` line 113) —
-give the LLM nodes a `snapshot --at <t>` tool in their `allowed_tools`
-and let them self-eval before persisting. Document the negative result
-in the step-debug artifact and pivot.
+---
 
 ## References
 
-* HOM-334 ticket body (`& linear-pp-cli.exe issues HOM-334 --json`).
-* `docs/step-debug-inventory.md` — the canonical node list this
-  runbook walks.
-* CLAUDE.md §"LangGraph primitives" — native `interrupt()` +
-  `update_state(as_node=...)` + `runs.create()`.
-* CLAUDE.md §"Studio replay (operator runbook)" — fixture cache.db
-  seeding + `HOMESTUDIO_PROJECT_ROOT`.
-* `docs/retros/retro-2026-05-17-gate-animation-map-canonical-false-positives.md`
-  — the retro that established free-form `/hyperframes` ships working
-  videos because the agent has full context + visual self-eval + lint
-  triage; the graph has none of those. Step-debug is the operator
-  step toward bridging that gap.
+- HOM-369 brief — the retro that produced this runbook.
+- HOM-334 v3 brief (amended in the HOM-369 PR) — operational umbrella for the walkthrough.
+- `graph/src/edit_episode_graph/graph.py::build_graph` — the wiring.
+- `scripts/step_debug_observe.py` — the observability helper.
+- `tests/test_step_debug_billing.py` — empirical billing assertion.
+- CLAUDE.md memory `feedback_langgraph_static_interrupts_for_step_debug` — short-form rule.
+- CLAUDE.md memory `feedback_langgraph_native_primitives` — the broader principle this case study illustrates.
+- LangGraph: `langgraph.graph.state.StateGraph.compile` accepts `interrupt_after: All | list[str] | None`; `All = Literal["*"]`. `pregel._loop.should_interrupt` is the boundary-check site.
