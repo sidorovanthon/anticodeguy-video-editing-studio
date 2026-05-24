@@ -865,8 +865,11 @@ def build_graph():
     runtime (used by `langgraph dev` and `langgraph up`) manages persistence
     itself and rejects user-supplied checkpointers with a hard ValueError.
 
-    Switching the dev runtime to a real DB is configured via env vars
-    (`POSTGRES_URI`) — out of scope for v1.
+    Switching to durable thread state across `langgraph dev` restarts
+    requires `langgraph up` (Docker stack with a Postgres backend) — the
+    inmem runtime does NOT honor `POSTGRES_URI`. See
+    `graph/README.md` §"Postgres-backed step-debug walkthroughs" and
+    HOM-346 for the runbook.
 
     The `cache=` argument is NOT rejected by langgraph-api (only
     checkpointer + store are) and powers per-node `cache_policy=` hits

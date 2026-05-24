@@ -125,6 +125,21 @@ subprocesses (start → exit → resume in a fresh interpreter) so it
 genuinely simulates a Studio restart — there is no shared in-process
 state between the two phases.
 
+**Verification scope — what's NOT verified end-to-end on this machine.**
+Docker Desktop is not installed in the environment HOM-346 landed from,
+so the full `langgraph up --postgres-uri ...` CLI path was not exercised
+against a live Postgres container. What IS verified: the SQLite round-trip
+above (`--backend sqlite`) proves `BaseCheckpointSaver` honors its
+cross-process contract — the same contract `langgraph up` relies on to
+keep thread state alive across container restarts. The Postgres-specific
+wiring (compose container health, `langgraph up` consuming
+`--postgres-uri`, Studio attaching to the durable backend) is documented
+but unobserved. Per CLAUDE.md §"LangGraph primitives", this caveat is the
+explicit "this is the unverified part" signpost — operators bringing up
+the Docker stack for the first time should confirm Studio actually picks
+up a paused thread after `langgraph up` restart before relying on it for
+a long step-debug walkthrough.
+
 ## Tier mapping
 
 LLM nodes pick a `tier` (or pin an explicit `model`); the backend resolves the tier
