@@ -97,6 +97,19 @@ services:
       # via the langgraph-emitted package install (pyproject.toml src layout),
       # but `python -m scripts.X` needs /deps/graph itself on PYTHONPATH.
       PYTHONPATH: /deps/graph
+    volumes:
+      # HOM-348: bind-mount production episode data from the TrueNAS host so
+      # the graph (pickup, isolate_audio, p3_inventory, ffprobe/ffmpeg subprocs,
+      # npx hyperframes, ...) can read/write real files. The host path lives
+      # under the existing Daily SSD SMB share (`\\TRUENAS\Daily SSD`, mapped
+      # as S: on the dev box), so the operator drops videos into
+      # `S:\anticodeguy-video-editing-studio\inbox\` via Explorer and the
+      # container sees them at /deps/graph/inbox/ — no rsync, no second path.
+      # Without these mounts, /deps/graph/inbox and /deps/graph/episodes are
+      # empty (rsync into the build context excludes data dirs) and `pickup`
+      # fails with "episode does not exist" before any canonical node runs.
+      - "/mnt/Daily SSD/DailySsd/anticodeguy-video-editing-studio/inbox:/deps/graph/inbox"
+      - "/mnt/Daily SSD/DailySsd/anticodeguy-video-editing-studio/episodes:/deps/graph/episodes"
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import urllib.request,sys; sys.exit(0) if urllib.request.urlopen(\"http://localhost:8000/ok\", timeout=2).status==200 else sys.exit(1)'"]
       interval: 10s
