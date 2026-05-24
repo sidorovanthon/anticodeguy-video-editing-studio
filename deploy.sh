@@ -185,8 +185,19 @@ ensure_dockerfile() {
     # only ships an ancient `nodejs` package; we use the NodeSource setup
     # script to register their apt repo and pull the current LTS. Single RUN
     # layer with apt cleanup to keep image size sane (HOM-358).
-    sed -i '/^FROM /a RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt-get install -y --no-install-recommends nodejs && apt-get clean && rm -rf /var/lib/apt/lists/*' "$build_dir/Dockerfile"
-    log "Dockerfile written to graph/.build/Dockerfile (UV_LINK_MODE=copy + ffmpeg + nodejs-22 apt-install injected)"
+    # HOM-359: also install the `claude` CLI (`@anthropic-ai/claude-code`) in
+    # the same RUN layer — it needs `npm`, which only exists AFTER
+    # `apt-get install nodejs` in this chain. Tacked onto the same `&&` chain
+    # so it stays a single image layer (image growth ~50 MB, acceptable).
+    # Subscription auth (not API key — see `backends/claude.py:3` docstring)
+    # writes OAuth tokens to /root/.claude/, which the compose file bind-mounts
+    # to a host dir so `claude login` survives every `docker compose up -d`.
+    # If we added claude-code in a SEPARATE sed-after-FROM injection, sed's
+    # reverse-order behavior would place it BEFORE the nodejs install, with no
+    # `npm` on PATH yet — build would fail. Extending the existing chain is
+    # the only correct shape.
+    sed -i '/^FROM /a RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt-get install -y --no-install-recommends nodejs && npm i -g @anthropic-ai/claude-code && apt-get clean && rm -rf /var/lib/apt/lists/*' "$build_dir/Dockerfile"
+    log "Dockerfile written to graph/.build/Dockerfile (UV_LINK_MODE=copy + ffmpeg + nodejs-22 + claude-code injected)"
 }
 
 deploy_rebuild() {
@@ -246,6 +257,17 @@ deploy_rebuild() {
     sync_skills_dir "$HOME/.claude/skills/video-use/" "$REMOTE_PROJECT/skills/video-use"
     log "Syncing ~/.agents/skills/hyperframes/..."
     sync_skills_dir "$HOME/.agents/skills/hyperframes/" "$REMOTE_PROJECT/skills/hyperframes"
+
+    # HOM-359: ensure the claude-CLI session bind-mount target exists and is
+    # writable by container root (the langgraph-api image runs as root). The
+    # compose file mounts /var/lib/homestudio-langgraph/claude-session →
+    # /root/.claude:rw; without this dir, Docker would auto-create it as
+    # root:root 0755 on first up, which is fine — but creating it explicitly
+    # here lets the operator's later `claude login` (run via
+    # `docker exec -it ... claude login`) write OAuth tokens without an
+    # ownership scramble. Idempotent: only created if absent.
+    log "Ensuring $TRUENAS:$REMOTE_PROJECT/claude-session/ exists (HOM-359 session dir)..."
+    ssh "$TRUENAS" "sudo mkdir -p $REMOTE_PROJECT/claude-session && sudo chmod 777 $REMOTE_PROJECT/claude-session"
 
     log "Syncing compose file..."
     sync_file "graph/$COMPOSE_FILE" "$REMOTE_PROJECT/$COMPOSE_FILE"
