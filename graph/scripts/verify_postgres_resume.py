@@ -18,9 +18,11 @@ Docker:
 * ``--backend postgres`` — uses
   ``langgraph.checkpoint.postgres.PostgresSaver`` against the URI in
   ``$POSTGRES_URI`` (default
-  ``postgres://postgres:postgres@localhost:5433/postgres``). Requires the
-  ``graph/docker-compose.yml`` Postgres container to be up. Demonstrates
-  AC #3 directly against the same backend ``langgraph up`` would use.
+  ``postgres://postgres:postgres@192.168.1.115:5443/postgres`` once the
+  HOM-347 TrueNAS stack is deployed). Requires the
+  ``homestudio-langgraph-postgres`` container to be reachable. Demonstrates
+  the resume contract directly against the same backend the deployed
+  ``langgraph-api`` server uses.
 
 How the script proves resume-across-restart
 -------------------------------------------
@@ -261,7 +263,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             args.target = os.environ.get(
                 "POSTGRES_URI",
-                "postgres://postgres:postgres@localhost:5433/postgres",
+                "postgres://postgres:postgres@192.168.1.115:5443/postgres",
             )
 
     if args.phase == "full":

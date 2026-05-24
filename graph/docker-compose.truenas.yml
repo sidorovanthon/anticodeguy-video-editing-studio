@@ -1,0 +1,101 @@
+# HOM-347: TrueNAS-deployed LangGraph Self-Hosted Lite stack.
+#
+# Three isolated services prefixed `homestudio-langgraph-*` so they cannot
+# collide with the existing TrueNAS containers (ds-platform-dev-*,
+# home-budgeting-system-*, ix-*, media-index-system, rtmp-server).
+#
+# Port allocations (probed 2026-05-24 via `ssh truenas sudo docker ps`):
+#   * postgres → host 5443 (TrueNAS has 5432, 5433, 5442 taken; 5443 free)
+#   * redis    → host 6380 (TrueNAS has 6379 taken by ds-platform-dev-redis-1)
+#   * server   → host 8124 (TrueNAS has 8000/8001/8025/8080/8100 taken)
+#
+# Image tag on the server is `homestudio-langgraph:local` — built on TrueNAS
+# from rsynced source by scripts/deploy_truenas.sh (--rebuild). The dev box
+# has no Docker daemon, so build-on-Windows-and-`docker save` (Option 1 in
+# the ticket) is not viable; the deploy script switches to build-on-server.
+# The image-name remains the one langgraph build would have produced, so the
+# canonical command `langgraph build -t homestudio-langgraph` works
+# identically once a dev box gains Docker.
+#
+# Server-side compose location: /var/lib/homestudio-langgraph/docker-compose.yml
+# (mirrors /var/lib/home-budgeting-system/).
+#
+# Secrets: /var/lib/homestudio-langgraph/.env (operator-supplied, not committed)
+# is read via env_file on the server. Must contain LANGSMITH_API_KEY for the
+# langgraph-server boot license check.
+
+services:
+  homestudio-langgraph-postgres:
+    image: postgres:16-alpine
+    container_name: homestudio-langgraph-postgres
+    restart: unless-stopped
+    ports:
+      - "5443:5432"
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - homestudio_langgraph_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+      start_period: 10s
+    networks:
+      - homestudio-langgraph
+
+  homestudio-langgraph-redis:
+    image: redis:7-alpine
+    container_name: homestudio-langgraph-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - homestudio_langgraph_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+    networks:
+      - homestudio-langgraph
+
+  homestudio-langgraph-server:
+    image: homestudio-langgraph:local
+    container_name: homestudio-langgraph-server
+    restart: unless-stopped
+    depends_on:
+      homestudio-langgraph-postgres:
+        condition: service_healthy
+      homestudio-langgraph-redis:
+        condition: service_healthy
+    ports:
+      - "8124:8000"
+    env_file:
+      - .env
+    environment:
+      # langgraph-server wiring — overrides whatever .env says so the
+      # container always points at the sibling postgres/redis services.
+      POSTGRES_URI: postgres://postgres:postgres@homestudio-langgraph-postgres:5432/postgres?sslmode=disable
+      REDIS_URI: redis://homestudio-langgraph-redis:6379
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request,sys; sys.exit(0) if urllib.request.urlopen(\"http://localhost:8000/ok\", timeout=2).status==200 else sys.exit(1)'"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
+    networks:
+      - homestudio-langgraph
+
+volumes:
+  homestudio_langgraph_pgdata:
+    name: homestudio_langgraph_pgdata
+  homestudio_langgraph_redisdata:
+    name: homestudio_langgraph_redisdata
+
+networks:
+  homestudio-langgraph:
+    name: homestudio-langgraph
