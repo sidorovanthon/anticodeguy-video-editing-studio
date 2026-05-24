@@ -110,6 +110,25 @@ services:
       # fails with "episode does not exist" before any canonical node runs.
       - "/mnt/Daily SSD/DailySsd/anticodeguy-video-editing-studio/inbox:/deps/graph/inbox"
       - "/mnt/Daily SSD/DailySsd/anticodeguy-video-editing-studio/episodes:/deps/graph/episodes"
+      # HOM-360: bind-mount the video-use + hyperframes skill trees rsynced
+      # to the TrueNAS host by deploy.sh into the canonical paths the graph
+      # code expects. Phase 3 helpers are loaded via hardcoded constants like
+      # `HELPERS_DIR = Path.home() / ".claude" / "skills" / "video-use" /
+      # "helpers"` (and three siblings: p3_render_segments.RENDER_PY,
+      # p3_self_eval.TIMELINE_VIEW_PATH, gates/animation_map._GLOBAL_FALLBACK)
+      # with no env override, so the mount path is non-negotiable here.
+      # Read-only — the graph only READS helper scripts + SKILL.md from these
+      # trees; all writes go to episodes/. Skills auto-update on the dev box
+      # via Task Scheduler, so re-running ./deploy.sh --rebuild re-rsyncs and
+      # the new contents appear immediately (bind, not COPY).
+      #
+      # PR-2 (HOM-359) will later mount /root/.claude/ as the claude-CLI
+      # session dir. Sub-path mounts (the video-use line below) coexist with
+      # a parent /root/.claude/ mount in Docker: each bind is independent,
+      # and the child mount shadows whatever sits at that path inside the
+      # parent. No re-ordering required.
+      - "/var/lib/homestudio-langgraph/skills/video-use:/root/.claude/skills/video-use:ro"
+      - "/var/lib/homestudio-langgraph/skills/hyperframes:/root/.agents/skills/hyperframes:ro"
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import urllib.request,sys; sys.exit(0) if urllib.request.urlopen(\"http://localhost:8000/ok\", timeout=2).status==200 else sys.exit(1)'"]
       interval: 10s
