@@ -42,10 +42,27 @@ phase-skip edges (`route_after_preflight` short-circuits Phase 3 when `final.mp4
 remain in place as routing — caching is the orthogonal node-body layer.
 
 Source-of-truth design: `docs/superpowers/specs/2026-05-06-langgraph-node-caching-design.md`
-(HOM-132 epic). Cache lifecycle is independent from `graph/.langgraph_api/checkpoints.sqlite` —
-wiping the cache to force re-execution does not lose thread history. Manual escape hatch:
+(HOM-132 epic). Cache lifecycle is independent from the `langgraph dev` thread
+checkpoint store (in-mem PersistentDict at `graph/.langgraph_api/.langgraph_checkpoint.*.pckl`,
+or Postgres if you've switched to `langgraph up` per HOM-346) — wiping the cache to
+force re-execution does not lose thread history. Manual escape hatch:
 `rm graph/.cache/langgraph.db`. Per-node `_CACHE_VERSION` integers (in each node module)
 must be bumped when its brief / schema / tool-list changes; code-review enforces (spec §8).
+
+**Thread-state persistence across Studio restarts (HOM-346).** `langgraph dev` uses
+`langgraph-runtime-inmem`, which serialises checkpoints to
+`graph/.langgraph_api/.langgraph_checkpoint.*.pckl` with a 10-second background flush.
+Empirically on Windows this does NOT reliably survive hard `langgraph dev` process
+restarts — thread metadata persists (visible in `/threads/search`), but checkpoint
+state does not (`/threads/<id>/state` empty, resume errors `'NoneType' object is not
+iterable`). The native fix is `langgraph up` (Docker stack with Postgres backing),
+not a config flag on `langgraph dev` — the inmem runtime does not honor
+`POSTGRES_URI`. Bring up the Postgres container via
+`docker compose -f graph/docker-compose.yml up -d langgraph-postgres` and switch to
+`langgraph up` for any multi-session step-debug walkthrough (HOM-334 Phase B).
+Verification mechanism: `graph/scripts/verify_postgres_resume.py` proves the
+checkpointer round-trip across distinct Python processes against either SQLite
+(no Docker required) or Postgres (requires the compose container up).
 
 **LLM cache keys include routing-config fingerprint (HOM-157).** LLM nodes use `make_llm_key`
 (not `make_key`), which prepends a sha256 of the effective `NodeConfig`

@@ -64,6 +64,67 @@ langgraph dev
 Open the Studio URL printed to stdout. Create a thread; run with input `{"slug": "<inbox-stem>"}`
 or `{}` for auto-pick.
 
+### Postgres-backed step-debug walkthroughs (HOM-346)
+
+`langgraph dev` runs the in-memory runtime (`langgraph-runtime-inmem`). It
+serialises thread state to `graph/.langgraph_api/.langgraph_checkpoint.*.pckl`
+on a 10s background flush, but on Windows that state does NOT reliably survive
+a hard `langgraph dev` process restart — thread metadata persists, but
+checkpoint state and interrupt position are lost, so `Command(resume=…)`
+returns `'NoneType' object is not iterable`. This breaks the HOM-334 Phase B
+operator step-debug walkthrough, which is structurally multi-session
+(pause on interrupt → close Studio → reopen later → resume).
+
+The native LangGraph primitive for persistence-across-restart is `langgraph up`
+(Postgres + Redis stack). `POSTGRES_URI` is NOT consumed by `langgraph dev` —
+verified against `langgraph-cli` 0.4.24 + `langgraph-runtime-inmem` 0.28.0.
+
+**Setup (one-time):**
+
+```powershell
+# 1. Copy env template
+copy graph\.env.example graph\.env
+# 2. Fill in graph/.env:
+#    - POSTGRES_URI=postgres://postgres:postgres@localhost:5433/postgres?sslmode=disable
+#    - LANGSMITH_API_KEY=lsv2_...   (langgraph up requires this)
+# 3. Bring up the Postgres container
+docker compose -f graph/docker-compose.yml up -d langgraph-postgres
+```
+
+**Each session:**
+
+```powershell
+cd graph
+langgraph up --postgres-uri "$env:POSTGRES_URI"
+# Studio is now backed by Postgres. Threads survive `langgraph up` restarts.
+# Resume an interrupted thread via the Studio UI or
+# POST /threads/<id>/runs/wait with body {"command":{"resume":"approved"}}.
+```
+
+**Decision (HOM-346):** Postgres is required for step-debug walkthroughs
+(HOM-334 Phase B) but is NOT mandated for routine `langgraph dev` runs.
+Rationale: `langgraph up` requires Docker + a LangSmith API key, which
+adds operator friction we don't want to impose on every Phase 4 dispatch.
+The two-config split is acceptable because (a) the underlying graph code
+is identical, (b) the node-result cache (`graph/.cache/langgraph.db`) is
+shared and orthogonal — re-bootstrap on `langgraph dev` after a restart
+costs $0 in API spend; only the interrupt position is lost.
+
+**Verification:** `graph/scripts/verify_postgres_resume.py` proves the
+checkpointer round-trips correctly across distinct Python processes:
+
+```powershell
+# No Docker required — uses langgraph-checkpoint-sqlite (bundled):
+graph\.venv\Scripts\python.exe graph\scripts\verify_postgres_resume.py --backend sqlite
+# Against the docker-compose Postgres:
+graph\.venv\Scripts\python.exe graph\scripts\verify_postgres_resume.py --backend postgres
+```
+
+Expected last line: `"verdict": "PASS"`. The script spawns two real
+subprocesses (start → exit → resume in a fresh interpreter) so it
+genuinely simulates a Studio restart — there is no shared in-process
+state between the two phases.
+
 ## Tier mapping
 
 LLM nodes pick a `tier` (or pin an explicit `model`); the backend resolves the tier
