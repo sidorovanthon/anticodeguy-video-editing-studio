@@ -60,6 +60,8 @@ Stack: TrueNAS at `http://192.168.1.115:8124`. Never use `langgraph dev` for ste
 
    Deterministic nodes (no Jinja brief) get only `post_output.json` and `cli.txt`. That's by design — the 4-point report's "What it did" is the substantive review for them; the brief diff is N/A.
 
+   **Caveat — `brief.md` is an approximation, not a byte-for-byte replay.** `scripts/step_debug_observe.py::_render_brief_for_node` splats the committed state directly into the Jinja template under the prod `_BRIEF_ENV` (which uses Jinja's permissive `Undefined`, silently rendering empty for missing keys). Production nodes build a node-specific `_render_ctx` that often derives fields from upstream state at dispatch time — those derived fields are NOT reconstructible post-hoc and may silently render as empty in `brief.md`. Treat the rendered brief as a high-fidelity approximation for spotting canon embed-vs-cite drift; for byte-exact reproduction reach into the node's `_render_ctx` helper directly.
+
 4. **Write the 4-point report** (canon / what-it-did / clean-session / discrepancy) into `docs/step-debug-runs/2026-05-XX-<slug>.md`. Use the artifacts as evidence; cite line refs to canon. For deterministic / orchestrator-internal nodes mark clean-session as **"N/A — no canon analog, orchestrator-only"** rather than skipping the section.
 
 5. **Resume the thread.** From the dev box:

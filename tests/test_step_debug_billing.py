@@ -22,22 +22,27 @@ re-execute.
 This test verifies:
 
 1. **Wiring** — with the env flag set, the compiled graph carries
-   ``interrupt_after = "*"`` (the literal value of ``langgraph.types.All``).
-   Without the flag, ``interrupt_after_nodes`` is empty. This is the
-   smoke-level guarantee that production runs are byte-identical to
-   pre-HOM-369 behaviour.
+   ``interrupt_after = "*"`` (the literal value of ``langgraph.types.All``,
+   preserved verbatim as a string). Without the flag, the attribute is
+   empty. This is the smoke-level guarantee that production runs are
+   byte-identical to pre-HOM-369 behaviour.
 
-2. **No double-charge in cache.db** — for the two canonical Phase 3 LLM
-   nodes (``p3_pre_scan``, ``p3_strategy``) the committed recording in
-   the fixture ``cache.db`` carries exactly one ``llm_runs`` append per
-   node, not two. The reverted wrapper would have committed two appends
-   (one per re-execution) into a fresh-tier prewarm cache.db; this
-   recording was captured under the static-interrupt model and
-   structurally cannot contain duplicates.
+2. **Single-dispatch invariant (the headline empirical assertion)** —
+   under static ``interrupt_after``, the prior node body executes
+   exactly ONCE across a pause-and-resume cycle. The reverted
+   PR #183/#184 in-body ``interrupt()`` wrapper would have re-executed
+   the body on resume (double dispatch, double bill). This test uses
+   a tiny in-process StateGraph with a counter node so the assertion
+   discriminates the two regimes directly at the dispatcher level,
+   without any LangGraph-internals coupling and at $0 spend.
 
-3. **$0 spend** — runs entirely in replay mode against the committed
-   cache.db. ``DispatchResult.all_hits`` asserts cache_hits >= 1 and
-   llm_dispatches == 0 for every node observed.
+3. **Cache-shape sanity (advisory)** — for the two canonical Phase 3
+   LLM nodes (``p3_pre_scan``, ``p3_strategy``) the committed
+   recording in the fixture ``cache.db`` carries one ``llm_runs``
+   append per node. This is a shape sanity check; it does NOT
+   discriminate the bug regime from the fix regime (both produce a
+   single-append cache row — see the docstring on
+   ``test_committed_recording_is_single_append_shaped``).
 
 Refs
 ----
@@ -103,13 +108,17 @@ def test_interrupt_after_wired_only_under_step_debug_flag(monkeypatch):
 
     monkeypatch.setenv("HOMESTUDIO_STEP_DEBUG", "1")
     compiled_on = build_graph()
-    after = list(compiled_on.interrupt_after_nodes)
+    after = compiled_on.interrupt_after_nodes
     # ``"*"`` is the literal value of ``langgraph.types.All`` — Pregel
     # checks ``interrupt_after_nodes == "*" or node in interrupt_after_nodes``
-    # at the boundary, so the wildcard is preserved verbatim.
-    assert "*" in after or after == ["*"], (
-        f"step-debug compile should pause after every node (interrupt_after='*'); "
-        f"got {after!r}"
+    # at the boundary, so the wildcard is preserved verbatim as a string
+    # (NOT materialised to a list of node names). Verified against the
+    # installed LangGraph: ``compile(interrupt_after="*")`` stores the
+    # literal string ``"*"`` on the compiled graph.
+    assert after == "*", (
+        f"step-debug compile should preserve interrupt_after='*' verbatim "
+        f"as a string (langgraph.types.All sentinel); got {after!r} of type "
+        f"{type(after).__name__}"
     )
 
 
@@ -173,18 +182,138 @@ def _count_llm_runs_appends(channel_writes_decoded) -> int:
     return count
 
 
+def test_no_double_dispatch_under_static_interrupts(monkeypatch):
+    """Static ``interrupt_after`` runs the prior node body EXACTLY once.
+
+    This is the empirical billing assertion HOM-369 promises and the
+    reverted PR #183/#184 wrapper would have failed: the node body
+    executes once before the pause; on resume, the prior node is NOT
+    re-executed (Pregel commits its writes at the superstep boundary
+    BEFORE raising ``GraphInterrupt``).
+
+    The wrapper bug regime — ``interrupt()`` called inside the body
+    AFTER state mutation — would, on resume, re-execute the body from
+    the top and double the dispatch count. We discriminate the two
+    regimes by counting actual node-body invocations across the
+    pause-and-resume cycle.
+
+    Approach: a tiny in-process StateGraph with a single LLM-shaped
+    node whose body increments a counter (no real LLM dispatch — a
+    plain list append is sufficient and keeps the test at $0). Compile
+    with ``interrupt_after="*"`` + ``MemorySaver``. First ``invoke``
+    raises (or returns a pause-state) AFTER the body runs once;
+    ``invoke(None, …)`` resumes from the committed checkpoint and
+    advances to END without re-executing the prior node. Counter
+    asserts: 1 after first run, still 1 after resume.
+
+    Refs: LangGraph durable execution docs (interrupt_after at superstep
+    boundary, post-write); CLAUDE.md §"LangGraph primitives".
+    """
+    from typing import TypedDict
+    from langgraph.checkpoint.memory import MemorySaver
+    from langgraph.errors import GraphInterrupt
+    from langgraph.graph import END, START, StateGraph
+
+    class _S(TypedDict, total=False):
+        n: int
+
+    invocations: list[str] = []
+
+    def _node_a(state: _S) -> _S:
+        # Mutate-then-return shape, mirroring the LLM-node pattern
+        # (append to telemetry channel, return state delta). The
+        # reverted wrapper called ``interrupt()`` between the mutation
+        # and the return — under static ``interrupt_after`` this body
+        # commits cleanly and Pregel pauses BETWEEN nodes instead.
+        invocations.append("a")
+        return {"n": state.get("n", 0) + 1}
+
+    def _node_b(state: _S) -> _S:
+        invocations.append("b")
+        return {"n": state.get("n", 0) + 10}
+
+    g: StateGraph = StateGraph(_S)
+    g.add_node("a", _node_a)
+    g.add_node("b", _node_b)
+    g.add_edge(START, "a")
+    g.add_edge("a", "b")
+    g.add_edge("b", END)
+
+    saver = MemorySaver()
+    compiled = g.compile(checkpointer=saver, interrupt_after="*")
+
+    cfg = {"configurable": {"thread_id": "hom369-billing-test"}}
+
+    # Pass 1: invoke runs node 'a', commits its writes, and pauses
+    # BEFORE 'b' (static interrupt_after at superstep boundary). The
+    # API does not raise — it returns the current state and the
+    # caller inspects ``get_state(...).next`` to see what's pending.
+    result_1 = compiled.invoke({"n": 0}, config=cfg)
+    assert result_1 == {"n": 1}, (
+        f"after first superstep, state should reflect node 'a' having "
+        f"run once (n=1); got {result_1!r}"
+    )
+    assert invocations == ["a"], (
+        f"only node 'a' should have executed in the first pass; "
+        f"got {invocations!r}"
+    )
+
+    snapshot_paused = compiled.get_state(cfg)
+    assert "b" in snapshot_paused.next, (
+        f"after first pass, next pending tick should be node 'b' "
+        f"(pause is BETWEEN a and b at the static interrupt); "
+        f"got next={snapshot_paused.next!r}"
+    )
+
+    # Pass 2: resume from the committed checkpoint. Pregel reads the
+    # paused state, runs only 'b', then pauses (interrupt_after='*'
+    # also fires after 'b'). Node 'a' MUST NOT re-execute — the
+    # reverted wrapper regime would have re-run 'a' from the top
+    # (GraphInterrupt raised mid-body → writes never committed →
+    # resume replays the entire body).
+    result_2 = compiled.invoke(None, config=cfg)
+    assert invocations == ["a", "b"], (
+        f"on resume, ONLY node 'b' should execute; node 'a' must NOT "
+        f"re-execute (the static-interrupt billing guarantee). "
+        f"Got invocations={invocations!r}. If 'a' appears twice, the "
+        f"reverted PR #183/#184 in-body interrupt() wrapper is back."
+    )
+    assert result_2 == {"n": 11}, (
+        f"final state after both nodes ran exactly once each: n=11; "
+        f"got {result_2!r}"
+    )
+
+    # Headline single-dispatch invariant.
+    a_dispatches = invocations.count("a")
+    assert a_dispatches == 1, (
+        f"HOM-369 single-dispatch invariant: node 'a' executed "
+        f"{a_dispatches} times across the pause/resume cycle; expected 1. "
+        f"Two indicates the reverted in-body interrupt() wrapper "
+        f"(writes never commit → body re-runs on resume → double bill)."
+    )
+
+
 @requires_fixture_cache
-def test_no_double_llm_dispatch_under_static_interrupts():
-    """Each LLM node's cache.db recording contains exactly one llm_runs append.
+def test_committed_recording_is_single_append_shaped():
+    """Each LLM node's cache.db recording carries one ``llm_runs`` append.
 
-    Walks the two canonical Phase 3 LLM nodes (``p3_pre_scan``,
-    ``p3_strategy``) and asserts that each recording — captured under
-    the HOM-369 static-interrupt model — contains exactly one append to
-    ``state.llm_runs``. Under the reverted PR #183/#184 wrapper this
-    would have been two per node (one per re-execution after resume).
+    NOTE: this test asserts the *shape* of the committed recording —
+    one append per node, no duplicates — but does NOT, by itself,
+    discriminate the buggy in-body-interrupt regime from the fixed
+    static-interrupt regime. Reason: under BOTH regimes the cache.db
+    ends up with exactly one row per node containing one append.
+    Under the bug, the first pass mutates state then ``interrupt()``
+    raises mid-body so Pregel writes nothing; the resume executes the
+    body again and finally writes one append. Under the fix, the body
+    runs once and one append is written. Same final cache shape.
 
-    Total observation: ``sum(llm_runs_per_node) == N_llm_nodes``, not
-    ``2 * N``. This is the empirical billing guarantee HOM-369 ships.
+    The discriminating assertion lives in
+    ``test_no_double_dispatch_under_static_interrupts`` above (counter-
+    based, doesn't depend on the cache layer). This test remains as a
+    shape sanity check — a recording with two or more ``llm_runs``
+    appends in one row would indicate something genuinely broken
+    (e.g., a node returning a list of telemetry entries instead of
+    one, or the reducer mis-stacking).
 
     Also asserts ``$0`` spend via ``DispatchResult.all_hits`` for every
     node — the replay harness fails loudly on cache miss.
