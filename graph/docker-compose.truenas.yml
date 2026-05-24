@@ -122,11 +122,18 @@ services:
       # via Task Scheduler, so re-running ./deploy.sh --rebuild re-rsyncs and
       # the new contents appear immediately (bind, not COPY).
       #
-      # PR-2 (HOM-359) will later mount /root/.claude/ as the claude-CLI
-      # session dir. Sub-path mounts (the video-use line below) coexist with
-      # a parent /root/.claude/ mount in Docker: each bind is independent,
-      # and the child mount shadows whatever sits at that path inside the
-      # parent. No re-ordering required.
+      # HOM-359: bind-mount /root/.claude/ as the claude-CLI session dir so
+      # subscription auth (`claude login` — OAuth, not API key; see
+      # backends/claude.py:3 docstring) survives container recreation. Without
+      # this mount, every `docker compose up -d` wipes the in-image
+      # /root/.claude/ and the first LLM dispatch fails with AuthError.
+      # Parent mount: /root/.claude/. CHILD mount below
+      # (/root/.claude/skills/video-use, HOM-360) coexists — Docker handles
+      # parent+child binds independently, and the child shadows whatever the
+      # parent has at that path. Verified post-deploy: both paths resolve.
+      # Read-WRITE required: `claude login` writes OAuth tokens here.
+      # Host dir is created by deploy.sh::deploy_rebuild (chmod 777, idempotent).
+      - "/var/lib/homestudio-langgraph/claude-session:/root/.claude:rw"
       - "/var/lib/homestudio-langgraph/skills/video-use:/root/.claude/skills/video-use:ro"
       - "/var/lib/homestudio-langgraph/skills/hyperframes:/root/.agents/skills/hyperframes:ro"
     healthcheck:
