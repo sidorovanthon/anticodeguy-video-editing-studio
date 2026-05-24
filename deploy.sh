@@ -39,6 +39,7 @@ TRUENAS="truenas"
 REMOTE_PROJECT="/var/lib/homestudio-langgraph"
 IMAGE_TAG="homestudio-langgraph:local"
 SERVER_CONTAINER="homestudio-langgraph-server"
+SERVER_SERVICE="homestudio-langgraph-server"
 POSTGRES_CONTAINER="homestudio-langgraph-postgres"
 REDIS_CONTAINER="homestudio-langgraph-redis"
 SERVER_PORT=8124
@@ -115,7 +116,7 @@ require_secrets() {
     if ! ssh "$TRUENAS" "sudo test -f $REMOTE_PROJECT/.env"; then
         die "Missing $REMOTE_PROJECT/.env on truenas. Run: ./deploy.sh --secrets"
     fi
-    if ! ssh "$TRUENAS" "sudo grep -q '^LANGSMITH_API_KEY=lsv2_' $REMOTE_PROJECT/.env"; then
+    if ! ssh "$TRUENAS" "sudo grep -qE '^LANGSMITH_API_KEY=.+$' $REMOTE_PROJECT/.env"; then
         die "LANGSMITH_API_KEY not set in $REMOTE_PROJECT/.env on truenas. Get a free Developer-tier key at https://smith.langchain.com and add it."
     fi
 }
@@ -182,7 +183,7 @@ deploy_rebuild() {
     sync_file "graph/$COMPOSE_FILE" "$REMOTE_PROJECT/$COMPOSE_FILE"
 
     log "Building image $IMAGE_TAG on truenas..."
-    ssh "$TRUENAS" "cd $REMOTE_PROJECT && sudo docker build -t $IMAGE_TAG -f graph/.build/Dockerfile graph/"
+    ssh "$TRUENAS" "cd $REMOTE_PROJECT && sudo docker build --pull -t $IMAGE_TAG -f graph/.build/Dockerfile graph/"
 
     log "Recreating stack via docker compose..."
     ssh "$TRUENAS" "cd $REMOTE_PROJECT && sudo docker compose -f $COMPOSE_FILE up -d --remove-orphans"
@@ -194,8 +195,8 @@ deploy_rebuild() {
 }
 
 deploy_restart() {
-    log "=== Fast restart: docker compose restart $SERVER_CONTAINER ==="
-    ssh "$TRUENAS" "cd $REMOTE_PROJECT && sudo docker compose -f $COMPOSE_FILE restart homestudio-langgraph-server"
+    log "=== Fast restart: docker compose restart $SERVER_SERVICE ==="
+    ssh "$TRUENAS" "cd $REMOTE_PROJECT && sudo docker compose -f $COMPOSE_FILE restart $SERVER_SERVICE"
     wait_healthy
     log "=== Restart done ==="
 }

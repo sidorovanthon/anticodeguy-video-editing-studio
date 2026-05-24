@@ -30,7 +30,10 @@ services:
     container_name: homestudio-langgraph-postgres
     restart: unless-stopped
     ports:
-      - "5443:5432"
+      # Bind to loopback only — server container reaches postgres via the
+      # compose-internal network. LAN exposure with default postgres/postgres
+      # credentials would let anyone on the home LAN read/write thread state.
+      - "127.0.0.1:5443:5432"
     environment:
       POSTGRES_DB: postgres
       POSTGRES_USER: postgres
@@ -51,7 +54,9 @@ services:
     container_name: homestudio-langgraph-redis
     restart: unless-stopped
     ports:
-      - "6380:6379"
+      # Bind to loopback only — server container reaches redis via the
+      # compose-internal network; no need for LAN exposure.
+      - "127.0.0.1:6380:6379"
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - homestudio_langgraph_redisdata:/data
