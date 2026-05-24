@@ -179,7 +179,14 @@ ensure_dockerfile() {
     # Single RUN layer with apt cleanup to keep image size sane. The base
     # image from `langgraph dockerfile` is Debian-based, so apt-get applies.
     sed -i '/^FROM /a RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*' "$build_dir/Dockerfile"
-    log "Dockerfile written to graph/.build/Dockerfile (UV_LINK_MODE=copy + ffmpeg apt-install injected)"
+    # Install Node.js 22 LTS (bundles node + npm + npx) — required on PATH by
+    # HyperFrames canon (engines.node >=22; `npx hyperframes` is invoked by
+    # `p4_final_render` and any other HF-driven node). The Debian-slim base
+    # only ships an ancient `nodejs` package; we use the NodeSource setup
+    # script to register their apt repo and pull the current LTS. Single RUN
+    # layer with apt cleanup to keep image size sane (HOM-358).
+    sed -i '/^FROM /a RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt-get install -y --no-install-recommends nodejs && apt-get clean && rm -rf /var/lib/apt/lists/*' "$build_dir/Dockerfile"
+    log "Dockerfile written to graph/.build/Dockerfile (UV_LINK_MODE=copy + ffmpeg + nodejs-22 apt-install injected)"
 }
 
 deploy_rebuild() {
