@@ -172,7 +172,14 @@ ensure_dockerfile() {
     # (os error 11)" inside docker build on TrueNAS (overlay2 over ZFS).
     # Forcing the copy link mode avoids that filesystem code path entirely.
     sed -i '/^FROM /a ENV UV_LINK_MODE=copy' "$build_dir/Dockerfile"
-    log "Dockerfile written to graph/.build/Dockerfile (UV_LINK_MODE=copy injected)"
+    # Install ffmpeg (which also provides ffprobe) — required on PATH by
+    # canon (`docs/canon/video-use-algorithm.md:21`). Discovered missing
+    # 2026-05-24 during HOM-334 Phase B step-debug: both `isolate_audio`
+    # and `p3_inventory` errored with `ffprobe not found on PATH` (HOM-351).
+    # Single RUN layer with apt cleanup to keep image size sane. The base
+    # image from `langgraph dockerfile` is Debian-based, so apt-get applies.
+    sed -i '/^FROM /a RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*' "$build_dir/Dockerfile"
+    log "Dockerfile written to graph/.build/Dockerfile (UV_LINK_MODE=copy + ffmpeg apt-install injected)"
 }
 
 deploy_rebuild() {
