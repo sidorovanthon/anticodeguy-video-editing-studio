@@ -25,6 +25,7 @@ v1 topology (spec §4.1, §8 — LLM-free coverage):
                                                                           └─ ok ─► p3_pre_scan ─► p3_strategy ─► p3_edl_select ─► gate_edl_ok ─► …
 """
 
+import os
 from pathlib import Path
 
 from langgraph.cache.sqlite import SqliteCache
@@ -876,8 +877,50 @@ def build_graph():
     The `cache=` argument is NOT rejected by langgraph-api (only
     checkpointer + store are) and powers per-node `cache_policy=` hits
     across runs / threads / processes for the same slug.
+
+    HOM-369: when ``HOMESTUDIO_STEP_DEBUG=1`` is set in the environment,
+    compile with native LangGraph static interrupts (``interrupt_after="*"``)
+    so Pregel pauses at every superstep boundary. This is the correct
+    primitive for step-debug pauses — ``GraphInterrupt`` is raised
+    BETWEEN nodes by ``should_interrupt`` at the boundary check (after
+    the previous tick's results are already committed to checkpoint and
+    cache), so on resume only the next tick executes. The previous node
+    does NOT re-execute.
+
+    Compare with the (architecturally wrong) reverted approach from
+    PR #183/#184: an in-place ``interrupt()`` call wrapped around each
+    node body fires AFTER the body has done its work but BEFORE the
+    function returns; LangGraph treats this as a dynamic interrupt and
+    re-executes the entire node body on resume (cache miss the second
+    time because the first pass never wrote — it interrupted before
+    return), producing a second paid dispatch and non-deterministic
+    committed state. The native ``interrupt_after`` parameter avoids
+    this entirely.
+
+    POST-only (``interrupt_after``, not ``interrupt_before``) is the
+    first-cut choice — operators want to see what a node produced
+    before the next one runs; PRE adds noise without adding signal.
+
+    Production runs (flag unset) are byte-identical to pre-HOM-369
+    behavior: when ``step_debug_on`` is False the kwarg is simply
+    omitted via ``**{}``.
+
+    Refs:
+      - LangGraph ``StateGraph.compile()`` signature accepts
+        ``interrupt_after: All | list[str] | None`` where ``All``
+        is the literal ``"*"``.
+      - LangGraph ``pregel._loop.should_interrupt`` fires at the
+        superstep boundary check, BEFORE the next tick's tasks run.
+      - CLAUDE.md memory ``feedback_langgraph_static_interrupts_for_step_debug``.
     """
-    return build_graph_uncompiled().compile(cache=_build_cache())
+    step_debug_on = os.environ.get("HOMESTUDIO_STEP_DEBUG") == "1"
+    compile_kwargs: dict = {"cache": _build_cache()}
+    if step_debug_on:
+        # ``"*"`` is the literal value of ``langgraph.types.All`` — pause
+        # after every node in the graph. No node-body wrapping, no
+        # re-execution on resume.
+        compile_kwargs["interrupt_after"] = "*"
+    return build_graph_uncompiled().compile(**compile_kwargs)
 
 
 graph = build_graph()
