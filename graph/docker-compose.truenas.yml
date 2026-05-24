@@ -86,6 +86,17 @@ services:
       # container always points at the sibling postgres/redis services.
       POSTGRES_URI: postgres://postgres:postgres@homestudio-langgraph-postgres:5432/postgres?sslmode=disable
       REDIS_URI: redis://homestudio-langgraph-redis:6379
+      # HOM-347 fixup: container has no .git/ above the imported module, so
+      # _paths.repo_root()'s git-walk would crash at import time. Pin both
+      # roots to /deps/graph: it contains scripts/ (rsynced into the build
+      # context as a sibling of src/) so `python -m scripts.X` resolves with
+      # cwd=/deps/graph, and it hosts inbox/+episodes/ at runtime.
+      HOMESTUDIO_REPO_ROOT: /deps/graph
+      HOMESTUDIO_PROJECT_ROOT: /deps/graph
+      # Make `scripts/` importable. /deps/graph/src is already on sys.path
+      # via the langgraph-emitted package install (pyproject.toml src layout),
+      # but `python -m scripts.X` needs /deps/graph itself on PYTHONPATH.
+      PYTHONPATH: /deps/graph
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import urllib.request,sys; sys.exit(0) if urllib.request.urlopen(\"http://localhost:8000/ok\", timeout=2).status==200 else sys.exit(1)'"]
       interval: 10s

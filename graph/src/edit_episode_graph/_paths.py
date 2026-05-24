@@ -11,6 +11,14 @@ back to the main repo, so the search skips past it and lands at the
 main worktree's root. This matches how ``git rev-parse --show-toplevel``
 would resolve from the main repo, deterministically.
 
+For containerised deployments (HOM-347: TrueNAS langgraph-api stack) the
+container has no ``.git/`` anywhere above the imported module. Setting
+``HOMESTUDIO_REPO_ROOT`` short-circuits the git-walk and returns the
+override path. The override is the long-term fix for "the graph code
+needs to know where ``scripts/`` lives, but the runtime image is not a
+git checkout". Distinct from ``HOMESTUDIO_PROJECT_ROOT`` (which controls
+data location for ``inbox/`` + ``episodes/``) — see ``project_root()``.
+
 ``project_root()`` is the helper graph nodes use to locate ``inbox/``
 and ``episodes/``. It honors the ``HOMESTUDIO_PROJECT_ROOT`` env var
 (explicit override — pin a worktree to read/write data from any path,
@@ -37,15 +45,26 @@ from dataclasses import dataclass
 from pathlib import Path
 
 PROJECT_ROOT_ENV_VAR = "HOMESTUDIO_PROJECT_ROOT"
+REPO_ROOT_ENV_VAR = "HOMESTUDIO_REPO_ROOT"
 
 
 def repo_root(start: Path | None = None) -> Path:
-    """Return the main git worktree's root by walking up from ``start``.
+    """Return the repo root (directory containing ``scripts/``).
 
-    ``.git`` as a directory marks the main worktree; ``.git`` as a file
-    marks a linked worktree (and is skipped). Raises ``FileNotFoundError``
-    if no main ``.git`` directory is found above ``start``.
+    Resolution order:
+
+    1. ``$HOMESTUDIO_REPO_ROOT`` if set and non-empty (resolved to absolute) —
+       takes precedence over git-walk. This is the container-friendly escape
+       hatch (HOM-347) for runtime images that ship the source tree without a
+       ``.git/`` directory anywhere above the imported module.
+    2. Walk up from ``start`` looking for a ``.git`` *directory* (main
+       worktree). ``.git`` as a *file* (linked worktree) is skipped — the
+       caller lands at the main worktree's root.
+    3. Raises ``FileNotFoundError`` if neither resolves.
     """
+    override = os.environ.get(REPO_ROOT_ENV_VAR)
+    if override:
+        return Path(override).resolve()
     here = (start or Path(__file__)).resolve()
     if here.is_file():
         here = here.parent

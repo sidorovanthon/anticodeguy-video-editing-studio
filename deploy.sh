@@ -167,7 +167,12 @@ ensure_dockerfile() {
     # `langgraph dockerfile` writes Dockerfile relative to its target arg.
     # Run it with cwd=graph so langgraph.json is auto-discovered.
     (cd "$SCRIPT_DIR/graph" && "$LANGGRAPH_CLI" dockerfile "$build_dir/Dockerfile") || die "langgraph dockerfile failed"
-    log "Dockerfile written to graph/.build/Dockerfile"
+    # Inject ENV UV_LINK_MODE=copy right after the first FROM. uv's default
+    # clonefile/reflink mode produces "Resource temporarily unavailable
+    # (os error 11)" inside docker build on TrueNAS (overlay2 over ZFS).
+    # Forcing the copy link mode avoids that filesystem code path entirely.
+    sed -i '/^FROM /a ENV UV_LINK_MODE=copy' "$build_dir/Dockerfile"
+    log "Dockerfile written to graph/.build/Dockerfile (UV_LINK_MODE=copy injected)"
 }
 
 deploy_rebuild() {
@@ -178,6 +183,17 @@ deploy_rebuild() {
     log "Syncing graph/ to $TRUENAS:$REMOTE_PROJECT/graph/..."
     ssh "$TRUENAS" "sudo mkdir -p $REMOTE_PROJECT && sudo chown claude:claude $REMOTE_PROJECT"
     sync_dir "graph/" "$REMOTE_PROJECT/graph"
+
+    # Approach B (HOM-347 fixup): the graph code subprocess-invokes
+    # `python -m scripts.pickup` (and similar) with cwd=scripts_root(), which
+    # at runtime equals repo_root(). In the container there is no .git/ — we
+    # set HOMESTUDIO_REPO_ROOT=/deps/graph in compose, and we need scripts/
+    # to exist at /deps/graph/scripts/ so `python -m scripts.X` resolves.
+    # Simplest landing: rsync scripts/ INTO the build context as a sibling of
+    # src/. The langgraph-generated Dockerfile's `ADD . /deps/graph` then
+    # picks it up automatically; no Dockerfile post-edit beyond UV_LINK_MODE.
+    log "Syncing scripts/ into $TRUENAS:$REMOTE_PROJECT/graph/scripts/ (for /deps/graph/scripts)..."
+    sync_dir "scripts/" "$REMOTE_PROJECT/graph/scripts"
 
     log "Syncing compose file..."
     sync_file "graph/$COMPOSE_FILE" "$REMOTE_PROJECT/$COMPOSE_FILE"

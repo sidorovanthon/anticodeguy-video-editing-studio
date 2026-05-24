@@ -8,6 +8,7 @@ import pytest
 
 from edit_episode_graph._paths import (
     PROJECT_ROOT_ENV_VAR,
+    REPO_ROOT_ENV_VAR,
     EpisodePaths,
     project_root,
     repo_root,
@@ -44,11 +45,52 @@ def test_skips_linked_worktree(tmp_path: Path) -> None:
     assert repo_root(smoke) == main
 
 
-def test_raises_when_no_git(tmp_path: Path) -> None:
+def test_raises_when_no_git(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv(REPO_ROOT_ENV_VAR, raising=False)
     inside = tmp_path / "no-repo" / "deep" / "tree"
     inside.mkdir(parents=True)
     with pytest.raises(FileNotFoundError):
         repo_root(inside)
+
+
+def test_repo_root_env_override_when_no_git(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """HOM-347: container deployments have no .git/ — env var must work."""
+    inside = tmp_path / "no-repo" / "deep"
+    inside.mkdir(parents=True)
+    override = tmp_path / "deps"
+    override.mkdir()
+    monkeypatch.setenv(REPO_ROOT_ENV_VAR, str(override))
+    assert repo_root(inside) == override.resolve()
+
+
+def test_repo_root_env_takes_precedence_over_git(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """HOM-347: env var wins even if a .git/ marker exists above start."""
+    main = tmp_path / "repo"
+    (main / ".git").mkdir(parents=True)
+    nested = main / "graph"
+    nested.mkdir()
+    override = tmp_path / "deps"
+    override.mkdir()
+    monkeypatch.setenv(REPO_ROOT_ENV_VAR, str(override))
+    assert repo_root(nested) == override.resolve()
+
+
+def test_repo_root_empty_env_falls_back(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Empty-string env var is treated as unset, like PROJECT_ROOT."""
+    main = tmp_path / "repo"
+    (main / ".git").mkdir(parents=True)
+    nested = main / "graph"
+    nested.mkdir()
+    monkeypatch.setenv(REPO_ROOT_ENV_VAR, "")
+    assert repo_root(nested) == main
 
 
 def test_default_start_resolves_this_repo() -> None:
