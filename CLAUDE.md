@@ -49,20 +49,21 @@ force re-execution does not lose thread history. Manual escape hatch:
 `rm graph/.cache/langgraph.db`. Per-node `_CACHE_VERSION` integers (in each node module)
 must be bumped when its brief / schema / tool-list changes; code-review enforces (spec §8).
 
-**Thread-state persistence across Studio restarts (HOM-346).** `langgraph dev` uses
-`langgraph-runtime-inmem`, which serialises checkpoints to
+**Thread-state persistence across Studio restarts (HOM-346 → HOM-347).** `langgraph dev`
+uses `langgraph-runtime-inmem`, which serialises checkpoints to
 `graph/.langgraph_api/.langgraph_checkpoint.*.pckl` with a 10-second background flush.
 Empirically on Windows this does NOT reliably survive hard `langgraph dev` process
-restarts — thread metadata persists (visible in `/threads/search`), but checkpoint
-state does not (`/threads/<id>/state` empty, resume errors `'NoneType' object is not
-iterable`). The native fix is `langgraph up` (Docker stack with Postgres backing),
-not a config flag on `langgraph dev` — the inmem runtime does not honor
-`POSTGRES_URI`. Bring up the Postgres container via
-`docker compose -f graph/docker-compose.yml up -d langgraph-postgres` and switch to
-`langgraph up` for any multi-session step-debug walkthrough (HOM-334 Phase B).
-Verification mechanism: `graph/scripts/verify_postgres_resume.py` proves the
-checkpointer round-trip across distinct Python processes against either SQLite
-(no Docker required) or Postgres (requires the compose container up).
+restarts — thread metadata persists, but checkpoint state does not (`'NoneType' object
+is not iterable` on resume). The native fix is the LangGraph Self-Hosted Lite stack
+(postgres + redis + licensed `langchain/langgraph-api`), NOT a config flag on
+`langgraph dev`. The dev box has no Docker, so per HOM-347 the stack is deployed to
+the existing TrueNAS Docker host. Bring it up via `./deploy.sh --rebuild` (root) and
+open Studio at `http://192.168.1.115:8124`. All HOM-334 step-debug walkthroughs that
+need to survive a Studio restart MUST use the TrueNAS stack — `langgraph dev` is for
+single-session work only. Verification mechanism (no Docker required):
+`graph/scripts/verify_postgres_resume.py --backend sqlite` proves the
+`BaseCheckpointSaver` cross-process contract; end-to-end AC is documented in
+`graph/README.md` §"Restart-resumable Studio on TrueNAS (HOM-347)".
 
 **LLM cache keys include routing-config fingerprint (HOM-157).** LLM nodes use `make_llm_key`
 (not `make_key`), which prepends a sha256 of the effective `NodeConfig`

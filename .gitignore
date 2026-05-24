@@ -35,6 +35,9 @@ graph/langgraph_dev_v1.log
 graph/langgraph_dev.log
 graph/.langgraph_api/
 
+# HOM-347: deploy.sh writes the generated Dockerfile here before rsync to TrueNAS.
+graph/.build/
+
 # Claude Code runtime artifacts
 .claude/scheduled_tasks.lock
 

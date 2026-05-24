@@ -862,14 +862,16 @@ def build_graph():
     """Compile the graph WITHOUT a checkpointer, WITH a SqliteCache.
 
     Spec §9.6 originally bound a `SqliteSaver` here, but the langgraph-api
-    runtime (used by `langgraph dev` and `langgraph up`) manages persistence
-    itself and rejects user-supplied checkpointers with a hard ValueError.
+    runtime (used by `langgraph dev` and by the deployed Self-Hosted Lite
+    server) manages persistence itself and rejects user-supplied
+    checkpointers with a hard ValueError.
 
-    Switching to durable thread state across `langgraph dev` restarts
-    requires `langgraph up` (Docker stack with a Postgres backend) — the
-    inmem runtime does NOT honor `POSTGRES_URI`. See
-    `graph/README.md` §"Postgres-backed step-debug walkthroughs" and
-    HOM-346 for the runbook.
+    Switching to durable thread state across Studio restarts requires the
+    TrueNAS-deployed Self-Hosted Lite stack (postgres + redis +
+    `langchain/langgraph-api`) — the `langgraph dev` inmem runtime does
+    NOT honor `POSTGRES_URI`. See
+    `graph/README.md` §"Restart-resumable Studio on TrueNAS (HOM-347)"
+    and `deploy.sh` at repo root for the runbook.
 
     The `cache=` argument is NOT rejected by langgraph-api (only
     checkpointer + store are) and powers per-node `cache_policy=` hits
