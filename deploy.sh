@@ -209,6 +209,44 @@ deploy_rebuild() {
     log "Syncing scripts/ into $TRUENAS:$REMOTE_PROJECT/graph/scripts/ (for /deps/graph/scripts)..."
     sync_dir "scripts/" "$REMOTE_PROJECT/graph/scripts"
 
+    # HOM-360: rsync the video-use + hyperframes skill trees from the dev box
+    # to TrueNAS so the compose file can bind-mount them into the container at
+    # the canonical paths (/root/.claude/skills/video-use,
+    # /root/.agents/skills/hyperframes). Source layout on the dev box:
+    #   ~/.claude/skills/video-use   — symlink (Git Bash) / NTFS junction
+    #                                  that points at ~/repos/video-use
+    #   ~/.agents/skills/hyperframes — real directory
+    # We use rsync -L (--copy-links) to dereference the video-use symlink so
+    # the actual file contents land on TrueNAS rather than a dangling symlink
+    # pointing at a Windows path the NAS cannot resolve. Skills are auto-
+    # updated on the dev box via Task Scheduler; re-running ./deploy.sh
+    # --rebuild picks up the new contents without an image rebuild because the
+    # mount is bind, not COPY (symmetric to the HOM-349 episodes/+inbox/
+    # bind-mount pattern; read-only on the container side per compose).
+    log "Ensuring skills/ tree exists on $TRUENAS:$REMOTE_PROJECT/skills/..."
+    ssh "$TRUENAS" "sudo mkdir -p $REMOTE_PROJECT/skills/video-use $REMOTE_PROJECT/skills/hyperframes && sudo chown -R claude:claude $REMOTE_PROJECT/skills"
+    sync_skills_dir() {
+        local src="$1" dest="$2"
+        if [ "$SYNC_TOOL" = "rsync" ]; then
+            rsync -avL --delete \
+                --exclude __pycache__ \
+                --exclude '*.pyc' \
+                --exclude 'node_modules' \
+                "$src" "$TRUENAS":"$dest"
+        else
+            ssh "$TRUENAS" "sudo rm -rf $dest && sudo mkdir -p $dest && sudo chown claude:claude $dest"
+            tar -C "$src" -h \
+                --exclude=__pycache__ \
+                --exclude='*.pyc' \
+                --exclude='node_modules' \
+                -cf - . | ssh "$TRUENAS" "tar -C $dest -xf -"
+        fi
+    }
+    log "Syncing ~/.claude/skills/video-use/ (rsync -L dereferences the symlink to ~/repos/video-use)..."
+    sync_skills_dir "$HOME/.claude/skills/video-use/" "$REMOTE_PROJECT/skills/video-use"
+    log "Syncing ~/.agents/skills/hyperframes/..."
+    sync_skills_dir "$HOME/.agents/skills/hyperframes/" "$REMOTE_PROJECT/skills/hyperframes"
+
     log "Syncing compose file..."
     sync_file "graph/$COMPOSE_FILE" "$REMOTE_PROJECT/$COMPOSE_FILE"
 
