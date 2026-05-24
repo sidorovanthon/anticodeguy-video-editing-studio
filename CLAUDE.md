@@ -44,26 +44,22 @@ remain in place as routing — caching is the orthogonal node-body layer.
 Source-of-truth design: `docs/superpowers/specs/2026-05-06-langgraph-node-caching-design.md`
 (HOM-132 epic). Cache lifecycle is independent from the `langgraph dev` thread
 checkpoint store (in-mem PersistentDict at `graph/.langgraph_api/.langgraph_checkpoint.*.pckl`,
-or Postgres if you've switched to `langgraph up` per HOM-346) — wiping the cache to
+or Postgres when running against the TrueNAS stack per HOM-347) — wiping the cache to
 force re-execution does not lose thread history. Manual escape hatch:
 `rm graph/.cache/langgraph.db`. Per-node `_CACHE_VERSION` integers (in each node module)
 must be bumped when its brief / schema / tool-list changes; code-review enforces (spec §8).
 
-**Thread-state persistence across Studio restarts (HOM-346 → HOM-347).** `langgraph dev`
-uses `langgraph-runtime-inmem`, which serialises checkpoints to
-`graph/.langgraph_api/.langgraph_checkpoint.*.pckl` with a 10-second background flush.
-Empirically on Windows this does NOT reliably survive hard `langgraph dev` process
-restarts — thread metadata persists, but checkpoint state does not (`'NoneType' object
-is not iterable` on resume). The native fix is the LangGraph Self-Hosted Lite stack
-(postgres + redis + licensed `langchain/langgraph-api`), NOT a config flag on
-`langgraph dev`. The dev box has no Docker, so per HOM-347 the stack is deployed to
-the existing TrueNAS Docker host. Bring it up via `./deploy.sh --rebuild` (root) and
-open Studio at `http://192.168.1.115:8124`. All HOM-334 step-debug walkthroughs that
-need to survive a Studio restart MUST use the TrueNAS stack — `langgraph dev` is for
-single-session work only. Verification mechanism (no Docker required):
-`graph/scripts/verify_postgres_resume.py --backend sqlite` proves the
-`BaseCheckpointSaver` cross-process contract; end-to-end AC is documented in
-`graph/README.md` §"Restart-resumable Studio on TrueNAS (HOM-347)".
+**Thread-state persistence across Studio restarts (HOM-346 → HOM-347, AC #5 verified 2026-05-24).** `langgraph dev` uses `langgraph-runtime-inmem`, which serialises checkpoints to `graph/.langgraph_api/.langgraph_checkpoint.*.pckl`. Empirically on Windows this does NOT reliably survive hard `langgraph dev` process restarts — thread metadata persists, but checkpoint state does not (`'NoneType' object is not iterable` on resume). The native fix is LangGraph Self-Hosted Lite (postgres + redis + licensed `langchain/langgraph-api`), NOT a config flag on `langgraph dev`. The stack is deployed to the existing TrueNAS Docker host (no Docker on Windows dev box, by design).
+
+**Live deployment.** Stack at `http://192.168.1.115:8124` (Studio + REST). Three containers, all `homestudio-langgraph-*` prefixed, all isolated from other TrueNAS stacks. Postgres + redis bound to `127.0.0.1` on TrueNAS (LAN-only); server bound to `0.0.0.0:8124` so Windows dev box can reach Studio. Operational commands from repo root: `./deploy.sh --rebuild` (full rebuild), `./deploy.sh` (fast server restart), `./deploy.sh --status` (container state + recent logs), `./deploy.sh --logs` (tail). Server-side secrets at `/var/lib/homestudio-langgraph/.env` on TrueNAS — `LANGSMITH_API_KEY` (free Developer tier, Self-Hosted Lite plan; obtained from <https://smith.langchain.com>) + `HOMESTUDIO_STEP_DEBUG=1` (step-debug walkthroughs always want this on). NEVER committed; local template at `.env.truenas` (gitignored) is your editing surface.
+
+**All HOM-334 step-debug walkthroughs MUST use the TrueNAS stack** — `langgraph dev` is for single-session work only. Detailed runbook (deploy quirks, AC #5 verification curl recipe, troubleshooting) in `graph/README.md` §"Restart-resumable Studio on TrueNAS (HOM-347)".
+
+**Self-Hosted Lite is FREE** (1M node-executions/year limit, irrelevant for step-debug usage). `LANGGRAPH_CLOUD_LICENSE_KEY` is for Enterprise tier — DO NOT confuse the two. Self-Hosted Lite authenticates with `LANGSMITH_API_KEY` (the same one a free Developer-tier LangSmith account gives you).
+
+**Two structural quirks discovered during HOM-347 deploy** that any future change to `deploy.sh` / Dockerfile generation must preserve:
+1. `uv` clonefile mode fails inside `docker build` on TrueNAS (overlay2 over ZFS) with `Resource temporarily unavailable (os error 11)`. `deploy.sh::ensure_dockerfile()` injects `ENV UV_LINK_MODE=copy` after the generated `FROM` via `sed`. Removing that patch re-breaks the build.
+2. The container has no `.git/` (image build doesn't include it). `_paths.repo_root()` walks for `.git` and would crash at import time — fixed by honoring `HOMESTUDIO_REPO_ROOT` env var. Compose sets `HOMESTUDIO_REPO_ROOT=/deps/graph`. `scripts/` is rsynced into `graph/scripts/` for the build context (Approach B, see PR #186); `PYTHONPATH=/deps/graph` makes `python -m scripts.X` resolve. Restructuring without keeping all three pieces re-breaks graph import in the container.
 
 **LLM cache keys include routing-config fingerprint (HOM-157).** LLM nodes use `make_llm_key`
 (not `make_key`), which prepends a sha256 of the effective `NodeConfig`
