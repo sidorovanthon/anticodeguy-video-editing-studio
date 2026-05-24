@@ -72,28 +72,6 @@ def _parse_dimensions(html: str) -> tuple[int, int] | None:
 
 
 def p4_dispatch_beats_node(state: dict[str, Any]) -> Command:
-    # HOM-334 Phase A.5: step-debug pre/post interrupts around the
-    # Send-fan-out decision. The returned ``Command`` carries the goto
-    # list; the post-interrupt's repr fallback in ``_safe_json`` handles
-    # it. No-op when ``HOMESTUDIO_STEP_DEBUG`` is unset.
-    from .._step_debug import is_enabled as _sd_enabled, wrap_deterministic_node
-
-    if _sd_enabled():
-        return wrap_deterministic_node(
-            "p4_dispatch_beats",
-            state=state,
-            context={
-                "slug": state.get("slug"),
-                "n_beats": len(
-                    ((state.get("compose") or {}).get("plan") or {}).get("beats") or []
-                ),
-            },
-            inner=lambda: _p4_dispatch_beats_body(state),
-        )
-    return _p4_dispatch_beats_body(state)
-
-
-def _p4_dispatch_beats_body(state: dict[str, Any]) -> Command:
     compose = state.get("compose") or {}
     plan = compose.get("plan")
     if not plan:

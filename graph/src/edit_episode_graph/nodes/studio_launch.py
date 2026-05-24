@@ -110,27 +110,6 @@ def _resolved_port(state: dict) -> int:
 
 
 def studio_launch_node(state: dict) -> dict:
-    # HOM-334 Phase A.5: step-debug pre/post interrupts around the
-    # background `hyperframes preview` spawn. ``inner`` performs the
-    # actual Popen — operator can still abort after the spawn at the
-    # post-interrupt, with the PID already recorded so cleanup is
-    # tractable. No-op when ``HOMESTUDIO_STEP_DEBUG`` is unset.
-    from .._step_debug import is_enabled as _sd_enabled, wrap_deterministic_node
-
-    if _sd_enabled():
-        return wrap_deterministic_node(
-            "studio_launch",
-            state=state,
-            context={
-                "slug": state.get("slug"),
-                "preview_port": (state.get("compose") or {}).get("preview_port"),
-            },
-            inner=lambda: _studio_launch_body(state),
-        )
-    return _studio_launch_body(state)
-
-
-def _studio_launch_body(state: dict) -> dict:
     hf_dir = hyperframes_dir(state)
     if hf_dir is None:
         return _error("no compose.hyperframes_dir / episode_dir in state")

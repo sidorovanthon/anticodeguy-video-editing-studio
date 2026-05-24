@@ -58,7 +58,7 @@ def deterministic_node(
     def _error(message: str) -> dict:
         return {"errors": [{"node": name, "message": message, "timestamp": _now()}]}
 
-    def _execute(state) -> dict:
+    def node(state):
         result = subprocess.run(
             cmd_factory(state),
             capture_output=True,
@@ -72,39 +72,5 @@ def deterministic_node(
             return parser(result.stdout)
         except Exception as exc:
             return _error(f"parser error: {exc!r}\n--- stdout ---\n{result.stdout}")
-
-    def node(state):
-        # HOM-334 Phase A.5: step-debug interrupts cover every node in the
-        # graph, deterministic factory included. ``wrap_deterministic_node``
-        # is a pure pass-through when ``HOMESTUDIO_STEP_DEBUG`` is unset
-        # (production default); only the operator's debug session pays the
-        # cost of building the context dict and the wrap call. Local import
-        # so module import remains cycle-free.
-        from .._step_debug import is_enabled as _sd_enabled, wrap_deterministic_node
-
-        if not _sd_enabled():
-            return _execute(state)
-
-        # Best-effort cmd preview for the pre-interrupt context. cmd_factory
-        # may raise (e.g. missing episode_dir on isolate_audio); in that case
-        # the cmd field stays None and _execute() will fail the same way it
-        # would in production, surfacing the same RuntimeError. We do NOT
-        # try/except _execute() — the step-debug wrapper should expose the
-        # raw failure mode just like production.
-        cmd_preview: str | None = None
-        try:
-            cmd_preview = " ".join(cmd_factory(state))
-        except Exception:  # pragma: no cover - best effort only
-            cmd_preview = None
-        return wrap_deterministic_node(
-            name,
-            state=state,
-            context={
-                "slug": state.get("slug") if isinstance(state, dict) else None,
-                "cmd": cmd_preview,
-                "cwd": str(cwd) if cwd is not None else None,
-            },
-            inner=lambda: _execute(state),
-        )
 
     return node

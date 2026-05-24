@@ -188,31 +188,6 @@ class Gate:
         return len(prior) + 1
 
     def __call__(self, state: dict) -> dict:
-        # HOM-334 Phase A.5: step-debug pre/post interrupts cover the whole
-        # gate dispatch (checks + record build). ``wrap_deterministic_node``
-        # is a pure pass-through when ``HOMESTUDIO_STEP_DEBUG`` is unset, so
-        # production gate latency is unchanged. The topology node name
-        # uses ``_`` (e.g. ``gate_lint``) while ``Gate.name`` uses ``:``
-        # (e.g. ``gate:lint``) — convert here so the dump path under
-        # ``tmp/step-debug/<thread>/<node>/`` matches ``graph.py``'s
-        # ``add_node`` first arg.
-        from .._step_debug import is_enabled as _sd_enabled, wrap_deterministic_node
-
-        if _sd_enabled():
-            node_name = self.name.replace(":", "_")
-            return wrap_deterministic_node(
-                node_name,
-                state=state,
-                context={
-                    "slug": state.get("slug") if isinstance(state, dict) else None,
-                    "gate_name": self.name,
-                    "iteration": self._iteration(state),
-                },
-                inner=lambda: self._invoke(state),
-            )
-        return self._invoke(state)
-
-    def _invoke(self, state: dict) -> dict:
         violations = list(self.checks(state))
         passed = not violations
         record = {
