@@ -1,0 +1,59 @@
+# HOM-346: Postgres backing store for `langgraph up` (step-debug resumability).
+#
+# Why this file exists
+# --------------------
+# `langgraph dev` ships an in-memory checkpointer (PersistentDict serialised
+# to `.langgraph_api/.langgraph_checkpoint.*.pckl`) that empirically does NOT
+# survive process restarts on Windows (HOM-346 ticket body). The native
+# LangGraph primitive for thread-state persistence across restarts is
+# `langgraph up`, which expects a Postgres + Redis stack. This compose file
+# is the Postgres half of that stack; Redis is launched by `langgraph up`
+# itself when no `--postgres-uri` override is given.
+#
+# Image + port choice
+# -------------------
+# `pgvector/pgvector:pg16` matches what `langgraph up` provisions internally
+# (see `langgraph_cli/docker.py::compose_as_dict`). Mapping host port 5433
+# (not the Postgres default 5432) avoids clashing with any local Postgres
+# the operator may already have running.
+#
+# Credentials + volume
+# --------------------
+# `postgres/postgres/postgres` matches the default `langgraph up` URI
+# (`postgres://postgres:postgres@langgraph-postgres:5432/postgres`). The
+# named volume `langgraph_data` is what makes thread state survive
+# `docker compose down` — without it, a `down` plus `up` wipes everything,
+# defeating the whole point of this ticket.
+#
+# Usage
+# -----
+#   docker compose -f graph/docker-compose.yml up -d langgraph-postgres
+#   # Then point `langgraph up` (or any LangGraph deployment) at it via
+#   # POSTGRES_URI=postgres://postgres:postgres@localhost:5433/postgres
+#
+# See graph/README.md "Postgres-backed step-debug walkthroughs" for the
+# full operator runbook.
+
+services:
+  langgraph-postgres:
+    image: pgvector/pgvector:pg16
+    container_name: anticodeguy-langgraph-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    command: ["postgres", "-c", "shared_preload_libraries=vector"]
+    volumes:
+      - langgraph_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  langgraph_data:
+    driver: local
