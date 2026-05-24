@@ -455,25 +455,6 @@ def assemble_html(
 
 
 def p4_transitions_node(state):
-    # HOM-334: step-debug pre/post interrupts with snapshot capture.
-    from .._step_debug import is_enabled as _sd_enabled, wrap_deterministic_node
-
-    if _sd_enabled():
-        return wrap_deterministic_node(
-            "p4_transitions",
-            state=state,
-            context={
-                "slug": state.get("slug"),
-                "n_transitions": len(
-                    ((state.get("compose") or {}).get("plan") or {}).get("transitions") or []
-                ),
-            },
-            inner=lambda: _p4_transitions_body(state),
-        )
-    return _p4_transitions_body(state)
-
-
-def _p4_transitions_body(state):
     compose = state.get("compose") or {}
     plan = compose.get("plan") or {}
     plan_beats = plan.get("beats") or []
