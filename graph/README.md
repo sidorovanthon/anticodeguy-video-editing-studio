@@ -165,6 +165,59 @@ curl -s -X POST $STUDIO/threads/$THREAD/runs/wait \
 If step 4 returns the same `next` and `interrupts` as step 2, and step 5
 advances the run, AC #5 is satisfied.
 
+#### Six structural quirks (deploy-time `sed`/volume invariants)
+
+Six quirks discovered during the HOM-347 / HOM-351 / HOM-358 / HOM-360 / HOM-359
+deploys. **Any future change to `deploy.sh` / Dockerfile generation / compose volumes
+must preserve all six** — each one re-breaks the build or a graph node if removed.
+
+1. **`uv` clonefile fails on ZFS.** `uv` clonefile mode fails inside `docker build` on
+   TrueNAS (overlay2 over ZFS) with `Resource temporarily unavailable (os error 11)`.
+   `deploy.sh::ensure_dockerfile()` injects `ENV UV_LINK_MODE=copy` after the generated
+   `FROM` via `sed`. Removing that patch re-breaks the build.
+2. **No `.git/` in the container.** The image build doesn't include `.git/`, so
+   `_paths.repo_root()` (which walks for `.git`) would crash at import time — fixed by
+   honoring `HOMESTUDIO_REPO_ROOT` (compose sets it to `/deps/graph`). `scripts/` is
+   rsynced into `graph/scripts/` for the build context (Approach B, PR #186);
+   `PYTHONPATH=/deps/graph` makes `python -m scripts.X` resolve. Restructuring without
+   keeping all three pieces re-breaks graph import in the container.
+3. **No ffmpeg in the base image.** The `langgraph dockerfile`-generated base is
+   Debian-slim with no media tooling; canon (`docs/canon/video-use-algorithm.md:21`)
+   requires `ffmpeg`/`ffprobe` on PATH for `isolate_audio` + `p3_inventory` and later
+   ffmpeg-using nodes. `deploy.sh::ensure_dockerfile` injects
+   `RUN apt-get install -y --no-install-recommends ffmpeg` via the same `/^FROM /a` sed
+   mechanism (lands before the UV_LINK_MODE ENV due to sed-append order). Removing it
+   re-breaks every Phase 3 node that probes media. (HOM-358)
+4. **No Node.js ≥22 in the base image.** Debian-slim ships no Node, and its packaged
+   `nodejs` is far below HyperFrames' `engines.node >=22`. `deploy.sh::ensure_dockerfile`
+   injects a `RUN` layer registering the NodeSource apt repo
+   (`https://deb.nodesource.com/setup_22.x`) and installing `nodejs` (bundles `node`,
+   `npm`, `npx`) via the same sed mechanism — required so `npx hyperframes` resolves in
+   `p4_final_render` and any HF-driven node. Do NOT swap for Debian's stock `nodejs`. (HOM-358)
+5. **Skill trees are bind-mounted, not baked.** `video-use` and `hyperframes` skills are
+   external (auto-updated on the dev box via Task Scheduler — baking would freeze them).
+   Four Phase 3/4 graph constants hardcode paths under `Path.home()/".claude"/"skills"/...`
+   (`p3_inventory.HELPERS_DIR`, `p3_render_segments.RENDER_PY`,
+   `p3_self_eval.TIMELINE_VIEW_PATH`, `gates/animation_map._GLOBAL_FALLBACK`) with no env
+   override. `deploy.sh::deploy_rebuild` rsyncs `~/.claude/skills/video-use/` and
+   `~/.agents/skills/hyperframes/` to `/var/lib/homestudio-langgraph/skills/` (`rsync -L`
+   to dereference the dev-box symlink) and compose bind-mounts them read-only at
+   `/root/.claude/skills/video-use` and `/root/.agents/skills/hyperframes`. Removing
+   either step re-breaks `p3_inventory` (`missing video-use helper(s): ...`). Symmetric to
+   the HOM-349 episodes/inbox bind-mount. (HOM-360)
+6. **`claude` CLI uses subscription OAuth, not API key** (`backends/claude.py:3`:
+   "Subscription auth only."). OAuth tokens land at `/root/.claude/` — same parent as the
+   quirk-5 read-only skill child mount. `deploy.sh::ensure_dockerfile` appends
+   `npm i -g @anthropic-ai/claude-code` onto the quirk-4 nodejs RUN chain (must be in the
+   SAME `&&` chain so `npm` is on PATH); `deploy.sh::deploy_rebuild` creates
+   `/var/lib/homestudio-langgraph/claude-session/` (chmod 777, idempotent); compose
+   bind-mounts it to `/root/.claude:rw` (parent mount — Docker handles parent+child binds
+   independently, child shadows parent). One-off operator action after first deploy:
+   `ssh truenas 'sudo docker exec -it homestudio-langgraph-server claude login'` (browser
+   OAuth; the agent does NOT run this). Removing any piece re-breaks auth — every
+   `docker compose up -d` wipes the in-image `/root/.claude/` and the first LLM dispatch
+   fails with AuthError. (HOM-359)
+
 ## Tier mapping
 
 LLM nodes pick a `tier` (or pin an explicit `model`); the backend resolves the tier
