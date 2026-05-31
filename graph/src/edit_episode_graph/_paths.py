@@ -194,6 +194,24 @@ class EpisodePaths:
         return self.compositions_dir / f"{scene_id}.html"
 
 
+def profile_dir_for(state: dict) -> Path | None:
+    """Resolve ``state.brief.profile_id`` to ``<repo>/profiles/<id>`` or ``None``.
+
+    Used by creative nodes for ``load_profile_blocks`` + dir-fed
+    ``canon_fingerprint`` (HOM-166). ``None`` when no brief is bound (graph
+    introspection / pre-resolve) so ``canon_fingerprint(node, None, ...)`` keeps
+    the HOM-377 skill-only back-compat digest. Pure path build — no I/O."""
+    pid = (state.get("brief") or {}).get("profile_id") if isinstance(state, dict) else None
+    return (repo_root() / "profiles" / pid) if pid else None
+
+
+def brand_dir_for(state: dict) -> Path | None:
+    """Resolve ``state.brief.brand_id`` to ``<repo>/brand/<id>`` or ``None``
+    (``None`` for the canonical profile or pre-resolve introspection)."""
+    bid = (state.get("brief") or {}).get("brand_id") if isinstance(state, dict) else None
+    return (repo_root() / "brand" / bid) if bid else None
+
+
 def scripts_root() -> Path:
     """Return the directory containing the ``scripts/`` package.
 

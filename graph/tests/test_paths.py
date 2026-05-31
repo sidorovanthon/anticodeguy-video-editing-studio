@@ -255,3 +255,13 @@ def test_episode_paths_distinct_slugs_yield_distinct_dirs(
     assert a.episode_dir != b.episode_dir
     assert a.episode_dir.name == "alpha"
     assert b.episode_dir.name == "beta"
+
+
+def test_profile_brand_dir_for():
+    from edit_episode_graph._paths import profile_dir_for, brand_dir_for, repo_root
+    assert profile_dir_for({}) is None
+    assert brand_dir_for({}) is None
+    st = {"brief": {"profile_id": "talking-head-portrait", "brand_id": "anticodeguy"}}
+    assert profile_dir_for(st) == repo_root() / "profiles" / "talking-head-portrait"
+    assert brand_dir_for(st) == repo_root() / "brand" / "anticodeguy"
+    assert brand_dir_for({"brief": {"profile_id": "canonical", "brand_id": None}}) is None
