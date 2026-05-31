@@ -1,0 +1,15 @@
+# Canonical (regression) profile — empty override.
+# Every field is `skill_default` / disabled so the pipeline runs pure skill
+# canon with no brand or video-class opinions. Used for regression baselines.
+profile_id: canonical
+human_label: "Canonical (regression)"
+pacing: skill_default
+structural_archetype: skill_default
+rhythm_template: skill_default
+captions:
+  enabled: false
+animation_density: skill_default
+music:
+  enabled: false
+cta:
+  enabled: false
