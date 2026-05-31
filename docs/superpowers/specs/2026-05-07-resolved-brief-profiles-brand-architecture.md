@@ -304,6 +304,25 @@ INPUTS:
 
 ## 9. Расширение HOM-114 — three-source canon loader
 
+> **AMENDED 2026-05-31 (HOM-114, decision B).** HOM-377 implemented the
+> skill-canon source as a per-node **manifest** (`NODE_CANON_ANCHORS` +
+> `load_canon_blocks(node)` + `canon_fingerprint(node)`, injected as
+> `{{ canon.* }}`), which **supersedes the literal `assemble_brief_context(...)`
+> signature below**. HOM-114 extends the same manifest to the profile/brand
+> **markdown** layers: `NODE_PROFILE_ANCHORS`/`NODE_BRAND_ANCHORS` (sections of
+> `house-style.md`/`brand.md`), `load_profile_blocks`/`load_brand_blocks`,
+> `canon_fingerprint(node, profile_dir, brand_dir)` (back-compat: no-dirs ==
+> skill-only digest), and `verify_anchors()` extended over the shipped layers.
+> There is **one** delivery path (`{{ canon.* }}`/`{{ profile.* }}`/`{{ brand.* }}`),
+> not the `## SOURCE:`-tagged blob. The YAML brand config
+> (`defaults.yaml.transitions/.motion_language/.captions`, `palette.yaml`) is NOT
+> a markdown anchor — it is loaded by HOM-167's models and composed +
+> fingerprinted by HOM-166's `resolve_episode_brief` (`brief.fingerprint`).
+> HOM-166 supplies the per-episode resolved `profile_dir`/`brand_dir` and wires
+> `{{ profile.* }}`/`{{ brand.* }}` into node render contexts. §9 item 7
+> (helper-script sha256 in `pickup`/`p3_pre_scan` key_func) is tracked
+> separately, not delivered in HOM-114.
+
 **Что есть в HOM-114 сейчас (Backlog):**
 - `_canon_loader.py` с `load_skill_section(skill_path, anchor)`, markdown-парсер по тексту H2-заголовка.
 - Snapshot-тесты, smoke без `Read` SKILL.md.
