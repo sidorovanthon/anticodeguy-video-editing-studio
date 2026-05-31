@@ -46,6 +46,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from ._paths import repo_root
+
 # --------------------------------------------------------------------------- #
 # Skill-root resolution
 # --------------------------------------------------------------------------- #
@@ -567,6 +569,73 @@ def all_refs() -> list[CanonRef]:
     return out
 
 
+def _all_profile_refs() -> list[SectionRef]:
+    seen: set[tuple[str, str, str | None]] = set()
+    out: list[SectionRef] = []
+    for refs in NODE_PROFILE_ANCHORS.values():
+        for ref in refs:
+            ident = (ref.rel_path, ref.anchor, ref.item)
+            if ident not in seen:
+                seen.add(ident)
+                out.append(ref)
+    return out
+
+
+def _all_brand_refs() -> list[SectionRef]:
+    seen: set[tuple[str, str, str | None]] = set()
+    out: list[SectionRef] = []
+    for refs in NODE_BRAND_ANCHORS.values():
+        for ref in refs:
+            ident = (ref.rel_path, ref.anchor, ref.item)
+            if ident not in seen:
+                seen.add(ident)
+                out.append(ref)
+    return out
+
+
+def _verify_layer(layer_dir: Path, refs: list[SectionRef], source_label: str) -> None:
+    """If the ref's file exists in ``layer_dir``, every registered anchor must resolve."""
+    for ref in refs:
+        path = layer_dir / ref.rel_path
+        if not path.is_file():
+            continue
+        load_section(
+            path, ref.anchor, item=ref.item,
+            min_anchor_text=_MIN_SECTION_ANCHOR_TEXT,
+            source_label=f"{source_label}:{layer_dir.name}",
+        )
+
+
+def _shipped_profile_dirs() -> list[Path]:
+    base = repo_root() / "profiles"
+    return [p for p in sorted(base.iterdir()) if p.is_dir()] if base.is_dir() else []
+
+
+def _shipped_brand_dirs() -> list[Path]:
+    base = repo_root() / "brand"
+    return [p for p in sorted(base.iterdir()) if p.is_dir()] if base.is_dir() else []
+
+
+def verify_profile_brand_anchors(
+    profile_dirs: list[Path] | None = None,
+    brand_dirs: list[Path] | None = None,
+) -> None:
+    """Resolve every registered profile/brand anchor against the given layers.
+
+    Defaults to the shipped layers under ``repo_root()/{profiles,brand}``. A layer
+    missing its markdown file is skipped (legitimate — the ``canonical`` profile);
+    a present file missing a registered anchor raises :class:`CanonAnchorMissing`.
+    """
+    pdirs = _shipped_profile_dirs() if profile_dirs is None else profile_dirs
+    bdirs = _shipped_brand_dirs() if brand_dirs is None else brand_dirs
+    prof_refs = _all_profile_refs()
+    brand_refs = _all_brand_refs()
+    for d in pdirs:
+        _verify_layer(d, prof_refs, "profile")
+    for d in bdirs:
+        _verify_layer(d, brand_refs, "brand")
+
+
 def verify_anchors(refs: list[CanonRef] | None = None, *, force: bool = False) -> None:
     """Resolve every registered canon anchor once; raise on the first failure.
 
@@ -584,6 +653,7 @@ def verify_anchors(refs: list[CanonRef] | None = None, *, force: bool = False) -
             return
         for ref in all_refs():
             load_skill_section(ref.skill, ref.rel_path, ref.anchor, item=ref.item)
+        verify_profile_brand_anchors()  # HOM-114: shipped profile/brand layers
         _VERIFIED_SIGNATURES.add(sig)
         return
     for ref in refs:

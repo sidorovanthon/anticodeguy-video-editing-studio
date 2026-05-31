@@ -499,3 +499,21 @@ def test_fingerprint_stable_when_unconsumed_section_edited(fixture_skills, fixtu
     )
     after = cl.canon_fingerprint("p3_strategy", profile_dir=prof)
     assert after == before
+
+
+# --- verify_profile_brand_anchors ------------------------------------------ #
+
+def test_verify_profile_brand_passes_then_fails_on_rename(fixture_layers):
+    prof = fixture_layers / "profiles" / "talking-head-portrait"
+    brand = fixture_layers / "brand" / "anticodeguy"
+    cl.verify_profile_brand_anchors([prof], [brand])  # clean
+
+    hs = prof / "house-style.md"
+    hs.write_text(_HOUSE_STYLE_MD.replace("## Pacing", "## Tempo"), encoding="utf-8")
+    with pytest.raises(cl.CanonAnchorMissing):
+        cl.verify_profile_brand_anchors([prof], [brand])
+
+
+def test_verify_profile_brand_skips_layer_without_file(fixture_layers):
+    canonical = fixture_layers / "profiles" / "canonical"  # no house-style.md
+    cl.verify_profile_brand_anchors([canonical], [])  # must NOT raise
