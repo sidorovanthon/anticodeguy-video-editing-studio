@@ -10,6 +10,7 @@ from langgraph.types import CachePolicy
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
 from .._caching import make_llm_key, stable_fingerprint
+from .._canon_loader import canon_fingerprint, load_canon_blocks
 from .._paths import EpisodePaths
 from ..schemas.p3_strategy import Strategy
 from ._llm import LLMNode, _load_brief
@@ -19,7 +20,12 @@ from ._llm import LLMNode, _load_brief
 # v3 (HOM-223): identity-only state writes — `strategy.source_path` and
 # the brief's `episode_dir` extra removed; takes-packed resolved via
 # `EpisodePaths(slug)` at use-site.
-_CACHE_VERSION = 3
+# v4 (HOM-377): canon sections (video-use SKILL.md §The process Step 4
+#   "Propose strategy" + §Cut craft + §Color grade) are pulled VERBATIM from
+#   the live skill at render time and inlined via `canon.*`, replacing the
+#   "Read those sections" citations. `_cache_key` folds in
+#   `canon_fingerprint("p3_strategy")` so an upstream canon edit invalidates.
+_CACHE_VERSION = 4
 
 
 def _takes_packed_path(state: dict) -> Path:
@@ -81,6 +87,8 @@ def _cache_key(state, *_args, **_kwargs):
         extras=(
             stable_fingerprint(slips),
             stable_fingerprint(revisions),
+            # HOM-377: verbatim canon blocks inlined into the brief.
+            f"canon:{canon_fingerprint('p3_strategy')}",
         ),
     )
 
@@ -103,6 +111,8 @@ def _render_ctx(state: dict) -> dict:
         "pre_scan_slips_json": json.dumps(_pre_scan_slips(state), ensure_ascii=False),
         "strategy_revisions": revisions,
         "strategy_revisions_json": json.dumps(revisions, ensure_ascii=False),
+        # HOM-377: verbatim canon blocks pulled live from the skill by anchor.
+        "canon": load_canon_blocks("p3_strategy"),
     }
 
 

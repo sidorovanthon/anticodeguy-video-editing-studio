@@ -16,6 +16,7 @@ from langgraph.types import CachePolicy
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
 from .._caching import make_llm_key
+from .._canon_loader import canon_fingerprint, load_canon_blocks
 from .._paths import EpisodePaths
 from ..schemas.p3_pre_scan import PreScanReport
 from ._llm import LLMNode, _load_brief
@@ -23,7 +24,12 @@ from ._llm import LLMNode, _load_brief
 # Bump on brief / schema / tool-list change. Spec §8 review checkpoint.
 # v2 (HOM-223): identity-only state writes — `pre_scan.source_path` no longer
 # emitted; takes-packed path resolved via `EpisodePaths(slug)` at use-site.
-_CACHE_VERSION = 2
+# v3 (HOM-377): canon sections (video-use SKILL.md §The process Steps 1-2
+#   "Inventory" / "Pre-scan for problems" + §Cut craft) are pulled VERBATIM
+#   from the live skill at render time and inlined via `canon.*`, replacing
+#   the "Read that section" citation. `_cache_key` folds in
+#   `canon_fingerprint("p3_pre_scan")` so an upstream canon edit invalidates.
+_CACHE_VERSION = 3
 
 
 def _takes_packed_path(state: dict) -> str | None:
@@ -61,6 +67,8 @@ def _cache_key(state, *_args, **_kwargs):
         version=_CACHE_VERSION,
         slug=slug,
         files=[_takes_packed_path(state)],
+        # HOM-377: verbatim canon blocks inlined into the brief.
+        extras=(f"canon:{canon_fingerprint('p3_pre_scan')}",),
     )
 
 
@@ -81,6 +89,8 @@ def _build_node() -> LLMNode:
             "takes_packed_path": str(
                 EpisodePaths(state["slug"]).edit_dir / "takes_packed.md"
             ),
+            # HOM-377: verbatim canon blocks pulled live from the skill by anchor.
+            "canon": load_canon_blocks("p3_pre_scan"),
         },
     )
 

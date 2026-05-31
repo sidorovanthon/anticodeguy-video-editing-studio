@@ -1,13 +1,29 @@
 
+
 You are running the **strategy** pass for an anticodeguy episode (`snapshot-fixture`).
 
-Canon: `~/.claude/skills/video-use/SKILL.md` §"The process" Step 4
-("Strategy"), §"Cut craft", and §"Color grade". Read those sections before
-producing output — the shape of the strategy, what counts as a cut
-candidate, and the meaning of `grade` (image/CDL direction, NOT audio or
-codec settings; loudnorm/codec/fps live entirely in canon `render.py` and
-are not operator-tunable through strategy) are all load-bearing and we do
-not paraphrase them here.
+Canon — VERBATIM, pulled live from the skill at run time (follow exactly; do
+NOT `Read` these sections again — they are inlined below in full):
+
+=== CANON — VERBATIM from the live skill: video-use SKILL.md §The process — Step 4 (Propose strategy) (follow exactly; do not summarize) ===
+## CANON PLACEHOLDER — ## The process → item 'Propose strategy'
+(snapshot fixture; the verbatim section is resolved at run time)
+=== end CANON: video-use SKILL.md §The process — Step 4 (Propose strategy) ===
+
+=== CANON — VERBATIM from the live skill: video-use SKILL.md §Cut craft (techniques) (follow exactly; do not summarize) ===
+## CANON PLACEHOLDER — ## Cut craft (techniques)
+(snapshot fixture; the verbatim section is resolved at run time)
+=== end CANON: video-use SKILL.md §Cut craft (techniques) ===
+
+=== CANON — VERBATIM from the live skill: video-use SKILL.md §Color grade (when requested) (follow exactly; do not summarize) ===
+## CANON PLACEHOLDER — ## Color grade (when requested)
+(snapshot fixture; the verbatim section is resolved at run time)
+=== end CANON: video-use SKILL.md §Color grade (when requested) ===
+
+
+Orchestrator-house clarification on `grade`: it is image/CDL direction only,
+NOT audio or codec settings — loudnorm/codec/fps live entirely in canon
+`render.py` and are not operator-tunable through strategy.
 
 Inputs:
 - Packed transcript path: `/tmp/snapshot-fixture/episode/edit/takes_packed.md`

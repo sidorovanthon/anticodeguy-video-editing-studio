@@ -1,13 +1,17 @@
-{# Editor sub-agent task descriptor. Brief references canon; it does not embed canon. #}
-{% from "_macros.j2" import prior_violations_block -%}
+{# Editor sub-agent task descriptor. HOM-377: canon pulled VERBATIM from the
+   live skill at run time (`canon.*`). #}
+{% from "_macros.j2" import prior_violations_block, canon_section -%}
 You are running the **EDL select** pass for an anticodeguy episode (`{{ slug }}`).
 
-Canon: `~/.claude/skills/video-use/SKILL.md` §"Editor sub-agent brief" (the
-INPUTS / RULES / OUTPUT structure to follow), §"EDL format" (the JSON shape
-of the artifact you must produce), and §"Hard Rules" (HR 6 word boundaries,
-HR 7 padding window). Read those sections before producing output — the
-taste guidance and shape are load-bearing and we do not paraphrase them
-here.
+Canon — VERBATIM, pulled live from the skill at run time (follow exactly; the
+INPUTS / RULES / OUTPUT structure, the JSON shape, the cut craft, and the Hard
+Rules below are load-bearing — do NOT `Read` these sections again, they are
+inlined in full):
+
+{{ canon_section("video-use SKILL.md §Editor sub-agent brief (for multi-take selection)", canon.editor_sub_agent_brief) }}
+{{ canon_section("video-use SKILL.md §EDL format", canon.edl_format) }}
+{{ canon_section("video-use SKILL.md §Hard Rules (production correctness — non-negotiable) — esp. HR 6 word boundaries, HR 7 padding window", canon.hard_rules) }}
+{{ canon_section("video-use SKILL.md §Cut craft (techniques)", canon.cut_craft) }}
 
 Inputs (resolve via the `Read` tool — paths, not contents, are provided here):
 - Packed transcript: `{{ takes_packed_path }}`
@@ -15,8 +19,8 @@ Inputs (resolve via the `Read` tool — paths, not contents, are provided here):
 - Pre-scan slips/avoid list JSON: `{{ pre_scan_slips_json }}`
 - Strategy from prior node JSON: `{{ strategy_json }}`
 
-Output: ONLY the canonical EDL JSON as defined in §"EDL format" of the
-SKILL.md you just read. Two orchestrator-house overrides on top of canon
+Output: ONLY the canonical EDL JSON as defined in §"EDL format" inlined
+above. Two orchestrator-house overrides on top of canon
 (Phase 4 owns animation and captions, not Phase 3):
 
 - `overlays` MUST be `[]`. Do not propose any overlay.

@@ -21,6 +21,7 @@ from langgraph.types import CachePolicy
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
 from .._caching import make_llm_key
+from .._canon_loader import canon_fingerprint, load_canon_blocks
 from .._paths import EpisodePaths
 from ..schemas.p3_self_eval import EvalReport
 from ._llm import LLMNode, _load_brief
@@ -28,7 +29,12 @@ from ._llm import LLMNode, _load_brief
 # Bump on brief / schema / tool-list change. Spec §8 review checkpoint.
 # v2 (HOM-223): identity-only state writes — `eval.final_mp4_path` no longer
 # emitted; brief no longer renders `episode_dir`. Paths via `EpisodePaths(slug)`.
-_CACHE_VERSION = 2
+# v3 (HOM-377): canon sections (video-use SKILL.md §The process Step 7
+#   "Self-eval" + §Hard Rules — incl. HR 3 audio-pop/30ms fade) are pulled
+#   VERBATIM from the live skill at render time and inlined via `canon.*`,
+#   replacing the "Read those sections" citation. `_cache_key` folds in
+#   `canon_fingerprint("p3_self_eval")` so an upstream canon edit invalidates.
+_CACHE_VERSION = 3
 
 TIMELINE_VIEW_PATH = Path.home() / ".claude" / "skills" / "video-use" / "helpers" / "timeline_view.py"
 
@@ -82,7 +88,11 @@ def _cache_key(state, *_args, **_kwargs):
         version=_CACHE_VERSION,
         slug=slug,
         files=[_final_mp4_path(state), _edl_path(state)],
-        extras=(_eval_iteration(state),),
+        extras=(
+            _eval_iteration(state),
+            # HOM-377: verbatim canon blocks inlined into the brief.
+            f"canon:{canon_fingerprint('p3_self_eval')}",
+        ),
     )
 
 
@@ -129,6 +139,8 @@ def _render_ctx(state: dict) -> dict:
         "cut_boundaries_json": json.dumps(boundaries),
         "source_cut_boundaries_json": json.dumps(sources, ensure_ascii=False),
         "timeline_view_path": str(TIMELINE_VIEW_PATH),
+        # HOM-377: verbatim canon blocks pulled live from the skill by anchor.
+        "canon": load_canon_blocks("p3_self_eval"),
     }
 
 

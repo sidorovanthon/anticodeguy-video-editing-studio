@@ -341,9 +341,9 @@ INPUTS:
 **Per-нода anchor list (verbatim из родительских спек, переносится без изменений):**
 
 - **`p3_pre_scan`:** video-use SKILL.md `## The process` (Step 1, 2), `## Cut craft (techniques)`.
-- **`p3_strategy`:** video-use SKILL.md `## The process` (Step 3 + Step 4), `## Hard Rules (production correctness — non-negotiable)`; profile `house-style.md` (`## Pacing`, `## Structural archetype`); brand `brand.md` (`## Voice`).
+- **`p3_strategy`:** video-use SKILL.md `## The process` (Step 4 — Propose strategy), `## Cut craft (techniques)`, `## Color grade (when requested)`; profile `house-style.md` (`## Pacing`, `## Structural archetype`); brand `brand.md` (`## Voice`). *(HOM-377 amendment: implementation pulls Step 4 only — Step 3 «Converse» is the HITL interrupt (`strategy_confirmed_interrupt`, §8), not this brief. `## Hard Rules` belongs to `p3_edl_select` (production-correctness of cuts), not strategy proposal; `## Cut craft` + `## Color grade` are what the live `p3_strategy.j2` actually consumes.)*
 - **`p3_edl_select`:** video-use SKILL.md `## Editor sub-agent brief (for multi-take selection)` (verbatim), `## Cut craft (techniques)`, `## EDL format`, `## Hard Rules`; profile `house-style.md` (`## Edit rules`, including `cross_range_semantic_duplicates`).
-- **`p3_self_eval`:** video-use SKILL.md `## The process` (Step 7).
+- **`p3_self_eval`:** video-use SKILL.md `## The process` (Step 7 — Self-eval), `## Hard Rules (production correctness — non-negotiable)`. *(HOM-377 amendment: `## Hard Rules` added — the live `p3_self_eval.j2` checks HR 3 (audio-pop / 30ms fade) against the rendered output, so the node pulls the Hard Rules block verbatim alongside Step 7.)*
 - **`p4_design_system`:** hyperframes SKILL.md `### Step 1: Design system`; full `house-style.md`; brand `palette.yaml` (рендерится в markdown-таблицу), `brand.md` (`## Visual identity`).
 - **`p4_prompt_expansion`:** hyperframes SKILL.md `### Step 2: Prompt expansion`; `references/prompt-expansion.md`; `references/beat-direction.md` (`## Per-Beat Direction`, `## Rhythm Planning`); profile `house-style.md` (`## Rhythm template`).
 - **`p4_plan`:** hyperframes SKILL.md `### Step 3: Plan`; `references/transitions.md` (`## Energy → Primary Transition`, `## Mood → Transition Type`, `## Narrative Position`); `references/beat-direction.md`; brand `defaults.yaml.transitions`.

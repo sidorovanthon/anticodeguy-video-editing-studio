@@ -9,6 +9,7 @@ any specific gate's domain logic.
 
 from __future__ import annotations
 
+from edit_episode_graph._canon_loader import load_canon_blocks
 from edit_episode_graph.gates._base import gate_retry_context
 from edit_episode_graph.nodes._routing import route_after_gate_with_retry
 
@@ -136,6 +137,9 @@ def test_brief_renders_violations_block_on_retry():
         "slug": "x", "episode_dir": "/tmp/x",
         "takes_packed_path": "/x", "transcript_paths_json": "[]",
         "pre_scan_slips_json": "[]", "strategy_json": "{}",
+        # HOM-377: brief pulls canon verbatim via `canon.*`; production injects
+        # this in `_render_ctx`, so the direct-render tests must supply it too.
+        "canon": load_canon_blocks("p3_edl_select"),
     }
     ctx.update(gate_retry_context(state, "gate:test"))
     # The macro is keyed by `gate:edl_ok` in the actual brief, but our
@@ -158,6 +162,8 @@ def test_brief_omits_violations_block_on_first_attempt():
         "pre_scan_slips_json": "[]", "strategy_json": "{}",
         "prior_violations": [],
         "prior_iteration": 0,
+        # HOM-377: brief pulls canon verbatim via `canon.*` (see above).
+        "canon": load_canon_blocks("p3_edl_select"),
     }
     rendered = _BRIEF_ENV.from_string(_load_brief("p3_edl_select")).render(**ctx)
     assert "Previous attempt" not in rendered

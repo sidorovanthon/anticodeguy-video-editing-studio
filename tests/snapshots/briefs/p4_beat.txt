@@ -49,17 +49,52 @@ blocks:
 components:
   - hairline-rule
 
-Canon to read BEFORE writing the fragment (use the `Read` tool on each — do not rely on memory):
-1. `~/.agents/skills/hyperframes/SKILL.md` — §"Layout Before Animation", §"Scene Transitions (Non-Negotiable)" (HR 1–4; HR 4 final-scene exception applies iff `is_final == True`), §"Animation Guardrails", §"Rules (Non-Negotiable)".
-2. `~/.agents/skills/hyperframes/references/transitions/catalog.md` — §"Hard Rules (CSS)" (scene visibility + element structure), §"Scene Template". Your fragment shape MUST match Pattern A: only the root composition gets `data-composition-id`/`data-start`/`data-duration`, **the scene div does NOT**; no `<template>` wrapper; non-first scenes start with `opacity: 0` on the scene container so the future transitions node can fade them in.
-3. `~/.agents/skills/hyperframes/references/motion-principles.md` — §"Load-Bearing GSAP Rules" the `tl.fromTo()` mandate inside scene boundaries. `tl.from()` sets `immediateRender: true`, fires before `data-start` is active, and breaks under non-linear seek. **Every entrance in your timeline MUST be `tl.fromTo(...)`** — not `tl.from(...)`, not `gsap.from(...)`.
-4. `~/.agents/skills/hyperframes/references/video-composition.md` — §"Density" (density floor, 8-10 elements per scene). If `expanded-prompt.md` underspecifies, ADD atmosphere to clear the floor.
-5. `~/.agents/skills/hyperframes/references/typography.md` — type system per scene (use the typography block from `DESIGN.md` as the source of truth).
-6. `~/.agents/skills/hyperframes/references/beat-direction.md` — per-beat planning vocabulary; map this beat's energy/intent into concrete element choices.
-7. `~/.agents/skills/hyperframes/references/transitions.md` — energy/mood selection. Even though scene-to-scene transitions are authored elsewhere (root-timeline scope), the energy/mood signal informs your scene's INTERNAL motion choreography (entrance pacing, ease selection, ambient motion intensity).
-8. `~/.agents/skills/hyperframes/house-style.md` — §"Background Layer": 2-5 ambient-motion BG decoratives per scene. Apply to THIS scene.
+Canon — VERBATIM, pulled live from the skill at run time. These are the
+load-bearing, non-negotiable sections; the loader re-pulls them on every
+canon change, so this IS the current canon. Follow it exactly — do NOT rely
+on memory and do NOT `Read` these sections again (they are below in full):
 
-(conditional) `~/.agents/skills/hyperframes/references/techniques.md` — read only if `plan_beat_json` references a specific technique (e.g. lottie, canvas, variable-fonts).
+=== CANON — VERBATIM from the live skill: hyperframes SKILL.md §Layout Before Animation (follow exactly; do not summarize) ===
+## CANON PLACEHOLDER — ## Layout Before Animation
+(snapshot fixture; the verbatim section is resolved at run time)
+=== end CANON: hyperframes SKILL.md §Layout Before Animation ===
+
+=== CANON — VERBATIM from the live skill: hyperframes SKILL.md §Rules (Non-Negotiable) (follow exactly; do not summarize) ===
+## CANON PLACEHOLDER — ## Rules (Non-Negotiable)
+(snapshot fixture; the verbatim section is resolved at run time)
+=== end CANON: hyperframes SKILL.md §Rules (Non-Negotiable) ===
+
+=== CANON — VERBATIM from the live skill: hyperframes SKILL.md §Scene Transitions (Non-Negotiable) — HR 4 final-scene exception applies iff is_final == True (follow exactly; do not summarize) ===
+## CANON PLACEHOLDER — ## Scene Transitions (Non-Negotiable)
+(snapshot fixture; the verbatim section is resolved at run time)
+=== end CANON: hyperframes SKILL.md §Scene Transitions (Non-Negotiable) — HR 4 final-scene exception applies iff is_final == True ===
+
+=== CANON — VERBATIM from the live skill: hyperframes SKILL.md §Animation Guardrails (follow exactly; do not summarize) ===
+## CANON PLACEHOLDER — ## Animation Guardrails
+(snapshot fixture; the verbatim section is resolved at run time)
+=== end CANON: hyperframes SKILL.md §Animation Guardrails ===
+
+=== CANON — VERBATIM from the live skill: hyperframes references/motion-principles.md §Load-Bearing GSAP Rules (follow exactly; do not summarize) ===
+## CANON PLACEHOLDER — ## Load-Bearing GSAP Rules
+(snapshot fixture; the verbatim section is resolved at run time)
+=== end CANON: hyperframes references/motion-principles.md §Load-Bearing GSAP Rules ===
+
+
+> Orchestrator-house reconciliation of the canon above: §"Layout Before
+> Animation" shows entrance examples with `gsap.from()` / `tl.from()` (for
+> standalone authoring). In our Pattern A `.clip` scenes you MUST use
+> `tl.fromTo(...)` instead — exactly as §"Load-Bearing GSAP Rules" mandates
+> for `.clip` scenes — because `tl.from()`'s `immediateRender: true` breaks
+> under the capture engine's non-linear seek.
+
+Additional canon to `Read` ON DEMAND (only the load-bearing sections above are inlined; fetch these yourself when relevant):
+- `~/.agents/skills/hyperframes/references/transitions/catalog.md` — §"Hard Rules (CSS)" (scene visibility + element structure), §"Scene Template". Your fragment shape MUST match Pattern A: only the root composition gets `data-composition-id`/`data-start`/`data-duration`, **the scene div does NOT**; no `<template>` wrapper; non-first scenes start with `opacity: 0` on the scene container so the future transitions node can fade them in.
+- `~/.agents/skills/hyperframes/references/video-composition.md` — §"Density" (density floor, 8-10 elements per scene). If `expanded-prompt.md` underspecifies, ADD atmosphere to clear the floor.
+- `~/.agents/skills/hyperframes/references/typography.md` — type system per scene (use the typography block from `DESIGN.md` as the source of truth).
+- `~/.agents/skills/hyperframes/references/beat-direction.md` — per-beat planning vocabulary; map this beat's energy/intent into concrete element choices.
+- `~/.agents/skills/hyperframes/references/transitions.md` — energy/mood selection. Even though scene-to-scene transitions are authored elsewhere (root-timeline scope), the energy/mood signal informs your scene's INTERNAL motion choreography (entrance pacing, ease selection, ambient motion intensity).
+- `~/.agents/skills/hyperframes/house-style.md` — §"Background Layer": 2-5 ambient-motion BG decoratives per scene. Apply to THIS scene.
+- (conditional) `~/.agents/skills/hyperframes/references/techniques.md` — read only if `plan_beat_json` references a specific technique (e.g. lottie, canvas, variable-fonts).
 
 Output — return JSON matching `BeatOutput { html: str }`. The fragment shown below is the SHAPE of the `html` field's value (a single JSON-escaped string). Do NOT call the `Write` tool. Do NOT touch the filesystem. The orchestrator writes the file to `/tmp/snapshot-fixture/episode/hyperframes/compositions/scene-hook.html` from your returned body (HOM-234 — state-first artifacts, Step B3 of the HOM-230 epic).
 
@@ -149,7 +184,7 @@ These are patterns the LLM keeps re-introducing despite canon. Each iteration of
    // ✅ total animation never exceeds scene
    repeat: Math.floor(sceneDuration / cycleDuration)
    ```
-   Canon: `~/.agents/skills/hyperframes/references/motion-principles.md` — bullet "Hard-kill every scene boundary, not just captions." (the same principle: nothing animation-related may bleed past `data-duration`). Read it before writing repeat math.
+   Canon: see the inlined §"Load-Bearing GSAP Rules" block above — bullet "Hard-kill every scene boundary, not just captions" (the same principle: nothing animation-related may bleed past `data-duration`).
 
 2. **Every scene element with a non-trivial entrance MUST have a paired exit pair before the scene's `data-duration` ends — `tl.to({opacity: 0})` followed by `tl.set({visibility: "hidden"})`.** This is NOT a captions-only rule; it applies to your scene's main text (headlines, attributions, kickers, body copy), key visuals, and any element whose entrance you authored with `tl.fromTo(... { opacity: 1, ... })` or that begins with `visibility: visible` in CSS. A bare `tl.to(opacity: 0)` leaves the element in DOM at `opacity: 0` — it still participates in layout calc, and later tweens (or sibling `immediateRender`) can resurrect it. With NO exit at all, the element stays visible past its scene's slot and bleeds into the next scene (the HOM-165 / HOM-213 symptom: "thesis main text stuck on screen 8s past its scene-end").
 
@@ -165,18 +200,16 @@ These are patterns the LLM keeps re-introducing despite canon. Each iteration of
    tl.set(headline,   { visibility: "hidden" }, sceneDuration - 0.4 + 0.3);
    ```
 
-   **Canon (READ BEFORE AUTHORING — do not rely on this brief's summary):**
-   - `~/.agents/skills/hyperframes/references/motion-principles.md` — bullet "Hard-kill every scene boundary, not just captions." Read the bullet's full text; it is the generalisation of the captions rule.
-   - `~/.agents/skills/hyperframes/references/captions.md` §"Caption Exit Guarantee" — captions-specific instance of the same principle.
+   **Canon:** the "Hard-kill every scene boundary, not just captions" rule is in the inlined §"Load-Bearing GSAP Rules" block above (re-read that bullet — it is the generalisation of the captions rule). The captions-specific instance lives in `~/.agents/skills/hyperframes/references/captions.md` §"Caption Exit Guarantee" (`Read` on demand).
 
    The positive control is the canonical fixture's `payoff` scene (lines `tl.to(headline, { opacity: 0 }, fadeStart)` + `tl.set(headline, { visibility: "hidden" }, fadeStart + fadeDur)`) — every authored element in your scene's timeline should follow that shape at its own exit timestamp.
 
-3. **Decoratives with `position: absolute` MUST have their CSS final coordinates landing on-canvas.** Canon: `~/.agents/skills/hyperframes/SKILL.md` §"The process" steps 2-3 — "**The CSS position is the ground truth**; the tween describes the journey to get there." Read those steps before placing any `position: absolute` decorative. A tween whose bbox stays offscreen across **every** sample (not just the entrance starting point) means the rest-state coordinates themselves are off-canvas — an authoring defect, not an entrance journey. Do NOT use `left: -Npx` / `right: -Npx` / `top: -Npx` / `bottom: -Npx` past viewport edges as the FINAL position. Offscreen-START via `tl.fromTo()` is the canonical journey; offscreen-FINAL is broken.
+3. **Decoratives with `position: absolute` MUST have their CSS final coordinates landing on-canvas.** Canon: see §"Layout Before Animation" → "The process" steps 2-3 in the inlined canon above — "**The CSS position is the ground truth**; the tween describes the journey to get there." A tween whose bbox stays offscreen across **every** sample (not just the entrance starting point) means the rest-state coordinates themselves are off-canvas — an authoring defect, not an entrance journey. Do NOT use `left: -Npx` / `right: -Npx` / `top: -Npx` / `bottom: -Npx` past viewport edges as the FINAL position. Offscreen-START via `tl.fromTo()` is the canonical journey; offscreen-FINAL is broken.
 
 4. **No free-form staged opacity reveals on content elements.** Canon for sequenced text reveal is the caption-group chain — `~/.agents/skills/hyperframes/references/captions.md` (caption group `#cg-N` with `set(visible) → fromTo → to → set(hidden)`); staged opacity-0 reveals on free-form selectors like `.line-a` / `.line-b` / `.line-c` are NOT in canon (verified absent from `references/typography.md` and `references/captions.md`). Read `references/captions.md` before authoring any sequenced reveal. Do NOT emit content elements with CSS `opacity: 0` that never reach non-zero opacity inside the scene's duration — bbox sampler flags them `invisible throughout`, which is signal noise per prewarm even when not blocking. Use the canonical caption-group chain (authored by `p4_captions_layer`) for sequenced reveals, or a single visible element instead.
 
 Process:
-1. `Read` the canon list above (mandatory; do not rely on memory for shape or hard rules).
+1. Follow the VERBATIM canon above (inlined in full — do NOT `Read` those sections again). `Read` only the on-demand references listed above, and only when relevant to this beat.
 2. Use the inlined DESIGN.md and expanded-prompt.md bodies above for
    direction (HOM-265: do NOT call `Read` on those paths — they are not
    on disk while this node runs).

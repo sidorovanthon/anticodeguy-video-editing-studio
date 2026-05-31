@@ -2,8 +2,9 @@
    fails (lint / validate / inspect / design_adherence / animation_map /
    snapshot / captions_track). Mirrors `p4_beat.j2` for ONE scene, with
    prior violations injected via the shared `prior_violations_block` macro.
-   Brief references canon paths; never embeds canon. #}
-{% from "_macros.j2" import prior_violations_block, design_adherence_hard_rules %}
+   HOM-377: load-bearing canon is pulled VERBATIM from the live skill at run
+   time (`canon.*`); on-demand references stay as `Read` citations. #}
+{% from "_macros.j2" import prior_violations_block, design_adherence_hard_rules, canon_section %}
 You are RE-AUTHORING **one scene fragment** for an anticodeguy episode (`{{ slug }}`).
 Pattern A (inlined `<div>` per scene). The previous attempt's fragment FAILED
 the gate `{{ failed_gate }}`; rewrite the offending scene so the gate passes.
@@ -83,22 +84,26 @@ while this node runs; the bodies are inlined below):
 Available registry:
 {{ catalog_summary }}
 
-Canon — read BEFORE rewriting (use `Read` on each):
-1. `~/.agents/skills/hyperframes/SKILL.md` — §"Layout Before Animation",
-   §"Scene Transitions (Non-Negotiable)" (HR 1–4; HR 4 final-fade only on the LAST scene),
-   §"Animation Guardrails", §"Rules (Non-Negotiable)".
-2. `~/.agents/skills/hyperframes/references/transitions/catalog.md` —
-   §"Hard Rules (CSS)" (scene visibility + element structure),
-   §"Scene Template". Pattern A: only the root
-   composition gets `data-composition-id`; the scene div does NOT; no
-   `<template>` wrapper; non-first scenes start with `opacity: 0`.
-3. `~/.agents/skills/hyperframes/references/motion-principles.md` — §"Load-Bearing GSAP Rules":
-   every entrance MUST be `tl.fromTo(...)` — never `tl.from(...)`.
-4. `~/.agents/skills/hyperframes/references/video-composition.md` — §"Density"
-   density floor (≥ 8 elements per scene).
-5. `~/.agents/skills/hyperframes/references/typography.md` — type system.
-6. `~/.agents/skills/hyperframes/house-style.md` — §"Background Layer":
-   2-5 ambient-motion BG decoratives per scene.
+Canon — VERBATIM, pulled live from the skill at run time (the load-bearing,
+non-negotiable sections; follow exactly, do NOT `Read` these again — they are
+inlined below in full). HR 4 final-fade applies ONLY to the LAST scene:
+
+{{ canon_section("hyperframes SKILL.md §Layout Before Animation", canon.layout_before_animation) }}
+{{ canon_section("hyperframes SKILL.md §Rules (Non-Negotiable)", canon.rules_non_negotiable) }}
+{{ canon_section("hyperframes SKILL.md §Scene Transitions (Non-Negotiable)", canon.scene_transitions) }}
+{{ canon_section("hyperframes SKILL.md §Animation Guardrails", canon.animation_guardrails) }}
+{{ canon_section("hyperframes references/motion-principles.md §Load-Bearing GSAP Rules", canon.load_bearing_gsap) }}
+
+> Orchestrator-house reconciliation: §"Layout Before Animation" shows entrance
+> examples with `gsap.from()` / `tl.from()`; in our Pattern A `.clip` scenes you
+> MUST use `tl.fromTo(...)` instead (per §"Load-Bearing GSAP Rules" for `.clip`
+> scenes) — `tl.from()`'s `immediateRender: true` breaks under non-linear seek.
+
+Additional canon to `Read` ON DEMAND (only the load-bearing sections above are inlined):
+- `~/.agents/skills/hyperframes/references/transitions/catalog.md` — §"Hard Rules (CSS)" (scene visibility + element structure), §"Scene Template". Pattern A: only the root composition gets `data-composition-id`; the scene div does NOT; no `<template>` wrapper; non-first scenes start with `opacity: 0`.
+- `~/.agents/skills/hyperframes/references/video-composition.md` — §"Density" density floor (≥ 8 elements per scene).
+- `~/.agents/skills/hyperframes/references/typography.md` — type system.
+- `~/.agents/skills/hyperframes/house-style.md` — §"Background Layer": 2-5 ambient-motion BG decoratives per scene.
 
 Output — return JSON matching `BeatOutput { html: str }` (same contract
 as `p4_beat`; HOM-266 — state-first artifacts, Step D2 of HOM-230 epic).
@@ -182,8 +187,9 @@ your output flows back through state — do NOT call `Read` on
 `compositions/<scene_id>.html`. Those files are NOT on disk while this
 node runs; `p4_materialize_disk` writes them at chain end from
 `state["scenes"]`):
-1. Read the violations above and the canon list (canon files in
-   `~/.agents/skills/hyperframes/` ARE on disk — `Read` them).
+1. Read the violations above and follow the VERBATIM canon inlined above
+   (do NOT `Read` those sections again; `Read` only the on-demand references
+   when relevant).
 2. Use the inlined index.html body to identify which scene the violations
    target (the `<!-- beat: <scene_id> -->` markers).
 3. Use the inlined DESIGN.md and expanded-prompt.md bodies for direction.

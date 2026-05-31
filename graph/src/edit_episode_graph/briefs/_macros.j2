@@ -7,6 +7,16 @@
    renders nothing on iteration 1 (no prior failure) so non-retry runs
    produce identical briefs to before. #}
 
+{# HOM-377: render one verbatim canon block pulled live from the skill by the
+   runtime canon loader (`_canon_loader.load_canon_blocks`). The `body` is the
+   exact section text; never paraphrase it here — that is the whole point of
+   pulling it at run time instead of embedding a copy that rots. `title` is a
+   human label (skill + §section) for the sub-agent and the snapshot reviewer. #}
+{%- macro canon_section(title, body) -%}
+=== CANON — VERBATIM from the live skill: {{ title }} (follow exactly; do not summarize) ===
+{{ body }}=== end CANON: {{ title }} ===
+{% endmacro -%}
+
 {%- macro prior_violations_block(prior_violations, prior_iteration) -%}
 {%- if prior_violations and prior_iteration -%}
 

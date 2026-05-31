@@ -32,6 +32,7 @@ from langgraph.cache.sqlite import SqliteCache
 from langgraph.graph import END, StateGraph
 from langgraph.types import RetryPolicy
 
+from ._canon_loader import verify_anchors
 from ._paths import repo_root
 from .backends._types import AllBackendsExhausted
 
@@ -249,6 +250,13 @@ def build_graph_uncompiled() -> StateGraph:
         from langgraph.checkpoint.memory import InMemorySaver
         compiled = build_graph_uncompiled().compile(checkpointer=InMemorySaver())
     """
+    # HOM-377 (spec §9.6): resolve every registered canon anchor against the
+    # live skills once per process before wiring any node. An upstream rename
+    # (skills auto-update via Task Scheduler) is a startup hard-fail here —
+    # `CanonAnchorMissing` — rather than a silent-empty brief discovered after
+    # a paid LLM dispatch. Memoized in the loader; cheap on repeat builds.
+    verify_anchors()
+
     g = StateGraph(GraphState)
 
     g.add_node("pickup", pickup_node)

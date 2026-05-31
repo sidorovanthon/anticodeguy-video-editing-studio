@@ -1,22 +1,29 @@
-{# Self-eval task descriptor. HOM-377: canon pulled VERBATIM from the live
-   skill at run time (`canon.*`). #}
-{% from "_macros.j2" import canon_section %}
-You are running the **self-eval** pass for an anticodeguy episode (`{{ slug }}`).
+
+
+You are running the **self-eval** pass for an anticodeguy episode (`snapshot-fixture`).
 
 Canon — VERBATIM, pulled live from the skill at run time (follow exactly; the
 check list and threshold guidance are load-bearing — do NOT `Read` these
 sections again, they are inlined below in full):
 
-{{ canon_section("video-use SKILL.md §The process — Step 7 (Self-eval before showing the user)", canon.process_self_eval) }}
-{{ canon_section("video-use SKILL.md §Hard Rules (production correctness — non-negotiable) — esp. HR 3 audio-pop / 30ms fade", canon.hard_rules) }}
+=== CANON — VERBATIM from the live skill: video-use SKILL.md §The process — Step 7 (Self-eval before showing the user) (follow exactly; do not summarize) ===
+## CANON PLACEHOLDER — ## The process → item 'Self-eval'
+(snapshot fixture; the verbatim section is resolved at run time)
+=== end CANON: video-use SKILL.md §The process — Step 7 (Self-eval before showing the user) ===
+
+=== CANON — VERBATIM from the live skill: video-use SKILL.md §Hard Rules (production correctness — non-negotiable) — esp. HR 3 audio-pop / 30ms fade (follow exactly; do not summarize) ===
+## CANON PLACEHOLDER — ## Hard Rules (production correctness — non-negotiable)
+(snapshot fixture; the verbatim section is resolved at run time)
+=== end CANON: video-use SKILL.md §Hard Rules (production correctness — non-negotiable) — esp. HR 3 audio-pop / 30ms fade ===
+
 
 Inputs (resolve via the `Read` / `Bash` tool — paths, not contents, are
 provided here):
-- Rendered output: `{{ final_mp4_path }}`
-- EDL JSON: `{{ edl_path }}`
-- Cut boundaries (output-time seconds where adjacent ranges meet): {{ cut_boundaries_json }}
-- Source-time cut boundaries per range: {{ source_cut_boundaries_json }}
-- timeline_view.py helper: `{{ timeline_view_path }}`
+- Rendered output: `/tmp/snapshot-fixture/episode/edit/final.mp4`
+- EDL JSON: `/tmp/snapshot-fixture/episode/edit/edl.json`
+- Cut boundaries (output-time seconds where adjacent ranges meet): [6.9, 11.9]
+- Source-time cut boundaries per range: [{"index": 0, "source": "take-1", "start": 0.5, "end": 7.4}]
+- timeline_view.py helper: `/home/op/.claude/skills/video-use/helpers/timeline_view.py`
 
 Follow the inspection procedure in the VERBATIM Step 7 above — what to
 sample, where to run `timeline_view`, and what visual/audio cues to

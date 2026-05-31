@@ -36,6 +36,7 @@ from langgraph.types import CachePolicy
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
 from .._caching import make_llm_key, stable_fingerprint
+from .._canon_loader import canon_fingerprint, load_canon_blocks
 from .._paths import EpisodePaths
 from ..schemas.p4_beat import BeatOutput
 from ._llm import LLMNode, _load_brief
@@ -124,7 +125,15 @@ from ._llm import LLMNode, _load_brief
 #   `## Scene Transitions (Non-Negotiable)` — corrected to the full
 #   qualified name so the sub-agent's section lookup resolves. Brief text
 #   changed again; cache must invalidate.
-_CACHE_VERSION = 15
+# v16 (HOM-377): load-bearing canon sections (SKILL.md §Layout Before
+#   Animation / §Rules / §Scene Transitions / §Animation Guardrails +
+#   motion-principles §Load-Bearing GSAP Rules) are now pulled VERBATIM from
+#   the live skill at render time and inlined via `canon.*`, replacing the
+#   "Read these paths" citations + the paraphrase the verbatim blocks
+#   supersede. Brief source changed AND `_cache_key` now folds in
+#   `canon_fingerprint("p4_beat")` so an upstream canon edit to any pulled
+#   section invalidates this node (spec §9.4). Memory feedback_briefs_anchor_not_line_pin.
+_CACHE_VERSION = 16
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -157,6 +166,9 @@ def _cache_key(state, *_args, **_kwargs):
             stable_fingerprint(plan_beat),
             stable_fingerprint(design_md_body),
             stable_fingerprint(expanded_prompt_body),
+            # HOM-377: verbatim canon blocks are inlined into the brief; fold
+            # their content hash in so an upstream canon edit invalidates.
+            f"canon:{canon_fingerprint('p4_beat')}",
         ),
     )
 
@@ -238,6 +250,8 @@ def _render_ctx(state: dict) -> dict:
         "expanded_prompt_body": _expanded_prompt_body(state),
         "catalog_summary": _catalog_summary(state),
         "scene_html_path": bd.get("scene_html_path", ""),
+        # HOM-377: verbatim canon blocks pulled live from the skill by anchor.
+        "canon": load_canon_blocks("p4_beat"),
     }
 
 

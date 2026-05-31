@@ -38,6 +38,7 @@ from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
 from ..schemas.p4_captions_layer import CaptionsOutput
 from .._caching import make_llm_key, stable_fingerprint
+from .._canon_loader import canon_fingerprint, load_canon_blocks
 from .._paths import EpisodePaths
 from ._llm import LLMNode, _load_brief
 
@@ -91,7 +92,13 @@ from ._llm import LLMNode, _load_brief
 #   Rules" section anchor (line numbers drift on every upstream skill
 #   auto-update; section names do not). Rendered brief text changed, so
 #   the cache must invalidate. Memory feedback_briefs_anchor_not_line_pin.
-_CACHE_VERSION = 9
+# v10 (HOM-377): captions canon sections (references/captions.md
+#   §Caption Exit Guarantee / §Text Overflow Prevention / §Positioning /
+#   §Constraints) are pulled VERBATIM from the live skill at render time and
+#   inlined via `canon.*`, replacing the "Read captions.md §…" citations.
+#   `_cache_key` now folds in `canon_fingerprint("p4_captions_layer")` so an
+#   upstream canon edit invalidates this node (spec §9.4).
+_CACHE_VERSION = 10
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -115,6 +122,9 @@ def _cache_key(state, *_args, **_kwargs):
         extras=(
             stable_fingerprint(design_md_body),
             stable_fingerprint(transcript_body),
+            # HOM-377: verbatim canon blocks inlined into the brief; fold
+            # their content hash in so an upstream canon edit invalidates.
+            f"canon:{canon_fingerprint('p4_captions_layer')}",
         ),
     )
 
@@ -252,6 +262,8 @@ def _render_ctx(state: dict) -> dict:
         "data_width": width,
         "data_height": height,
         "data_duration_s": _composition_duration(state),
+        # HOM-377: verbatim canon blocks pulled live from the skill by anchor.
+        "canon": load_canon_blocks("p4_captions_layer"),
     }
 
 
