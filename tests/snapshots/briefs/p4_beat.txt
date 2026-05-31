@@ -51,9 +51,9 @@ components:
 
 Canon to read BEFORE writing the fragment (use the `Read` tool on each — do not rely on memory):
 1. `~/.agents/skills/hyperframes/SKILL.md` — §"Layout Before Animation", §"Scene Transitions" (HR 1–4; HR 4 final-scene exception applies iff `is_final == True`), §"Animation Guardrails", §"Rules (Non-Negotiable)".
-2. `~/.agents/skills/hyperframes/references/transitions/catalog.md` — Hard Rules (CSS) L9 + L13, scene template L36-80. Your fragment shape MUST match Pattern A: only the root composition gets `data-composition-id`/`data-start`/`data-duration`, **the scene div does NOT**; no `<template>` wrapper; non-first scenes start with `opacity: 0` on the scene container so the future transitions node can fade them in.
-3. `~/.agents/skills/hyperframes/references/motion-principles.md` — L115-123 the `tl.fromTo()` mandate inside scene boundaries. `tl.from()` sets `immediateRender: true`, fires before `data-start` is active, and breaks under non-linear seek. **Every entrance in your timeline MUST be `tl.fromTo(...)`** — not `tl.from(...)`, not `gsap.from(...)`.
-4. `~/.agents/skills/hyperframes/references/video-composition.md` — density floor (8-10 elements per scene, L15-23). If `expanded-prompt.md` underspecifies, ADD atmosphere to clear the floor.
+2. `~/.agents/skills/hyperframes/references/transitions/catalog.md` — §"Hard Rules (CSS)" (scene visibility + element structure), §"Scene Template". Your fragment shape MUST match Pattern A: only the root composition gets `data-composition-id`/`data-start`/`data-duration`, **the scene div does NOT**; no `<template>` wrapper; non-first scenes start with `opacity: 0` on the scene container so the future transitions node can fade them in.
+3. `~/.agents/skills/hyperframes/references/motion-principles.md` — §"Load-Bearing GSAP Rules" the `tl.fromTo()` mandate inside scene boundaries. `tl.from()` sets `immediateRender: true`, fires before `data-start` is active, and breaks under non-linear seek. **Every entrance in your timeline MUST be `tl.fromTo(...)`** — not `tl.from(...)`, not `gsap.from(...)`.
+4. `~/.agents/skills/hyperframes/references/video-composition.md` — §"Density" (density floor, 8-10 elements per scene). If `expanded-prompt.md` underspecifies, ADD atmosphere to clear the floor.
 5. `~/.agents/skills/hyperframes/references/typography.md` — type system per scene (use the typography block from `DESIGN.md` as the source of truth).
 6. `~/.agents/skills/hyperframes/references/beat-direction.md` — per-beat planning vocabulary; map this beat's energy/intent into concrete element choices.
 7. `~/.agents/skills/hyperframes/references/transitions.md` — energy/mood selection. Even though scene-to-scene transitions are authored elsewhere (root-timeline scope), the energy/mood signal informs your scene's INTERNAL motion choreography (entrance pacing, ease selection, ambient motion intensity).
@@ -79,7 +79,7 @@ Output — return JSON matching `BeatOutput { html: str }`. The fragment shown b
     (function() {
       window.__sceneTimelines = window.__sceneTimelines || {};
       const tl = gsap.timeline({ paused: true });
-      // entrance-only, every entrance via tl.fromTo() — see motion-principles.md L115-123
+      // entrance-only, every entrance via tl.fromTo() — see motion-principles.md §"Load-Bearing GSAP Rules"
       // ≥ 3 distinct eases (Animation Guardrails); first entrance offset 0.1–0.3s
       // ambient motion on BG decoratives via tl.to() (NEVER bare gsap.to())
       
@@ -96,17 +96,17 @@ Return ONLY JSON matching `BeatOutput { html: "<...>" }` (no prose outside the J
 ```
 
 Hard rules (orchestrator-house, derived from canon — surfaced so you don't miss them):
-- **`class="scene clip"` on the scene div** — `clip` is required by HF lint on any element with `data-start`/`data-duration` (the runtime keys hard-cut visibility off `.clip`). Standalone-composition canon (`transitions/catalog.md` L13) omits both timing attrs *and* the `clip` class on scene divs because root timing covers them; our orchestrator-house Pattern A keeps timing on each scene for the v4 visibility shim, so `clip` MUST come along.
+- **`class="scene clip"` on the scene div** — `clip` is required by HF lint on any element with `data-start`/`data-duration` (the runtime keys hard-cut visibility off `.clip`). Standalone-composition canon (`transitions/catalog.md` §"Hard Rules (CSS)") omits both timing attrs *and* the `clip` class on scene divs because root timing covers them; our orchestrator-house Pattern A keeps timing on each scene for the v4 visibility shim, so `clip` MUST come along.
 - **CSS scoping** — every rule prefixed with `#scene-hook`. No bare class selectors. Inlining is collision-prone otherwise.
 - **`tl.fromTo()` only** for entrances — never `tl.from()`, never bare `gsap.from()`. Non-linear seek breaks otherwise.
-- **No `data-composition-id` on the scene div** — that attribute belongs to the root composition only (Pattern A; see catalog.md L13).
+- **No `data-composition-id` on the scene div** — that attribute belongs to the root composition only (Pattern A; see catalog.md §"Hard Rules (CSS)").
 - **No `<template>` wrapper.** This fragment is inlined into the root `index.html` (Pattern A assembly), so it must NOT be `<template>`-wrapped. (Pattern B sub-comp files work on HF 0.6.63; the migration is HOM-383, not this node yet.)
 - **No `<script src=".../gsap...">`** — root scaffold supplies GSAP once.
 - **IIFE-wrap the entire script body** (exactly as in the output shape above). All scenes are inlined into the same root `index.html`, and HTML `<script>` blocks share one script-lexical environment — an un-IIFE'd `const tl` collides with the scaffold's top-level `const tl` and every other scene, halting `hyperframes validate` with `Identifier 'tl' has already been declared`. The `__sceneTimelines["…"] = tl` registration MUST live inside the IIFE.
 - **Density floor**: ≥ 8 elements visible at the hero frame, ≥ 2 BG decoratives with ambient motion (`tl.to()` on the seekable `tl`, never bare `gsap.to()`).
 - **≥ 3 distinct eases** (Animation Guardrails); first entrance offset 0.1–0.3s.
 - **Final-fade (HR 4)**: permitted iff `is_final == True`. Otherwise NO `tl.to(..., {opacity: 0})` on the scene container — scene-to-scene transitions are root-scope and authored elsewhere.
-- **NO infinite repeats** — the GSAP infinite-repeat sentinel is forbidden (canon: `~/.agents/skills/hyperframes/SKILL.md` §"Animation Guardrails" L227 + Rules L240). Infinite-repeat timelines break the deterministic capture engine. For any looping ambient motion, compute a FINITE count from the scene's `data-duration` and the tween's own duration:
+- **NO infinite repeats** — the GSAP infinite-repeat sentinel is forbidden (canon: `~/.agents/skills/hyperframes/SKILL.md` §"Rules (Non-Negotiable)" — the "No `repeat: -1`" rule — and §"Animation Guardrails"). Infinite-repeat timelines break the deterministic capture engine. For any looping ambient motion, compute a FINITE count from the scene's `data-duration` and the tween's own duration:
   ```js
   const sceneDuration = 6.9;
   const cycleDuration = 1.2; // your tween duration in seconds

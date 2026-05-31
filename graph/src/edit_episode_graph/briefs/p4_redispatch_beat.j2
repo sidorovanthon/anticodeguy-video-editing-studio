@@ -87,14 +87,15 @@ Canon — read BEFORE rewriting (use `Read` on each):
 1. `~/.agents/skills/hyperframes/SKILL.md` — §"Layout Before Animation",
    §"Scene Transitions" (HR 1–4; HR 4 final-fade only on the LAST scene),
    §"Animation Guardrails", §"Rules (Non-Negotiable)".
-2. `~/.agents/skills/hyperframes/references/transitions/catalog.md` — Hard
-   Rules (CSS) L9 + L13, scene template L36-80. Pattern A: only the root
+2. `~/.agents/skills/hyperframes/references/transitions/catalog.md` —
+   §"Hard Rules (CSS)" (scene visibility + element structure),
+   §"Scene Template". Pattern A: only the root
    composition gets `data-composition-id`; the scene div does NOT; no
    `<template>` wrapper; non-first scenes start with `opacity: 0`.
-3. `~/.agents/skills/hyperframes/references/motion-principles.md` — L115-123:
+3. `~/.agents/skills/hyperframes/references/motion-principles.md` — §"Load-Bearing GSAP Rules":
    every entrance MUST be `tl.fromTo(...)` — never `tl.from(...)`.
-4. `~/.agents/skills/hyperframes/references/video-composition.md` — density
-   floor (≥ 8 elements per scene, L15-23).
+4. `~/.agents/skills/hyperframes/references/video-composition.md` — §"Density"
+   density floor (≥ 8 elements per scene).
 5. `~/.agents/skills/hyperframes/references/typography.md` — type system.
 6. `~/.agents/skills/hyperframes/house-style.md` — §"Background Layer":
    2-5 ambient-motion BG decoratives per scene.
@@ -168,7 +169,8 @@ Hard rules (orchestrator-house — derived from canon, surfaced so you don't mis
   plan order). Otherwise NO `tl.to(..., {opacity: 0})` on the scene container.
 {{ design_adherence_hard_rules() }}
 - **NO infinite repeats** — the GSAP infinite-repeat sentinel is forbidden
-  (canon: SKILL.md §"Animation Guardrails" L227 + Rules L240). Compute
+  (canon: SKILL.md §"Rules (Non-Negotiable)" — the "No `repeat: -1`" rule —
+  and §"Animation Guardrails"). Compute
   finite counts from `data-duration` and tween duration. Never write the
   literal token `repeat:` followed by the infinite sentinel even inside
   comments — HF lint regex false-positives on the substring.

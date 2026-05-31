@@ -86,7 +86,12 @@ from ._llm import LLMNode, _load_brief
 # fingerprinting the body in state matches the actual consumed input.
 # Tool list drops the transcript `Read` requirement but the brief still
 # allows `Read` for canon docs.
-_CACHE_VERSION = 8
+# v9 (HOM-376): brief source edited — the two `motion-principles.md
+#   L115-123` line-pins replaced with the stable §"Load-Bearing GSAP
+#   Rules" section anchor (line numbers drift on every upstream skill
+#   auto-update; section names do not). Rendered brief text changed, so
+#   the cache must invalidate. Memory feedback_briefs_anchor_not_line_pin.
+_CACHE_VERSION = 9
 
 
 def _cache_key(state, *_args, **_kwargs):
