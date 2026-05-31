@@ -109,3 +109,13 @@ class DesignDoc(BaseModel):
                     "Orchestrator dual-writes to `design_md_path` for today's disk-readers; "
                     "Step D2 strips that dual-write.",
     )
+    rationale: str = Field(
+        default="",
+        description="3-6 sentences on WHY this visual identity fits the brand + content "
+                    "(HOM-166 §7). Prose alongside the structured fields, not instead of.",
+    )
+    cross_scene_logic: str = Field(
+        default="",
+        description="How the design holds together across scenes — recurring motifs, palette "
+                    "rhythm, what stays constant vs varies (HOM-166 §7).",
+    )
