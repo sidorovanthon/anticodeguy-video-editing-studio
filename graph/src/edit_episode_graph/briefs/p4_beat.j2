@@ -1,7 +1,10 @@
 {# Per-scene authoring task descriptor. References canon paths; never embeds canon. #}
 {% from "_macros.j2" import design_adherence_hard_rules %}
 You are authoring **one scene fragment** for an anticodeguy episode (`{{ slug }}`).
-Pattern A (inlined `<div>` per scene) — sub-compositions are unavailable upstream.
+Pattern A (inlined `<div>` per scene) — the current orchestrator assembly model:
+`p4_assemble_index` concatenates each scene fragment into one root `index.html`.
+(The HF sub-composition loader that blocked Pattern B on 0.4.x is fixed on 0.6.63;
+migrating this node to Pattern B sub-comp files is tracked in HOM-383.)
 
 Scene context:
 - `scene_id`: `{{ scene_id }}`
@@ -88,7 +91,7 @@ Hard rules (orchestrator-house, derived from canon — surfaced so you don't mis
 - **CSS scoping** — every rule prefixed with `#scene-{{ scene_id }}`. No bare class selectors. Inlining is collision-prone otherwise.
 - **`tl.fromTo()` only** for entrances — never `tl.from()`, never bare `gsap.from()`. Non-linear seek breaks otherwise.
 - **No `data-composition-id` on the scene div** — that attribute belongs to the root composition only (Pattern A; see catalog.md L13).
-- **No `<template>` wrapper.** Pattern B (sub-compositions) is broken upstream; this fragment is inlined as-is.
+- **No `<template>` wrapper.** This fragment is inlined into the root `index.html` (Pattern A assembly), so it must NOT be `<template>`-wrapped. (Pattern B sub-comp files work on HF 0.6.63; the migration is HOM-383, not this node yet.)
 - **No `<script src=".../gsap...">`** — root scaffold supplies GSAP once.
 - **IIFE-wrap the entire script body** (exactly as in the output shape above). All scenes are inlined into the same root `index.html`, and HTML `<script>` blocks share one script-lexical environment — an un-IIFE'd `const tl` collides with the scaffold's top-level `const tl` and every other scene, halting `hyperframes validate` with `Identifier 'tl' has already been declared`. The `__sceneTimelines["…"] = tl` registration MUST live inside the IIFE.
 - **Density floor**: ≥ 8 elements visible at the hero frame, ≥ 2 BG decoratives with ambient motion (`tl.to()` on the seekable `tl`, never bare `gsap.to()`).
@@ -102,7 +105,7 @@ Hard rules (orchestrator-house, derived from canon — surfaced so you don't mis
                    repeat: Math.floor(sceneDuration / cycleDuration),
                    duration: cycleDuration }, 0);
   ```
-  Never write the literal token `repeat:` followed by the infinite sentinel — even inside JS comments — HF lint regex false-positives on the bare substring (memory `feedback_lint_regex_repeat_minus_one_in_comments`). Use a finite count (`Math.floor(...)`, or a large positive integer like `repeat: 999` for unbounded-feeling ambient motion).
+  Never use the infinite-repeat sentinel in a real tween — it breaks the deterministic capture engine (canon). Use a finite count (`Math.floor(...)`, or a large positive integer like `repeat: 999` for unbounded-feeling ambient motion).
 - **opacity initial state**: `0` for non-first scenes (the future transitions node fades them in). First scene starts visible.
 {{ design_adherence_hard_rules() }}
 

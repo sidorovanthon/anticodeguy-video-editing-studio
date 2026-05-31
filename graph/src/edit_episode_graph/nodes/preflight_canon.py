@@ -47,16 +47,19 @@ DEFAULT_TIMEOUT_S = 90.0
 
 
 # Watchlist: (memory_slug, repro_script_filename). The slug doubles as the
-# sidecar key. Backfill scripts for the remaining three known-blocked
-# patterns (lint_regex, compositions_cli, hf_video_audio) ship in follow-up
-# tickets per HOM-106 scope; entries listed here without a script file
-# surface as ``missing_script`` so we don't silently lose them.
-WATCHLIST: tuple[tuple[str, str], ...] = (
-    (
-        "feedback_hf_subcomp_loader_data_composition_src",
-        "feedback_hf_subcomp_loader_data_composition_src.py",
-    ),
-)
+# sidecar key. Entries listed without a script file surface as
+# ``missing_script`` so we don't silently lose them.
+#
+# Currently EMPTY: the only tracked pattern
+# (``feedback_hf_subcomp_loader_data_composition_src``, #589) plus the three
+# sibling 0.4.x HF bugs (#586, #590, compositions-CLI) were all bare-repro'd
+# FIXED on HF 0.6.63 and the memories annotated RESOLVED (HOM-379:
+# docs/bare-repro-verdicts/2026-05-31-hom-379-hf-0663-revalidation.md). Clearing
+# the watchlist is the designed human-clear action after a confirmed exit-1
+# verdict (see module docstring). The node + the bare-repro harness under
+# scripts/bare_repros/ stay in place as dormant, reusable infrastructure —
+# re-add a (slug, script) tuple here when a new upstream pattern needs guarding.
+WATCHLIST: tuple[tuple[str, str], ...] = ()
 
 
 Runner = Callable[[list[str], float], subprocess.CompletedProcess]

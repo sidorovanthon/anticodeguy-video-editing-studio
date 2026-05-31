@@ -13,17 +13,17 @@ import subprocess
 import sys
 from pathlib import Path
 
-# `data-has-audio="false"` is required on the <video> element when both <video> and <audio>
-# share the same muxed `src`. Without it, HF's timingCompiler.ts:104-106 unconditionally
-# injects `data-has-audio="true"`, which combined with `muted` trips StaticGuard's
-# `invalid contract` rule (media.ts:274) and audioMixer.ts:55-56 picks the <video> up
-# as a second audio source, producing audible doubling/distortion in studio preview.
+# `data-has-audio="false"` on the muted <video> explicitly declares it carries no playable
+# audio — the soundtrack is played from the sibling <audio> element (both reference the same
+# muxed `src`). The attribute is documented in HF CLI docs
+# (`packages/cli/src/docs/data-attributes.md`) and recognized by HF lint.
 #
-# The attribute is documented in HF CLI docs (`packages/cli/src/docs/data-attributes.md`)
-# and recognized by HF lint, but is NOT in agent-facing SKILL.md canon — this is an
-# orchestrator extension filling a documented HF lint contract gap.
-#
-# Upstream tracking: https://github.com/heygen-com/hyperframes/issues/586
+# On HF 0.4.x this was ALSO a required workaround for upstream #586 (the compiler defaulted
+# muted same-src videos to has-audio=true → StaticGuard "invalid contract" + audio doubling
+# in studio preview). #586 was bare-repro'd FIXED on 0.6.63 (HOM-379:
+# docs/bare-repro-verdicts/2026-05-31-hom-379-hf-0663-revalidation.md) — bare same-src renders
+# clean with audioCount:1 and no StaticGuard. The attribute is retained here as a correct,
+# canon-compatible explicit declaration, no longer as a bug workaround.
 VIDEO_AUDIO_PAIR_TEMPLATE = """      <video id="el-video" class="clip" data-start="0" data-track-index="0"
              src="{src}" data-has-audio="false" muted playsinline></video>
       <audio id="el-audio" class="clip" data-start="0" data-track-index="2"
