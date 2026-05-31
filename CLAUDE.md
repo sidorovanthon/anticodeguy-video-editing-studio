@@ -3,6 +3,14 @@
 Orchestrator for a two-stage video editing pipeline that chains the globally-installed
 `video-use` and `hyperframes` skills into a single command.
 
+> **North star — read before any course-shaping decision: `docs/north-star.md`.** The end goal
+> is a scalable video-editing system with predictable output and minimal operator intervention
+> (one-config brand changes propagate to all future videos; point it at a folder of raw videos
+> and it batch-processes them with style consistency). LangGraph decomposition is chosen because
+> isolated skill runs are structurally non-deterministic (the agent executes the algorithm loosely,
+> forgets steps under context overload). If a ticket/spec/edit doesn't move toward that state,
+> stop and re-check course. Memory: `project_north_star`.
+
 ## Layout convention
 
 ```
