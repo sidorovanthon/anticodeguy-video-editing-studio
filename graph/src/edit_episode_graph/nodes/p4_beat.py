@@ -35,7 +35,7 @@ from langgraph.types import CachePolicy
 
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
-from .._caching import make_llm_key, stable_fingerprint
+from .._caching import brief_fingerprint, make_llm_key, stable_fingerprint
 from .._canon_loader import canon_fingerprint, load_canon_blocks
 from .._paths import EpisodePaths
 from ..schemas.p4_beat import BeatOutput
@@ -133,7 +133,8 @@ from ._llm import LLMNode, _load_brief
 #   supersede. Brief source changed AND `_cache_key` now folds in
 #   `canon_fingerprint("p4_beat")` so an upstream canon edit to any pulled
 #   section invalidates this node (spec §9.4). Memory feedback_briefs_anchor_not_line_pin.
-_CACHE_VERSION = 16
+# v17 (HOM-166): brief.fingerprint folded into cache key (state.brief resolution).
+_CACHE_VERSION = 17
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -169,6 +170,7 @@ def _cache_key(state, *_args, **_kwargs):
             # HOM-377: verbatim canon blocks are inlined into the brief; fold
             # their content hash in so an upstream canon edit invalidates.
             f"canon:{canon_fingerprint('p4_beat')}",
+            f"brief:{brief_fingerprint(state)}",
         ),
     )
 

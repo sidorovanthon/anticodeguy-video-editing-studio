@@ -20,7 +20,7 @@ from langgraph.types import CachePolicy
 
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
-from .._caching import make_llm_key
+from .._caching import brief_fingerprint, make_llm_key
 from .._canon_loader import canon_fingerprint, load_canon_blocks
 from .._paths import EpisodePaths
 from ..schemas.p3_self_eval import EvalReport
@@ -34,7 +34,8 @@ from ._llm import LLMNode, _load_brief
 #   VERBATIM from the live skill at render time and inlined via `canon.*`,
 #   replacing the "Read those sections" citation. `_cache_key` folds in
 #   `canon_fingerprint("p3_self_eval")` so an upstream canon edit invalidates.
-_CACHE_VERSION = 3
+# v4 (HOM-166): brief.fingerprint folded into cache key (state.brief resolution).
+_CACHE_VERSION = 4
 
 TIMELINE_VIEW_PATH = Path.home() / ".claude" / "skills" / "video-use" / "helpers" / "timeline_view.py"
 
@@ -92,6 +93,7 @@ def _cache_key(state, *_args, **_kwargs):
             _eval_iteration(state),
             # HOM-377: verbatim canon blocks inlined into the brief.
             f"canon:{canon_fingerprint('p3_self_eval')}",
+            f"brief:{brief_fingerprint(state)}",
         ),
     )
 

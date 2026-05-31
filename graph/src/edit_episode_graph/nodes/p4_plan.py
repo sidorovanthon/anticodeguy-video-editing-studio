@@ -24,7 +24,12 @@ from langgraph.types import CachePolicy
 
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
-from .._caching import make_llm_key, stable_fingerprint, strategy_fingerprint
+from .._caching import (
+    brief_fingerprint,
+    make_llm_key,
+    stable_fingerprint,
+    strategy_fingerprint,
+)
 from .._paths import EpisodePaths
 from ..schemas.p4_plan import CompositionPlan
 from ._llm import LLMNode, _load_brief
@@ -45,7 +50,8 @@ from ._llm import LLMNode, _load_brief
 # longer on disk pre-materialize); replaced with `stable_fingerprint`
 # extras over the in-state bodies. `transcripts/final.json` stays in
 # `files=` (Phase 3 disk artifact, legitimate file-fingerprint).
-_CACHE_VERSION = 5
+# v6 (HOM-166): brief.fingerprint folded into cache key (state.brief resolution).
+_CACHE_VERSION = 6
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -85,6 +91,7 @@ def _cache_key(state, *_args, **_kwargs):
             stable_fingerprint(edl_beats),
             stable_fingerprint(design_md_body),
             stable_fingerprint(expanded_prompt_body),
+            f"brief:{brief_fingerprint(state)}",
         ),
     )
 

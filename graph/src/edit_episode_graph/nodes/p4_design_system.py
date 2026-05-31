@@ -25,7 +25,7 @@ from langgraph.types import CachePolicy
 
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
-from .._caching import make_llm_key, strategy_fingerprint
+from .._caching import brief_fingerprint, make_llm_key, strategy_fingerprint
 from .._paths import EpisodePaths
 from ..schemas.p4_design_system import DesignDoc
 from ._llm import LLMNode, _load_brief
@@ -51,7 +51,8 @@ from ._llm import LLMNode, _load_brief
 # is now the single deterministic writer and regenerates the file from
 # state on demand. Node output contract changed (no more disk side-effect)
 # → cache invalidation.
-_CACHE_VERSION = 5
+# v6 (HOM-166): brief.fingerprint folded into cache key (state.brief resolution).
+_CACHE_VERSION = 6
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -104,7 +105,10 @@ def _cache_key(state, *_args, **_kwargs):
         version=_CACHE_VERSION,
         slug=slug,
         files=[final_json_path, edl_path],
-        extras=(strategy_fingerprint(strategy),),
+        extras=(
+            strategy_fingerprint(strategy),
+            f"brief:{brief_fingerprint(state)}",
+        ),
     )
 
 

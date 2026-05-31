@@ -9,7 +9,7 @@ from langgraph.types import CachePolicy
 
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
-from .._caching import make_llm_key, stable_fingerprint
+from .._caching import brief_fingerprint, make_llm_key, stable_fingerprint
 from .._canon_loader import canon_fingerprint, load_canon_blocks
 from .._paths import EpisodePaths
 from ..schemas.p3_strategy import Strategy
@@ -25,7 +25,8 @@ from ._llm import LLMNode, _load_brief
 #   the live skill at render time and inlined via `canon.*`, replacing the
 #   "Read those sections" citations. `_cache_key` folds in
 #   `canon_fingerprint("p3_strategy")` so an upstream canon edit invalidates.
-_CACHE_VERSION = 4
+# v5 (HOM-166): brief.fingerprint folded into cache key (state.brief resolution).
+_CACHE_VERSION = 5
 
 
 def _takes_packed_path(state: dict) -> Path:
@@ -89,6 +90,7 @@ def _cache_key(state, *_args, **_kwargs):
             stable_fingerprint(revisions),
             # HOM-377: verbatim canon blocks inlined into the brief.
             f"canon:{canon_fingerprint('p3_strategy')}",
+            f"brief:{brief_fingerprint(state)}",
         ),
     )
 
