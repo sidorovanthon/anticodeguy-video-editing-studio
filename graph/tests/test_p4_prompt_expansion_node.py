@@ -12,7 +12,19 @@ from edit_episode_graph.schemas.p4_prompt_expansion import ExpandedPrompt
 
 
 def _good_payload(path: str) -> dict:
-    return {"expanded_prompt_path": path}
+    # HOM-233 (state-first artifacts, Step B of HOM-230): the full
+    # expanded-prompt body is returned in the structured output, not just its
+    # path. The schema requires it (`min_length=1`); downstream the body lives
+    # in `compose.expansion.expanded_prompt` and `p4_materialize_disk_node`
+    # is the single writer.
+    return {
+        "expanded_prompt_path": path,
+        "expanded_prompt": (
+            "# Expanded prompt\n\n"
+            "## Scene 1 — HOOK\nTight typographic close-up; stat enters.\n\n"
+            "## Scene 2 — PAYOFF\nWide reveal with hairline rules.\n"
+        ),
+    }
 
 
 def _seed_episode(tmp_path, monkeypatch, *, design=True):
@@ -61,8 +73,13 @@ def _state_with_inputs(tmp_path) -> dict:
 
 def test_expanded_prompt_schema_requires_path():
     ExpandedPrompt.model_validate(_good_payload("/x/.hyperframes/expanded-prompt.md"))
+    # Empty path must be rejected (min_length=1) — spread the otherwise-valid
+    # payload so this asserts the path constraint specifically, not the
+    # (separately required) body field.
     with pytest.raises(ValidationError):
-        ExpandedPrompt.model_validate({"expanded_prompt_path": ""})
+        ExpandedPrompt.model_validate(
+            {**_good_payload("/x/.hyperframes/expanded-prompt.md"), "expanded_prompt_path": ""},
+        )
 
 
 def test_expanded_prompt_schema_rejects_unknown_field():
@@ -133,14 +150,19 @@ def test_runs_with_tools_and_no_state_path_mirror(tmp_path, monkeypatch):
     # consumers derive via `EpisodePaths(slug).expanded_prompt_path`.
     assert update["compose"]["expansion"]["expanded_prompt_path"] == str(expanded)
     assert "expanded_prompt_path" not in update["compose"]
-    assert expanded.parent.is_dir(), "node must mkdir the .hyperframes dir"
+    # HOM-239 (state-first artifacts, Step D2 of HOM-230): the node no longer
+    # dual-writes the file or mkdirs `.hyperframes/` — the expanded-prompt body
+    # is surfaced in state and `p4_materialize_disk_node` is the single writer.
+    assert update["compose"]["expansion"]["expanded_prompt"] == payload["expanded_prompt"]
 
     req, task = router.invoke.call_args.args[:2]
     kwargs = router.invoke.call_args.kwargs
     assert req.tier == "expensive"
     assert req.needs_tools is True
     assert req.backends == ["claude"]
-    assert kwargs["allowed_tools"] == ["Read", "Write"]
+    # HOM-239: `Write` dropped from `allowed_tools` — the sub-agent reads
+    # canon but no longer writes to disk (the orchestrator owns the write).
+    assert kwargs["allowed_tools"] == ["Read"]
     # Brief renders inputs the agent needs for the expansion.
     assert "HOOK" in task and "PAYOFF" in task
     assert "DESIGN.md" in task
@@ -213,7 +235,7 @@ def test_design_md_path_resolves_via_slug(tmp_path, monkeypatch):
     router.invoke.return_value = (
         InvokeResult(
             raw_text="...",
-            structured=ExpandedPrompt.model_validate({"expanded_prompt_path": str(expanded)}),
+            structured=ExpandedPrompt.model_validate(_good_payload(str(expanded))),
             tokens_in=10, tokens_out=10, wall_time_s=1.0,
             model_used="claude-opus-4-7", backend_used="claude", tool_calls=[],
         ),
