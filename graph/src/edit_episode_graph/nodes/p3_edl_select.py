@@ -26,8 +26,13 @@ from .._caching import (
     stable_fingerprint,
     strategy_fingerprint,
 )
-from .._canon_loader import canon_fingerprint, load_canon_blocks
-from .._paths import EpisodePaths
+from .._canon_loader import (
+    canon_fingerprint,
+    load_brand_blocks,
+    load_canon_blocks,
+    load_profile_blocks,
+)
+from .._paths import EpisodePaths, brand_dir_for, profile_dir_for
 from ..gates._base import gate_retry_context
 from ..schemas.p3_edl_select import EDL
 from ._llm import LLMNode, _load_brief
@@ -44,7 +49,8 @@ from ._llm import LLMNode, _load_brief
 #   sections" citations. `_cache_key` folds in
 #   `canon_fingerprint("p3_edl_select")` so an upstream canon edit invalidates.
 # v6 (HOM-166): brief.fingerprint folded into cache key (state.brief resolution).
-_CACHE_VERSION = 6
+# v7 (HOM-166): profile/brand blocks + dir-fed canon_fingerprint.
+_CACHE_VERSION = 7
 
 
 def _takes_packed_path(state: dict) -> Path:
@@ -102,7 +108,8 @@ def _cache_key(state, *_args, **_kwargs):
             stable_fingerprint(retry.get("prior_violations") or []),
             int(retry.get("prior_iteration") or 0),
             # HOM-377: verbatim canon blocks inlined into the brief.
-            f"canon:{canon_fingerprint('p3_edl_select')}",
+            # HOM-166: dir-fed so an operator profile/brand markdown edit invalidates.
+            f"canon:{canon_fingerprint('p3_edl_select', profile_dir_for(state), brand_dir_for(state))}",
             f"brief:{brief_fingerprint(state)}",
         ),
     )
@@ -157,6 +164,9 @@ def _render_ctx(state: dict) -> dict:
         "strategy_json": json.dumps(_strategy(state), ensure_ascii=False),
         # HOM-377: verbatim canon blocks pulled live from the skill by anchor.
         "canon": load_canon_blocks("p3_edl_select"),
+        # HOM-166: per-episode operator-authored profile/brand markdown overlay.
+        "profile": load_profile_blocks("p3_edl_select", profile_dir_for(state)) if profile_dir_for(state) else {},
+        "brand": load_brand_blocks("p3_edl_select", brand_dir_for(state)) if brand_dir_for(state) else {},
     }
     # HOM-147: render the prior-violations feedback block on retry attempts.
     # Iteration 1 (no prior failure) → macro emits empty string; brief is

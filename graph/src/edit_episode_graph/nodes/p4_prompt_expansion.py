@@ -26,7 +26,12 @@ from langgraph.types import CachePolicy
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
 from .._caching import brief_fingerprint, make_llm_key, stable_fingerprint
-from .._paths import EpisodePaths
+from .._canon_loader import (
+    canon_fingerprint,
+    load_brand_blocks,
+    load_profile_blocks,
+)
+from .._paths import EpisodePaths, brand_dir_for, profile_dir_for
 from ..schemas.p4_prompt_expansion import ExpandedPrompt
 from ._llm import LLMNode, _load_brief
 
@@ -63,7 +68,8 @@ from ._llm import LLMNode, _load_brief
 # on the transcript file. Cache key swaps the transcript file
 # fingerprint for an in-state `stable_fingerprint(transcript_body)`.
 # v8 (HOM-166): brief.fingerprint folded into cache key (state.brief resolution).
-_CACHE_VERSION = 8
+# v9 (HOM-166): profile/brand blocks + dir-fed canon_fingerprint.
+_CACHE_VERSION = 9
 
 
 def _cache_key(state, *_args, **_kwargs):
@@ -93,6 +99,8 @@ def _cache_key(state, *_args, **_kwargs):
             stable_fingerprint(design_md_body),
             stable_fingerprint(transcript_body),
             f"brief:{brief_fingerprint(state)}",
+            # HOM-166: dir-fed so an operator profile/brand markdown edit invalidates.
+            f"canon:{canon_fingerprint('p4_prompt_expansion', profile_dir_for(state), brand_dir_for(state))}",
         ),
     )
 
@@ -215,6 +223,9 @@ def _render_ctx(state: dict) -> dict:
         # `state.transcripts.bodies` hoisted by `glue_remap_transcript`.
         "transcript_json_body": _transcript_body(state),
         "style_request_json": json.dumps(compose.get("style_request") or "", ensure_ascii=False),
+        # HOM-166: per-episode operator-authored profile/brand markdown overlay.
+        "profile": load_profile_blocks("p4_prompt_expansion", profile_dir_for(state)) if profile_dir_for(state) else {},
+        "brand": load_brand_blocks("p4_prompt_expansion", brand_dir_for(state)) if brand_dir_for(state) else {},
     }
 
 

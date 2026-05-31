@@ -53,3 +53,21 @@
   font-family: "Playfair Display", serif;
   ```
 {%- endmacro -%}
+
+{# HOM-166: render the per-episode operator-authored profile + brand markdown
+   overlay (pulled verbatim per-node by `_canon_loader.{load_profile_blocks,
+   load_brand_blocks}`). Empty for the canonical / brand-less run, so a clean
+   canonical brief is byte-identical to pre-HOM-166. Brand wins on conflict;
+   this overlays canon, it never replaces it. #}
+{% macro profile_brand_section(profile, brand) -%}
+{% if (profile and profile|length) or (brand and brand|length) %}
+Profile & brand context (operator-authored overlay ON TOP of canon — brand
+wins on conflict; honor canonical opt-outs, never replace canon):
+{% for key, block in (profile or {}).items() %}
+{{ block }}
+{% endfor %}
+{% for key, block in (brand or {}).items() %}
+{{ block }}
+{% endfor %}
+{% endif %}
+{%- endmacro %}

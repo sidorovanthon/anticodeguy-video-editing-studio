@@ -1,4 +1,5 @@
 {# Visual identity (Step 1) task descriptor. Brief references canon; it does not embed canon. #}
+{% from "_macros.j2" import profile_brand_section %}
 You are running the **design system** pass for an anticodeguy episode (`{{ slug }}`).
 
 Canon to read BEFORE producing output:
@@ -21,7 +22,7 @@ are load-bearing and we do not paraphrase them here.
 Inputs:
 - Strategy from Phase 3 (shape / takes / grade / pacing / length): `{{ strategy_json }}`
 - EDL beats already chosen for the cut (use these as `beat_visual_mapping` keys): `{{ edl_beats_json }}`
-
+{{ profile_brand_section(profile, brand) }}
 Outputs:
 
 1. **Return the DESIGN.md body in the `design_md` field** of the structured
@@ -46,6 +47,11 @@ Outputs:
    - `beat_visual_mapping` ≥ 1 entry per beat in the EDL — the beat label and a
      one-sentence treatment (palette emphasis, type scale, motion intensity,
      decoratives).
+   - `rationale` — 3-6 sentences on WHY this visual identity fits the brand and
+     the content (lean on the Profile & brand context above when present). Prose
+     alongside the structured fields, not instead of them.
+   - `cross_scene_logic` — how the design holds together across scenes: recurring
+     motifs, palette rhythm, what stays constant vs. what varies beat to beat.
 
 **Palette pre-bake (orchestrator-house extension).** The canonical palette
 shape (see `~/.agents/skills/hyperframes/references/design-picker.md` —
@@ -110,7 +116,9 @@ just needs the derived hexes present.
     {"beat": "PAYOFF",   "treatment": "Wide reveal with hairline rules; entrance staggered 120ms; no exit tween, transition handles."}
   ],
   "design_md_path": "{{ design_md_path }}",
-  "design_md": "---\nstyle: Swiss Pulse\npalette:\n  background: \"#0a0a0a\"\n  foreground: \"#f0f0f0\"\n  accent: \"#0066FF\"\n---\n\n# Overview\n\nGrid-locked editorial design...\n\n# Colors\n\n... (full body, YAML frontmatter + prose sections per references/design-picker.md)"
+  "design_md": "---\nstyle: Swiss Pulse\npalette:\n  background: \"#0a0a0a\"\n  foreground: \"#f0f0f0\"\n  accent: \"#0066FF\"\n---\n\n# Overview\n\nGrid-locked editorial design...\n\n# Colors\n\n... (full body, YAML frontmatter + prose sections per references/design-picker.md)",
+  "rationale": "Editorial restraint matches the analytical tone; the accent carries the single stat without festive noise...",
+  "cross_scene_logic": "Hairline rules recur across every beat; palette holds constant while type scale escalates HOOK→PAYOFF..."
 }
 ```
 
