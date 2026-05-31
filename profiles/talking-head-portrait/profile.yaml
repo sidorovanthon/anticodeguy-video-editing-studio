@@ -1,0 +1,30 @@
+# Talking-head portrait short (1080x1920@60). Verbatim from spec §4.
+profile_id: talking-head-portrait
+human_label: "Talking head — portrait short"
+output:
+  width: 1080
+  height: 1920
+  fps: 60
+pacing: tight_conversational
+structural_archetype: hook_problem_solution_cta
+rhythm_template: "hook-build-PEAK-breathe-CTA"
+captions:
+  enabled: true
+  mode: karaoke
+  safe_zone: lower_third_avoid_face
+animation_density: medium
+music:
+  enabled: true
+  default_mix_db: -18           # fixed mix vs voice; canonical mix without sidechain
+cta:
+  enabled: true
+  placement: final_scene
+edit:
+  remove:
+    - false_starts
+    - corrected_phrases
+    - dead_air
+    - cross_range_semantic_duplicates
+  padding:
+    head_ms: 50
+    tail_ms: 80

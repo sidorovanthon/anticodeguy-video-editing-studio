@@ -1,0 +1,23 @@
+# anticodeguy brand defaults laid OVER skill canon. Sub-sections are free-form
+# (operator iterates); section keys are fixed. `cta.template` references a file
+# under templates/ — keep it in sync (the skeleton test asserts it resolves).
+motion_language:
+  easing_default: "power2.out"
+  intensity: balanced
+  signature: "lime accent sweep on emphasis words"
+captions:
+  style: karaoke
+  font: "Inter"
+  highlight_color: lime
+cta:
+  template: cta_scene.html
+  text: "Subscribe for more"
+grade:
+  warmth: 0
+  contrast: 0
+  saturation: 0
+transitions:
+  primary: "blur crossfade"
+  accents:
+    - "cinematic zoom"
+    - "fade-to-black"

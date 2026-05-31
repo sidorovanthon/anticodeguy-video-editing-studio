@@ -1,0 +1,16 @@
+# anticodeguy brand palette. Minimal real values — operator iterates.
+colors:
+  ink: "#0E0E0E"        # near-black foreground / text
+  paper: "#FAFAF7"      # off-white background
+  lime: "#C8FF3D"       # signature accent
+  slate: "#3A3F45"      # secondary text / muted
+typography:
+  display: "Clash Display"
+  body: "Inter"
+contrast_pairs:
+  - fg: ink
+    bg: paper
+  - fg: paper
+    bg: ink
+  - fg: ink
+    bg: lime
