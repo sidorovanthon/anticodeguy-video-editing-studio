@@ -219,18 +219,20 @@ def _extract_list_item(
     return block + "\n"
 
 
-def load_skill_section(
-    skill: str, rel_path: str, anchor: str, *, item: str | None = None
+def _extract_section_block(
+    text: str,
+    anchor: str,
+    *,
+    item: str | None,
+    min_anchor_text: int,
+    skill: str,
+    rel_path: str,
 ) -> str:
-    """Return the verbatim canon block for ``anchor`` (optionally one list item).
+    """Extract one verbatim section (optionally one list item) from ``text``.
 
-    The block includes the matched heading line and runs to the next heading of
-    the same or higher level (sub-``###`` headings stay in). When ``item`` is
-    given, the section is searched for a single matching list item and only that
-    item (plus its indented continuation) is returned.
-
-    Raises :class:`CanonAnchorMissing` on a missing file, a heading that matches
-    zero or more than one section, an unresolved list item, or an empty block.
+    Shared core for :func:`load_skill_section` (skill-root resolved) and
+    :func:`load_section` (direct path). ``skill``/``rel_path`` only flavour the
+    actionable :class:`CanonAnchorMissing` messages.
     """
     anchor = anchor.strip()
     level = _heading_level(anchor + " ")
@@ -238,15 +240,13 @@ def load_skill_section(
         raise ValueError(
             f"anchor must start with a markdown heading marker (## / ###): {anchor!r}"
         )
-    if len(anchor) - level - 1 < _MIN_ANCHOR_TEXT:
+    if len(anchor) - level - 1 < min_anchor_text:
         raise ValueError(
             f"anchor text too short to match safely: {anchor!r} "
-            f"(need ≥ {_MIN_ANCHOR_TEXT} chars after the heading marker)"
+            f"(need >= {min_anchor_text} chars after the heading marker)"
         )
 
-    text = _read_skill_file(skill, rel_path)
     lines = text.splitlines()
-
     heading_idxs = [
         i for i, line in enumerate(lines)
         if _heading_level(line) > 0 and line.strip().startswith(anchor)
@@ -277,6 +277,56 @@ def load_skill_section(
     if not block.strip():
         raise CanonAnchorMissing(skill, rel_path, anchor, reason="empty extraction")
     return block + "\n"
+
+
+def load_skill_section(
+    skill: str, rel_path: str, anchor: str, *, item: str | None = None
+) -> str:
+    """Return the verbatim canon block for ``anchor`` (optionally one list item).
+
+    Skill-canon flavour: resolves ``skill`` + ``rel_path`` to the live skill file
+    and extracts with the strict skill-canon anchor floor (``_MIN_ANCHOR_TEXT``).
+    Raises :class:`CanonAnchorMissing` on missing file / zero-or-many heading
+    match / unresolved list item / empty block.
+    """
+    text = _read_skill_file(skill, rel_path)
+    return _extract_section_block(
+        text, anchor, item=item, min_anchor_text=_MIN_ANCHOR_TEXT,
+        skill=skill, rel_path=rel_path,
+    )
+
+
+# Relaxed floor for profile/brand: our own operator-authored files may have
+# short legit headings (`## Voice` = 5, `## Pacing` = 6). The >1-match ambiguity
+# check in `_extract_section_block` is the primary guard; 3 still catches an
+# obviously-too-short developer mistake without rejecting real headings.
+_MIN_SECTION_ANCHOR_TEXT = 3
+
+
+def load_section(
+    path: Path,
+    anchor: str,
+    *,
+    item: str | None = None,
+    min_anchor_text: int = _MIN_ANCHOR_TEXT,
+    source_label: str = "(file)",
+) -> str:
+    """Return the verbatim section for ``anchor`` from the markdown file at ``path``.
+
+    Path-based generalization of :func:`load_skill_section` (HOM-114). Used for
+    profile/brand layers whose roots are resolved per-episode. ``source_label``
+    flavours the error message. Raises :class:`CanonAnchorMissing` on a missing
+    file (a deleted/renamed file is loud, never silent-empty).
+    """
+    if not path.is_file():
+        raise CanonAnchorMissing(
+            source_label, path.name, "(file)", reason=f"file not found at {path}"
+        )
+    text = path.read_text(encoding="utf-8")
+    return _extract_section_block(
+        text, anchor, item=item, min_anchor_text=min_anchor_text,
+        skill=source_label, rel_path=path.name,
+    )
 
 
 # --------------------------------------------------------------------------- #

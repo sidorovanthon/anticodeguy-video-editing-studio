@@ -334,3 +334,38 @@ def test_every_registered_anchor_resolves_against_live_canon():
         assert blocks, f"{node} produced no canon blocks"
         for key, body in blocks.items():
             assert body.strip(), f"{node}.{key} resolved empty"
+
+
+# --- load_section (path-based, generalized core) --------------------------- #
+
+def test_load_section_path_based_whole_section(tmp_path):
+    f = tmp_path / "house-style.md"
+    f.write_text(
+        "# House style\n\n## Pacing\n\nTight and conversational.\n\n"
+        "## Structural archetype\n\nhook -> CTA.\n",
+        encoding="utf-8",
+    )
+    block = cl.load_section(f, "## Pacing", min_anchor_text=3)
+    assert block.startswith("## Pacing")
+    assert "Tight and conversational." in block
+    assert "## Structural archetype" not in block  # bounded at next H2
+
+
+def test_load_section_short_heading_allowed_with_relaxed_floor(tmp_path):
+    f = tmp_path / "brand.md"
+    f.write_text("## Voice\n\nDirect, dry.\n", encoding="utf-8")
+    with pytest.raises(ValueError):
+        cl.load_section(f, "## Voice")  # default floor == skill floor (8)
+    block = cl.load_section(f, "## Voice", min_anchor_text=3)
+    assert block.startswith("## Voice")
+
+
+def test_load_section_missing_file_raises(tmp_path):
+    with pytest.raises(cl.CanonAnchorMissing) as ei:
+        cl.load_section(tmp_path / "nope.md", "## Whatever Heading")
+    assert "file not found" in str(ei.value)
+
+
+def test_load_skill_section_still_uses_floor_8(fixture_skills):
+    with pytest.raises(ValueError):
+        cl.load_skill_section("hyperframes", "SKILL.md", "## abcdef")  # 6 < 8
