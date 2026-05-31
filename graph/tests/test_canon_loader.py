@@ -334,3 +334,200 @@ def test_every_registered_anchor_resolves_against_live_canon():
         assert blocks, f"{node} produced no canon blocks"
         for key, body in blocks.items():
             assert body.strip(), f"{node}.{key} resolved empty"
+
+
+# --- load_section (path-based, generalized core) --------------------------- #
+
+def test_load_section_path_based_whole_section(tmp_path):
+    f = tmp_path / "house-style.md"
+    f.write_text(
+        "# House style\n\n## Pacing\n\nTight and conversational.\n\n"
+        "## Structural archetype\n\nhook -> CTA.\n",
+        encoding="utf-8",
+    )
+    block = cl.load_section(f, "## Pacing", min_anchor_text=3)
+    assert block.startswith("## Pacing")
+    assert "Tight and conversational." in block
+    assert "## Structural archetype" not in block  # bounded at next H2
+
+
+def test_load_section_short_heading_allowed_with_relaxed_floor(tmp_path):
+    f = tmp_path / "brand.md"
+    f.write_text("## Voice\n\nDirect, dry.\n", encoding="utf-8")
+    with pytest.raises(ValueError):
+        cl.load_section(f, "## Voice")  # default floor == skill floor (8)
+    block = cl.load_section(f, "## Voice", min_anchor_text=3)
+    assert block.startswith("## Voice")
+
+
+def test_load_section_missing_file_raises(tmp_path):
+    with pytest.raises(cl.CanonAnchorMissing) as ei:
+        cl.load_section(tmp_path / "nope.md", "## Whatever Heading")
+    assert "file not found" in str(ei.value)
+
+
+def test_load_skill_section_still_uses_floor_8(fixture_skills):
+    with pytest.raises(ValueError):
+        cl.load_skill_section("hyperframes", "SKILL.md", "## abcdef")  # 6 < 8
+
+
+# --- profile / brand markdown manifests + block loaders -------------------- #
+
+_HOUSE_STYLE_MD = """\
+# House style — talking head
+
+## Pacing
+
+Tight and conversational.
+
+## Structural archetype
+
+hook -> problem -> solution -> CTA.
+
+## Rhythm template
+
+hook-build-PEAK-breathe-CTA.
+
+## Edit rules
+
+Remove false starts and cross-range semantic duplicates.
+"""
+
+_BRAND_MD = """\
+# brand canon
+
+## Voice
+
+Direct, dry, builder-to-builder.
+
+## Visual identity
+
+High-contrast editorial; one lime accent.
+
+## Layer composition
+
+skill_canon < profile < brand < episode_intent.
+"""
+
+
+@pytest.fixture
+def fixture_layers(tmp_path):
+    prof = tmp_path / "profiles" / "talking-head-portrait"
+    prof.mkdir(parents=True)
+    (prof / "house-style.md").write_text(_HOUSE_STYLE_MD, encoding="utf-8")
+    brand = tmp_path / "brand" / "anticodeguy"
+    brand.mkdir(parents=True)
+    (brand / "brand.md").write_text(_BRAND_MD, encoding="utf-8")
+    canonical = tmp_path / "profiles" / "canonical"
+    canonical.mkdir(parents=True)  # intentionally NO house-style.md
+    return tmp_path
+
+
+def test_load_profile_blocks_keyed_by_ref_key(fixture_layers):
+    prof = fixture_layers / "profiles" / "talking-head-portrait"
+    blocks = cl.load_profile_blocks("p3_strategy", prof)
+    assert set(blocks) == {"pacing", "structural_archetype"}
+    assert blocks["pacing"].startswith("## Pacing")
+
+
+def test_load_brand_blocks_keyed_by_ref_key(fixture_layers):
+    brand = fixture_layers / "brand" / "anticodeguy"
+    blocks = cl.load_brand_blocks("p3_strategy", brand)
+    assert set(blocks) == {"voice"}
+    assert blocks["voice"].startswith("## Voice")
+
+
+def test_design_system_pulls_full_house_style(fixture_layers):
+    prof = fixture_layers / "profiles" / "talking-head-portrait"
+    blocks = cl.load_profile_blocks("p4_design_system", prof)
+    assert set(blocks) == {"pacing", "structural_archetype", "rhythm_template", "edit_rules"}
+
+
+def test_profile_blocks_absent_file_returns_empty(fixture_layers):
+    canonical = fixture_layers / "profiles" / "canonical"
+    assert cl.load_profile_blocks("p3_strategy", canonical) == {}
+
+
+def test_profile_blocks_present_file_missing_anchor_raises(tmp_path):
+    prof = tmp_path / "profiles" / "broken"
+    prof.mkdir(parents=True)
+    (prof / "house-style.md").write_text("## Pacing\n\nonly pacing.\n", encoding="utf-8")
+    with pytest.raises(cl.CanonAnchorMissing):
+        cl.load_profile_blocks("p3_strategy", prof)
+
+
+def test_node_with_no_profile_refs_returns_empty(fixture_layers):
+    prof = fixture_layers / "profiles" / "talking-head-portrait"
+    assert cl.load_profile_blocks("p3_self_eval", prof) == {}
+
+
+# --- canon_fingerprint profile/brand folding (back-compat) ----------------- #
+
+def test_fingerprint_no_dirs_is_skill_only_recomputation(fixture_skills):
+    # The load-bearing back-compat invariant: the no-dirs digest is the sha256
+    # over ONLY the node's skill-canon blocks, in the documented byte format
+    # (key \0 block \0). Locks the skill hashing path so a future refactor that
+    # silently changes it (-> committed cache.db drift) turns this red.
+    # Recomputes rather than pinning a constant, so legitimate live-skill edits
+    # do not false-fail. (The prior assertion compared no-dirs to explicit
+    # ``profile_dir=None, brand_dir=None`` — tautological, the same call.)
+    import hashlib
+
+    h = hashlib.sha256()
+    for ref in cl.NODE_CANON_ANCHORS["p3_strategy"]:
+        block = cl.load_skill_section(ref.skill, ref.rel_path, ref.anchor, item=ref.item)
+        h.update(ref.key.encode("utf-8"))
+        h.update(b"\x00")
+        h.update(block.encode("utf-8"))
+        h.update(b"\x00")
+    assert cl.canon_fingerprint("p3_strategy") == h.hexdigest()
+
+
+def test_fingerprint_changes_when_profile_dir_added(fixture_skills, fixture_layers):
+    prof = fixture_layers / "profiles" / "talking-head-portrait"
+    skill_only = cl.canon_fingerprint("p3_strategy")
+    with_profile = cl.canon_fingerprint("p3_strategy", profile_dir=prof)
+    assert with_profile != skill_only
+
+
+def test_fingerprint_flips_on_consumed_profile_edit(fixture_skills, fixture_layers):
+    prof = fixture_layers / "profiles" / "talking-head-portrait"
+    before = cl.canon_fingerprint("p3_strategy", profile_dir=prof)
+    hs = prof / "house-style.md"
+    hs.write_text(
+        _HOUSE_STYLE_MD.replace("Tight and conversational.", "Tight and punchy."),
+        encoding="utf-8",
+    )
+    after = cl.canon_fingerprint("p3_strategy", profile_dir=prof)
+    assert after != before
+
+
+def test_fingerprint_stable_when_unconsumed_section_edited(fixture_skills, fixture_layers):
+    # p3_strategy consumes Pacing + Structural archetype, NOT Rhythm template.
+    prof = fixture_layers / "profiles" / "talking-head-portrait"
+    before = cl.canon_fingerprint("p3_strategy", profile_dir=prof)
+    hs = prof / "house-style.md"
+    hs.write_text(
+        _HOUSE_STYLE_MD.replace("hook-build-PEAK-breathe-CTA.", "EDITED rhythm."),
+        encoding="utf-8",
+    )
+    after = cl.canon_fingerprint("p3_strategy", profile_dir=prof)
+    assert after == before
+
+
+# --- verify_profile_brand_anchors ------------------------------------------ #
+
+def test_verify_profile_brand_passes_then_fails_on_rename(fixture_layers):
+    prof = fixture_layers / "profiles" / "talking-head-portrait"
+    brand = fixture_layers / "brand" / "anticodeguy"
+    cl.verify_profile_brand_anchors([prof], [brand])  # clean
+
+    hs = prof / "house-style.md"
+    hs.write_text(_HOUSE_STYLE_MD.replace("## Pacing", "## Tempo"), encoding="utf-8")
+    with pytest.raises(cl.CanonAnchorMissing):
+        cl.verify_profile_brand_anchors([prof], [brand])
+
+
+def test_verify_profile_brand_skips_layer_without_file(fixture_layers):
+    canonical = fixture_layers / "profiles" / "canonical"  # no house-style.md
+    cl.verify_profile_brand_anchors([canonical], [])  # must NOT raise

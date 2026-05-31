@@ -33,9 +33,15 @@ Skill roots resolve to the live auto-updated copies
 override via the ``HOMESTUDIO_CANON_ROOT_*`` env vars to point at a fixture
 tree (hermetic loader unit tests + the canon-invalidation fingerprint test).
 
-Profile / brand sections (spec §9.1 ``assemble_brief_context``) are NOT handled
-here — that three-source assembler is the HOM-166 / M6 deliverable. This module
-is skill-canon only.
+Profile / brand markdown sections (spec §9, decision B / HOM-114) ARE handled
+here too: :func:`load_section` pulls a section from any markdown path, and the
+:data:`NODE_PROFILE_ANCHORS` / :data:`NODE_BRAND_ANCHORS` manifests +
+:func:`load_profile_blocks` / :func:`load_brand_blocks` extend the same
+anchor / fail-loud / cache-keyed model to ``profiles/<id>/house-style.md`` and
+``brand/<id>/brand.md``. What stays the HOM-166 deliverable: the per-episode
+*resolution* of which profile/brand dir applies, the YAML brand config
+(``defaults.yaml`` / ``palette.yaml``), and wiring ``{{ profile.* }}`` /
+``{{ brand.* }}`` into the node briefs.
 """
 
 from __future__ import annotations
@@ -45,6 +51,8 @@ import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
+
+from ._paths import repo_root
 
 # --------------------------------------------------------------------------- #
 # Skill-root resolution
@@ -107,12 +115,24 @@ class CanonAnchorMissing(RuntimeError):
         loc = f"{skill}:{rel_path} §{anchor!r}"
         if item is not None:
             loc += f" → list item {item!r}"
-        super().__init__(
-            f"canon anchor {loc} {reason}. The live skill likely changed "
-            "upstream (skills auto-update via Task Scheduler). Check the "
-            "skill's current headings/list and update NODE_CANON_ANCHORS + the "
-            "brief — cite by section name, never line number (HOM-376/HOM-377)."
-        )
+        # Tailor the actionable hint to the source: profile/brand are
+        # operator-authored in-repo files (skill names use a ``profile:``/
+        # ``brand:`` source label), skill canon auto-updates upstream.
+        if skill.startswith(("profile", "brand")):
+            hint = (
+                "This profile/brand file changed in-repo (operator-authored). "
+                "Check its current headings and update NODE_PROFILE_ANCHORS / "
+                "NODE_BRAND_ANCHORS + the layer file — cite by section name, "
+                "never line number (HOM-114)."
+            )
+        else:
+            hint = (
+                "The live skill likely changed upstream (skills auto-update via "
+                "Task Scheduler). Check the skill's current headings/list and "
+                "update NODE_CANON_ANCHORS + the brief — cite by section name, "
+                "never line number (HOM-376/HOM-377)."
+            )
+        super().__init__(f"canon anchor {loc} {reason}. {hint}")
 
 
 @dataclass(frozen=True)
@@ -219,18 +239,20 @@ def _extract_list_item(
     return block + "\n"
 
 
-def load_skill_section(
-    skill: str, rel_path: str, anchor: str, *, item: str | None = None
+def _extract_section_block(
+    text: str,
+    anchor: str,
+    *,
+    item: str | None,
+    min_anchor_text: int,
+    skill: str,
+    rel_path: str,
 ) -> str:
-    """Return the verbatim canon block for ``anchor`` (optionally one list item).
+    """Extract one verbatim section (optionally one list item) from ``text``.
 
-    The block includes the matched heading line and runs to the next heading of
-    the same or higher level (sub-``###`` headings stay in). When ``item`` is
-    given, the section is searched for a single matching list item and only that
-    item (plus its indented continuation) is returned.
-
-    Raises :class:`CanonAnchorMissing` on a missing file, a heading that matches
-    zero or more than one section, an unresolved list item, or an empty block.
+    Shared core for :func:`load_skill_section` (skill-root resolved) and
+    :func:`load_section` (direct path). ``skill``/``rel_path`` only flavour the
+    actionable :class:`CanonAnchorMissing` messages.
     """
     anchor = anchor.strip()
     level = _heading_level(anchor + " ")
@@ -238,15 +260,13 @@ def load_skill_section(
         raise ValueError(
             f"anchor must start with a markdown heading marker (## / ###): {anchor!r}"
         )
-    if len(anchor) - level - 1 < _MIN_ANCHOR_TEXT:
+    if len(anchor) - level - 1 < min_anchor_text:
         raise ValueError(
             f"anchor text too short to match safely: {anchor!r} "
-            f"(need ≥ {_MIN_ANCHOR_TEXT} chars after the heading marker)"
+            f"(need >= {min_anchor_text} chars after the heading marker)"
         )
 
-    text = _read_skill_file(skill, rel_path)
     lines = text.splitlines()
-
     heading_idxs = [
         i for i, line in enumerate(lines)
         if _heading_level(line) > 0 and line.strip().startswith(anchor)
@@ -279,6 +299,56 @@ def load_skill_section(
     return block + "\n"
 
 
+def load_skill_section(
+    skill: str, rel_path: str, anchor: str, *, item: str | None = None
+) -> str:
+    """Return the verbatim canon block for ``anchor`` (optionally one list item).
+
+    Skill-canon flavour: resolves ``skill`` + ``rel_path`` to the live skill file
+    and extracts with the strict skill-canon anchor floor (``_MIN_ANCHOR_TEXT``).
+    Raises :class:`CanonAnchorMissing` on missing file / zero-or-many heading
+    match / unresolved list item / empty block.
+    """
+    text = _read_skill_file(skill, rel_path)
+    return _extract_section_block(
+        text, anchor, item=item, min_anchor_text=_MIN_ANCHOR_TEXT,
+        skill=skill, rel_path=rel_path,
+    )
+
+
+# Relaxed floor for profile/brand: our own operator-authored files may have
+# short legit headings (`## Voice` = 5, `## Pacing` = 6). The >1-match ambiguity
+# check in `_extract_section_block` is the primary guard; 3 still catches an
+# obviously-too-short developer mistake without rejecting real headings.
+_MIN_SECTION_ANCHOR_TEXT = 3
+
+
+def load_section(
+    path: Path,
+    anchor: str,
+    *,
+    item: str | None = None,
+    min_anchor_text: int = _MIN_ANCHOR_TEXT,
+    source_label: str = "(file)",
+) -> str:
+    """Return the verbatim section for ``anchor`` from the markdown file at ``path``.
+
+    Path-based generalization of :func:`load_skill_section` (HOM-114). Used for
+    profile/brand layers whose roots are resolved per-episode. ``source_label``
+    flavours the error message. Raises :class:`CanonAnchorMissing` on a missing
+    file (a deleted/renamed file is loud, never silent-empty).
+    """
+    if not path.is_file():
+        raise CanonAnchorMissing(
+            source_label, path.name, "(file)", reason=f"file not found at {path}"
+        )
+    text = path.read_text(encoding="utf-8")
+    return _extract_section_block(
+        text, anchor, item=item, min_anchor_text=min_anchor_text,
+        skill=source_label, rel_path=path.name,
+    )
+
+
 # --------------------------------------------------------------------------- #
 # Per-node anchor manifest (spec §9 per-node anchor list — skill-canon only)
 # --------------------------------------------------------------------------- #
@@ -287,8 +357,10 @@ def load_skill_section(
 # brief cites. On-demand references (typography, beat-direction, techniques,
 # transcript-guide, dynamic-techniques) stay as Read citations: canon's own
 # ``## References (loaded on demand)`` model treats them as load-on-demand, and
-# splatting them verbatim would bloat every brief. profile/brand sections from
-# spec §9 (house-style/brand/palette/defaults) are HOM-166/M6 scope.
+# splatting them verbatim would bloat every brief. profile/brand markdown
+# sections live in the separate NODE_PROFILE_ANCHORS / NODE_BRAND_ANCHORS
+# manifests below (HOM-114); only the YAML brand config (palette/defaults) is
+# HOM-166/M6 scope.
 
 _VIDEO_USE_PROCESS = "## The process"
 _VIDEO_USE_CUT_CRAFT = "## Cut craft (techniques)"
@@ -344,6 +416,91 @@ NODE_CANON_ANCHORS: dict[str, tuple[CanonRef, ...]] = {
 
 
 # --------------------------------------------------------------------------- #
+# Profile / brand markdown-section manifest (HOM-114, spec §9)
+# --------------------------------------------------------------------------- #
+#
+# MARKDOWN sections only — `house-style.md` / `brand.md`. The YAML brand config
+# (`defaults.yaml.transitions/.motion_language/.captions`, `palette.yaml`) is
+# loaded by HOM-167's pydantic models and composed + fingerprinted by HOM-166's
+# `resolve_episode_brief` (`brief.fingerprint`), NOT here. Refs are RELATIVE to a
+# per-episode resolved profile/brand dir (HOM-166 supplies the dir at call time);
+# the `canonical` profile ships no `house-style.md` and resolves to `{}`.
+
+_PROFILE_FILE = "house-style.md"
+_BRAND_FILE = "brand.md"
+
+
+@dataclass(frozen=True)
+class SectionRef:
+    """One verbatim markdown section a node depends on, relative to a layer dir.
+
+    Distinct from :class:`CanonRef` (which carries a global ``skill`` short-name);
+    profile/brand roots are per-episode, so only ``rel_path`` + ``anchor`` are
+    fixed here and the dir is supplied at load time.
+    """
+
+    key: str
+    rel_path: str
+    anchor: str
+    item: str | None = None
+
+
+_HS_PACING = SectionRef("pacing", _PROFILE_FILE, "## Pacing")
+_HS_ARCHETYPE = SectionRef("structural_archetype", _PROFILE_FILE, "## Structural archetype")
+_HS_RHYTHM = SectionRef("rhythm_template", _PROFILE_FILE, "## Rhythm template")
+_HS_EDIT_RULES = SectionRef("edit_rules", _PROFILE_FILE, "## Edit rules")
+
+NODE_PROFILE_ANCHORS: dict[str, tuple[SectionRef, ...]] = {
+    "p3_strategy": (_HS_PACING, _HS_ARCHETYPE),
+    "p3_edl_select": (_HS_EDIT_RULES,),
+    # "full house-style.md" per §9 — all four authored sections, verbatim.
+    "p4_design_system": (_HS_PACING, _HS_ARCHETYPE, _HS_RHYTHM, _HS_EDIT_RULES),
+    "p4_prompt_expansion": (_HS_RHYTHM,),
+}
+
+NODE_BRAND_ANCHORS: dict[str, tuple[SectionRef, ...]] = {
+    "p3_strategy": (SectionRef("voice", _BRAND_FILE, "## Voice"),),
+    "p4_design_system": (SectionRef("visual_identity", _BRAND_FILE, "## Visual identity"),),
+}
+
+
+def _load_layer_blocks(
+    refs: tuple[SectionRef, ...], layer_dir: Path, source_label: str
+) -> dict[str, str]:
+    """Resolve ``refs`` against ``layer_dir`` → ``{key: verbatim_block}``.
+
+    Two-tier contract (spec §9 fail-loud, reconciled with the canonical baseline):
+      * referenced file ABSENT → that ref is skipped (the layer legitimately omits
+        prose — e.g. the ``canonical`` profile has no ``house-style.md``);
+      * referenced file PRESENT but anchor missing → :class:`CanonAnchorMissing`
+        (loud — a renamed/deleted section must never become a silent-empty brief).
+    Accidental deletion of a *reference* layer's file is caught earlier by
+    :func:`verify_anchors` at graph build.
+    """
+    out: dict[str, str] = {}
+    for ref in refs:
+        path = layer_dir / ref.rel_path
+        if not path.is_file():
+            continue
+        out[ref.key] = load_section(
+            path, ref.anchor, item=ref.item,
+            min_anchor_text=_MIN_SECTION_ANCHOR_TEXT,
+            source_label=f"{source_label}:{layer_dir.name}",
+        )
+    return out
+
+
+def load_profile_blocks(node: str, profile_dir: Path) -> dict[str, str]:
+    """Verbatim profile (`house-style.md`) blocks registered on ``node``."""
+    return _load_layer_blocks(NODE_PROFILE_ANCHORS.get(node, ()), profile_dir, "profile")
+
+
+def load_brand_blocks(node: str, brand_dir: Path) -> dict[str, str]:
+    """Verbatim brand (`brand.md`) blocks registered on ``node``."""
+    return _load_layer_blocks(NODE_BRAND_ANCHORS.get(node, ()), brand_dir, "brand")
+
+
+# --------------------------------------------------------------------------- #
 # Node-facing API: render-context blocks, cache fingerprint, startup verify
 # --------------------------------------------------------------------------- #
 
@@ -361,13 +518,22 @@ def load_canon_blocks(node: str) -> dict[str, str]:
     }
 
 
-def canon_fingerprint(node: str) -> str:
-    """Stable sha256 over the resolved canon blocks for ``node``.
+def canon_fingerprint(
+    node: str,
+    profile_dir: Path | None = None,
+    brand_dir: Path | None = None,
+) -> str:
+    """Stable sha256 over the verbatim blocks ``node`` pulls.
 
-    Folded into the node's ``make_llm_key`` extras so an upstream canon edit to
-    any section the node pulls invalidates exactly that node. Manifest order is
-    deterministic, so the digest is stable across runs. Returns the sha256 of
-    the empty input for a node with no registered anchors (a stable constant).
+    Folded into the node's ``make_llm_key`` extras so an upstream edit to any
+    section the node pulls invalidates exactly that node. Manifest order is
+    deterministic, so the digest is stable across runs.
+
+    **Back-compat:** with no dirs, the digest is byte-identical to the HOM-377
+    skill-only digest — the committed fixture ``cache.db`` and the existing node
+    cache keys must not drift. ``profile_dir``/``brand_dir`` (supplied by HOM-166's
+    ``resolve_episode_brief`` per episode) append the profile/brand block hashes so
+    a `house-style.md`/`brand.md` edit invalidates the consuming nodes too.
     """
     h = hashlib.sha256()
     for ref in NODE_CANON_ANCHORS.get(node, ()):
@@ -376,6 +542,20 @@ def canon_fingerprint(node: str) -> str:
         h.update(b"\x00")
         h.update(block.encode("utf-8"))
         h.update(b"\x00")
+    if profile_dir is not None:
+        for key, block in sorted(load_profile_blocks(node, profile_dir).items()):
+            h.update(b"profile:")
+            h.update(key.encode("utf-8"))
+            h.update(b"\x00")
+            h.update(block.encode("utf-8"))
+            h.update(b"\x00")
+    if brand_dir is not None:
+        for key, block in sorted(load_brand_blocks(node, brand_dir).items()):
+            h.update(b"brand:")
+            h.update(key.encode("utf-8"))
+            h.update(b"\x00")
+            h.update(block.encode("utf-8"))
+            h.update(b"\x00")
     return h.hexdigest()
 
 
@@ -383,6 +563,13 @@ def canon_fingerprint(node: str) -> str:
 # — NOT a bare bool. A bare flag would let a build against live canon suppress a
 # later verify against a test fixture root (HOMESTUDIO_CANON_ROOT_* override), or
 # vice versa. Keying on the resolved roots re-verifies when the roots change.
+#
+# NOTE (HOM-114): the signature keys on *skill* roots only, so the folded
+# `verify_profile_brand_anchors()` over `repo_root()/{profiles,brand}` is NOT
+# re-run on a memoized rebuild within the same process. Acceptable — this is a
+# build-time integrity check and the shipped profile/brand files are static
+# in-process; the snapshot tests call `verify_profile_brand_anchors()` directly
+# (bypassing memoization) to cover the fail-loud rename path.
 _VERIFIED_SIGNATURES: set[tuple[tuple[str, str], ...]] = set()
 
 
@@ -409,6 +596,73 @@ def all_refs() -> list[CanonRef]:
     return out
 
 
+def _all_profile_refs() -> list[SectionRef]:
+    seen: set[tuple[str, str, str | None]] = set()
+    out: list[SectionRef] = []
+    for refs in NODE_PROFILE_ANCHORS.values():
+        for ref in refs:
+            ident = (ref.rel_path, ref.anchor, ref.item)
+            if ident not in seen:
+                seen.add(ident)
+                out.append(ref)
+    return out
+
+
+def _all_brand_refs() -> list[SectionRef]:
+    seen: set[tuple[str, str, str | None]] = set()
+    out: list[SectionRef] = []
+    for refs in NODE_BRAND_ANCHORS.values():
+        for ref in refs:
+            ident = (ref.rel_path, ref.anchor, ref.item)
+            if ident not in seen:
+                seen.add(ident)
+                out.append(ref)
+    return out
+
+
+def _verify_layer(layer_dir: Path, refs: list[SectionRef], source_label: str) -> None:
+    """If the ref's file exists in ``layer_dir``, every registered anchor must resolve."""
+    for ref in refs:
+        path = layer_dir / ref.rel_path
+        if not path.is_file():
+            continue
+        load_section(
+            path, ref.anchor, item=ref.item,
+            min_anchor_text=_MIN_SECTION_ANCHOR_TEXT,
+            source_label=f"{source_label}:{layer_dir.name}",
+        )
+
+
+def _shipped_profile_dirs() -> list[Path]:
+    base = repo_root() / "profiles"
+    return [p for p in sorted(base.iterdir()) if p.is_dir()] if base.is_dir() else []
+
+
+def _shipped_brand_dirs() -> list[Path]:
+    base = repo_root() / "brand"
+    return [p for p in sorted(base.iterdir()) if p.is_dir()] if base.is_dir() else []
+
+
+def verify_profile_brand_anchors(
+    profile_dirs: list[Path] | None = None,
+    brand_dirs: list[Path] | None = None,
+) -> None:
+    """Resolve every registered profile/brand anchor against the given layers.
+
+    Defaults to the shipped layers under ``repo_root()/{profiles,brand}``. A layer
+    missing its markdown file is skipped (legitimate — the ``canonical`` profile);
+    a present file missing a registered anchor raises :class:`CanonAnchorMissing`.
+    """
+    pdirs = _shipped_profile_dirs() if profile_dirs is None else profile_dirs
+    bdirs = _shipped_brand_dirs() if brand_dirs is None else brand_dirs
+    prof_refs = _all_profile_refs()
+    brand_refs = _all_brand_refs()
+    for d in pdirs:
+        _verify_layer(d, prof_refs, "profile")
+    for d in bdirs:
+        _verify_layer(d, brand_refs, "brand")
+
+
 def verify_anchors(refs: list[CanonRef] | None = None, *, force: bool = False) -> None:
     """Resolve every registered canon anchor once; raise on the first failure.
 
@@ -426,6 +680,7 @@ def verify_anchors(refs: list[CanonRef] | None = None, *, force: bool = False) -
             return
         for ref in all_refs():
             load_skill_section(ref.skill, ref.rel_path, ref.anchor, item=ref.item)
+        verify_profile_brand_anchors()  # HOM-114: shipped profile/brand layers
         _VERIFIED_SIGNATURES.add(sig)
         return
     for ref in refs:
