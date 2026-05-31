@@ -44,9 +44,10 @@ vocabulary each prewarm: `halo` / `ghost` / `wash` / `plate-tint` /
 converge). Architectural split:
 
 * **Code-side hard-blocking — canon-absolute, vocabulary-independent:**
-  - `offscreen` flag, unconditional. Per `SKILL.md:74` "CSS position is
-    the ground truth" — an element off-canvas the full tween means the
-    audience never sees it, regardless of class name.
+  - `offscreen` flag, unconditional. Per `SKILL.md` §"Layout Before
+    Animation" ("The process") "CSS position is the ground truth" — an
+    element off-canvas the full tween means the audience never sees it,
+    regardless of class name.
   - `degenerate` flag whose bbox is ≥ `degenerate_min_bbox_px` (default
     2 px) on both width AND height across all samples. This is a
     **geometric** criterion on bbox dimensions, NOT a class-name match;
@@ -176,8 +177,8 @@ from ._base import Gate
 #   container, decorative-allowlist predicates all dropped). `collision` and
 #   `invisible` flags now route to LLM-triage advisory (pending_classify);
 #   code-side hard-blocking restricted to canon-absolute geometric/structural
-#   categories — `offscreen` (unconditional, per SKILL.md:74 "CSS position
-#   is the ground truth"), `degenerate` with bbox ≥ degenerate_min_bbox_px
+#   categories — `offscreen` (unconditional, per SKILL.md §"Layout Before
+#   Animation" "CSS position is the ground truth"), `degenerate` with bbox ≥ degenerate_min_bbox_px
 #   (geometric, vocabulary-independent), dead-zone-over-threshold, infra
 #   failures. Output shape: `pending_classify` entries now mix flag types
 #   (`paced-fast`/`paced-slow`/`collision`/`invisible`); a pre-HOM-317
@@ -425,9 +426,9 @@ def _extract_flags(
     Code-side hard-blocking restricted to canon-absolute
     vocabulary-independent categories:
 
-      * `offscreen` (unconditional — `SKILL.md:74` "CSS position is the
-        ground truth"; audience never sees off-canvas elements regardless
-        of selector name).
+      * `offscreen` (unconditional — `SKILL.md` §"Layout Before Animation"
+        "CSS position is the ground truth"; audience never sees off-canvas
+        elements regardless of selector name).
       * `degenerate` with bbox ≥ `degenerate_min_bbox_px` on BOTH width
         and height (geometric criterion, vocabulary-independent — the
         HOM-211 1-2 px hairline/tick exemption stays as a geometric
@@ -480,9 +481,9 @@ def _extract_flags(
             if _degenerate_is_blocking(tw, min_bbox_px=degenerate_min_bbox_px):
                 blocking_degenerate.append(sel)
         if "offscreen" in flags:
-            # Unconditional hard-block — `SKILL.md:74` "CSS position is the
-            # ground truth"; audience never sees off-canvas elements
-            # regardless of selector identity.
+            # Unconditional hard-block — `SKILL.md` §"Layout Before Animation"
+            # "CSS position is the ground truth"; audience never sees
+            # off-canvas elements regardless of selector identity.
             offscreen.append(sel)
         if "invisible" in flags:
             invisible.append(sel)

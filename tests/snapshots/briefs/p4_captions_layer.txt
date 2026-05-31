@@ -118,7 +118,7 @@ Output shape (return as the `html` string in the `CaptionsOutput` JSON above):
       GROUPS.forEach(function (group) {
         var el = document.getElementById(group.id);
         if (!el) return;
-        // Entrance via tl.fromTo (motion-principles.md L115-123 — never tl.from)
+        // Entrance via tl.fromTo (motion-principles.md §"Load-Bearing GSAP Rules" — never tl.from)
         tl.fromTo(el, /* from */ {}, /* to */ {}, group.start);
         // Exit + hard kill (canon §"Caption Exit Guarantee" — non-negotiable).
         // The exit window MUST end at or before the NEXT group's entrance —
@@ -180,7 +180,7 @@ Hard rules (orchestrator-house, derived from canon — surfaced so you don't mis
   Guarantee"; `~/.agents/skills/hyperframes/references/motion-principles.md`
   bullet "Hard-kill every scene boundary, not just captions."
 - **CSS scoping**: every rule prefixed with `#captions-layer`. No bare class selectors.
-- **`tl.fromTo()` for entrances** (motion-principles.md L115-123). Never `tl.from()`,
+- **`tl.fromTo()` for entrances** (motion-principles.md §"Load-Bearing GSAP Rules"). Never `tl.from()`,
   never bare `gsap.from()`. Non-linear seek breaks otherwise.
 - **Determinism**: no `Math.random()`, no `Date.now()`. Group/word arrays are static
   literals in the script.

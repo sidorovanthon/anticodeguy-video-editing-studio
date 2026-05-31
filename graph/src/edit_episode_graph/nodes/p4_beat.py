@@ -111,7 +111,15 @@ from ._llm import LLMNode, _load_brief
 # Both entries follow the canon-references-not-embeds rule (CLAUDE.md
 # §"Decomposition via brief-references-canon" item 1) — name pattern by
 # path, instruct Read, do NOT inline-paraphrase.
-_CACHE_VERSION = 13
+# v14 (HOM-376): brief source edited — fragile external-canon line-number
+#   citations replaced with stable §"section name" anchors (the skills
+#   auto-update via Task Scheduler; line numbers drift on every upstream
+#   pull, the section names do not). Rendered brief text changed (cite
+#   anchors not L-numbers), so the cache must invalidate. Verified
+#   2026-05-31: the prior `SKILL.md L227 + L240` pins had already drifted
+#   to empty lines after an upstream pull. Spec §8 mandates a bump on any
+#   brief-source edit. Memory feedback_briefs_anchor_not_line_pin.
+_CACHE_VERSION = 14
 
 
 def _cache_key(state, *_args, **_kwargs):
