@@ -496,13 +496,22 @@ def load_canon_blocks(node: str) -> dict[str, str]:
     }
 
 
-def canon_fingerprint(node: str) -> str:
-    """Stable sha256 over the resolved canon blocks for ``node``.
+def canon_fingerprint(
+    node: str,
+    profile_dir: Path | None = None,
+    brand_dir: Path | None = None,
+) -> str:
+    """Stable sha256 over the verbatim blocks ``node`` pulls.
 
-    Folded into the node's ``make_llm_key`` extras so an upstream canon edit to
-    any section the node pulls invalidates exactly that node. Manifest order is
-    deterministic, so the digest is stable across runs. Returns the sha256 of
-    the empty input for a node with no registered anchors (a stable constant).
+    Folded into the node's ``make_llm_key`` extras so an upstream edit to any
+    section the node pulls invalidates exactly that node. Manifest order is
+    deterministic, so the digest is stable across runs.
+
+    **Back-compat:** with no dirs, the digest is byte-identical to the HOM-377
+    skill-only digest — the committed fixture ``cache.db`` and the existing node
+    cache keys must not drift. ``profile_dir``/``brand_dir`` (supplied by HOM-166's
+    ``resolve_episode_brief`` per episode) append the profile/brand block hashes so
+    a `house-style.md`/`brand.md` edit invalidates the consuming nodes too.
     """
     h = hashlib.sha256()
     for ref in NODE_CANON_ANCHORS.get(node, ()):
@@ -511,6 +520,20 @@ def canon_fingerprint(node: str) -> str:
         h.update(b"\x00")
         h.update(block.encode("utf-8"))
         h.update(b"\x00")
+    if profile_dir is not None:
+        for key, block in sorted(load_profile_blocks(node, profile_dir).items()):
+            h.update(b"profile:")
+            h.update(key.encode("utf-8"))
+            h.update(b"\x00")
+            h.update(block.encode("utf-8"))
+            h.update(b"\x00")
+    if brand_dir is not None:
+        for key, block in sorted(load_brand_blocks(node, brand_dir).items()):
+            h.update(b"brand:")
+            h.update(key.encode("utf-8"))
+            h.update(b"\x00")
+            h.update(block.encode("utf-8"))
+            h.update(b"\x00")
     return h.hexdigest()
 
 

@@ -459,3 +459,43 @@ def test_profile_blocks_present_file_missing_anchor_raises(tmp_path):
 def test_node_with_no_profile_refs_returns_empty(fixture_layers):
     prof = fixture_layers / "profiles" / "talking-head-portrait"
     assert cl.load_profile_blocks("p3_self_eval", prof) == {}
+
+
+# --- canon_fingerprint profile/brand folding (back-compat) ----------------- #
+
+def test_fingerprint_no_dirs_is_skill_only_and_stable(fixture_skills):
+    a = cl.canon_fingerprint("p3_strategy")
+    b = cl.canon_fingerprint("p3_strategy", profile_dir=None, brand_dir=None)
+    assert a == b
+
+
+def test_fingerprint_changes_when_profile_dir_added(fixture_skills, fixture_layers):
+    prof = fixture_layers / "profiles" / "talking-head-portrait"
+    skill_only = cl.canon_fingerprint("p3_strategy")
+    with_profile = cl.canon_fingerprint("p3_strategy", profile_dir=prof)
+    assert with_profile != skill_only
+
+
+def test_fingerprint_flips_on_consumed_profile_edit(fixture_skills, fixture_layers):
+    prof = fixture_layers / "profiles" / "talking-head-portrait"
+    before = cl.canon_fingerprint("p3_strategy", profile_dir=prof)
+    hs = prof / "house-style.md"
+    hs.write_text(
+        _HOUSE_STYLE_MD.replace("Tight and conversational.", "Tight and punchy."),
+        encoding="utf-8",
+    )
+    after = cl.canon_fingerprint("p3_strategy", profile_dir=prof)
+    assert after != before
+
+
+def test_fingerprint_stable_when_unconsumed_section_edited(fixture_skills, fixture_layers):
+    # p3_strategy consumes Pacing + Structural archetype, NOT Rhythm template.
+    prof = fixture_layers / "profiles" / "talking-head-portrait"
+    before = cl.canon_fingerprint("p3_strategy", profile_dir=prof)
+    hs = prof / "house-style.md"
+    hs.write_text(
+        _HOUSE_STYLE_MD.replace("hook-build-PEAK-breathe-CTA.", "EDITED rhythm."),
+        encoding="utf-8",
+    )
+    after = cl.canon_fingerprint("p3_strategy", profile_dir=prof)
+    assert after == before
