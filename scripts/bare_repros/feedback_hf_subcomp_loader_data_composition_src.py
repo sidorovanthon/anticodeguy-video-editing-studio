@@ -205,7 +205,13 @@ def main() -> int:
     scaffold_budget_s = overall_timeout_s * 0.65
     compositions_budget_s = overall_timeout_s * 0.35
 
-    with tempfile.TemporaryDirectory(prefix="hf-bare-repro-") as tmp:
+    # ignore_cleanup_errors: on Windows, npx/node can still hold a handle on the
+    # scaffolded project dir at teardown (WinError 32/5), which otherwise raises a
+    # noisy PermissionError traceback AFTER the verdict has already printed. The
+    # repro result is unaffected — swallow the cleanup race.
+    with tempfile.TemporaryDirectory(
+        prefix="hf-bare-repro-", ignore_cleanup_errors=True
+    ) as tmp:
         workdir = Path(tmp)
         try:
             project = _scaffold(workdir, timeout_s=scaffold_budget_s)

@@ -226,8 +226,11 @@ def test_brief_references_canon_paths_without_embedding():
     # Brief-level imperatives that materialise canon-derived guarantees.
     assert "tl.fromTo" in brief
     assert "#scene-" in brief                       # CSS scoping discipline
-    # Avoid the literal substring `repeat: -1` even in our brief —
-    # HF lint regex false-positive (memory `feedback_lint_regex_repeat_minus_one_in_comments`).
+    # Keep the forbidden infinite-repeat sentinel literal out of our brief so a
+    # sub-agent can't copy it verbatim. (The HF 0.4.x lint false-positive on this
+    # substring inside comments — `feedback_lint_regex_repeat_minus_one_in_comments`
+    # — was bare-repro'd FIXED on 0.6.63 in HOM-379; this guard is now hygiene, not
+    # a lint workaround.)
     assert "repeat: -1" not in brief
     # HOM-145: brief MUST forbid infinite repeats with the canonical replacement
     # formula, citing canon (SKILL.md §Animation Guardrails). Without this rule
