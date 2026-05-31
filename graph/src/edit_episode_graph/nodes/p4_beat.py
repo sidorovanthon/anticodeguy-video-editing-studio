@@ -119,7 +119,12 @@ from ._llm import LLMNode, _load_brief
 #   2026-05-31: the prior `SKILL.md L227 + L240` pins had already drifted
 #   to empty lines after an upstream pull. Spec §8 mandates a bump on any
 #   brief-source edit. Memory feedback_briefs_anchor_not_line_pin.
-_CACHE_VERSION = 14
+# v15 (HOM-376 follow-up): code-review of PR #197 found the pre-existing
+#   §"Scene Transitions" anchor did not match the live SKILL.md heading
+#   `## Scene Transitions (Non-Negotiable)` — corrected to the full
+#   qualified name so the sub-agent's section lookup resolves. Brief text
+#   changed again; cache must invalidate.
+_CACHE_VERSION = 15
 
 
 def _cache_key(state, *_args, **_kwargs):
