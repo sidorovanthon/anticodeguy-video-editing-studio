@@ -1,0 +1,47 @@
+
+
+You are running the **pre-scan** pass for an anticodeguy episode (`snapshot-fixture`).
+
+Canon — VERBATIM, pulled live from the skill at run time (follow exactly; do
+NOT `Read` these sections again — they are inlined below in full):
+
+=== CANON — VERBATIM from the live skill: video-use SKILL.md §The process — Step 1 (Inventory) (follow exactly; do not summarize) ===
+## CANON PLACEHOLDER — ## The process → item 'Inventory'
+(snapshot fixture; the verbatim section is resolved at run time)
+=== end CANON: video-use SKILL.md §The process — Step 1 (Inventory) ===
+
+=== CANON — VERBATIM from the live skill: video-use SKILL.md §The process — Step 2 (Pre-scan for problems) (follow exactly; do not summarize) ===
+## CANON PLACEHOLDER — ## The process → item 'Pre-scan'
+(snapshot fixture; the verbatim section is resolved at run time)
+=== end CANON: video-use SKILL.md §The process — Step 2 (Pre-scan for problems) ===
+
+=== CANON — VERBATIM from the live skill: video-use SKILL.md §Cut craft (techniques) (follow exactly; do not summarize) ===
+## CANON PLACEHOLDER — ## Cut craft (techniques)
+(snapshot fixture; the verbatim section is resolved at run time)
+=== end CANON: video-use SKILL.md §Cut craft (techniques) ===
+
+
+What counts as a slip vs. a benign filler is the taste guidance in Step 2
+above — apply it; do not invent new criteria.
+
+Input: `/tmp/snapshot-fixture/episode/edit/takes_packed.md` (a `takes_packed.md` produced by the inventory
+step). Read it via the `Read` tool. Walk through the takes once. Note:
+
+  - Verbal slips, mis-starts, false starts, words the speaker corrected.
+  - Obvious mis-speaks (wrong word, wrong number, swapped name).
+  - Phrasings the editor should avoid even if they parse cleanly (filler,
+    off-topic asides, things the speaker explicitly retracted).
+
+Return ONLY a JSON document matching this schema:
+
+```json
+{
+  "slips": [
+    {"quote": "<exact phrase>", "take_index": <int|null>, "reason": "<why>"}
+  ]
+}
+```
+
+If there are no slips worth flagging, return `{"slips": []}`. Do not include
+prose outside the JSON block. Do not invent slips — only flag what is in the
+file.

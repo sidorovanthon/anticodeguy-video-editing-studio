@@ -21,6 +21,7 @@ from langgraph.types import CachePolicy
 from ..backends._router import BackendRouter
 from ..backends._types import NodeRequirements
 from .._caching import make_llm_key, stable_fingerprint, strategy_fingerprint
+from .._canon_loader import canon_fingerprint, load_canon_blocks
 from .._paths import EpisodePaths
 from ..gates._base import gate_retry_context
 from ..schemas.p3_edl_select import EDL
@@ -32,7 +33,12 @@ from ._llm import LLMNode, _load_brief
 # v4 (HOM-223): identity-only state writes — `edl.source_path` and
 # `edl.edl_path` no longer emitted; brief no longer renders `episode_dir`.
 # Paths derived via `EpisodePaths(slug)` at use-site.
-_CACHE_VERSION = 4
+# v5 (HOM-377): canon sections (video-use SKILL.md §Editor sub-agent brief +
+#   §EDL format + §Hard Rules + §Cut craft) are pulled VERBATIM from the live
+#   skill at render time and inlined via `canon.*`, replacing the "Read those
+#   sections" citations. `_cache_key` folds in
+#   `canon_fingerprint("p3_edl_select")` so an upstream canon edit invalidates.
+_CACHE_VERSION = 5
 
 
 def _takes_packed_path(state: dict) -> Path:
@@ -89,6 +95,8 @@ def _cache_key(state, *_args, **_kwargs):
             strategy_fingerprint(strategy),
             stable_fingerprint(retry.get("prior_violations") or []),
             int(retry.get("prior_iteration") or 0),
+            # HOM-377: verbatim canon blocks inlined into the brief.
+            f"canon:{canon_fingerprint('p3_edl_select')}",
         ),
     )
 
@@ -140,6 +148,8 @@ def _render_ctx(state: dict) -> dict:
         "transcript_paths_json": json.dumps(_transcript_paths(state), ensure_ascii=False),
         "pre_scan_slips_json": json.dumps(_pre_scan_slips(state), ensure_ascii=False),
         "strategy_json": json.dumps(_strategy(state), ensure_ascii=False),
+        # HOM-377: verbatim canon blocks pulled live from the skill by anchor.
+        "canon": load_canon_blocks("p3_edl_select"),
     }
     # HOM-147: render the prior-violations feedback block on retry attempts.
     # Iteration 1 (no prior failure) → macro emits empty string; brief is

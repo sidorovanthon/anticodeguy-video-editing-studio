@@ -98,8 +98,22 @@ def test_runs_with_no_tools_and_embeds_inputs(project_root_episode):
     assert '"quote": "bad"' in task
 
 
-def test_strategy_brief_mentions_canon_without_embedding_process():
+def test_strategy_brief_pulls_canon_verbatim():
+    """HOM-377: the brief no longer cites canon by path — it pulls the
+    load-bearing sections VERBATIM from the live skill at run time via the
+    `canon.*` render-ctx (the `canon_section` macro labels each block). This
+    test asserts the wiring is present in the raw template (the verbatim text
+    is injected at render time; resolution is covered by
+    graph/tests/test_canon_loader.py)."""
     brief = node_module._load_brief("p3_strategy")
-    assert "~/.claude/skills/video-use/SKILL.md" in brief
-    assert '§"The process" Step 4' in brief
+    # canon_section titles name the pulled sections (video-use §The process
+    # Step 4, §Cut craft, §Color grade).
+    assert "VERBATIM" in brief
+    assert "Step 4 (Propose strategy)" in brief
+    assert "Cut craft" in brief
+    assert "Color grade" in brief
+    # the canon blocks are injected from the render context, not embedded
+    assert "canon.process_propose_strategy" in brief
+    # orchestrator-house clarification on `grade` is retained
+    assert "render.py" in brief
     assert "Return ONLY JSON" in brief

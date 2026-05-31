@@ -24,6 +24,8 @@ from __future__ import annotations
 
 import json
 
+from edit_episode_graph._canon_loader import NODE_CANON_ANCHORS
+
 SLUG = "snapshot-fixture"
 EPISODE_DIR = "/tmp/snapshot-fixture/episode"
 DESIGN_MD_PATH = f"{EPISODE_DIR}/hyperframes/DESIGN.md"
@@ -109,6 +111,28 @@ def _base() -> dict:
     return {"slug": SLUG, "episode_dir": EPISODE_DIR}
 
 
+def _placeholder_canon(node: str) -> dict[str, str]:
+    """Deterministic stand-in for the runtime canon blocks (HOM-377).
+
+    Production injects ``canon = load_canon_blocks(node)`` (verbatim live skill
+    text) into the render context. For the L0 brief snapshots we substitute a
+    stable placeholder per registered anchor so the snapshot stays
+    deterministic across operators and skill auto-updates — the snapshot's job
+    is to pin the brief WIRING (which anchors each brief pulls, via the
+    ``canon_section`` titles, plus the orchestrator-house prose around them),
+    NOT the live canon content. Real-canon resolution is asserted separately by
+    ``graph/tests/test_canon_loader.py::test_every_registered_anchor_resolves_against_live_canon``.
+    """
+    return {
+        ref.key: (
+            f"## CANON PLACEHOLDER — {ref.anchor}"
+            + (f" → item {ref.item!r}" if ref.item else "")
+            + "\n(snapshot fixture; the verbatim section is resolved at run time)\n"
+        )
+        for ref in NODE_CANON_ANCHORS.get(node, ())
+    }
+
+
 def p3_strategy_ctx() -> dict:
     revisions: list[dict] = []
     return {
@@ -118,6 +142,32 @@ def p3_strategy_ctx() -> dict:
         "pre_scan_slips_json": json.dumps(_FIXED_PRE_SCAN_SLIPS, ensure_ascii=False),
         "strategy_revisions": revisions,
         "strategy_revisions_json": json.dumps(revisions, ensure_ascii=False),
+        "canon": _placeholder_canon("p3_strategy"),
+    }
+
+
+def p3_pre_scan_ctx() -> dict:
+    return {
+        **_base(),
+        "takes_packed_path": TAKES_PACKED_PATH,
+        "canon": _placeholder_canon("p3_pre_scan"),
+    }
+
+
+def p3_self_eval_ctx() -> dict:
+    return {
+        **_base(),
+        "final_mp4_path": f"{EPISODE_DIR}/edit/final.mp4",
+        "edl_path": f"{EPISODE_DIR}/edit/edl.json",
+        "cut_boundaries_json": json.dumps([6.9, 11.9]),
+        "source_cut_boundaries_json": json.dumps(
+            [{"index": 0, "source": "take-1", "start": 0.5, "end": 7.4}],
+            ensure_ascii=False,
+        ),
+        "timeline_view_path": (
+            "/home/op/.claude/skills/video-use/helpers/timeline_view.py"
+        ),
+        "canon": _placeholder_canon("p3_self_eval"),
     }
 
 
@@ -131,6 +181,7 @@ def p3_edl_select_ctx() -> dict:
         # gate_retry_context defaults — iteration 1 (no prior failure)
         "prior_violations": [],
         "prior_iteration": 0,
+        "canon": _placeholder_canon("p3_edl_select"),
     }
 
 
@@ -191,6 +242,7 @@ def p4_beat_ctx() -> dict:
         "expanded_prompt_body": _FIXED_EXPANDED_PROMPT_BODY,
         "catalog_summary": _FIXED_CATALOG_SUMMARY,
         "scene_html_path": SCENE_HTML_PATH,
+        "canon": _placeholder_canon("p4_beat"),
     }
 
 
@@ -228,6 +280,7 @@ def p4_redispatch_beat_ctx() -> dict:
         "data_width": 1080,
         "data_height": 1920,
         "data_track_index": 1,
+        "canon": _placeholder_canon("p4_redispatch_beat"),
     }
 
 
@@ -335,11 +388,14 @@ def p4_captions_layer_ctx() -> dict:
         "data_width": 1080,
         "data_height": 1920,
         "data_duration_s": 30.0,
+        "canon": _placeholder_canon("p4_captions_layer"),
     }
 
 
 # Mapping used by the test module to drive parameterization.
 NODE_CONTEXTS = {
+    "p3_pre_scan": p3_pre_scan_ctx,
+    "p3_self_eval": p3_self_eval_ctx,
     "p3_strategy": p3_strategy_ctx,
     "p3_edl_select": p3_edl_select_ctx,
     "p4_design_system": p4_design_system_ctx,

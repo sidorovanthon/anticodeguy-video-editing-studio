@@ -29,6 +29,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
+from .._canon_loader import load_canon_blocks
 from .._paths import EpisodePaths
 from .._scene_id import scene_id_for
 from ..backends._router import BackendRouter
@@ -194,6 +195,10 @@ def _render_ctx(state: dict) -> dict:
         "data_width": data_width,
         "data_height": data_height,
         "data_track_index": 1,
+        # HOM-377: verbatim canon blocks pulled live from the skill by anchor
+        # (same load-bearing set as p4_beat). No cache fingerprint — this
+        # retry node carries no CachePolicy (must re-run each iteration).
+        "canon": load_canon_blocks("p4_redispatch_beat"),
     }
 
 

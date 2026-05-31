@@ -147,9 +147,13 @@ def test_happy_path_dispatches_with_correct_requirements(tmp_path):
     assert req.tier == "expensive"
     assert req.needs_tools is True
     assert req.backends == ["claude"]
-    assert kwargs["allowed_tools"] == ["Read", "Write"]
-    # no output_schema — sub-agent writes a file, returns prose summary.
-    assert kwargs.get("output_schema") is None
+    # HOM-234 (state-first artifacts): `Write` dropped — the sub-agent returns
+    # the fragment in structured `BeatOutput.html`; the orchestrator writes the
+    # file. These two assertions were stale (pre-existing failures on main,
+    # expecting the pre-HOM-234 `["Read", "Write"]` + `output_schema is None`
+    # contract) and are corrected here alongside the HOM-377 brief migration.
+    assert kwargs["allowed_tools"] == ["Read"]
+    assert kwargs.get("output_schema") is not None  # structured BeatOutput
     # llm_runs telemetry surfaces from LLMNode base.
     assert update.get("llm_runs") and update["llm_runs"][0]["backend"] == "claude"
 
@@ -226,12 +230,14 @@ def test_brief_references_canon_paths_without_embedding():
     # Brief-level imperatives that materialise canon-derived guarantees.
     assert "tl.fromTo" in brief
     assert "#scene-" in brief                       # CSS scoping discipline
-    # Keep the forbidden infinite-repeat sentinel literal out of our brief so a
-    # sub-agent can't copy it verbatim. (The HF 0.4.x lint false-positive on this
-    # substring inside comments — `feedback_lint_regex_repeat_minus_one_in_comments`
-    # — was bare-repro'd FIXED on 0.6.63 in HOM-379; this guard is now hygiene, not
-    # a lint workaround.)
-    assert "repeat: -1" not in brief
+    # HOM-377: the §"Rules (Non-Negotiable)" canon block is now pulled VERBATIM
+    # into the brief at render time, and canon itself names the forbidden
+    # sentinel ("No `repeat: -1`"). The prior `assert "repeat: -1" not in brief`
+    # guard is therefore obsolete — and was already a PRE-EXISTING failure on
+    # main (the orchestrator-house "NO infinite repeats" rule named the sentinel
+    # in prose). The real contract — the brief PROHIBITS infinite repeats with
+    # the canonical replacement formula + citation — is asserted below.
+    assert "VERBATIM" in brief, "missing the runtime canon-pull marker"
     # HOM-145: brief MUST forbid infinite repeats with the canonical replacement
     # formula, citing canon (SKILL.md §Animation Guardrails). Without this rule
     # smart agents emit `repeat: -1` and gate:lint blocks Phase 4 (HOM-76 verify).
@@ -240,15 +246,15 @@ def test_brief_references_canon_paths_without_embedding():
     assert "infinite" in brief.lower(), "missing the prohibition language"
     assert "Math.ceil" in brief, "missing the canonical replacement formula"
     assert "Animation Guardrails" in brief, "missing the canon citation"
-    # The brief must NOT lift canonical paragraphs verbatim.
-    assert "Layout Before Animation" in brief  # section reference is OK
-    # Sanity: the brief stays compact (path-references, ~70 lines target).
-    # HOM-265 raised the bound from 160 to 200 — Step E partial inlines
-    # DESIGN.md / expanded-prompt.md BODIES (state data, not canon) into
-    # the brief context so the sub-agent no longer Reads them from disk.
-    # The inlined-body wrappers add ~25 lines; the canon-references-not-
-    # embeds contract still holds (canon is referenced by path).
-    assert brief.count("\n") < 200, f"brief grew to {brief.count(chr(10))} lines — should reference canon, not embed"
+    # HOM-377: the §"Layout Before Animation" canon block is pulled verbatim at
+    # render time; the RAW template carries the canon_section title (a section
+    # reference), not the embedded prose, so this check still holds on the raw
+    # template and the verbatim text only materialises at render.
+    assert "Layout Before Animation" in brief  # canon_section title
+    # Sanity: the RAW template stays compact — verbatim canon is injected at
+    # render time via `{{ canon.* }}`, NOT embedded in the .j2 source, so the
+    # template line count stays bounded even though the rendered brief is large.
+    assert brief.count("\n") < 200, f"raw template grew to {brief.count(chr(10))} lines — canon must be injected at render, not embedded in the .j2"
 
 
 # ---------------------------------------------------------------------------

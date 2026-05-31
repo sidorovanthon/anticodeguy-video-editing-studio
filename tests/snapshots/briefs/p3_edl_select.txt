@@ -1,12 +1,31 @@
 
 You are running the **EDL select** pass for an anticodeguy episode (`snapshot-fixture`).
 
-Canon: `~/.claude/skills/video-use/SKILL.md` §"Editor sub-agent brief" (the
-INPUTS / RULES / OUTPUT structure to follow), §"EDL format" (the JSON shape
-of the artifact you must produce), and §"Hard Rules" (HR 6 word boundaries,
-HR 7 padding window). Read those sections before producing output — the
-taste guidance and shape are load-bearing and we do not paraphrase them
-here.
+Canon — VERBATIM, pulled live from the skill at run time (follow exactly; the
+INPUTS / RULES / OUTPUT structure, the JSON shape, the cut craft, and the Hard
+Rules below are load-bearing — do NOT `Read` these sections again, they are
+inlined in full):
+
+=== CANON — VERBATIM from the live skill: video-use SKILL.md §Editor sub-agent brief (for multi-take selection) (follow exactly; do not summarize) ===
+## CANON PLACEHOLDER — ## Editor sub-agent brief (for multi-take selection)
+(snapshot fixture; the verbatim section is resolved at run time)
+=== end CANON: video-use SKILL.md §Editor sub-agent brief (for multi-take selection) ===
+
+=== CANON — VERBATIM from the live skill: video-use SKILL.md §EDL format (follow exactly; do not summarize) ===
+## CANON PLACEHOLDER — ## EDL format
+(snapshot fixture; the verbatim section is resolved at run time)
+=== end CANON: video-use SKILL.md §EDL format ===
+
+=== CANON — VERBATIM from the live skill: video-use SKILL.md §Hard Rules (production correctness — non-negotiable) — esp. HR 6 word boundaries, HR 7 padding window (follow exactly; do not summarize) ===
+## CANON PLACEHOLDER — ## Hard Rules (production correctness — non-negotiable)
+(snapshot fixture; the verbatim section is resolved at run time)
+=== end CANON: video-use SKILL.md §Hard Rules (production correctness — non-negotiable) — esp. HR 6 word boundaries, HR 7 padding window ===
+
+=== CANON — VERBATIM from the live skill: video-use SKILL.md §Cut craft (techniques) (follow exactly; do not summarize) ===
+## CANON PLACEHOLDER — ## Cut craft (techniques)
+(snapshot fixture; the verbatim section is resolved at run time)
+=== end CANON: video-use SKILL.md §Cut craft (techniques) ===
+
 
 Inputs (resolve via the `Read` tool — paths, not contents, are provided here):
 - Packed transcript: `/tmp/snapshot-fixture/episode/edit/takes_packed.md`
@@ -14,8 +33,8 @@ Inputs (resolve via the `Read` tool — paths, not contents, are provided here):
 - Pre-scan slips/avoid list JSON: `[{"reason": "filler", "range_s": [1.2, 1.45]}]`
 - Strategy from prior node JSON: `{"shape": "hook-problem-payoff", "takes": ["take-1"], "grade": "neutral, mild contrast lift", "pacing": "fast-SLOW-fast", "length_estimate_s": 30.0}`
 
-Output: ONLY the canonical EDL JSON as defined in §"EDL format" of the
-SKILL.md you just read. Two orchestrator-house overrides on top of canon
+Output: ONLY the canonical EDL JSON as defined in §"EDL format" inlined
+above. Two orchestrator-house overrides on top of canon
 (Phase 4 owns animation and captions, not Phase 3):
 
 - `overlays` MUST be `[]`. Do not propose any overlay.

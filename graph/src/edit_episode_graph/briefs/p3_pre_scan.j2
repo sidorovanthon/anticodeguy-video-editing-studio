@@ -1,13 +1,19 @@
 {# Pre-scan task descriptor — mirrors video-use SKILL.md §"The process" Step 2.
-   Kept short (≤25 lines): tells the executor where the input lives, what to
-   look for, and what shape to return. Hard Rules and forbidden-field
-   guarantees live in the schema (see schemas/p3_pre_scan.py), not in prose. #}
+   HOM-377: canon is pulled VERBATIM from the live skill at run time (`canon.*`).
+   Forbidden-field guarantees live in the schema (see schemas/p3_pre_scan.py),
+   not in prose. #}
+{% from "_macros.j2" import canon_section %}
 You are running the **pre-scan** pass for an anticodeguy episode (`{{ slug }}`).
 
-Canon: `~/.claude/skills/video-use/SKILL.md` §"The process" — Step 2 ("Pre-scan
-for problems"). Read that section before producing output — what counts as a
-slip vs. a benign filler is taste guidance defined there, and we do not
-paraphrase it here.
+Canon — VERBATIM, pulled live from the skill at run time (follow exactly; do
+NOT `Read` these sections again — they are inlined below in full):
+
+{{ canon_section("video-use SKILL.md §The process — Step 1 (Inventory)", canon.process_inventory) }}
+{{ canon_section("video-use SKILL.md §The process — Step 2 (Pre-scan for problems)", canon.process_pre_scan) }}
+{{ canon_section("video-use SKILL.md §Cut craft (techniques)", canon.cut_craft) }}
+
+What counts as a slip vs. a benign filler is the taste guidance in Step 2
+above — apply it; do not invent new criteria.
 
 Input: `{{ takes_packed_path }}` (a `takes_packed.md` produced by the inventory
 step). Read it via the `Read` tool. Walk through the takes once. Note:
