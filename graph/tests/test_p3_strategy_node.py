@@ -11,7 +11,7 @@ from edit_episode_graph.nodes.p3_strategy import p3_strategy_node
 from edit_episode_graph.schemas.p3_strategy import Strategy
 
 
-def test_strategy_schema_rejects_animation_and_subtitle_fields():
+def test_strategy_schema_allows_extra_fields():
     # HOM-166: Strategy uses extra="allow" so LLM prose fields can flow
     # through without triggering ValidationError. The former "rejects extra
     # fields" invariant is retired — the test now asserts that the structural

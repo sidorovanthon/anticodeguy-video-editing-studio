@@ -21,6 +21,23 @@ NOT `Read` these sections again — they are inlined below in full):
 === end CANON: video-use SKILL.md §Color grade (when requested) ===
 
 
+Profile & brand context (operator-authored overlay ON TOP of canon — brand
+wins on conflict; honor canonical opt-outs, never replace canon):
+
+## PROFILE PLACEHOLDER — ## Pacing
+(snapshot fixture)
+
+
+## PROFILE PLACEHOLDER — ## Structural archetype
+(snapshot fixture)
+
+
+
+## BRAND PLACEHOLDER — ## Voice
+(snapshot fixture)
+
+
+
 Orchestrator-house clarification on `grade`: it is image/CDL direction only,
 NOT audio or codec settings — loudnorm/codec/fps live entirely in canon
 `render.py` and are not operator-tunable through strategy.
@@ -43,8 +60,12 @@ Snapshot fixture transcript line two.
 Return ONLY JSON matching:
 
 ```json
-{"shape":"...","takes":["..."],"grade":"...","pacing":"...","length_estimate_s":30.0}
+{"shape":"...","takes":["..."],"grade":"...","pacing":"...","length_estimate_s":30.0,"rationale":"...","taste_notes":"..."}
 ```
+
+`rationale`: 3-6 sentences justifying the cut shape, take selection, and pacing
+against the material. `taste_notes`: free-form notes on tone / brand fit (use
+the Profile & brand context above when present).
 
 Phase 3 is cuts + grade only. Animation and subtitles belong to Phase 4; the
 schema has no fields for them. Do not include prose outside the JSON.
