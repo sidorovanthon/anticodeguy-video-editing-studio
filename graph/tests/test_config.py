@@ -69,6 +69,19 @@ def test_node_resolve_model_override():
     assert cfg.resolve_node("p3_pre_scan").model == "claude-haiku-4-5-20251001"
 
 
+def test_brief_defaults_present(tmp_path):
+    from edit_episode_graph.config import load_config
+    p = tmp_path / "c.yaml"
+    p.write_text("backend_preference: [claude]\n", encoding="utf-8")
+    cfg = load_config(p)
+    assert cfg.default_profile_id == "talking-head-portrait"
+    assert cfg.default_brand_id == "anticodeguy"
+    p.write_text("default_profile_id: explainer\ndefault_brand_id: acme\n", encoding="utf-8")
+    cfg = load_config(p)
+    assert cfg.default_profile_id == "explainer"
+    assert cfg.default_brand_id == "acme"
+
+
 def test_node_resolve_p3_strategy_smart_override():
     from edit_episode_graph.config import load_default_config
     load_default_config.cache_clear()

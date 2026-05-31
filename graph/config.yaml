@@ -3,6 +3,11 @@
 
 backend_preference: ["claude", "codex"]
 
+# HOM-166: project-default profile/brand for resolve_episode_brief (spec §6).
+# Priority: state.brief_overrides > episodes/<slug>/intent.yaml > these.
+default_profile_id: talking-head-portrait
+default_brand_id: anticodeguy
+
 # HOM-212: per-gate deterministic config (thresholds, carve-out lists).
 # Schema decided per-gate; see each gate module for canonical defaults.
 gates:
