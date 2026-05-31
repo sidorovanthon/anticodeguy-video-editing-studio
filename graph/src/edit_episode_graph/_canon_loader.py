@@ -33,9 +33,15 @@ Skill roots resolve to the live auto-updated copies
 override via the ``HOMESTUDIO_CANON_ROOT_*`` env vars to point at a fixture
 tree (hermetic loader unit tests + the canon-invalidation fingerprint test).
 
-Profile / brand sections (spec §9.1 ``assemble_brief_context``) are NOT handled
-here — that three-source assembler is the HOM-166 / M6 deliverable. This module
-is skill-canon only.
+Profile / brand markdown sections (spec §9, decision B / HOM-114) ARE handled
+here too: :func:`load_section` pulls a section from any markdown path, and the
+:data:`NODE_PROFILE_ANCHORS` / :data:`NODE_BRAND_ANCHORS` manifests +
+:func:`load_profile_blocks` / :func:`load_brand_blocks` extend the same
+anchor / fail-loud / cache-keyed model to ``profiles/<id>/house-style.md`` and
+``brand/<id>/brand.md``. What stays the HOM-166 deliverable: the per-episode
+*resolution* of which profile/brand dir applies, the YAML brand config
+(``defaults.yaml`` / ``palette.yaml``), and wiring ``{{ profile.* }}`` /
+``{{ brand.* }}`` into the node briefs.
 """
 
 from __future__ import annotations
@@ -109,12 +115,24 @@ class CanonAnchorMissing(RuntimeError):
         loc = f"{skill}:{rel_path} §{anchor!r}"
         if item is not None:
             loc += f" → list item {item!r}"
-        super().__init__(
-            f"canon anchor {loc} {reason}. The live skill likely changed "
-            "upstream (skills auto-update via Task Scheduler). Check the "
-            "skill's current headings/list and update NODE_CANON_ANCHORS + the "
-            "brief — cite by section name, never line number (HOM-376/HOM-377)."
-        )
+        # Tailor the actionable hint to the source: profile/brand are
+        # operator-authored in-repo files (skill names use a ``profile:``/
+        # ``brand:`` source label), skill canon auto-updates upstream.
+        if skill.startswith(("profile", "brand")):
+            hint = (
+                "This profile/brand file changed in-repo (operator-authored). "
+                "Check its current headings and update NODE_PROFILE_ANCHORS / "
+                "NODE_BRAND_ANCHORS + the layer file — cite by section name, "
+                "never line number (HOM-114)."
+            )
+        else:
+            hint = (
+                "The live skill likely changed upstream (skills auto-update via "
+                "Task Scheduler). Check the skill's current headings/list and "
+                "update NODE_CANON_ANCHORS + the brief — cite by section name, "
+                "never line number (HOM-376/HOM-377)."
+            )
+        super().__init__(f"canon anchor {loc} {reason}. {hint}")
 
 
 @dataclass(frozen=True)
@@ -339,8 +357,10 @@ def load_section(
 # brief cites. On-demand references (typography, beat-direction, techniques,
 # transcript-guide, dynamic-techniques) stay as Read citations: canon's own
 # ``## References (loaded on demand)`` model treats them as load-on-demand, and
-# splatting them verbatim would bloat every brief. profile/brand sections from
-# spec §9 (house-style/brand/palette/defaults) are HOM-166/M6 scope.
+# splatting them verbatim would bloat every brief. profile/brand markdown
+# sections live in the separate NODE_PROFILE_ANCHORS / NODE_BRAND_ANCHORS
+# manifests below (HOM-114); only the YAML brand config (palette/defaults) is
+# HOM-166/M6 scope.
 
 _VIDEO_USE_PROCESS = "## The process"
 _VIDEO_USE_CUT_CRAFT = "## Cut craft (techniques)"
@@ -543,6 +563,13 @@ def canon_fingerprint(
 # — NOT a bare bool. A bare flag would let a build against live canon suppress a
 # later verify against a test fixture root (HOMESTUDIO_CANON_ROOT_* override), or
 # vice versa. Keying on the resolved roots re-verifies when the roots change.
+#
+# NOTE (HOM-114): the signature keys on *skill* roots only, so the folded
+# `verify_profile_brand_anchors()` over `repo_root()/{profiles,brand}` is NOT
+# re-run on a memoized rebuild within the same process. Acceptable — this is a
+# build-time integrity check and the shipped profile/brand files are static
+# in-process; the snapshot tests call `verify_profile_brand_anchors()` directly
+# (bypassing memoization) to cover the fail-loud rename path.
 _VERIFIED_SIGNATURES: set[tuple[tuple[str, str], ...]] = set()
 
 

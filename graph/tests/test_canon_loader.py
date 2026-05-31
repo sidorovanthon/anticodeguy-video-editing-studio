@@ -463,10 +463,24 @@ def test_node_with_no_profile_refs_returns_empty(fixture_layers):
 
 # --- canon_fingerprint profile/brand folding (back-compat) ----------------- #
 
-def test_fingerprint_no_dirs_is_skill_only_and_stable(fixture_skills):
-    a = cl.canon_fingerprint("p3_strategy")
-    b = cl.canon_fingerprint("p3_strategy", profile_dir=None, brand_dir=None)
-    assert a == b
+def test_fingerprint_no_dirs_is_skill_only_recomputation(fixture_skills):
+    # The load-bearing back-compat invariant: the no-dirs digest is the sha256
+    # over ONLY the node's skill-canon blocks, in the documented byte format
+    # (key \0 block \0). Locks the skill hashing path so a future refactor that
+    # silently changes it (-> committed cache.db drift) turns this red.
+    # Recomputes rather than pinning a constant, so legitimate live-skill edits
+    # do not false-fail. (The prior assertion compared no-dirs to explicit
+    # ``profile_dir=None, brand_dir=None`` — tautological, the same call.)
+    import hashlib
+
+    h = hashlib.sha256()
+    for ref in cl.NODE_CANON_ANCHORS["p3_strategy"]:
+        block = cl.load_skill_section(ref.skill, ref.rel_path, ref.anchor, item=ref.item)
+        h.update(ref.key.encode("utf-8"))
+        h.update(b"\x00")
+        h.update(block.encode("utf-8"))
+        h.update(b"\x00")
+    assert cl.canon_fingerprint("p3_strategy") == h.hexdigest()
 
 
 def test_fingerprint_changes_when_profile_dir_added(fixture_skills, fixture_layers):
