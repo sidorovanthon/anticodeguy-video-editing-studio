@@ -733,9 +733,14 @@ def assert_canon_change_invalidates(node_name: str, *, tmp_path: Path) -> None:
     state = _node_base_state(node_name, tmp_path)
     original = mod.canon_fingerprint
     try:
-        mod.canon_fingerprint = lambda _n: "canon-fp-A"
+        # HOM-166: canon_fingerprint is now called dir-fed for the
+        # profile/brand-consuming nodes — ``canon_fingerprint(node,
+        # profile_dir, brand_dir)`` (3 args) for p3_strategy / p3_edl_select /
+        # p4_design_system / p4_prompt_expansion, still 1-arg elsewhere. The
+        # sentinel must accept either arity.
+        mod.canon_fingerprint = lambda *_a, **_k: "canon-fp-A"
         before = _compute_key(node_name, state)
-        mod.canon_fingerprint = lambda _n: "canon-fp-B"
+        mod.canon_fingerprint = lambda *_a, **_k: "canon-fp-B"
         after = _compute_key(node_name, state)
     finally:
         mod.canon_fingerprint = original
