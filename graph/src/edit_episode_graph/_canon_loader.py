@@ -144,10 +144,13 @@ class CanonRef:
 
 _HEADING_RE = re.compile(r"^(#{1,6})\s")
 _LIST_ITEM_RE = re.compile(r"^(\s*)(?:\d+\.|[-*+])\s+(.*)$")
-# Minimum anchor text length (excluding the ``#`` marker + space) — guards
-# against an over-short anchor matching multiple headings by accident
-# (spec §9.3 "~10 chars"). Ambiguity (>1 match) is also a hard error below.
-_MIN_ANCHOR_TEXT = 4
+# Minimum heading-text length (excluding the ``#`` marker + its space): a floor
+# against trivially-short anchors that could prefix-match several headings.
+# Spec §9.3 suggests ~10; 8 keeps margin below the shortest real anchor
+# (``## EDL format`` = 10) without rejecting borderline-valid short headings.
+# The >1-match ambiguity check in ``load_skill_section`` is the PRIMARY guard;
+# this length floor only catches an obviously-too-short developer mistake early.
+_MIN_ANCHOR_TEXT = 8
 
 
 def _heading_level(line: str) -> int:
@@ -376,7 +379,15 @@ def canon_fingerprint(node: str) -> str:
     return h.hexdigest()
 
 
-_VERIFIED = False
+# Memoize the default (full-manifest) verify per *resolved skill-root signature*
+# — NOT a bare bool. A bare flag would let a build against live canon suppress a
+# later verify against a test fixture root (HOMESTUDIO_CANON_ROOT_* override), or
+# vice versa. Keying on the resolved roots re-verifies when the roots change.
+_VERIFIED_SIGNATURES: set[tuple[tuple[str, str], ...]] = set()
+
+
+def _roots_signature() -> tuple[tuple[str, str], ...]:
+    return tuple(sorted((skill, str(skill_root(skill))) for skill in _DEFAULT_ROOTS))
 
 
 def all_refs() -> list[CanonRef]:
@@ -409,13 +420,13 @@ def verify_anchors(refs: list[CanonRef] | None = None, *, force: bool = False) -
     Pass an explicit ``refs`` list (or ``force=True``) to bypass memoization —
     used by the fail-loud rename test against a fixture skill tree.
     """
-    global _VERIFIED
     if refs is None:
-        if _VERIFIED and not force:
+        sig = _roots_signature()
+        if not force and sig in _VERIFIED_SIGNATURES:
             return
         for ref in all_refs():
             load_skill_section(ref.skill, ref.rel_path, ref.anchor, item=ref.item)
-        _VERIFIED = True
+        _VERIFIED_SIGNATURES.add(sig)
         return
     for ref in refs:
         load_skill_section(ref.skill, ref.rel_path, ref.anchor, item=ref.item)

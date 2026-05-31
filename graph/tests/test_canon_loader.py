@@ -191,9 +191,12 @@ def test_missing_file_raises(fixture_skills):
     assert "file not found" in str(ei.value)
 
 
-def test_too_short_anchor_is_programming_error(fixture_skills):
+@pytest.mark.parametrize("anchor", ["## ab", "## abcdef"])
+def test_too_short_anchor_is_programming_error(fixture_skills, anchor):
+    # Both are below _MIN_ANCHOR_TEXT (8): "ab"=2, "abcdef"=6. The 6-char case
+    # would have passed under the prior min of 4 — guards the HOM-377 bump.
     with pytest.raises(ValueError):
-        cl.load_skill_section("hyperframes", "SKILL.md", "## ab")
+        cl.load_skill_section("hyperframes", "SKILL.md", anchor)
 
 
 def test_anchor_without_heading_marker_is_programming_error(fixture_skills):

@@ -416,6 +416,60 @@ def _p3_inventory_base(tmp_dir: Path) -> dict:
     }
 
 
+def _p3_pre_scan_base(tmp_dir: Path) -> dict:
+    """Base state for p3_pre_scan cache key (HOM-377).
+
+    `_cache_key`: files=[takes_packed.md] + extras=(canon:<fp>,). The mutator
+    edits takes_packed.md to flip the key; the canon extra is exercised
+    separately by `assert_canon_change_invalidates`.
+    """
+    episode_dir = _pin_project_root_to(tmp_dir)
+    takes = episode_dir / "edit" / "takes_packed.md"
+    takes.parent.mkdir(parents=True, exist_ok=True)
+    takes.write_text("fp fixture takes\n", encoding="utf-8")
+    return {"slug": _FP_SLUG, "episode_dir": str(episode_dir), "edit": {}}
+
+
+def _p3_self_eval_base(tmp_dir: Path) -> dict:
+    """Base state for p3_self_eval cache key (HOM-377).
+
+    `_cache_key`: files=[final.mp4, edl.json] + extras=(eval_iteration,
+    canon:<fp>). The mutator edits final.mp4 to flip the key.
+    """
+    episode_dir = _pin_project_root_to(tmp_dir)
+    ep = EpisodePaths(_FP_SLUG)
+    final_mp4 = ep.final_mp4_path
+    final_mp4.parent.mkdir(parents=True, exist_ok=True)
+    final_mp4.write_bytes(b"fp fixture mp4 bytes")
+    edl = ep.edit_dir / "edl.json"
+    edl.parent.mkdir(parents=True, exist_ok=True)
+    edl.write_text('{"ranges":[]}', encoding="utf-8")
+    return {
+        "slug": _FP_SLUG,
+        "episode_dir": str(episode_dir),
+        "edit": {"edl": {"ranges": []}},
+        "gate_results": [],
+    }
+
+
+def _p3_edl_select_base(tmp_dir: Path) -> dict:
+    """Base state for p3_edl_select cache key (HOM-377).
+
+    `_cache_key`: files=[takes_packed.md, *transcripts] + extras=(slips,
+    strategy_fp, prior_violations, prior_iteration, canon:<fp>). The mutator
+    edits takes_packed.md to flip the key.
+    """
+    episode_dir = _pin_project_root_to(tmp_dir)
+    takes = episode_dir / "edit" / "takes_packed.md"
+    takes.parent.mkdir(parents=True, exist_ok=True)
+    takes.write_text("fp fixture takes\n", encoding="utf-8")
+    return {
+        "slug": _FP_SLUG,
+        "episode_dir": str(episode_dir),
+        "edit": {"pre_scan": {"slips": []}, "strategy": {"shape": "hpp"}},
+    }
+
+
 _NODE_REGISTRY: dict[
     str, tuple[str, Callable[[Path], dict], Callable[[dict], None]]
 ] = {
@@ -423,6 +477,25 @@ _NODE_REGISTRY: dict[
         "edit_episode_graph.nodes.p3_strategy",
         _p3_strategy_base,
         _p3_strategy_mutator,
+    ),
+    # HOM-377: p3_pre_scan / p3_self_eval / p3_edl_select gained a
+    # `canon:<fp>` extra (verbatim canon pulled into the brief). Registered
+    # here so the parametrised version/model/upstream invariants cover them;
+    # the canon extra itself is asserted by `assert_canon_change_invalidates`.
+    "p3_pre_scan": (
+        "edit_episode_graph.nodes.p3_pre_scan",
+        _p3_pre_scan_base,
+        _mutate_file(lambda s: EpisodePaths(s["slug"]).edit_dir / "takes_packed.md"),
+    ),
+    "p3_self_eval": (
+        "edit_episode_graph.nodes.p3_self_eval",
+        _p3_self_eval_base,
+        _mutate_file(_slug_path("final_mp4_path")),
+    ),
+    "p3_edl_select": (
+        "edit_episode_graph.nodes.p3_edl_select",
+        _p3_edl_select_base,
+        _mutate_file(lambda s: EpisodePaths(s["slug"]).edit_dir / "takes_packed.md"),
     ),
     # HOM-285: p3_inventory is a deterministic node (make_key, not
     # make_llm_key) — same CREATIVE_NODES exemption as p4_scaffold /
@@ -640,6 +713,39 @@ def assert_model_change_invalidates(node_name: str, *, tmp_path: Path) -> None:
     )
 
 
+def assert_canon_change_invalidates(node_name: str, *, tmp_path: Path) -> None:
+    """An upstream canon edit MUST change the node's cache key (HOM-377).
+
+    The node folds ``canon_fingerprint(node)`` into ``make_llm_key`` extras so
+    a verbatim canon section it pulls invalidates exactly that node. We patch
+    the ``canon_fingerprint`` symbol *imported into the node module* to two
+    sentinels around two key-recomputes — if the ``canon:`` extra was dropped
+    from ``_cache_key``, the keys would match and this fails. (Patching the
+    node-module symbol, not the loader, mirrors how the node actually calls it:
+    ``from .._canon_loader import canon_fingerprint``.)
+    """
+    mod = _load_node_module(node_name)
+    if not hasattr(mod, "canon_fingerprint"):
+        raise AssertionError(
+            f"{node_name} module does not import canon_fingerprint — "
+            "expected for a canon-consuming node (HOM-377)"
+        )
+    state = _node_base_state(node_name, tmp_path)
+    original = mod.canon_fingerprint
+    try:
+        mod.canon_fingerprint = lambda _n: "canon-fp-A"
+        before = _compute_key(node_name, state)
+        mod.canon_fingerprint = lambda _n: "canon-fp-B"
+        after = _compute_key(node_name, state)
+    finally:
+        mod.canon_fingerprint = original
+    assert before != after, (
+        f"{node_name}: cache key did not change when canon_fingerprint flipped "
+        f"(A->B) — the `canon:` extra may have been dropped from _cache_key "
+        f"(HOM-377 regression)"
+    )
+
+
 def assert_upstream_artifact_change_invalidates(
     node_name: str,
     *,
@@ -683,5 +789,6 @@ __all__ = [
     "assert_fingerprint_changes_when",
     "assert_brief_change_invalidates",
     "assert_model_change_invalidates",
+    "assert_canon_change_invalidates",
     "assert_upstream_artifact_change_invalidates",
 ]

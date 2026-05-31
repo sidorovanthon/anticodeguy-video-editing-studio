@@ -21,6 +21,7 @@ import pytest
 
 from tests._helpers.fingerprint_assertions import (
     assert_brief_change_invalidates,
+    assert_canon_change_invalidates,
     assert_fingerprint_changes_when,
     assert_model_change_invalidates,
     assert_upstream_artifact_change_invalidates,
@@ -41,6 +42,26 @@ CREATIVE_NODES = (
     # HOM-229: persist-session cache key made deterministic by deriving
     # `today` from `assembled_at[:10]` instead of `datetime.now()`.
     "p4_persist_session",
+    # HOM-377: these three gained a `canon:<fp>` cache-key extra (verbatim
+    # canon pulled into the brief). Registered + parametrised here so the
+    # version/model/upstream invariants cover them (they had no fingerprint
+    # coverage before); the canon extra itself is asserted by
+    # `test_canon_change_invalidates` below.
+    "p3_pre_scan",
+    "p3_self_eval",
+    "p3_edl_select",
+)
+
+# HOM-377: nodes whose `_cache_key` folds in `canon_fingerprint(node)`.
+# p4_redispatch_beat is intentionally absent — it carries no CachePolicy
+# (a retry node must re-run each iteration, never cache-hit).
+CANON_CACHED_NODES = (
+    "p3_pre_scan",
+    "p3_strategy",
+    "p3_edl_select",
+    "p3_self_eval",
+    "p4_beat",
+    "p4_captions_layer",
 )
 
 
@@ -72,6 +93,15 @@ def test_upstream_artifact_change_invalidates(node_name: str, tmp_path):
     :mod:`tests._helpers.fingerprint_assertions`.
     """
     assert_upstream_artifact_change_invalidates(node_name, tmp_path=tmp_path)
+
+
+@pytest.mark.parametrize("node_name", CANON_CACHED_NODES)
+def test_canon_change_invalidates(node_name: str, tmp_path):
+    """HOM-377: an upstream canon edit flips the key for every node that pulls
+    verbatim canon into its brief. Guards against a future refactor silently
+    dropping the `canon:<fp>` extra from a node's `_cache_key`.
+    """
+    assert_canon_change_invalidates(node_name, tmp_path=tmp_path)
 
 
 # ---------------------------------------------------------------------------
