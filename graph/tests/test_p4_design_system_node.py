@@ -41,6 +41,19 @@ def _good_design_payload(design_md_path: str) -> dict:
             {"beat": "PAYOFF",  "treatment": "Wide reveal with hairline rules."},
         ],
         "design_md_path": design_md_path,
+        # HOM-232 (state-first artifacts, Step B of HOM-230): the full
+        # DESIGN.md body is returned in the structured output, not just its
+        # path. The schema requires it (`min_length=1`); downstream the body
+        # lives in `compose.design.design_md` and `p4_materialize_disk_node`
+        # is the single writer.
+        "design_md": (
+            "---\n"
+            "style: Swiss Pulse\n"
+            "---\n\n"
+            "# Visual identity\n\n"
+            "Grid-locked editorial system: near-black ground, hairline rules,\n"
+            "stat-forward typography.\n"
+        ),
     }
 
 
@@ -91,7 +104,7 @@ def test_skips_when_edl_empty(tmp_path, monkeypatch):
     assert update["compose"]["design"]["skipped"] is True
 
 
-def test_runs_with_tools_and_writes_design_md_path(tmp_path, monkeypatch):
+def test_runs_with_tools_and_surfaces_design_md_body(tmp_path, monkeypatch):
     # HOM-224: pin HOMESTUDIO_PROJECT_ROOT so `EpisodePaths(slug).design_md_path`
     # resolves under tmp_path.
     monkeypatch.setenv("HOMESTUDIO_PROJECT_ROOT", str(tmp_path))
@@ -137,14 +150,19 @@ def test_runs_with_tools_and_writes_design_md_path(tmp_path, monkeypatch):
     # `EpisodePaths(slug).design_md_path` instead of reading state.
     assert "design_md_path" not in update["compose"]
     assert update["compose"]["design"]["design_md_path"] == str(design_md)
-    assert design_md.parent.is_dir(), "node must mkdir the destination dir"
+    # HOM-239 (state-first artifacts, Step D2 of HOM-230): the node no longer
+    # dual-writes the file or mkdirs its parent — the DESIGN.md body is
+    # surfaced in state and `p4_materialize_disk_node` is the single writer.
+    assert update["compose"]["design"]["design_md"] == payload["design_md"]
 
     req, task = router.invoke.call_args.args[:2]
     kwargs = router.invoke.call_args.kwargs
     assert req.tier == "expensive"
     assert req.needs_tools is True
     assert req.backends == ["claude"]
-    assert kwargs["allowed_tools"] == ["Read", "Write"]
+    # HOM-239: `Write` dropped from `allowed_tools` — the sub-agent reads
+    # canon but no longer writes to disk (the orchestrator owns the write).
+    assert kwargs["allowed_tools"] == ["Read"]
     assert "HOOK" in task and "PAYOFF" in task
 
 
