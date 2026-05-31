@@ -369,3 +369,93 @@ def test_load_section_missing_file_raises(tmp_path):
 def test_load_skill_section_still_uses_floor_8(fixture_skills):
     with pytest.raises(ValueError):
         cl.load_skill_section("hyperframes", "SKILL.md", "## abcdef")  # 6 < 8
+
+
+# --- profile / brand markdown manifests + block loaders -------------------- #
+
+_HOUSE_STYLE_MD = """\
+# House style — talking head
+
+## Pacing
+
+Tight and conversational.
+
+## Structural archetype
+
+hook -> problem -> solution -> CTA.
+
+## Rhythm template
+
+hook-build-PEAK-breathe-CTA.
+
+## Edit rules
+
+Remove false starts and cross-range semantic duplicates.
+"""
+
+_BRAND_MD = """\
+# brand canon
+
+## Voice
+
+Direct, dry, builder-to-builder.
+
+## Visual identity
+
+High-contrast editorial; one lime accent.
+
+## Layer composition
+
+skill_canon < profile < brand < episode_intent.
+"""
+
+
+@pytest.fixture
+def fixture_layers(tmp_path):
+    prof = tmp_path / "profiles" / "talking-head-portrait"
+    prof.mkdir(parents=True)
+    (prof / "house-style.md").write_text(_HOUSE_STYLE_MD, encoding="utf-8")
+    brand = tmp_path / "brand" / "anticodeguy"
+    brand.mkdir(parents=True)
+    (brand / "brand.md").write_text(_BRAND_MD, encoding="utf-8")
+    canonical = tmp_path / "profiles" / "canonical"
+    canonical.mkdir(parents=True)  # intentionally NO house-style.md
+    return tmp_path
+
+
+def test_load_profile_blocks_keyed_by_ref_key(fixture_layers):
+    prof = fixture_layers / "profiles" / "talking-head-portrait"
+    blocks = cl.load_profile_blocks("p3_strategy", prof)
+    assert set(blocks) == {"pacing", "structural_archetype"}
+    assert blocks["pacing"].startswith("## Pacing")
+
+
+def test_load_brand_blocks_keyed_by_ref_key(fixture_layers):
+    brand = fixture_layers / "brand" / "anticodeguy"
+    blocks = cl.load_brand_blocks("p3_strategy", brand)
+    assert set(blocks) == {"voice"}
+    assert blocks["voice"].startswith("## Voice")
+
+
+def test_design_system_pulls_full_house_style(fixture_layers):
+    prof = fixture_layers / "profiles" / "talking-head-portrait"
+    blocks = cl.load_profile_blocks("p4_design_system", prof)
+    assert set(blocks) == {"pacing", "structural_archetype", "rhythm_template", "edit_rules"}
+
+
+def test_profile_blocks_absent_file_returns_empty(fixture_layers):
+    canonical = fixture_layers / "profiles" / "canonical"
+    assert cl.load_profile_blocks("p3_strategy", canonical) == {}
+
+
+def test_profile_blocks_present_file_missing_anchor_raises(tmp_path):
+    prof = tmp_path / "profiles" / "broken"
+    prof.mkdir(parents=True)
+    (prof / "house-style.md").write_text("## Pacing\n\nonly pacing.\n", encoding="utf-8")
+    with pytest.raises(cl.CanonAnchorMissing):
+        cl.load_profile_blocks("p3_strategy", prof)
+
+
+def test_node_with_no_profile_refs_returns_empty(fixture_layers):
+    prof = fixture_layers / "profiles" / "talking-head-portrait"
+    assert cl.load_profile_blocks("p3_self_eval", prof) == {}

@@ -394,6 +394,91 @@ NODE_CANON_ANCHORS: dict[str, tuple[CanonRef, ...]] = {
 
 
 # --------------------------------------------------------------------------- #
+# Profile / brand markdown-section manifest (HOM-114, spec §9)
+# --------------------------------------------------------------------------- #
+#
+# MARKDOWN sections only — `house-style.md` / `brand.md`. The YAML brand config
+# (`defaults.yaml.transitions/.motion_language/.captions`, `palette.yaml`) is
+# loaded by HOM-167's pydantic models and composed + fingerprinted by HOM-166's
+# `resolve_episode_brief` (`brief.fingerprint`), NOT here. Refs are RELATIVE to a
+# per-episode resolved profile/brand dir (HOM-166 supplies the dir at call time);
+# the `canonical` profile ships no `house-style.md` and resolves to `{}`.
+
+_PROFILE_FILE = "house-style.md"
+_BRAND_FILE = "brand.md"
+
+
+@dataclass(frozen=True)
+class SectionRef:
+    """One verbatim markdown section a node depends on, relative to a layer dir.
+
+    Distinct from :class:`CanonRef` (which carries a global ``skill`` short-name);
+    profile/brand roots are per-episode, so only ``rel_path`` + ``anchor`` are
+    fixed here and the dir is supplied at load time.
+    """
+
+    key: str
+    rel_path: str
+    anchor: str
+    item: str | None = None
+
+
+_HS_PACING = SectionRef("pacing", _PROFILE_FILE, "## Pacing")
+_HS_ARCHETYPE = SectionRef("structural_archetype", _PROFILE_FILE, "## Structural archetype")
+_HS_RHYTHM = SectionRef("rhythm_template", _PROFILE_FILE, "## Rhythm template")
+_HS_EDIT_RULES = SectionRef("edit_rules", _PROFILE_FILE, "## Edit rules")
+
+NODE_PROFILE_ANCHORS: dict[str, tuple[SectionRef, ...]] = {
+    "p3_strategy": (_HS_PACING, _HS_ARCHETYPE),
+    "p3_edl_select": (_HS_EDIT_RULES,),
+    # "full house-style.md" per §9 — all four authored sections, verbatim.
+    "p4_design_system": (_HS_PACING, _HS_ARCHETYPE, _HS_RHYTHM, _HS_EDIT_RULES),
+    "p4_prompt_expansion": (_HS_RHYTHM,),
+}
+
+NODE_BRAND_ANCHORS: dict[str, tuple[SectionRef, ...]] = {
+    "p3_strategy": (SectionRef("voice", _BRAND_FILE, "## Voice"),),
+    "p4_design_system": (SectionRef("visual_identity", _BRAND_FILE, "## Visual identity"),),
+}
+
+
+def _load_layer_blocks(
+    refs: tuple[SectionRef, ...], layer_dir: Path, source_label: str
+) -> dict[str, str]:
+    """Resolve ``refs`` against ``layer_dir`` → ``{key: verbatim_block}``.
+
+    Two-tier contract (spec §9 fail-loud, reconciled with the canonical baseline):
+      * referenced file ABSENT → that ref is skipped (the layer legitimately omits
+        prose — e.g. the ``canonical`` profile has no ``house-style.md``);
+      * referenced file PRESENT but anchor missing → :class:`CanonAnchorMissing`
+        (loud — a renamed/deleted section must never become a silent-empty brief).
+    Accidental deletion of a *reference* layer's file is caught earlier by
+    :func:`verify_anchors` at graph build.
+    """
+    out: dict[str, str] = {}
+    for ref in refs:
+        path = layer_dir / ref.rel_path
+        if not path.is_file():
+            continue
+        out[ref.key] = load_section(
+            path, ref.anchor, item=ref.item,
+            min_anchor_text=_MIN_SECTION_ANCHOR_TEXT,
+            source_label=f"{source_label}:{layer_dir.name}",
+        )
+    return out
+
+
+def load_profile_blocks(node: str, profile_dir: Path) -> dict[str, str]:
+    """Verbatim profile (`house-style.md`) blocks registered on ``node``."""
+    return _load_layer_blocks(NODE_PROFILE_ANCHORS.get(node, ()), profile_dir, "profile")
+
+
+def load_brand_blocks(node: str, brand_dir: Path) -> dict[str, str]:
+    """Verbatim brand (`brand.md`) blocks registered on ``node``."""
+    return _load_layer_blocks(NODE_BRAND_ANCHORS.get(node, ()), brand_dir, "brand")
+
+
+# --------------------------------------------------------------------------- #
 # Node-facing API: render-context blocks, cache fingerprint, startup verify
 # --------------------------------------------------------------------------- #
 
