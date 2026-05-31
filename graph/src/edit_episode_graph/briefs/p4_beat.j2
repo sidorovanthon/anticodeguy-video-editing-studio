@@ -41,7 +41,7 @@ Available registry (already installed by `p4_scaffold` / `p4_catalog_scan` — r
 {{ catalog_summary }}
 
 Canon to read BEFORE writing the fragment (use the `Read` tool on each — do not rely on memory):
-1. `~/.agents/skills/hyperframes/SKILL.md` — §"Layout Before Animation", §"Scene Transitions" (HR 1–4; HR 4 final-scene exception applies iff `is_final == True`), §"Animation Guardrails", §"Rules (Non-Negotiable)".
+1. `~/.agents/skills/hyperframes/SKILL.md` — §"Layout Before Animation", §"Scene Transitions (Non-Negotiable)" (HR 1–4; HR 4 final-scene exception applies iff `is_final == True`), §"Animation Guardrails", §"Rules (Non-Negotiable)".
 2. `~/.agents/skills/hyperframes/references/transitions/catalog.md` — §"Hard Rules (CSS)" (scene visibility + element structure), §"Scene Template". Your fragment shape MUST match Pattern A: only the root composition gets `data-composition-id`/`data-start`/`data-duration`, **the scene div does NOT**; no `<template>` wrapper; non-first scenes start with `opacity: 0` on the scene container so the future transitions node can fade them in.
 3. `~/.agents/skills/hyperframes/references/motion-principles.md` — §"Load-Bearing GSAP Rules" the `tl.fromTo()` mandate inside scene boundaries. `tl.from()` sets `immediateRender: true`, fires before `data-start` is active, and breaks under non-linear seek. **Every entrance in your timeline MUST be `tl.fromTo(...)`** — not `tl.from(...)`, not `gsap.from(...)`.
 4. `~/.agents/skills/hyperframes/references/video-composition.md` — §"Density" (density floor, 8-10 elements per scene). If `expanded-prompt.md` underspecifies, ADD atmosphere to clear the floor.
