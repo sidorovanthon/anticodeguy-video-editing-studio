@@ -51,7 +51,8 @@ from ._llm import LLMNode, _load_brief
 # extras over the in-state bodies. `transcripts/final.json` stays in
 # `files=` (Phase 3 disk artifact, legitimate file-fingerprint).
 # v6 (HOM-166): brief.fingerprint folded into cache key (state.brief resolution).
-_CACHE_VERSION = 6
+# v7 (HOM-166): brief requests rationale/cross_scene_logic prose (Task 11).
+_CACHE_VERSION = 7
 
 
 def _cache_key(state, *_args, **_kwargs):
