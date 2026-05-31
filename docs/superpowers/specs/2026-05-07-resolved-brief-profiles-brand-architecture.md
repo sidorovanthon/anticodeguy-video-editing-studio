@@ -323,6 +323,34 @@ INPUTS:
 > (helper-script sha256 in `pickup`/`p3_pre_scan` key_func) is tracked
 > separately, not delivered in HOM-114.
 
+> **AMENDED 2026-05-31 (HOM-166 implementation).** Decisions that differ from
+> the original §5/§6 draft, recorded as code landed:
+> - **`brief.music` is `None` in HOM-166.** Music selection + library substrate
+>   (§11) are deferred to HOM-174/HOM-175; `brand/anticodeguy/music/` is empty,
+>   so no track / LUFS / license resolution runs. The `BriefMusicState` slot
+>   exists on the schema for forward-compat. The §6 "music.asset_path exists /
+>   license_note non-empty" validations therefore do not fire yet — they land
+>   with HOM-174.
+> - **Override channel is `state["brief_overrides"]` (a dict), not RunConfig.**
+>   The §6 "CLI override (через RunConfig)" is the *eventual* surface (HOM-79
+>   thin-client). HOM-166 reads an optional `state["brief_overrides"]`
+>   (`profile_id`/`brand_id`) so the priority chain (override > `intent.yaml` >
+>   `config.default_*`) is fully testable without CLI plumbing.
+> - **Two invalidation channels, by layer kind.** `brief.fingerprint` (a global
+>   per-episode sha256 over the resolved **YAML** config — `profile.yaml` +
+>   `palette.yaml` + `defaults.yaml` + intent selection + `narrative_context`)
+>   is folded into every creative node's `make_llm_key` extras. The **markdown**
+>   layers (`house-style.md`/`brand.md`) stay on the per-node
+>   `canon_fingerprint(node, profile_dir, brand_dir)` channel. So the wave-1
+>   acceptance "palette edit → `p4_design_system` cache miss" runs through
+>   `brief.fingerprint`, while the negative "unrelated brand field stays cached"
+>   is exercised by editing `brand.md` **prose** (markdown), which leaves
+>   `brief.fingerprint` stable. `resolve_episode_brief` placement: deterministic
+>   node on the common edge `pickup`/`isolate_audio` → `resolve_episode_brief` →
+>   `preflight_canon`, so the brief is resolved before Phase 3 AND the
+>   Phase-3-skip → Phase 4 path. Plan:
+>   `docs/superpowers/plans/2026-05-31-hom-166-brief-substrate.md`.
+
 **Что есть в HOM-114 сейчас (Backlog):**
 - `_canon_loader.py` с `load_skill_section(skill_path, anchor)`, markdown-парсер по тексту H2-заголовка.
 - Snapshot-тесты, smoke без `Read` SKILL.md.
