@@ -339,3 +339,16 @@ def test_new_inventory_emits_iso_takes_packed_at():
     }
     # Must parse as ISO 8601 — guard against accidental path-string regress.
     datetime.fromisoformat(new["takes_packed_at"])
+
+
+# ---- HOM-166 Task 6: loosen Strategy schema ----
+
+
+def test_strategy_accepts_old_shape_and_new_prose():
+    from edit_episode_graph.schemas.p3_strategy import Strategy
+    old = {"shape": "x", "takes": ["t1"], "grade": "neutral", "pacing": "fast", "length_estimate_s": 30.0}
+    s = Strategy.model_validate(old)
+    assert s.rationale == "" and s.taste_notes == ""
+    new = {**old, "rationale": "because", "taste_notes": "free md"}
+    s2 = Strategy.model_validate(new)
+    assert s2.rationale == "because"

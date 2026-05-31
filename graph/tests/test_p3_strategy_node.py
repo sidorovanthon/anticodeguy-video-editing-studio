@@ -12,6 +12,10 @@ from edit_episode_graph.schemas.p3_strategy import Strategy
 
 
 def test_strategy_schema_rejects_animation_and_subtitle_fields():
+    # HOM-166: Strategy uses extra="allow" so LLM prose fields can flow
+    # through without triggering ValidationError. The former "rejects extra
+    # fields" invariant is retired — the test now asserts that the structural
+    # fields still validate and that extra keys are accepted (not rejected).
     base = {
         "shape": "Problem to payoff",
         "takes": ["Use take 1 opening"],
@@ -19,11 +23,13 @@ def test_strategy_schema_rejects_animation_and_subtitle_fields():
         "pacing": "tight",
         "length_estimate_s": 30.0,
     }
-    Strategy.model_validate(base)
-    with pytest.raises(ValidationError):
-        Strategy.model_validate({**base, "animations": []})
-    with pytest.raises(ValidationError):
-        Strategy.model_validate({**base, "subtitles": {"enabled": True}})
+    s = Strategy.model_validate(base)
+    assert s.shape == "Problem to payoff"
+    # extra="allow": formerly-rejected fields now pass through silently.
+    s2 = Strategy.model_validate({**base, "animations": []})
+    assert s2.shape == "Problem to payoff"
+    s3 = Strategy.model_validate({**base, "subtitles": {"enabled": True}})
+    assert s3.shape == "Problem to payoff"
 
 
 @pytest.fixture
@@ -80,12 +86,15 @@ def test_runs_with_no_tools_and_embeds_inputs(project_root_episode):
     update = p3_strategy_node(state, router=router)
 
     # HOM-223: identity-only state — `source_path` no longer written.
+    # HOM-166: Strategy now carries rationale/taste_notes (default "").
     assert update["edit"]["strategy"] == {
         "shape": "hook",
         "takes": ["take 1"],
         "grade": "neutral",
         "pacing": "tight",
         "length_estimate_s": 12.0,
+        "rationale": "",
+        "taste_notes": "",
     }
     assert update["llm_runs"][0]["node"] == "p3_strategy"
     req, task = router.invoke.call_args.args[:2]
