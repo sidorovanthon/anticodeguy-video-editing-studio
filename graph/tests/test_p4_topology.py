@@ -58,6 +58,9 @@ def test_phase4_nodes_present_in_compiled_graph():
         "p3_review_interrupt",
         # HOM-148: cluster-gate retry node — re-authors offending scene
         "p4_redispatch_beat",
+        # HOM-166: deterministic per-episode brief resolver on the common
+        # pre-Phase-3 path.
+        "resolve_episode_brief",
     }
     missing = expected - nodes
     assert not missing, f"Phase 4 nodes missing from compiled graph: {sorted(missing)}"
@@ -84,6 +87,10 @@ def test_phase4_chain_edges_wired():
     graph = _compiled_graph_repr()
     edges = {(e.source, e.target) for e in graph.edges}
     expected_edges = {
+        # HOM-166: resolver on the common pre-Phase-3 path.
+        ("pickup", "resolve_episode_brief"),
+        ("isolate_audio", "resolve_episode_brief"),
+        ("resolve_episode_brief", "preflight_canon"),
         # HOM-160: skip-Phase3 edge routes through rehydrate so Phase 4 cache
         # keys see the same in-memory strategy that drove the original run.
         ("preflight_canon", "rehydrate_skip_phase3"),

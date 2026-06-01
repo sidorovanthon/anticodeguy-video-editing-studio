@@ -621,6 +621,37 @@ class SessionState(TypedDict, total=False):
     project_md: str | None
 
 
+class BriefMusicState(TypedDict, total=False):
+    """Resolved music selection (spec §5). HOM-166 always leaves this ``None`` —
+    music selection + library substrate land in HOM-174/HOM-175 (§11). The slot
+    exists so the schema is forward-compatible and creative nodes can read
+    ``brief.music`` unconditionally."""
+    track_id: str
+    asset_path: str
+    volume_db: float
+    fade_in_s: float
+    fade_out_s: float
+    license_note: str
+    lufs_integrated: float
+
+
+class BriefState(TypedDict, total=False):
+    """Per-episode resolved context (spec §5). Written once by
+    ``resolve_episode_brief`` before any creative node. ``fingerprint`` is a
+    sha256 over the canonicalized resolved YAML config (profile.yaml +
+    palette.yaml + defaults.yaml + intent selection + narrative_context +
+    music); it is folded into every creative node's ``make_llm_key`` extras so
+    a brand/profile/intent edit invalidates exactly the creative nodes (and
+    nothing deterministic). ``brand_id`` is ``None`` for the ``canonical``
+    regression profile (brand layer disabled)."""
+    profile_id: str
+    brand_id: str | None
+    resolved_brief_path: str
+    narrative_context: str | None
+    music: BriefMusicState | None
+    fingerprint: str
+
+
 class GraphState(TypedDict, total=False):
     slug: str
     episode_dir: str
@@ -658,3 +689,9 @@ class GraphState(TypedDict, total=False):
     # persist sub-agent's brief. Last-write-wins under `dict_merge` —
     # the materializer is the single writer.
     session: Annotated[SessionState, dict_merge]
+    # HOM-166: per-episode resolved context (profile + brand + intent) composed
+    # by `resolve_episode_brief` before Phase 3. dict_merge so a future
+    # narrative_context update (HOM-168 Converse) merges without clobbering the
+    # initial resolution. Pre-HOM-166 checkpoints carry no `brief` field —
+    # total=False keeps them parsing.
+    brief: Annotated[BriefState, dict_merge]

@@ -1,6 +1,6 @@
 {# Strategy task descriptor. HOM-377: canon pulled VERBATIM from the live
    skill at run time (`canon.*`). #}
-{% from "_macros.j2" import canon_section %}
+{% from "_macros.j2" import canon_section, profile_brand_section %}
 You are running the **strategy** pass for an anticodeguy episode (`{{ slug }}`).
 
 Canon — VERBATIM, pulled live from the skill at run time (follow exactly; do
@@ -9,7 +9,7 @@ NOT `Read` these sections again — they are inlined below in full):
 {{ canon_section("video-use SKILL.md §The process — Step 4 (Propose strategy)", canon.process_propose_strategy) }}
 {{ canon_section("video-use SKILL.md §Cut craft (techniques)", canon.cut_craft) }}
 {{ canon_section("video-use SKILL.md §Color grade (when requested)", canon.color_grade) }}
-
+{{ profile_brand_section(profile, brand) }}
 Orchestrator-house clarification on `grade`: it is image/CDL direction only,
 NOT audio or codec settings — loudnorm/codec/fps live entirely in canon
 `render.py` and are not operator-tunable through strategy.
@@ -37,8 +37,12 @@ takes precedence on any conflict:
 Return ONLY JSON matching:
 
 ```json
-{"shape":"...","takes":["..."],"grade":"...","pacing":"...","length_estimate_s":30.0}
+{"shape":"...","takes":["..."],"grade":"...","pacing":"...","length_estimate_s":30.0,"rationale":"...","taste_notes":"..."}
 ```
+
+`rationale`: 3-6 sentences justifying the cut shape, take selection, and pacing
+against the material. `taste_notes`: free-form notes on tone / brand fit (use
+the Profile & brand context above when present).
 
 Phase 3 is cuts + grade only. Animation and subtitles belong to Phase 4; the
 schema has no fields for them. Do not include prose outside the JSON.

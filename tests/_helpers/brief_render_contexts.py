@@ -24,7 +24,11 @@ from __future__ import annotations
 
 import json
 
-from edit_episode_graph._canon_loader import NODE_CANON_ANCHORS
+from edit_episode_graph._canon_loader import (
+    NODE_BRAND_ANCHORS,
+    NODE_CANON_ANCHORS,
+    NODE_PROFILE_ANCHORS,
+)
 
 SLUG = "snapshot-fixture"
 EPISODE_DIR = "/tmp/snapshot-fixture/episode"
@@ -133,6 +137,28 @@ def _placeholder_canon(node: str) -> dict[str, str]:
     }
 
 
+def _placeholder_profile(node: str) -> dict[str, str]:
+    """Deterministic stand-in for the runtime profile blocks (HOM-166).
+
+    Production injects ``profile = load_profile_blocks(node, profile_dir)``
+    (verbatim operator-authored markdown). The L0 snapshot substitutes a stable
+    placeholder per registered profile anchor so the snapshot pins the WIRING
+    (which anchors each brief overlays) without embedding live profile text.
+    """
+    return {
+        ref.key: f"## PROFILE PLACEHOLDER — {ref.anchor}\n(snapshot fixture)\n"
+        for ref in NODE_PROFILE_ANCHORS.get(node, ())
+    }
+
+
+def _placeholder_brand(node: str) -> dict[str, str]:
+    """Deterministic stand-in for the runtime brand blocks (HOM-166)."""
+    return {
+        ref.key: f"## BRAND PLACEHOLDER — {ref.anchor}\n(snapshot fixture)\n"
+        for ref in NODE_BRAND_ANCHORS.get(node, ())
+    }
+
+
 def p3_strategy_ctx() -> dict:
     revisions: list[dict] = []
     return {
@@ -143,6 +169,8 @@ def p3_strategy_ctx() -> dict:
         "strategy_revisions": revisions,
         "strategy_revisions_json": json.dumps(revisions, ensure_ascii=False),
         "canon": _placeholder_canon("p3_strategy"),
+        "profile": _placeholder_profile("p3_strategy"),
+        "brand": _placeholder_brand("p3_strategy"),
     }
 
 
@@ -182,6 +210,8 @@ def p3_edl_select_ctx() -> dict:
         "prior_violations": [],
         "prior_iteration": 0,
         "canon": _placeholder_canon("p3_edl_select"),
+        "profile": _placeholder_profile("p3_edl_select"),
+        "brand": _placeholder_brand("p3_edl_select"),
     }
 
 
@@ -191,6 +221,8 @@ def p4_design_system_ctx() -> dict:
         "design_md_path": DESIGN_MD_PATH,
         "strategy_json": json.dumps(_FIXED_STRATEGY, ensure_ascii=False),
         "edl_beats_json": json.dumps(_FIXED_EDL_BEATS, ensure_ascii=False),
+        "profile": _placeholder_profile("p4_design_system"),
+        "brand": _placeholder_brand("p4_design_system"),
     }
 
 
@@ -208,6 +240,8 @@ def p4_prompt_expansion_ctx() -> dict:
         "style_request_json": json.dumps(
             "Editorial restraint; analytical not festive.", ensure_ascii=False
         ),
+        "profile": _placeholder_profile("p4_prompt_expansion"),
+        "brand": _placeholder_brand("p4_prompt_expansion"),
     }
 
 

@@ -339,3 +339,50 @@ def test_new_inventory_emits_iso_takes_packed_at():
     }
     # Must parse as ISO 8601 — guard against accidental path-string regress.
     datetime.fromisoformat(new["takes_packed_at"])
+
+
+# ---- HOM-166 Task 6: loosen Strategy schema ----
+
+
+def test_strategy_accepts_old_shape_and_new_prose():
+    from edit_episode_graph.schemas.p3_strategy import Strategy
+    old = {"shape": "x", "takes": ["t1"], "grade": "neutral", "pacing": "fast", "length_estimate_s": 30.0}
+    s = Strategy.model_validate(old)
+    assert s.rationale == "" and s.taste_notes == ""
+    new = {**old, "rationale": "because", "taste_notes": "free md"}
+    s2 = Strategy.model_validate(new)
+    assert s2.rationale == "because"
+
+
+# ---- HOM-166 Task 7: prose fields on DesignDoc + CompositionPlan ----
+
+
+def test_design_doc_adds_optional_prose():
+    from edit_episode_graph.schemas.p4_design_system import DesignDoc
+    base = {
+        "style_name": "Editorial", "palette": [{"role": "bg", "hex": "#000"}, {"role": "fg", "hex": "#fff"}],
+        "typography": [{"role": "headline", "family": "Inter"}],
+        "refs": [{"label": "Stripe", "description": "typography"}, {"label": "Pentagram", "description": "grid"}],
+        "alternatives": [{"name": "Folk", "rejected_because": "too warm"}],
+        "anti_patterns": ["no neon", "no drop shadows", "no center-everything"],
+        "beat_visual_mapping": [{"beat": "HOOK", "treatment": "stat slam"}],
+        "design_md_path": "/x/DESIGN.md", "design_md": "# DESIGN\n",
+    }
+    d = DesignDoc.model_validate(base)
+    assert d.rationale == "" and d.cross_scene_logic == ""
+    d2 = DesignDoc.model_validate({**base, "rationale": "r", "cross_scene_logic": "c"})
+    assert d2.rationale == "r" and d2.cross_scene_logic == "c"
+
+
+def test_plan_adds_optional_prose():
+    from edit_episode_graph.schemas.p4_plan import CompositionPlan
+    base = {
+        "narrative_arc": "hook->payoff", "rhythm": "fast-SLOW-fast",
+        "beats": [{"beat": "HOOK", "concept": "c1c1", "mood": "m", "energy": "high",
+                   "duration_s": 6.9, "catalog_or_custom": "custom", "justification": "off-axis"}],
+        "transitions": [],
+    }
+    p = CompositionPlan.model_validate(base)
+    assert p.rationale == "" and p.cross_scene_logic == ""
+    p2 = CompositionPlan.model_validate({**base, "rationale": "r", "cross_scene_logic": "c"})
+    assert p2.cross_scene_logic == "c"

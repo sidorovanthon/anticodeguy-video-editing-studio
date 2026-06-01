@@ -236,6 +236,10 @@ from .nodes.p4_transitions import (
 from .nodes.pickup import pickup_node
 from .nodes.preflight_canon import preflight_canon_node
 from .nodes.rehydrate_skip_phase3 import rehydrate_skip_phase3_node
+from .nodes.resolve_episode_brief import (
+    CACHE_POLICY as resolve_episode_brief_cache_policy,
+    resolve_episode_brief_node,
+)
 from .nodes.strategy_confirmed_interrupt import strategy_confirmed_interrupt_node
 from .nodes.studio_launch import studio_launch_node
 from .state import GraphState
@@ -275,6 +279,14 @@ def build_graph_uncompiled() -> StateGraph:
     # final.mp4 already exists. No cache_policy — node body is a tiny file
     # read; running it every fresh-thread skip is cheaper than fingerprinting.
     g.add_node("rehydrate_skip_phase3", rehydrate_skip_phase3_node)
+    # HOM-166: deterministic per-episode brief resolver. Runs before any
+    # creative node on EVERY path (Phase 3 and the Phase-3-skip → Phase 4
+    # path) — placed on the common edge into preflight_canon.
+    g.add_node(
+        "resolve_episode_brief",
+        resolve_episode_brief_node,
+        cache_policy=resolve_episode_brief_cache_policy,
+    )
     g.add_node(
         "glue_remap_transcript",
         glue_remap_transcript_node,
@@ -463,10 +475,11 @@ def build_graph_uncompiled() -> StateGraph:
         {
             END: END,
             "isolate_audio": "isolate_audio",
-            "preflight_canon": "preflight_canon",
+            "resolve_episode_brief": "resolve_episode_brief",
         },
     )
-    g.add_edge("isolate_audio", "preflight_canon")
+    g.add_edge("isolate_audio", "resolve_episode_brief")
+    g.add_edge("resolve_episode_brief", "preflight_canon")
 
     # skip_phase3? lives inside route_after_preflight.
     g.add_conditional_edges(

@@ -117,3 +117,13 @@ class CompositionPlan(BaseModel):
                     "the only canon-allowed exit animation). A 1-beat plan with no final-fade "
                     "has zero transitions.",
     )
+    rationale: str = Field(
+        default="",
+        description="3-6 sentences on WHY this beat/rhythm/transition plan serves the narrative "
+                    "(HOM-166 §7).",
+    )
+    cross_scene_logic: str = Field(
+        default="",
+        description="Cross-scene reasoning — rhythm arc, transition budget, motion variation "
+                    "across beats (HOM-166 §7).",
+    )

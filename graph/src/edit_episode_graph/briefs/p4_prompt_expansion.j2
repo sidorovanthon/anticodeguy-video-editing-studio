@@ -1,4 +1,5 @@
 {# Prompt-expansion (Step 2) task descriptor. Brief references canon; it does not embed canon. #}
+{% from "_macros.j2" import profile_brand_section %}
 You are running the **prompt expansion** pass for an anticodeguy episode (`{{ slug }}`).
 
 Canon to read BEFORE producing output (use the `Read` tool — do NOT rely on
@@ -43,7 +44,7 @@ Inputs:
   ```transcript.json
   {{ transcript_json_body }}
   ```
-
+{{ profile_brand_section(profile, brand) }}
 Outputs:
 
 1. **Return the expansion body in the `expanded_prompt` field** of the

@@ -422,7 +422,8 @@ def halt_llm_boundary_node(state):
         )
     else:
         msg = (
-            "v1 halt: `final.mp4` missing; next is p3_inventory → p3_pre_scan → "
+            "v1 halt: `brief.resolved.yaml` resolved (profile+brand context, pre-Phase 3); "
+            "`final.mp4` missing; next is p3_inventory → p3_pre_scan → "
             "p3_strategy (Phase 3 LLM chain)"
         )
     return {"notices": [msg]}

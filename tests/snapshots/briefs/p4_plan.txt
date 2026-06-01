@@ -72,6 +72,10 @@ below them and re-dispatches you with the violation list:
 - Per beat: `catalog_or_custom` must be set with a concrete one-sentence
   `justification` (orchestrator-house catalog-scan gate per memory
   `feedback_hf_catalog_orchestrator_gate`).
+- `rationale` — 3-6 sentences on WHY this beat/rhythm/transition plan serves the
+  narrative arc (not just what it is).
+- `cross_scene_logic` — cross-scene reasoning: the rhythm arc across beats, the
+  transition budget, and how motion variation builds and releases across the cut.
 
 ```json
 {
@@ -134,7 +138,9 @@ below them and re-dispatches you with the violation list:
       "easing": "power2.in",
       "why": "Final scene exit per canon §Animation Rules — only the last scene may exit-animate."
     }
-  ]
+  ],
+  "rationale": "Fast-slow-fast lands the surprise, holds the weight, then releases on the stat; transitions escalate energy in step...",
+  "cross_scene_logic": "Three beats, two interior transitions: blur softens medium→calm, shader zoom lifts calm→high; motion peaks at PAYOFF..."
 }
 ```
 

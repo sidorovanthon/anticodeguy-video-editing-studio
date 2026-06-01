@@ -133,6 +133,19 @@ def node_config_fingerprint(node_name: str) -> str:
     })
 
 
+def brief_fingerprint(state: Any) -> str:
+    """Return ``state.brief.fingerprint`` or a stable nonce when no brief is set.
+
+    Folded into every creative node's ``make_llm_key`` extras (HOM-166). During
+    LangGraph graph introspection (``compiled.get_graph()``) the key_func runs
+    against the channel default — no ``brief`` — so we emit ``"no-brief"``; a
+    real run always carries a resolved fingerprint from ``resolve_episode_brief``.
+    """
+    if not isinstance(state, dict):
+        return "no-brief"
+    return ((state.get("brief") or {}).get("fingerprint")) or "no-brief"
+
+
 def make_llm_key(
     *,
     node: str,

@@ -27,6 +27,15 @@ inlined in full):
 === end CANON: video-use SKILL.md §Cut craft (techniques) ===
 
 
+Profile & brand context (operator-authored overlay ON TOP of canon — brand
+wins on conflict; honor canonical opt-outs, never replace canon):
+
+## PROFILE PLACEHOLDER — ## Edit rules
+(snapshot fixture)
+
+
+
+
 Inputs (resolve via the `Read` tool — paths, not contents, are provided here):
 - Packed transcript: `/tmp/snapshot-fixture/episode/edit/takes_packed.md`
 - Per-source transcripts (Scribe word-level JSON): ["/tmp/snapshot-fixture/episode/edit/transcripts/raw.json"]

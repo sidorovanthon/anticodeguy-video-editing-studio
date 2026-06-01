@@ -97,7 +97,7 @@ def _container_has_clean_tag(video: Path) -> bool:
 
 
 def route_after_pickup(state) -> str:
-    """pickup → END | isolate_audio | preflight_canon (skip_phase2 baked in)."""
+    """pickup → END | isolate_audio | resolve_episode_brief (skip_phase2 baked in)."""
     if _predecessor_just_failed(state, "pickup"):
         return END
     if state.get("pickup", {}).get("idle"):
@@ -107,7 +107,7 @@ def route_after_pickup(state) -> str:
         return END
     raw = _find_raw_video(Path(episode_dir))
     if raw is not None and _container_has_clean_tag(raw):
-        return "preflight_canon"
+        return "resolve_episode_brief"
     return "isolate_audio"
 
 

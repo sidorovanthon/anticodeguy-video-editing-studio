@@ -93,6 +93,16 @@ def test_single_dict_record_appended_as_legacy_shape():
     assert out == [_rec("gate:lint"), _rec("gate:eval_ok")]
 
 
+def test_brief_channel_optional_and_merges():
+    from edit_episode_graph.state import GraphState, dict_merge
+    assert "brief" not in {}
+    left = {"profile_id": "talking-head-portrait", "brand_id": "anticodeguy"}
+    right = {"narrative_context": "ep about X"}
+    merged = dict_merge(left, right)
+    assert merged["profile_id"] == "talking-head-portrait"
+    assert merged["narrative_context"] == "ep about X"
+
+
 def test_sentinel_keys_take_precedence_over_record_shape():
     """Defense-in-depth: a dict that looks like a record but ALSO contains
     `_clear_gate` is treated as a sentinel. This shouldn't happen in

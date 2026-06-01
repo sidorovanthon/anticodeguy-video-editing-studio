@@ -81,6 +81,9 @@ ALLOWLIST_NODES = frozenset({
     "rehydrate_skip_phase3.py",
     "pickup.py",
     "isolate_audio.py",
+    # HOM-166: deterministic config resolver — reading profile/brand/intent and
+    # writing brief.resolved.yaml is its entire purpose (like pickup / preflight).
+    "resolve_episode_brief.py",
     # Class D / routing.
     "_routing.py",
     "halt_llm_boundary.py",

@@ -37,6 +37,11 @@ class RouterConfig:
     # from `node_overrides` because deterministic-gate config is not LLM-tier
     # routing and re-using NodeConfig would conflate the two surfaces.
     gates: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # HOM-166: project-default profile/brand selection (spec §6). Resolution
+    # priority is CLI/override > intent.yaml > THESE defaults. canonical profile
+    # forces brand_id=None regardless.
+    default_profile_id: str = "talking-head-portrait"
+    default_brand_id: str = "anticodeguy"
 
     def resolve_gate(self, name: str) -> dict[str, Any]:
         """Returns the (possibly empty) config dict for a given gate name.
@@ -72,6 +77,8 @@ def load_config(path: Path) -> RouterConfig:
         defaults=dict(raw.get("defaults") or {}),
         node_overrides=dict(raw.get("node_overrides") or {}),
         gates=dict(raw.get("gates") or {}),
+        default_profile_id=str(raw.get("default_profile_id") or "talking-head-portrait"),
+        default_brand_id=str(raw.get("default_brand_id") or "anticodeguy"),
     )
 
 
